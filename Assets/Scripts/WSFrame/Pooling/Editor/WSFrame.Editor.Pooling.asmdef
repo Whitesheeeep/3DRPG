@@ -1,0 +1,27 @@
+﻿{
+    "name":  "WSFrame.Editor.Pooling",
+    "rootNamespace":  "",
+    "references":  [
+                       "GUID:da1903d9b92d4121b535484fbe214808",
+                       "GUID:ecb06e02d7fb4e77932eb8c1d6e3e312"
+                   ],
+    "includePlatforms":  [
+                             "Editor"
+                         ],
+    "excludePlatforms":  [
+
+                         ],
+    "allowUnsafeCode":  false,
+    "overrideReferences":  false,
+    "precompiledReferences":  [
+
+                              ],
+    "autoReferenced":  true,
+    "defineConstraints":  [
+
+                          ],
+    "versionDefines":  [
+
+                       ],
+    "noEngineReferences":  false
+}

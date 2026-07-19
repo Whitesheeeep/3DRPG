@@ -1,0 +1,29 @@
+﻿{
+    "name":  "WSFrame.Utilities",
+    "rootNamespace":  "",
+    "references":  [
+                       "GUID:da1903d9b92d4121b535484fbe214808",
+                       "GUID:ecb06e02d7fb4e77932eb8c1d6e3e312",
+                       "GUID:0e1a981e7bfa4022bf4fd0e1a344e52a",
+                       "GUID:4486f0e498ce4c1793d79d2fc07c5dd5"
+                   ],
+    "includePlatforms":  [
+
+                         ],
+    "excludePlatforms":  [
+
+                         ],
+    "allowUnsafeCode":  false,
+    "overrideReferences":  false,
+    "precompiledReferences":  [
+
+                              ],
+    "autoReferenced":  true,
+    "defineConstraints":  [
+
+                          ],
+    "versionDefines":  [
+
+                       ],
+    "noEngineReferences":  false
+}

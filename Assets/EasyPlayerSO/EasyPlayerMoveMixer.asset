@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c5a8877f26e7a6a43aaf06fade1a064a, type: 3}
+  m_Name: EasyPlayerMoveMixer
+  m_EditorClassIdentifier: 
+  _Transition:
+    rid: 7552782092226789377
+  references:
+    version: 2
+    RefIds:
+    - rid: 7552782092226789377
+      type: {class: MixerTransition2D, ns: Animancer, asm: Kybernetik.Animancer}
+      data:
+        _FadeDuration: 0.25
+        _Speed: 1
+        _Events:
+          _NormalizedTimes: []
+          _Callbacks: []
+          _Names: []
+        _Animations:
+        - {fileID: 7400016, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+        - {fileID: 7400034, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+        - {fileID: 7400032, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+        - {fileID: 7400000, guid: f9051c306ffea7d46aa887f2d57ff680, type: 2}
+        - {fileID: 7400032, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+        - {fileID: 7400000, guid: 524dba18ab235484a952e0eb684e22e5, type: 2}
+        _Speeds: []
+        _SynchronizeChildren: 
+        _Thresholds:
+        - {x: 1, y: 0}
+        - {x: 1, y: -2}
+        - {x: 1, y: 2}
+        - {x: 2, y: 0}
+        - {x: 2, y: -2}
+        - {x: 2, y: 2}
+        _DefaultParameter: {x: 0, y: 0}
+        _Type: 0
+        _ParameterNameX: {fileID: 11400000, guid: bf95c5c8b0cc5d441b7abe5dc3e7977e, type: 2}
+        _ParameterNameY: {fileID: 11400000, guid: 89cdc752c9846364e85aa698e9fe3775, type: 2}

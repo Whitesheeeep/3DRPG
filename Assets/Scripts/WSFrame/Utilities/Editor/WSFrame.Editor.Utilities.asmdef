@@ -1,0 +1,27 @@
+﻿{
+    "name":  "WSFrame.Editor.Utilities",
+    "rootNamespace":  "",
+    "references":  [
+                       "GUID:da1903d9b92d4121b535484fbe214808",
+                       "GUID:6055be8ebefd69e48b49212b09b47b2f"
+                   ],
+    "includePlatforms":  [
+                             "Editor"
+                         ],
+    "excludePlatforms":  [
+
+                         ],
+    "allowUnsafeCode":  false,
+    "overrideReferences":  false,
+    "precompiledReferences":  [
+
+                              ],
+    "autoReferenced":  true,
+    "defineConstraints":  [
+
+                          ],
+    "versionDefines":  [
+
+                       ],
+    "noEngineReferences":  false
+}

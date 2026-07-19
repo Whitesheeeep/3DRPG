@@ -1,0 +1,27 @@
+﻿{
+    "name":  "WSFrame.FSM",
+    "rootNamespace":  "",
+    "references":  [
+                       "GUID:da1903d9b92d4121b535484fbe214808",
+                       "GUID:75469ad4d38634e559750d17036d5f7c"
+                   ],
+    "includePlatforms":  [
+
+                         ],
+    "excludePlatforms":  [
+
+                         ],
+    "allowUnsafeCode":  false,
+    "overrideReferences":  false,
+    "precompiledReferences":  [
+
+                              ],
+    "autoReferenced":  true,
+    "defineConstraints":  [
+
+                          ],
+    "versionDefines":  [
+
+                       ],
+    "noEngineReferences":  false
+}

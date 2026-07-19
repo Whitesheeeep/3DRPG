@@ -1,0 +1,28 @@
+﻿{
+    "name":  "WSFrame.Utilities.Fader",
+    "rootNamespace":  "",
+    "references":  [
+                       "GUID:da1903d9b92d4121b535484fbe214808",
+                       "GUID:f51ebe6a0ceec4240a699833d6309b23",
+                       "GUID:74f0cf3408334e73b51849851ad1540d"
+                   ],
+    "includePlatforms":  [
+
+                         ],
+    "excludePlatforms":  [
+
+                         ],
+    "allowUnsafeCode":  false,
+    "overrideReferences":  false,
+    "precompiledReferences":  [
+
+                              ],
+    "autoReferenced":  true,
+    "defineConstraints":  [
+
+                          ],
+    "versionDefines":  [
+
+                       ],
+    "noEngineReferences":  false
+}

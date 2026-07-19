@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0502651d41c4b73a2b5daf613892fad, type: 3}
+  m_Name: FrameSetting
+  m_EditorClassIdentifier: 
+  logSetting:
+    infoColor: {r: 0.90188676, g: 0.90188676, b: 0.90188676, a: 0.75686276}
+    warningColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+    errorColor: {r: 1, g: 0, b: 0, a: 1}
+    succeedColor: {r: 0, g: 1, b: 0, a: 1}
+    enableLog: 1
+    enableWriteTime: 1
+    enableWriteThreadID: 0
+    enableWriteTrace: 0
+    enableSaveToFile: 0
+    saveLogTypes: 15
+    customSaveFileName: 
+    savePath: /WSFrame/Logs/
+  configRegisterSetting:
+    rootNode: {fileID: 11400000, guid: 30f35db3f22d447b836bb6e958bbda22, type: 2}
+    clearRootNodeAfterRegister: 1
+  resLoadType: 0
+  audioSystemSetting:
+    audioSourceInitCount: 5
+    audioSourcePrefabPath: AudioSourcePrefab
+  uiManagerSetting:
+    uiRootPath: UIRoot
+    uiCameraPrefabPath: UICamera
+    uiEventSystemPrefabPath: UIEventSystem
+    windowConfig: {fileID: 11400000, guid: a5f7fdac12a3d3547808a5e70cf741de, type: 2}
+    isSingleMask: 1
+    BindComponentGeneratorPath: Assets/Scripts/WSFrame/UISystem/Samples
+    BindComponentNameSpace: WS_Modules.UIModule
+    WindowGeneratorPath: Assets/Scripts/WSFrame/UISystem/Samples
+    ItemScriptsGeneratorPath: Assets/Scripts/WSFrame/UISystem/Samples/Items
+    WindowPrefabFolderPathArr:
+    - Assets/Prefabs/UI/WindowPrefab
+    UsingNameSpaceArr:
+    - UnityEngine
+    - UnityEngine.UI
+    - TMPro
+  poolingSetting:
+    GlobalPrewarmConfig: {fileID: 11400000, guid: a1d1b28afc416a5428c456ba2adeb143, type: 2}

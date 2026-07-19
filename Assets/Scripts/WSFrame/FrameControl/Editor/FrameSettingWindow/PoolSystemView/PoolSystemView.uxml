@@ -1,0 +1,33 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/PoolSystemView/PoolSystemView.uss?fileID=7433441132597879392&amp;guid=4e11ad4d8e5d4b75889725b16bb48ce7&amp;type=3#PoolSystemView" />
+    <ui:VisualElement name="PoolSystemRoot" class="pool-system-root">
+        <ui:VisualElement name="PoolHeader" class="pool-header">
+            <ui:Label name="PoolTitle" text="Pool System Monitor" class="pool-title" />
+            <ui:Label name="SummaryLabel" text="Pools: 0 | Cached: 0 | Capacity: 0" binding-path="summaryText" class="pool-summary" />
+        </ui:VisualElement>
+        <ui:VisualElement name="PoolToolbar" class="pool-toolbar">
+            <ui:Button name="InitButton" text="初始化 PoolManager" class="pool-button pool-button-primary" />
+            <ui:Button name="RefreshButton" text="刷新" class="pool-button pool-button-neutral" />
+            <ui:Toggle name="AutoRefreshToggle" label="自动刷新" binding-path="autoRefresh" class="pool-toggle" />
+            <ui:Label name="LastRefreshLabel" text="Last refresh: -" binding-path="lastRefreshText" class="pool-last-refresh" />
+        </ui:VisualElement>
+        <ui:VisualElement name="PoolSearchRow" class="pool-search-row">
+            <ui:TextField name="SearchField" label="Search" class="pool-search-field" />
+            <ui:Button name="ClearSearchButton" text="Clear" class="pool-button pool-button-neutral pool-clear-search-button" />
+        </ui:VisualElement>
+        <ui:VisualElement name="GameObjectSection" class="pool-section">
+            <ui:VisualElement class="pool-section-header">
+                <ui:Label name="SectionTitle" text="GameObject Pools" class="pool-section-title" />
+                <ui:Label name="SectionCount" text="0 pools / 0 cached" class="pool-section-count" />
+            </ui:VisualElement>
+            <ui:VisualElement name="TableContainer" class="pool-table-container" />
+        </ui:VisualElement>
+        <ui:VisualElement name="ClassSection" class="pool-section">
+            <ui:VisualElement class="pool-section-header">
+                <ui:Label name="SectionTitle" text="Class Pools" class="pool-section-title" />
+                <ui:Label name="SectionCount" text="0 pools / 0 cached" class="pool-section-count" />
+            </ui:VisualElement>
+            <ui:VisualElement name="TableContainer" class="pool-table-container" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

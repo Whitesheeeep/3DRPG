@@ -1,0 +1,84 @@
+.frame-setting-split-view {
+    flex-grow: 1;
+    min-width: 520px;
+    min-height: 360px;
+    width: auto;
+}
+
+.frame-setting-left-panel {
+    min-width: 170px;
+    max-width: 320px;
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+.frame-module-list {
+    min-width: 170px;
+    flex-grow: 1;
+}
+
+.frame-setting-right-panel {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 320px;
+}
+
+.frame-setting-container {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-wrap: nowrap;
+    overflow: hidden;
+}
+
+.frame-module-content {
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+}
+
+.frame-module-settings-body {
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+}
+
+.frame-module-list-item {
+    -unity-text-align: middle-left;
+    padding-left: 10px;
+    color: rgb(204, 204, 204);
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(38, 38, 38);
+}
+
+.frame-module-settings-scroll {
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+}
+
+.frame-module-settings-title {
+    -unity-font-style: bold;
+    font-size: 20px;
+    margin-bottom: 10px;
+}
+
+.frame-setting-section-title {
+    -unity-font-style: bold;
+    margin-bottom: 5px;
+}
+
+.frame-module-inline-section {
+    flex-grow: 0;
+    flex-shrink: 0;
+    margin-bottom: 10px;
+}
+
+.frame-setting-section-title-spaced {
+    -unity-font-style: bold;
+    margin-top: 10px;
+    margin-bottom: 5px;
+}
+
+.is-hidden {
+    display: none;
+}

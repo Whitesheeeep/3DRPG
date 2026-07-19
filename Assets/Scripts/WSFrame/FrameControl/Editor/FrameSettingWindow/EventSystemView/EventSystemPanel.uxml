@@ -1,0 +1,7 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/EventSystemView/EventSystemView.uss?fileID=7433441132597879392&amp;guid=8f4a4a8b3d3a4f7b8d2c6b2d9c1e5a73&amp;type=3#EventSystemView" />
+    <ui:VisualElement name="EventSystemRoot" class="event-system-view">
+        <ui:VisualElement name="EventSystemToolbar" />
+        <ui:VisualElement name="EventSearchResults" class="event-results" />
+    </ui:VisualElement>
+</ui:UXML>

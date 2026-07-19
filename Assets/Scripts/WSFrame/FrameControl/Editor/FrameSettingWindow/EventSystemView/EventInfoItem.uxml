@@ -1,0 +1,22 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/EventSystemView/EventSystemView.uss?fileID=7433441132597879392&amp;guid=8f4a4a8b3d3a4f7b8d2c6b2d9c1e5a73&amp;type=3#EventSystemView" />
+    <ui:VisualElement name="EventInfo" class="event-card">
+        <ui:VisualElement name="EventTitle" class="event-card-header">
+            <ui:Label name="EventName" text="Event" display-tooltip-when-elided="true" class="event-name-label" />
+            <ui:Label name="ListenerCount" text="Listeners: 0" class="event-count" />
+            <ui:Label name="PublisherCount" text="Publishers: 0" class="event-count" />
+        </ui:VisualElement>
+        <ui:VisualElement name="EventSections" class="event-section-row">
+            <ui:VisualElement name="Listener" class="event-section">
+                <ui:Foldout text="Listeners" value="true" class="event-foldout">
+                    <WS_Modules.UIToolkitExtensions.Editor.CustomScrollView name="ListenerScrollContainer" class="event-script-list" />
+                </ui:Foldout>
+            </ui:VisualElement>
+            <ui:VisualElement name="Publisher" class="event-section">
+                <ui:Foldout text="Publishers" value="true" class="event-foldout">
+                    <WS_Modules.UIToolkitExtensions.Editor.CustomScrollView name="PublisherScrollContainer" class="event-script-list" />
+                </ui:Foldout>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

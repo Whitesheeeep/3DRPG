@@ -1,0 +1,34 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <Style src="project://database/Assets/Scripts/WSFrame/Core/EditorExtensions/Editor/TestCenter/TestCenterWindow.uss?fileID=7433441132597879392&amp;guid=47ffe833e896cb14c8ca174e69605088&amp;type=3#TestCenterWindow" />
+    <ui:VisualElement name="TestCenterRoot" class="test-center-root" style="width: auto; min-width: 300px;">
+        <ui:VisualElement name="VisualElement" class="test-center-toolbar" style="width: auto;">
+            <ui:TextField name="SearchField" label="查询脚本" class="search-field unity-base-field__aligned" />
+            <ui:Button name="RefreshButton" text="刷新" class="toolbar-button" />
+            <ui:Button name="CreateTestObjectButton" text="创建 Test 物体" class="toolbar-button primary-button" />
+        </ui:VisualElement>
+        <ui:VisualElement class="main-split">
+            <ui:VisualElement class="left-panel">
+                <ui:Label text="Tester 列表" class="panel-title" />
+                <ui:ListView name="TesterListView" class="tester-list" />
+            </ui:VisualElement>
+            <ui:VisualElement name="TestDetails" class="right-panel">
+                <ui:VisualElement class="details-header">
+                    <ui:VisualElement class="details-title-block">
+                        <ui:Label name="SelectedTitle" text="未选择 Tester" class="details-title" />
+                        <ui:Label name="SelectedSubtitle" text="请选择左侧 Tester" class="details-subtitle" />
+                    </ui:VisualElement>
+                    <ui:Button name="LoadButton" text="加载 Tester" class="toolbar-button primary-button" />
+                    <ui:Button name="RemoveButton" text="删去 Tester" class="toolbar-button danger-button" />
+                    <ui:Button name="PingScriptButton" text="定位脚本" class="toolbar-button" />
+                    <ui:Button name="PingInstanceButton" text="定位实例" class="toolbar-button" />
+                </ui:VisualElement>
+                <ui:VisualElement name="EmptyState" class="empty-state">
+                    <ui:Label text="未加载的 Tester 可先点击“加载 Tester”挂载到 Test 物体。" class="empty-state-text" />
+                </ui:VisualElement>
+                <ui:ScrollView name="InspectorScroll" class="inspector-scroll">
+                    <ui:VisualElement name="InspectorContainer" class="inspector-container" />
+                </ui:ScrollView>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,32 @@
+﻿{
+    "name":  "WSFrame.FrameControl",
+    "rootNamespace":  "",
+    "references":  [
+                       "GUID:da1903d9b92d4121b535484fbe214808",
+                       "GUID:1c2833c44bac458d9e2750419edcc53a",
+                       "GUID:ecb06e02d7fb4e77932eb8c1d6e3e312",
+                       "GUID:a2346112d3fd4249a243127b60b9724e",
+                       "GUID:0e1a981e7bfa4022bf4fd0e1a344e52a",
+                       "GUID:099f8bf77a884255bee3315e8c261da8",
+                       "GUID:f51ebe6a0ceec4240a699833d6309b23"
+                   ],
+    "includePlatforms":  [
+
+                         ],
+    "excludePlatforms":  [
+
+                         ],
+    "allowUnsafeCode":  false,
+    "overrideReferences":  false,
+    "precompiledReferences":  [
+
+                              ],
+    "autoReferenced":  true,
+    "defineConstraints":  [
+
+                          ],
+    "versionDefines":  [
+
+                       ],
+    "noEngineReferences":  false
+}

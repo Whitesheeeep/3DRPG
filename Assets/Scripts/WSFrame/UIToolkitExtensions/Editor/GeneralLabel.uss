@@ -1,0 +1,8 @@
+.Label__middle {
+    font-size: 14px;
+}
+
+.Label__Title {
+    font-size: 14px;
+    background-color: rgb(47, 47, 47);
+}

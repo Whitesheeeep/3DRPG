@@ -1,0 +1,32 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/UISystemView/UISystemView.uss?fileID=7433441132597879392&amp;guid=6f83a95b3d9f4f6cb2d1b9e2c047a512&amp;type=3#UISystemView" />
+    <ui:ScrollView name="UISystemRoot" class="ui-system-root">
+        <ui:VisualElement name="UIManagerSettingsSection" class="ui-system-section">
+            <ui:Label text="UIManager Settings" class="ui-system-title" />
+            <ui:VisualElement name="UIManagerSettingHost" class="ui-manager-setting-host" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="RuntimeWindowsSection" class="ui-system-section">
+            <ui:Label text="Runtime Windows" class="ui-system-title" />
+            <ui:VisualElement name="RuntimeToolbar" class="ui-runtime-toolbar">
+                <ui:Label name="RuntimeTopWindowLabel" text="TopWindow: None" class="ui-runtime-top-window" />
+                <ui:Button name="RuntimeRefreshButton" text="刷新窗口信息" class="ui-runtime-refresh-button" />
+            </ui:VisualElement>
+            <ui:Label name="RuntimeStateMessage" text="" class="ui-runtime-message is-hidden" />
+            <ui:VisualElement name="RuntimeTable" class="ui-runtime-table is-hidden">
+                <ui:VisualElement name="RuntimeTableHeader" class="ui-runtime-row ui-runtime-header">
+                    <ui:Label text="WindowName" class="ui-runtime-cell col-window-name" />
+                    <ui:Label text="State" class="ui-runtime-cell col-state" />
+                    <ui:Label text="Visible" class="ui-runtime-cell col-visible" />
+                    <ui:Label text="SortingOrder" class="ui-runtime-cell col-sorting-order" />
+                    <ui:Label text="SiblingIndex" class="ui-runtime-cell col-sibling-index" />
+                    <ui:Label text="FullScreenWindow" class="ui-runtime-cell col-full-screen" />
+                    <ui:Label text="HasMask" class="ui-runtime-cell col-has-mask" />
+                    <ui:Label text="HasGameObject" class="ui-runtime-cell col-has-game-object" />
+                    <ui:Label text="Actions" class="ui-runtime-cell col-actions" />
+                </ui:VisualElement>
+                <ui:VisualElement name="RuntimeTableBody" class="ui-runtime-table-body" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:ScrollView>
+</ui:UXML>

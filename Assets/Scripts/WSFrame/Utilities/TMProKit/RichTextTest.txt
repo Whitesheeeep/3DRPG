@@ -1,0 +1,26 @@
+<align=center><size=140%><b><color=#FFD54F>【TMP 富文本压力测试】</color></b></size></align>
+<line-height=120%>
+这是一段用于测试 <b>逐字打印</b> / <i>逐词打印</i> / <u>排版重建</u> 的富文本。
+同时包含：<color=#4FC3F7>颜色</color>、<b>粗体</b>、<i>斜体</i>、<u>下划线</u>、<s>删除线</s>、<size=80%>小号</size> / <size=130%>大号</size>、<sup>上标</sup>、<sub>下标</sub>、以及 <mark=#00FF0033>高亮标记</mark>。
+
+<align=left><indent=6%><color=#A5D6A7>缩进段落：</color>当文本宽度不足时会触发自动换行，测试 word wrapping 与布局开销；同时夹杂中文English123与标点，观察 TMP 的字符度量与断行行为。</indent></align>
+
+<align=right><size=110%><color=#EF9A9A>右对齐段落：</color>“有些字会换行，有些不会；有些样式会影响计算。”</size></align>
+
+<align=justified>
+两端对齐段落：Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
+Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
+Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+</align>
+
+<color=#B39DDB>多行列表（仅用文本模拟）：</color>
+• 项目A：<b><color=#81D4FA>GenerateTextMesh</color></b> 压力
+• 项目B：<b><color=#FFAB91>Canvas Rebuild</color></b> 频率
+• 项目C：<b><color=#C5E1A5>GC Alloc</color></b> 监测
+
+<color=#90A4AE>链接测试：</color><link="https://example.com"><u><color=#4DD0E1>点我触发 TMP Link 事件</color></u></link>
+
+<color=#FFCC80>Sprite 占位测试：</color>这里放一个表情 <sprite=0>（若你没配 TMP Sprite Asset，会显示方块/空白，正好测试异常路径）
+<line-height=100%>
+
+<size=90%><color=#B0BEC5>结束：请在 Profiler 中关注 TextMeshProUGUI.GenerateTextMesh() / PlayerUpdateCanvases / Layout.Rebuild 的变化。</color></size>

@@ -1,0 +1,103 @@
+.config-installer-root {
+    flex-grow: 0;
+}
+
+.config-installer-panel {
+    margin-bottom: 10px;
+    padding-top: 8px;
+    padding-right: 8px;
+    padding-bottom: 8px;
+    padding-left: 8px;
+    border-width: 1px;
+    border-color: rgb(45, 48, 54);
+    background-color: rgb(38, 40, 45);
+}
+
+.config-installer-panel-title {
+    -unity-font-style: bold;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.config-installer-section-title {
+    -unity-font-style: bold;
+    margin-top: 2px;
+    margin-bottom: 6px;
+}
+
+.config-installer-object-field {
+    margin-bottom: 6px;
+}
+
+.config-installer-button-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.config-installer-button-row Button {
+    margin-right: 6px;
+    margin-bottom: 4px;
+}
+
+.config-installer-split {
+    flex-direction: row;
+    flex-wrap: wrap;
+    flex-grow: 0;
+}
+
+.config-installer-tree-panel {
+    min-width: 320px;
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin-right: 10px;
+}
+
+.config-installer-detail-panel {
+    min-width: 360px;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.config-installer-tree {
+    height: 300px;
+    min-height: 260px;
+    flex-grow: 0;
+}
+
+.config-tree-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.config-tree-row #NodeName {
+    flex-grow: 1;
+}
+
+.config-tree-row #NodeType {
+    color: rgb(150, 156, 166);
+    min-width: 160px;
+}
+
+.config-tree-row-missing #NodeName {
+    color: rgb(210, 110, 110);
+}
+
+.config-installer-detail-header {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.config-installer-selected-title {
+    flex-grow: 1;
+    -unity-font-style: bold;
+}
+
+.config-installer-detail {
+    margin-bottom: 8px;
+}
+
+.config-installer-children-controls {
+    margin-top: 8px;
+}

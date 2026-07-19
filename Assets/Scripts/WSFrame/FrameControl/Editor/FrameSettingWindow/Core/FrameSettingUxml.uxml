@@ -1,0 +1,11 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/Core/FrameSettingWindow.uss?fileID=7433441132597879392&amp;guid=7ef0b4c7a53443d7a8ed3c04e3e1cfa9&amp;type=3#FrameSettingWindow" />
+    <WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView fixed-pane-index="0" orientation="Horizontal" fixed-pane-initial-dimension="170" class="frame-setting-split-view">
+        <ui:VisualElement name="LeftPanel" class="frame-setting-left-panel">
+            <ui:ListView name="ModuleList" show-add-remove-footer="false" show-foldout-header="true" class="frame-module-list" />
+        </ui:VisualElement>
+        <ui:VisualElement name="RightPanel" class="frame-setting-right-panel">
+            <ui:VisualElement name="SettingContainer" class="frame-setting-container" />
+        </ui:VisualElement>
+    </WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView>
+</ui:UXML>

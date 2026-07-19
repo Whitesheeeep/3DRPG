@@ -1,0 +1,41 @@
+﻿<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/ConfigInstallerView/ConfigInstallerPanel.uss?fileID=7433441132597879392&amp;guid=0bf634f4694cb454094df4891ef3a72e&amp;type=3#ConfigInstallerPanel" />
+    <ui:VisualElement name="ConfigInstallerRoot" class="config-installer-root">
+        <ui:VisualElement name="InstallerTargetPanel" class="config-installer-panel">
+            <ui:Label text="Config Register Setting" class="config-installer-panel-title" />
+            <uie:ObjectField name="RootNodeField" label="Root Node" class="unity-base-field__aligned config-installer-object-field" />
+            <ui:VisualElement class="config-installer-button-row">
+                <ui:Button name="CreateRootButton" text="Create / Assign Root" />
+                <ui:Button name="RegisterAllButton" text="Register All" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="ConfigInstallerSplit" class="config-installer-split">
+            <ui:VisualElement name="ConfigTreePanel" class="config-installer-panel config-installer-tree-panel">
+                <ui:Label text="Config Tree" class="config-installer-panel-title" />
+                <ui:TreeView name="ConfigTreeView" class="config-installer-tree" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="SelectedNodePanel" class="config-installer-panel config-installer-detail-panel">
+                <ui:Label text="Selected Node" class="config-installer-panel-title" />
+                <ui:VisualElement class="config-installer-detail-header">
+                    <ui:Label name="SelectedNodeTitle" text="No Node Selected" class="config-installer-selected-title" />
+                    <ui:Button name="PingNodeButton" text="Ping Node" />
+                </ui:VisualElement>
+                <ui:VisualElement name="DetailContainer" class="config-installer-detail" />
+
+                <ui:VisualElement name="ChildrenControls" class="config-installer-children-controls">
+                    <ui:Label text="Composite Children" class="config-installer-section-title" />
+                    <uie:ObjectField name="ChildNodeField" label="Node To Add" class="unity-base-field__aligned config-installer-object-field" />
+                    <ui:VisualElement class="config-installer-button-row">
+                        <ui:Button name="AddChildButton" text="Add To Selected Composite" />
+                        <ui:Button name="RemoveSelectedButton" text="Remove Selected" />
+                        <ui:Button name="MoveUpButton" text="Move Up" />
+                        <ui:Button name="MoveDownButton" text="Move Down" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
+

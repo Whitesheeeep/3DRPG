@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: fd81cb04e1b94732aad6da0fbfedbd3b
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - m_ViewDataDictionary: {instanceID: 0}
+  - visualTreeAsset: {fileID: 9197481963319205126, guid: ad74ff8a468febc4087e988fa673e670, type: 3}
+  - eventInfoTemplate: {fileID: 9197481963319205126, guid: d9cce4db492056747b741684e7620f0d, type: 3}
+  - eventSystemTemplate: {fileID: 9197481963319205126, guid: 7ce311ccf9fd4868a8efe4f253bbd469, type: 3}
+  - poolSystemTemplate: {fileID: 9197481963319205126, guid: 68f83cb14e29499d8b5a60277ac9e48a, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
