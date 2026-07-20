@@ -1,0 +1,3 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
+    <ui:VisualElement name="LaneItemRoot" class="timeline-lane-item-row" />
+</ui:UXML>
