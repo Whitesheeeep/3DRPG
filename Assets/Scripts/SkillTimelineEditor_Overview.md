@@ -66,6 +66,7 @@
 
 - 固定分组顺序为动画、特效、事件；同类 Track 只能在本组内重排。
 - 分组支持折叠和新增对应类型轨道；折叠、滚动和缩放属于窗口状态。
+- Inspector 使用右侧 fixed-pane SplitView，可在 240–520px 之间拉伸，并通过 SessionState 恢复当前 Unity 会话宽度。
 - Inspector 根据当前选择切换 Drawer：
   - Group：组名称、轨道数量和新增轨道入口。
   - Track：名称、静音、锁定及该轨道特有配置。
@@ -185,8 +186,10 @@ SkillTimelineEditorWindow
 
 SkillTimelineEditorView
   ├── SkillTimelineToolbarView
-  ├── SkillTimelineCanvasView（仅组合子 View/Controller）
-  │   ├── SkillTimelineRowCollectionView + UXML 元素工厂
+  ├── SkillTimelineCanvasView（仅查询元素与持有生命周期）
+  │   ├── SkillTimelineCanvasModel（当前帧、Config 与虚拟画布表现状态）
+  │   ├── SkillTimelineCanvasController（绑定事件并协调内部 MVC）
+  │   ├── SkillTimelineRowCollectionView + 具体类型 UXML 元素工厂
   │   ├── SkillTimelineItemDragController / SkillTimelineScrubController
   │   ├── SkillTimelineViewportInputController
   │   └── Ruler / 单一 Grid / Playhead IMGUI 绘制 View
@@ -204,7 +207,7 @@ SkillTimelineEditorDocument
 ```
 
 - 主布局定义在 UXML，颜色、尺寸、滚动、选中/锁定/静音状态放在 USS。
-- Group Header、Track Header、Lane、Clip 与 Marker 由独立 UXML 模板创建；Canvas 不直接创建动态元素。
+- Group Header、Track Header 与 Lane 由独立 UXML 模板创建；Animation Clip、VFX Clip、Event Marker 分别使用独立 UXML/USS，Canvas 不直接创建动态元素。
 - 缩放、滚动、Pointer Capture 与拖拽草稿属于表现层；ViewModel 只接收已经吸附后的整数帧语义命令。
 - 所有 Config 修改经过 Document，使用 `Undo.RecordObject`、`SerializedObject.Update()`、`ApplyModifiedProperties()` 和 `EditorUtility.SetDirty()`。
 - ViewModel 不保存 VisualElement、Button、GameObject 预览实例或其他 UI 控件。

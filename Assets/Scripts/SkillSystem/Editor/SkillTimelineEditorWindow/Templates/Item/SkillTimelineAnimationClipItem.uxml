@@ -1,0 +1,6 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
+    <ui:Label name="AnimationClipRoot" class="timeline-item animation-clip-item">
+        <ui:VisualElement name="ResizeLeft" class="timeline-resize-handle timeline-resize-left" />
+        <ui:VisualElement name="ResizeRight" class="timeline-resize-handle timeline-resize-right" />
+    </ui:Label>
+</ui:UXML>

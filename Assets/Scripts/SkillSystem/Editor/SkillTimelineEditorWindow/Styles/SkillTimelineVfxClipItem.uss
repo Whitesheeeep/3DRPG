@@ -1,0 +1,23 @@
+.vfx-clip-item {
+    top: 9px;
+    height: 36px;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-width: 1px;
+    border-radius: 3px;
+    border-color: rgb(137, 111, 190);
+    background-color: rgb(83, 62, 119);
+    -unity-text-align: middle-left;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.vfx-clip-item:hover {
+    border-color: rgb(169, 140, 220);
+    background-color: rgb(99, 74, 141);
+}
+
+.vfx-clip-item.is-selected {
+    border-width: 2px;
+    border-color: rgb(235, 195, 83);
+}

@@ -1,0 +1,108 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf2d0fbc1a23bf1499d50e84ac66304b, type: 3}
+  m_Name: SkillConfig
+  m_EditorClassIdentifier: 
+  id: e926723cb93e479c881c301347beda4b
+  frameRate: 30
+  durationFrames: 277
+  animationTracks:
+  - header:
+      id: 976cdc50707d4f4d9ada7c830639ab27
+      displayName: "\u52A8\u753B\u8F68\u9053 2"
+      muted: 0
+      editorLocked: 0
+      editorColor: {r: 1, g: 1, b: 1, a: 1}
+    clips:
+    - id: 54b65c8b9a3e454288def40515ebf1d4
+      animationClip: {fileID: 0}
+      startFrame: 0
+      durationFrames: 17
+      sourceStartFrame: 0
+      playbackSpeed: 1
+    - id: 12c5f02b00b044f8a414800190cc7e7e
+      animationClip: {fileID: 0}
+      startFrame: 22
+      durationFrames: 17
+      sourceStartFrame: 0
+      playbackSpeed: 1
+  - header:
+      id: f4827efdb9314dea9e2869f5de5594ce
+      displayName: "\u52A8\u753B\u8F68\u9053 2"
+      muted: 0
+      editorLocked: 0
+      editorColor: {r: 1, g: 1, b: 1, a: 1}
+    clips:
+    - id: 727eba9f77e148d0953eebffd2273565
+      animationClip: {fileID: 8993902097722301239, guid: 313e2a33bb58d4b4fa917fe3b5f06ffa, type: 3}
+      startFrame: 2
+      durationFrames: 20
+      sourceStartFrame: 0
+      playbackSpeed: 1
+  vfxTracks:
+  - header:
+      id: d217d68a8d44409d9a33d7812e52b89a
+      displayName: "\u7279\u6548\u8F68\u9053"
+      muted: 0
+      editorLocked: 0
+      editorColor: {r: 1, g: 1, b: 1, a: 1}
+    clips:
+    - id: 202f234d04b2451ea1440506b7407d5a
+      prefab: {fileID: 0}
+      startFrame: 6
+      durationFrames: 3
+      bindingPath: 
+      localPosition: {x: 0, y: 0, z: 0}
+      localEulerAngles: {x: 0, y: 0, z: 0}
+      localScale: {x: 1, y: 1, z: 1}
+      followMode: 0
+      stopMode: 0
+    - id: 48241619a4ef4558baa85c2def4b116a
+      prefab: {fileID: 0}
+      startFrame: 11
+      durationFrames: 3
+      bindingPath: 
+      localPosition: {x: 0, y: 0, z: 0}
+      localEulerAngles: {x: 0, y: 0, z: 0}
+      localScale: {x: 1, y: 1, z: 1}
+      followMode: 0
+      stopMode: 0
+    - id: 65d19fa0358d44ae8903c5346a98bb1d
+      prefab: {fileID: 0}
+      startFrame: 20
+      durationFrames: 4
+      bindingPath: 
+      localPosition: {x: 0, y: 0, z: 0}
+      localEulerAngles: {x: 0, y: 0, z: 0}
+      localScale: {x: 1, y: 1, z: 1}
+      followMode: 0
+      stopMode: 0
+  - header:
+      id: dbca1aeef1514d76b5df4a8dd3176681
+      displayName: "\u7279\u6548\u8F68\u9053 2"
+      muted: 0
+      editorLocked: 0
+      editorColor: {r: 1, g: 1, b: 1, a: 1}
+    clips: []
+  eventTracks:
+  - header:
+      id: 7e500a0c029c4997b06b9d20655ab6cb
+      displayName: "\u672A\u547D\u540D\u8F68\u9053"
+      muted: 0
+      editorLocked: 0
+      editorColor: {r: 1, g: 1, b: 1, a: 1}
+    markers:
+    - id: f7f4c390d4064a2f9b40e1c3a2b5a26b
+      frame: 5
+      eventTypeName: 
+      displayName: "\u4E8B\u4EF6"
+      parameterText: 

@@ -1,11 +1,15 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace RPG.SkillSystem
 {
     #region Skill asset
 
+    /// <summary>
+    /// 保存技能时间轴的运行时帧参数和各类强类型轨道数据。
+    /// </summary>
     [CreateAssetMenu(fileName = "SkillConfig", menuName = "RPG/Skill/Skill Config")]
     public sealed class SkillConfig : ScriptableObject
     {
@@ -14,6 +18,7 @@ namespace RPG.SkillSystem
         [SerializeField, Min(1)] private int durationFrames = 1;
         [SerializeField] private List<AnimationTrackConfig> animationTracks = new();
         [SerializeField] private List<VfxTrackConfig> vfxTracks = new();
+        [SerializeField] private List<AudioTrackConfig> audioTracks = new();
         [SerializeField] private List<EventTrackConfig> eventTracks = new();
 
         public string Id => id;
@@ -21,6 +26,7 @@ namespace RPG.SkillSystem
         public int DurationFrames => durationFrames;
         public IReadOnlyList<AnimationTrackConfig> AnimationTracks => animationTracks;
         public IReadOnlyList<VfxTrackConfig> VfxTracks => vfxTracks;
+        public IReadOnlyList<AudioTrackConfig> AudioTracks => audioTracks;
         public IReadOnlyList<EventTrackConfig> EventTracks => eventTracks;
     }
 
@@ -70,6 +76,19 @@ namespace RPG.SkillSystem
         public IReadOnlyList<VfxSkillClipConfig> Clips => clips;
     }
 
+    /// <summary>
+    /// 保存一条音频轨道的公共轨道头和音频片段列表。
+    /// </summary>
+    [Serializable]
+    public sealed class AudioTrackConfig
+    {
+        [SerializeField] private SkillTrackHeader header = new();
+        [SerializeField] private List<AudioSkillClipConfig> clips = new();
+
+        public SkillTrackHeader Header => header;
+        public IReadOnlyList<AudioSkillClipConfig> Clips => clips;
+    }
+
     [Serializable]
     public sealed class EventTrackConfig
     {
@@ -79,7 +98,6 @@ namespace RPG.SkillSystem
         public SkillTrackHeader Header => header;
         public IReadOnlyList<SkillEventMarkerConfig> Markers => markers;
     }
-
     #endregion
 
     #region Timeline content
@@ -141,6 +159,28 @@ namespace RPG.SkillSystem
         public Vector3 LocalScale => localScale;
         public VfxFollowMode FollowMode => followMode;
         public VfxStopMode StopMode => stopMode;
+    }
+
+    /// <summary>
+    /// 保存音频素材、半开帧区间、音量和播放音调等运行时数据。
+    /// </summary>
+    [Serializable]
+    public sealed class AudioSkillClipConfig
+    {
+        [SerializeField] private string id = string.Empty;
+        [FormerlySerializedAs("clip"), SerializeField] private AudioClip audioClip;
+        [SerializeField, Min(0)] private int startFrame;
+        [SerializeField, Min(1)] private int durationFrames = 1;
+        [SerializeField, Range(0f, 1f)] private float volume = 1f;
+        [FormerlySerializedAs("playbackSpeed"), SerializeField, Min(0.01f)] private float pitch = 1f;
+
+        public string Id => id;
+        public AudioClip AudioClip => audioClip;
+        public int StartFrame => startFrame;
+        public int DurationFrames => durationFrames;
+        public int EndFrame => startFrame + durationFrames;
+        public float Volume => volume;
+        public float Pitch => pitch;
     }
 
     [Serializable]
