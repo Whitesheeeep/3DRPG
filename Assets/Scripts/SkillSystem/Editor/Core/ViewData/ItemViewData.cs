@@ -73,6 +73,20 @@ internal sealed class AudioClipViewData : ItemViewData
 }
 
 /// <summary>
+/// 提供攻击检测片段在时间轴与 Inspector 中显示所需的数据。
+/// </summary>
+internal sealed class AttackDetectionClipViewData : ItemViewData
+{
+    public AttackDetectionSkillClipConfig Config { get; }
+
+    /// <summary>
+    /// 创建攻击检测片段显示投影。
+    /// </summary>
+    public AttackDetectionClipViewData(AttackDetectionSkillClipConfig config, string displayName)
+        : base(config.Id, displayName, config.StartFrame, config.DurationFrames, true) => Config = config;
+}
+
+/// <summary>
 /// 提供事件标记在时间轴与 Inspector 中显示所需的数据。
 /// </summary>
 internal sealed class EventMarkerViewData : ItemViewData

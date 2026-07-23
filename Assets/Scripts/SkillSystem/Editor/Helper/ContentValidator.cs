@@ -37,6 +37,21 @@ namespace RPG.SkillSystem.Editor
                 }
             }
 
+            foreach (AttackDetectionTrackConfig track in config.AttackDetectionTracks)
+            {
+                CheckId(track.Header.Id, track.Header.DisplayName, ids, errors);
+                int previousEnd = 0;
+                foreach (AttackDetectionSkillClipConfig clip in track.Clips)
+                {
+                    CheckId(clip.Id, "Attack Detection Clip", ids, errors);
+                    ValidateInterval(track.Header.DisplayName, clip.StartFrame,
+                        clip.DurationFrames, ref previousEnd, errors);
+                    if (clip.SampleIntervalFrames < 1)
+                        errors.Add($"{track.Header.DisplayName} 中采样间隔帧必须大于 0。");
+                    ValidateDetectionData(track.Header.DisplayName, clip.DetectionData, errors);
+                }
+            }
+
             foreach (VfxTrackConfig track in config.VfxTracks)
             {
                 CheckId(track.Header.Id, track.Header.DisplayName, ids, errors);
@@ -95,6 +110,35 @@ namespace RPG.SkillSystem.Editor
             if (start < 0 || duration < 1) errors.Add($"{trackName} 包含非法帧区间。");
             if (start < previousEnd) errors.Add($"{trackName} 中存在重叠或未排序的 Clip。");
             previousEnd = start + duration;
+        }
+
+        // 校验各检测形状自身的数值范围；空引用表示显式 None，不视为类型不匹配。
+        private static void ValidateDetectionData(string trackName, AttackDetectionDataBase data,
+            ICollection<string> errors)
+        {
+            switch (data)
+            {
+                case BoxAttackDetectionData box when
+                    box.Size.x <= 0f || box.Size.y <= 0f || box.Size.z <= 0f:
+                    errors.Add($"{trackName} 中 Box 尺寸各轴必须大于 0。");
+                    break;
+                case SphereAttackDetectionData sphere when sphere.Radius <= 0f:
+                    errors.Add($"{trackName} 中 Sphere 半径必须大于 0。");
+                    break;
+                case CapsuleAttackDetectionData capsule when
+                    capsule.Radius <= 0f || capsule.Height <= 0f:
+                    errors.Add($"{trackName} 中 Capsule 半径和高度必须大于 0。");
+                    break;
+                case SectorAttackDetectionData sector when
+                    sector.InnerRadius < 0f || sector.OuterRadius < sector.InnerRadius ||
+                    sector.Angle <= 0f || sector.Angle > 360f || sector.Height <= 0f:
+                    errors.Add($"{trackName} 中 Sector 的半径、角度或高度无效。");
+                    break;
+                case WeaponTraceAttackDetectionData trace when
+                    trace.SamplePointCount < 2 || trace.SamplePointCount > 16:
+                    errors.Add($"{trackName} 中 WeaponTrace 采样点数量必须位于 2 到 16 之间。");
+                    break;
+            }
         }
     }
 }

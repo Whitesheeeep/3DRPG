@@ -2,6 +2,7 @@
     <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/EditorWindowStyle/SkillTimelineEditorWindow.uss" />
     <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineItemCommon.uss" />
     <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineAnimationClipItem.uss" />
+    <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineAttackDetectionClipItem.uss" />
     <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineVfxClipItem.uss" />
     <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineAudioClipItem.uss" />
     <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineEventMarkerItem.uss" />
@@ -40,29 +41,33 @@
         </ui:VisualElement>
         <WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView name="MainSplitView" fixed-pane-index="1" fixed-pane-initial-dimension="300" orientation="Horizontal" class="main-content">
             <ui:VisualElement name="TimelinePanel" class="timeline-panel">
-                <ui:VisualElement name="RulerRow" class="timeline-ruler-row">
-                    <ui:Label text="轨道 / 分组" class="timeline-header-spacer" />
-                    <ui:VisualElement name="RulerLane" class="timeline-ruler-lane" />
-                    <ui:VisualElement class="vertical-scroller-spacer" />
-                </ui:VisualElement>
-                <ui:VisualElement name="TimelineBody" class="timeline-body">
-                    <ui:VisualElement name="TrackRoot" class="track-header-column">
-                        <ui:ScrollView name="TrackHeaderScroll" mode="Vertical" class="track-header-scroll">
-                            <ui:VisualElement name="TrackHeaderContent" class="track-header-content">
-                                <ui:VisualElement name="TrackHeaderRows" class="track-header-rows" />
+                <WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView name="HeaderTimelineSplit" fixed-pane-index="0" fixed-pane-initial-dimension="240" orientation="Horizontal" class="timeline-inner-split">
+                    <ui:VisualElement name="TimelineHeaderPane" class="timeline-header-pane">
+                        <ui:Label text="轨道 / 分组" class="timeline-header-title" />
+                        <ui:VisualElement name="TrackRoot" class="track-header-column">
+                            <ui:ScrollView name="TrackHeaderScroll" mode="Vertical" class="track-header-scroll">
+                                <ui:VisualElement name="TrackHeaderContent" class="track-header-content">
+                                    <ui:VisualElement name="TrackHeaderRows" class="track-header-rows" />
+                                </ui:VisualElement>
+                            </ui:ScrollView>
+                            <ui:VisualElement name="HorizontalBarSpace" class="horizontal-scroller-spacer" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    <ui:VisualElement name="TimelineViewportPane" class="timeline-viewport-pane">
+                        <ui:VisualElement name="RulerRow" class="timeline-ruler-row">
+                            <ui:VisualElement name="RulerLane" class="timeline-ruler-lane" />
+                            <ui:VisualElement class="vertical-scroller-spacer" />
+                        </ui:VisualElement>
+                        <ui:ScrollView name="TimelineScroll" mode="VerticalAndHorizontal" class="timeline-scroll">
+                            <ui:VisualElement name="TimelineContent" class="timeline-content">
+                                <ui:VisualElement name="TimelineLaneBackgroundRows" picking-mode="Ignore" class="timeline-lane-background-rows" />
+                                <ui:VisualElement name="TimelineGridHost" picking-mode="Ignore" class="timeline-grid-host" />
+                                <ui:VisualElement name="TimelineLaneRows" class="timeline-lane-item-rows" />
                             </ui:VisualElement>
                         </ui:ScrollView>
-                        <ui:VisualElement name="HorizontalBarSpace" class="horizontal-scroller-spacer" />
+                        <ui:VisualElement name="PlayheadOverlay" picking-mode="Ignore" class="playhead-overlay" />
                     </ui:VisualElement>
-                    <ui:ScrollView name="TimelineScroll" mode="VerticalAndHorizontal" class="timeline-scroll">
-                        <ui:VisualElement name="TimelineContent" class="timeline-content">
-                            <ui:VisualElement name="TimelineLaneBackgroundRows" picking-mode="Ignore" class="timeline-lane-background-rows" />
-                            <ui:VisualElement name="TimelineGridHost" picking-mode="Ignore" class="timeline-grid-host" />
-                            <ui:VisualElement name="TimelineLaneRows" class="timeline-lane-item-rows" />
-                        </ui:VisualElement>
-                    </ui:ScrollView>
-                </ui:VisualElement>
-                <ui:VisualElement name="PlayheadOverlay" picking-mode="Ignore" class="playhead-overlay" />
+                </WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView>
             </ui:VisualElement>
             <ui:VisualElement name="InspectorPanel" class="inspector-panel">
                 <ui:Label text="Inspector" class="panel-title" />

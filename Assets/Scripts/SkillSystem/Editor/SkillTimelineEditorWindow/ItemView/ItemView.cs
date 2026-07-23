@@ -81,6 +81,21 @@ namespace RPG.SkillSystem.Editor
     }
 
     /// <summary>
+    /// 显示拥有独立 UXML/USS 的攻击检测 Clip 时间轴内容。
+    /// </summary>
+    internal sealed class AttackDetectionClipView : ClipItemView
+    {
+        /// <summary>
+        /// 创建攻击检测 Clip 视图。
+        /// </summary>
+        public AttackDetectionClipView(TrackViewData track,
+            AttackDetectionClipViewData item, VisualElement element,
+            CoordinateMapper mapper) : base(track, item, element, mapper)
+        {
+        }
+    }
+
+    /// <summary>
     /// 显示拥有独立 UXML/USS 的特效 Clip 时间轴内容。
     /// </summary>
     internal sealed class VfxClipView : ClipItemView

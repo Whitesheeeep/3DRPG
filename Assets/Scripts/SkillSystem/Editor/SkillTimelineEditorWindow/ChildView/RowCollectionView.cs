@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEditor;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace RPG.SkillSystem.Editor
@@ -146,7 +147,9 @@ namespace RPG.SkillSystem.Editor
             // bind
             Button foldout = header.Q<Button>("FoldoutButton");
             foldout.text = collapsedGroups[group.GetType()] ? "▶" : "▼";
-            header.Q<Label>("NameLabel").text = group.DisplayName;
+            Label name = header.Q<Label>("NameLabel");
+            name.text = group.DisplayName;
+            name.tooltip = group.DisplayName;
             header.Q<Button>("AddButton").clicked += () => viewModel.AddTrack(group);
             foldout.clicked += () => ToggleGroup(group);
             SelectionState selection = modules.Get(group).Projection.CreateGroupSelection();
@@ -168,8 +171,10 @@ namespace RPG.SkillSystem.Editor
         {
             // 标题头
             VisualElement header = elementFactory.CreateTrackHeader();
-            // bind
-            header.Q<Label>("NameLabel").text = track.DisplayName;
+            // 标题名称编辑只保留本地草稿，最终文本才作为语义命令提交。
+            _ = new TrackHeaderNameView(header, headerRows, track.DisplayName,
+                () => viewModel?.SelectTrack(track),
+                displayName => viewModel?.RenameTrack(track, displayName));
             header.Q<Button>("AddButton").clicked += () => viewModel.AddItem(track);
             Button moveUp = header.Q<Button>("MoveUpButton");
             Button moveDown = header.Q<Button>("MoveDownButton");
@@ -245,6 +250,150 @@ namespace RPG.SkillSystem.Editor
                 Element = element;
                 Selection = selection;
             }
+        }
+
+        #endregion
+    }
+
+    /// <summary>
+    /// 管理单个轨道标题名称的显示态、内联编辑草稿和最终提交，不直接修改技能资产。
+    /// </summary>
+    internal sealed class TrackHeaderNameView
+    {
+        #region 常量与字段
+
+        private const string EditingClassName = "is-renaming";
+
+        private readonly VisualElement root;
+        private readonly VisualElement scheduleHost;
+        private readonly Label nameLabel;
+        private readonly TextField nameEditor;
+        private readonly Action beginEdit;
+        private readonly Action<string> commit;
+        private string draftName;
+        private bool isEditing;
+        private bool isCompleting;
+        private bool isDetached;
+
+        #endregion
+
+        #region 生命周期
+
+        // 绑定当前动态行中的名称控件；元素销毁后回调会随 VisualElement 子树一起释放。
+        internal TrackHeaderNameView(VisualElement root, VisualElement scheduleHost, string displayName,
+            Action beginEdit, Action<string> commit)
+        {
+            this.root = root ?? throw new ArgumentNullException(nameof(root));
+            this.scheduleHost = scheduleHost ?? throw new ArgumentNullException(nameof(scheduleHost));
+            this.beginEdit = beginEdit ?? throw new ArgumentNullException(nameof(beginEdit));
+            this.commit = commit ?? throw new ArgumentNullException(nameof(commit));
+            nameLabel = root.Q<Label>("NameLabel") ??
+                        throw new InvalidOperationException("轨道标题模板缺少 NameLabel。");
+            nameEditor = root.Q<TextField>("NameEditor") ??
+                         throw new InvalidOperationException("轨道标题模板缺少 NameEditor。");
+            draftName = displayName ?? string.Empty;
+            nameLabel.text = draftName;
+            nameLabel.tooltip = nameLabel.text;
+            nameEditor.tooltip = nameLabel.text;
+            nameLabel.RegisterCallback<PointerDownEvent>(OnNamePointerDown);
+            nameEditor.RegisterValueChangedCallback(OnEditorValueChanged);
+            nameEditor.RegisterCallback<KeyDownEvent>(OnEditorKeyDown);
+            nameEditor.RegisterCallback<FocusOutEvent>(OnEditorFocusOut);
+            root.RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
+        }
+
+        #endregion
+
+        #region 输入处理
+
+        // 仅响应鼠标左键双击；第一次点击仍由标题行负责选中轨道。
+        private void OnNamePointerDown(PointerDownEvent evt)
+        {
+            if (evt.button != 0 || evt.clickCount != 2 || isEditing) return;
+            beginEdit();
+            isDetached = false;
+            isEditing = true;
+            isCompleting = false;
+            root.AddToClassList(EditingClassName);
+            draftName = nameLabel.text;
+            nameEditor.SetValueWithoutNotify(draftName);
+            nameEditor.tooltip = nameLabel.text;
+            nameEditor.Focus();
+            nameEditor.schedule.Execute(nameEditor.SelectAll);
+            evt.StopImmediatePropagation();
+        }
+
+        // 输入过程中只同步当前行的本地草稿，不向 ViewModel 发送修改命令。
+        private void OnEditorValueChanged(ChangeEvent<string> evt)
+        {
+            if (isEditing && !isCompleting) draftName = evt.newValue ?? string.Empty;
+        }
+
+        // Enter 提交最终草稿，Escape 恢复权威显示值且不创建 Undo。
+        private void OnEditorKeyDown(KeyDownEvent evt)
+        {
+            if (!isEditing) return;
+            if (evt.keyCode == KeyCode.Escape)
+            {
+                CompleteEditing(false, false);
+                evt.PreventDefault();
+                evt.StopImmediatePropagation();
+                return;
+            }
+
+            if (evt.keyCode != KeyCode.Return && evt.keyCode != KeyCode.KeypadEnter) return;
+            CompleteEditing(true, false);
+            evt.PreventDefault();
+            evt.StopImmediatePropagation();
+        }
+
+        // 鼠标转移焦点时提交一次；Enter 导致的后续失焦会被状态保护过滤。
+        private void OnEditorFocusOut(FocusOutEvent _)
+        {
+            if (isEditing && !isCompleting) CompleteEditing(true, true);
+        }
+
+        // 行被 Timeline 重建或窗口关闭移除时，取消本地草稿及尚未执行的失焦提交。
+        private void OnDetachFromPanel(DetachFromPanelEvent _)
+        {
+            isDetached = true;
+            isEditing = false;
+            isCompleting = true;
+        }
+
+        #endregion
+
+        #region 编辑完成
+
+        // 统一完成编辑；提交前先退出本地状态，避免同步 Timeline 重建触发重复 FocusOut。
+        private void CompleteEditing(bool shouldCommit, bool deferCommit)
+        {
+            if (!isEditing || isCompleting) return;
+            isCompleting = true;
+            isEditing = false;
+            root.RemoveFromClassList(EditingClassName);
+            if (!shouldCommit)
+            {
+                draftName = nameLabel.text;
+                nameEditor.SetValueWithoutNotify(draftName);
+                nameEditor.Blur();
+                isCompleting = false;
+                return;
+            }
+
+            string finalName = draftName;
+            if (!deferCommit)
+            {
+                commit(finalName);
+                return;
+            }
+
+            // 失焦提交延迟到当前 Pointer 事件结束；期间若行被移除则按外部刷新取消草稿。
+            scheduleHost.schedule.Execute(() =>
+            {
+                if (isDetached || root.panel == null) return;
+                commit(finalName);
+            });
         }
 
         #endregion

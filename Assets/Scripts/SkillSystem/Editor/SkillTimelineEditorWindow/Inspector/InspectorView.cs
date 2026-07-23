@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System;
 using System.Collections.Generic;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -173,7 +174,11 @@ namespace RPG.SkillSystem.Editor
         {
             if (viewData is not TrackViewData track) return;
             AddTitle(container, track.DisplayName);
-            TextField name = AddField(container, new TextField("名称") { value = track.DisplayName });
+            TextField name = AddField(container, new TextField("名称")
+            {
+                value = track.DisplayName,
+                isDelayed = true
+            });
             Toggle muted = AddField(container, new Toggle("静音") { value = track.Muted });
             Toggle locked = AddField(container, new Toggle("锁定") { value = track.Locked });
             void Submit() => viewModel.EditSelectedTrack(name.value, muted.value, locked.value);
@@ -225,6 +230,262 @@ namespace RPG.SkillSystem.Editor
     }
 
     /// <summary>
+    /// 定义一种攻击检测具体数据的 Inspector 绘制与完整快照提交能力。
+    /// </summary>
+    internal interface IAttackDetectionDataDrawer
+    {
+        Type DataType { get; }
+
+        /// <summary>
+        /// 绘制具体检测参数，并在字段变化时提交独立的完整配置快照。
+        /// </summary>
+        void Draw(VisualElement container, AttackDetectionDataBase data,
+            Action<AttackDetectionDataBase> submit);
+    }
+
+    /// <summary>
+    /// 绘制攻击检测 Clip 公共帧字段，并通过具体数据 Drawer 注册表绘制形状参数。
+    /// </summary>
+    internal sealed class AttackDetectionInspectorDrawer : InspectorDrawer, IInspectorDrawer
+    {
+        #region 字段与创建
+
+        private readonly Dictionary<Type, IAttackDetectionDataDrawer> drawers = new();
+
+        /// <summary>
+        /// 创建内置攻击检测数据 Drawer 注册表。
+        /// </summary>
+        public AttackDetectionInspectorDrawer()
+        {
+            Register(new BoxAttackDetectionDataDrawer());
+            Register(new SphereAttackDetectionDataDrawer());
+            Register(new CapsuleAttackDetectionDataDrawer());
+            Register(new SectorAttackDetectionDataDrawer());
+            Register(new WeaponTraceAttackDetectionDataDrawer());
+        }
+
+        #endregion
+
+        #region 绘制
+
+        /// <summary>
+        /// 判断 ViewData 是否为攻击检测片段。
+        /// </summary>
+        public bool CanDraw(IViewData viewData) => viewData is AttackDetectionClipViewData;
+
+        /// <summary>
+        /// 绘制公共区间、采样间隔、Type 和当前具体检测参数。
+        /// </summary>
+        public void Draw(VisualElement container, IViewData viewData, EditorViewModel viewModel)
+        {
+            if (viewData is not AttackDetectionClipViewData item) return;
+            AttackDetectionSkillClipConfig clip = item.Config;
+            AddTitle(container, item.DisplayName);
+            IntegerField start = AddField(container,
+                new IntegerField("起始帧") { value = clip.StartFrame });
+            IntegerField duration = AddField(container,
+                new IntegerField("持续帧") { value = clip.DurationFrames });
+            IntegerField interval = AddField(container,
+                new IntegerField("采样间隔帧") { value = clip.SampleIntervalFrames });
+            EnumField type = AddField(container,
+                new EnumField("检测类型", clip.DetectionType));
+
+            // 每次提交都携带完整独立快照，Document 只负责事务写入。
+            void Submit(AttackDetectionDataBase data) => viewModel.EditItem(item,
+                new AttackDetectionEditRequest(start.value, duration.value, interval.value, data));
+
+            start.RegisterValueChangedCallback(_ => Submit(clip.DetectionData));
+            duration.RegisterValueChangedCallback(_ => Submit(clip.DetectionData));
+            interval.RegisterValueChangedCallback(_ => Submit(clip.DetectionData));
+            type.RegisterValueChangedCallback(evt =>
+                Submit(AttackDetectionDataBase.Create((AttackDetectionType)evt.newValue)));
+
+            if (clip.DetectionData == null)
+            {
+                container.Add(new Label("当前检测类型为 None，不包含具体参数。"));
+            }
+            else if (drawers.TryGetValue(clip.DetectionData.GetType(), out IAttackDetectionDataDrawer drawer))
+            {
+                drawer.Draw(container, clip.DetectionData, Submit);
+            }
+            else
+            {
+                container.Add(new Label($"未注册检测数据 Drawer：{clip.DetectionData.GetType().FullName}"));
+            }
+
+            AddItemActions(container, viewModel);
+        }
+
+        #endregion
+
+        #region 注册校验
+
+        // 使用精确具体类型注册 Drawer，避免主 Inspector 对检测 Type 写 switch。
+        private void Register(IAttackDetectionDataDrawer drawer)
+        {
+            if (drawer == null) throw new ArgumentNullException(nameof(drawer));
+            if (!drawers.TryAdd(drawer.DataType, drawer))
+                throw new InvalidOperationException($"攻击检测 Drawer 已注册：{drawer.DataType.FullName}");
+        }
+
+        #endregion
+    }
+
+    /// <summary>
+    /// 绘制 Box 攻击检测的局部变换和尺寸。
+    /// </summary>
+    internal sealed class BoxAttackDetectionDataDrawer : InspectorDrawer, IAttackDetectionDataDrawer
+    {
+        public Type DataType => typeof(BoxAttackDetectionData);
+
+        /// <summary>
+        /// 绘制 Box 参数并提交新的独立配置实例。
+        /// </summary>
+        public void Draw(VisualElement container, AttackDetectionDataBase data,
+            Action<AttackDetectionDataBase> submit)
+        {
+            if (data is not BoxAttackDetectionData box) return;
+            Vector3Field position = AddField(container,
+                new Vector3Field("局部位置") { value = box.LocalPosition });
+            Vector3Field rotation = AddField(container,
+                new Vector3Field("局部旋转") { value = box.LocalEulerAngles });
+            Vector3Field size = AddField(container,
+                new Vector3Field("尺寸") { value = box.Size });
+            void Submit() => submit(new BoxAttackDetectionData(
+                position.value, rotation.value, ClampPositive(size.value)));
+            position.RegisterValueChangedCallback(_ => Submit());
+            rotation.RegisterValueChangedCallback(_ => Submit());
+            size.RegisterValueChangedCallback(_ => Submit());
+        }
+
+        // 尺寸各轴保持正数，避免产生不可见或翻转的检测体。
+        private static Vector3 ClampPositive(Vector3 value) => new(
+            Mathf.Max(0.001f, value.x), Mathf.Max(0.001f, value.y), Mathf.Max(0.001f, value.z));
+    }
+
+    /// <summary>
+    /// 绘制 Sphere 攻击检测的局部位置和半径。
+    /// </summary>
+    internal sealed class SphereAttackDetectionDataDrawer : InspectorDrawer, IAttackDetectionDataDrawer
+    {
+        public Type DataType => typeof(SphereAttackDetectionData);
+
+        /// <summary>
+        /// 绘制 Sphere 参数并提交新的独立配置实例。
+        /// </summary>
+        public void Draw(VisualElement container, AttackDetectionDataBase data,
+            Action<AttackDetectionDataBase> submit)
+        {
+            if (data is not SphereAttackDetectionData sphere) return;
+            Vector3Field position = AddField(container,
+                new Vector3Field("局部位置") { value = sphere.LocalPosition });
+            FloatField radius = AddField(container,
+                new FloatField("半径") { value = sphere.Radius });
+            void Submit() => submit(new SphereAttackDetectionData(
+                position.value, Mathf.Max(0.001f, radius.value)));
+            position.RegisterValueChangedCallback(_ => Submit());
+            radius.RegisterValueChangedCallback(_ => Submit());
+        }
+    }
+
+    /// <summary>
+    /// 绘制 Capsule 攻击检测的局部变换、尺寸和轴向。
+    /// </summary>
+    internal sealed class CapsuleAttackDetectionDataDrawer : InspectorDrawer, IAttackDetectionDataDrawer
+    {
+        public Type DataType => typeof(CapsuleAttackDetectionData);
+
+        /// <summary>
+        /// 绘制 Capsule 参数并提交新的独立配置实例。
+        /// </summary>
+        public void Draw(VisualElement container, AttackDetectionDataBase data,
+            Action<AttackDetectionDataBase> submit)
+        {
+            if (data is not CapsuleAttackDetectionData capsule) return;
+            Vector3Field position = AddField(container,
+                new Vector3Field("局部位置") { value = capsule.LocalPosition });
+            Vector3Field rotation = AddField(container,
+                new Vector3Field("局部旋转") { value = capsule.LocalEulerAngles });
+            FloatField radius = AddField(container,
+                new FloatField("半径") { value = capsule.Radius });
+            FloatField height = AddField(container,
+                new FloatField("高度") { value = capsule.Height });
+            EnumField axis = AddField(container, new EnumField("轴向", capsule.Axis));
+            void Submit() => submit(new CapsuleAttackDetectionData(
+                position.value, rotation.value, Mathf.Max(0.001f, radius.value),
+                Mathf.Max(0.001f, height.value), (CapsuleAxis)axis.value));
+            position.RegisterValueChangedCallback(_ => Submit());
+            rotation.RegisterValueChangedCallback(_ => Submit());
+            radius.RegisterValueChangedCallback(_ => Submit());
+            height.RegisterValueChangedCallback(_ => Submit());
+            axis.RegisterValueChangedCallback(_ => Submit());
+        }
+    }
+
+    /// <summary>
+    /// 绘制 Sector 攻击检测的局部变换、半径、角度和高度。
+    /// </summary>
+    internal sealed class SectorAttackDetectionDataDrawer : InspectorDrawer, IAttackDetectionDataDrawer
+    {
+        public Type DataType => typeof(SectorAttackDetectionData);
+
+        /// <summary>
+        /// 绘制 Sector 参数并提交新的独立配置实例。
+        /// </summary>
+        public void Draw(VisualElement container, AttackDetectionDataBase data,
+            Action<AttackDetectionDataBase> submit)
+        {
+            if (data is not SectorAttackDetectionData sector) return;
+            Vector3Field position = AddField(container,
+                new Vector3Field("局部位置") { value = sector.LocalPosition });
+            Vector3Field rotation = AddField(container,
+                new Vector3Field("局部旋转") { value = sector.LocalEulerAngles });
+            FloatField inner = AddField(container,
+                new FloatField("内半径") { value = sector.InnerRadius });
+            FloatField outer = AddField(container,
+                new FloatField("外半径") { value = sector.OuterRadius });
+            FloatField angle = AddField(container,
+                new FloatField("角度") { value = sector.Angle });
+            FloatField height = AddField(container,
+                new FloatField("高度") { value = sector.Height });
+            void Submit()
+            {
+                float innerRadius = Mathf.Max(0f, inner.value);
+                submit(new SectorAttackDetectionData(position.value, rotation.value,
+                    innerRadius, Mathf.Max(Mathf.Max(innerRadius, 0.001f), outer.value),
+                    Mathf.Clamp(angle.value, 0.01f, 360f), Mathf.Max(0.001f, height.value)));
+            }
+            position.RegisterValueChangedCallback(_ => Submit());
+            rotation.RegisterValueChangedCallback(_ => Submit());
+            inner.RegisterValueChangedCallback(_ => Submit());
+            outer.RegisterValueChangedCallback(_ => Submit());
+            angle.RegisterValueChangedCallback(_ => Submit());
+            height.RegisterValueChangedCallback(_ => Submit());
+        }
+    }
+
+    /// <summary>
+    /// 绘制 WeaponTrace 检测沿刀根到刀尖插值的采样点数量。
+    /// </summary>
+    internal sealed class WeaponTraceAttackDetectionDataDrawer : InspectorDrawer, IAttackDetectionDataDrawer
+    {
+        public Type DataType => typeof(WeaponTraceAttackDetectionData);
+
+        /// <summary>
+        /// 绘制采样点数量；武器对象和刀根刀尖由未来运行时调用方提供。
+        /// </summary>
+        public void Draw(VisualElement container, AttackDetectionDataBase data,
+            Action<AttackDetectionDataBase> submit)
+        {
+            if (data is not WeaponTraceAttackDetectionData trace) return;
+            IntegerField count = AddField(container,
+                new IntegerField("采样点数量") { value = trace.SamplePointCount });
+            count.RegisterValueChangedCallback(_ => submit(
+                new WeaponTraceAttackDetectionData(Mathf.Clamp(count.value, 2, 16))));
+        }
+    }
+
+    /// <summary>
     /// 绘制特效片段配置并提交类型化编辑请求。
     /// </summary>
     internal sealed class VfxInspectorDrawer : InspectorDrawer, IInspectorDrawer
@@ -235,7 +496,7 @@ namespace RPG.SkillSystem.Editor
         public bool CanDraw(IViewData viewData) => viewData is VfxClipViewData;
 
         /// <summary>
-        /// 绘制特效资源、帧区间、绑定和局部变换字段。
+        /// 绘制特效资源、帧区间和局部变换字段。
         /// </summary>
         public void Draw(VisualElement container, IViewData viewData, EditorViewModel viewModel)
         {
@@ -248,19 +509,18 @@ namespace RPG.SkillSystem.Editor
             });
             IntegerField start = AddField(container, new IntegerField("起始帧") { value = clip.StartFrame });
             IntegerField duration = AddField(container, new IntegerField("持续帧") { value = clip.DurationFrames });
-            TextField binding = AddField(container, new TextField("挂点路径") { value = clip.BindingPath });
             Vector3Field position = AddField(container, new Vector3Field("局部位置") { value = clip.LocalPosition });
             Vector3Field rotation = AddField(container, new Vector3Field("局部旋转") { value = clip.LocalEulerAngles });
             Vector3Field scale = AddField(container, new Vector3Field("局部缩放") { value = clip.LocalScale });
             EnumField follow = AddField(container, new EnumField("跟随模式", clip.FollowMode));
             EnumField stop = AddField(container, new EnumField("结束模式", clip.StopMode));
+
             void Submit() => viewModel.EditItem(item, new VfxEditRequest(prefab.value as GameObject,
-                start.value, duration.value, binding.value, position.value, rotation.value, scale.value,
+                start.value, duration.value, position.value, rotation.value, scale.value,
                 (VfxFollowMode)follow.value, (VfxStopMode)stop.value));
             prefab.RegisterValueChangedCallback(_ => Submit());
             start.RegisterValueChangedCallback(_ => Submit());
             duration.RegisterValueChangedCallback(_ => Submit());
-            binding.RegisterValueChangedCallback(_ => Submit());
             position.RegisterValueChangedCallback(_ => Submit());
             rotation.RegisterValueChangedCallback(_ => Submit());
             scale.RegisterValueChangedCallback(_ => Submit());
@@ -325,11 +585,21 @@ namespace RPG.SkillSystem.Editor
             SkillEventMarkerConfig marker = item.Config;
             AddTitle(container, item.DisplayName);
             IntegerField frame = AddField(container, new IntegerField("触发帧") { value = marker.Frame });
-            TextField eventType = AddField(container, new TextField("事件类型名") { value = marker.EventTypeName });
-            TextField displayName = AddField(container, new TextField("显示名称") { value = marker.DisplayName });
+            TextField eventType = AddField(container, new TextField("事件类型名")
+            {
+                value = marker.EventTypeName,
+                isDelayed = true
+            });
+            TextField displayName = AddField(container, new TextField("显示名称")
+            {
+                value = marker.DisplayName,
+                isDelayed = true
+            });
             TextField parameters = AddField(container, new TextField("参数文本")
             {
-                value = marker.ParameterText, multiline = true
+                value = marker.ParameterText,
+                multiline = true,
+                isDelayed = true
             });
             void Submit() => viewModel.EditItem(item, new EventEditRequest(
                 frame.value, eventType.value, displayName.value, parameters.value));

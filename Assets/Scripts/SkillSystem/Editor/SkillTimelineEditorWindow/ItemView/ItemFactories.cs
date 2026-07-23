@@ -22,6 +22,25 @@ namespace RPG.SkillSystem.Editor
     }
 
     /// <summary>
+    /// 使用攻击检测 Clip 独立模板创建攻击检测时间轴 Item View。
+    /// </summary>
+    internal sealed class AttackDetectionItemFactory : IItemViewFactory
+    {
+        /// <summary>
+        /// 创建攻击检测 Clip View，并绑定统一坐标映射器。
+        /// </summary>
+        public ItemView Create(TrackViewData track, ItemViewData item,
+            ElementFactory elements, CoordinateMapper mapper)
+        {
+            if (item is not AttackDetectionClipViewData attack)
+                throw new ArgumentException("攻击检测 ItemFactory 收到不匹配的 ViewData。", nameof(item));
+            return new AttackDetectionClipView(track, attack,
+                elements.Instantiate("Item/SkillTimelineAttackDetectionClipItem.uxml",
+                    "AttackDetectionClipRoot"), mapper);
+        }
+    }
+
+    /// <summary>
     /// 使用特效 Clip 独立模板创建特效时间轴 Item View。
     /// </summary>
     internal sealed class VfxItemFactory : IItemViewFactory

@@ -14,6 +14,8 @@ namespace RPG.SkillSystem.Editor
         internal const string DurationFrames = "durationFrames";
         /// <summary>技能配置中的动画轨道列表。</summary>
         internal const string AnimationTracks = "animationTracks";
+        /// <summary>技能配置中的攻击检测轨道列表。</summary>
+        internal const string AttackDetectionTracks = "attackDetectionTracks";
         /// <summary>技能配置中的特效轨道列表。</summary>
         internal const string VfxTracks = "vfxTracks";
         /// <summary>技能配置中的音频轨道列表。</summary>
@@ -46,8 +48,6 @@ namespace RPG.SkillSystem.Editor
         internal const string PlaybackSpeed = "playbackSpeed";
         /// <summary>特效内容引用的 Prefab Asset。</summary>
         internal const string Prefab = "prefab";
-        /// <summary>特效内容相对于预览角色的绑定路径。</summary>
-        internal const string BindingPath = "bindingPath";
         /// <summary>特效内容的局部位置。</summary>
         internal const string LocalPosition = "localPosition";
         /// <summary>特效内容的局部欧拉角。</summary>
@@ -64,6 +64,10 @@ namespace RPG.SkillSystem.Editor
         internal const string Volume = "volume";
         /// <summary>音频内容的播放音调。</summary>
         internal const string Pitch = "pitch";
+        /// <summary>攻击检测片段的采样间隔帧，最小为一帧。</summary>
+        internal const string SampleIntervalFrames = "sampleIntervalFrames";
+        /// <summary>攻击检测片段保存的局部多态检测参数。</summary>
+        internal const string DetectionData = "detectionData";
         /// <summary>事件 Marker 的事件类型名称。</summary>
         internal const string EventTypeName = "eventTypeName";
         /// <summary>事件 Marker 的序列化参数文本。</summary>

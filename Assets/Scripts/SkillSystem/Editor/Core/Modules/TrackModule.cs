@@ -9,7 +9,7 @@ using WS_Modules.MVVM;
 namespace RPG.SkillSystem.Editor
 {
     /// <summary>
-    /// 负责把一种运行时轨道配置投影为 ViewData，并创建可跨刷新恢复的具体选择状态。
+    /// 负责把一种运行时轨道配置投影为 ViewData，并创建可跨刷新恢复的具体选择状态 SelectionState。
     /// </summary>
     internal interface ITrackProjection
     {
@@ -81,6 +81,21 @@ namespace RPG.SkillSystem.Editor
         /// <param name="itemId">目标 Clip 或 Marker 自身的稳定 GUID，不是内容数组索引。</param>
         /// <param name="request">与当前 Handler 匹配的类型化编辑请求。</param>
         EditResult EditItem(Document document, string trackId, string itemId, IItemEditRequest request);
+        /// <summary>
+        /// 在数组复制后修复类型专用深拷贝字段，避免 SerializeReference 数据共享。
+        /// </summary>
+        /// <param name="source">复制后的权威源 Item。</param>
+        /// <param name="destination">需要修复类型专用字段的新 Item。</param>
+        void CopySpecificFields(UnityEditor.SerializedProperty source,
+            UnityEditor.SerializedProperty destination);
+        /// <summary>
+        /// 在 FPS 改变时重采样该类型除起止帧之外的帧字段。
+        /// </summary>
+        /// <param name="item">正在重采样的 Item。</param>
+        /// <param name="oldFrameRate">修改前 FPS。</param>
+        /// <param name="newFrameRate">修改后 FPS。</param>
+        void ResampleSpecificFrameFields(UnityEditor.SerializedProperty item,
+            int oldFrameRate, int newFrameRate);
     }
 
     /// <summary>
@@ -92,9 +107,13 @@ namespace RPG.SkillSystem.Editor
         /// 判断整批 Project 素材是否可以被该轨道接收。
         /// </summary>
         bool CanAccept(IReadOnlyList<UnityEngine.Object> assets);
+
         /// <summary>
         /// 把已校验素材复制为稳定的类型化创建请求。
         /// </summary>
+        /// <param name="assets">已校验的素材列表。</param>
+        /// <param name="startFrame">新内容所在的非负整数帧。</param>
+        /// <returns>创建的类型化创建请求。</returns>
         IItemCreateRequest CreateRequest(IReadOnlyList<UnityEngine.Object> assets, int startFrame);
     }
 
@@ -158,7 +177,7 @@ namespace RPG.SkillSystem.Editor
         #region 创建与注册
 
         /// <summary>
-        /// 创建按 Animation、VFX、Audio、Event 排列的内置模块注册表。
+        /// 创建按 Animation、AttackDetection、VFX、Audio、Event 排列的内置模块注册表。
         /// </summary>
         public static TrackModuleRegistry CreateDefault(EditorConfig config)
         {
@@ -167,6 +186,9 @@ namespace RPG.SkillSystem.Editor
             registry.Register(new TrackModule(
                 new AnimationProjection(), new AnimationDocumentHandler(), new AnimationDropHandler(),
                 new AnimationItemFactory(), new AnimationInspectorDrawer()));
+            registry.Register(new TrackModule(
+                new AttackDetectionProjection(), new AttackDetectionDocumentHandler(), null,
+                new AttackDetectionItemFactory(), new AttackDetectionInspectorDrawer()));
             registry.Register(new TrackModule(
                 new VfxProjection(), new VfxDocumentHandler(), new VfxDropHandler(config),
                 new VfxItemFactory(), new VfxInspectorDrawer()));

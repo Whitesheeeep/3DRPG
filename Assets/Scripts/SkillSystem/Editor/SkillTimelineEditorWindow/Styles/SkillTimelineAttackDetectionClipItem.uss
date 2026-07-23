@@ -1,0 +1,23 @@
+.attack-detection-clip-item {
+    top: 9px;
+    height: 36px;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-width: 1px;
+    border-radius: 3px;
+    border-color: rgb(219, 129, 76);
+    background-color: rgb(139, 72, 45);
+    -unity-text-align: middle-left;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.attack-detection-clip-item:hover {
+    border-color: rgb(241, 161, 105);
+    background-color: rgb(163, 86, 52);
+}
+
+.attack-detection-clip-item.is-selected {
+    border-width: 2px;
+    border-color: rgb(255, 220, 112);
+}

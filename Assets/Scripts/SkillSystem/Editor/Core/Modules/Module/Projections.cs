@@ -1,7 +1,6 @@
 #if UNITY_EDITOR
 using System;
 using System.Linq;
-using RPG.SkillSystem;
 using WS_Modules.MVVM;
 
 namespace RPG.SkillSystem.Editor
@@ -108,6 +107,46 @@ namespace RPG.SkillSystem.Editor
         /// </summary>
         public override SelectionState CreateItemSelection(string trackId, string itemId) =>
             new AnimationClipSelection(trackId, itemId);
+    }
+
+    /// <summary>
+    /// 把攻击检测轨道及其 Clip 投影为攻击检测编辑器显示类型。
+    /// </summary>
+    internal sealed class AttackDetectionProjection :
+        TrackProjection<AttackDetectionGroupViewData, AttackDetectionTrackViewData, AttackDetectionClipViewData,
+            AttackDetectionGroupSelection, AttackDetectionTrackSelection, AttackDetectionClipSelection>
+    {
+        /// <summary>
+        /// 创建攻击检测分组及全部轨道投影；空 Config 返回空分组。
+        /// </summary>
+        public override GroupViewData CreateGroup(SkillConfig config)
+        {
+            TrackViewData[] tracks = config?.AttackDetectionTracks.Select(track =>
+            {
+                ItemViewData[] items = track.Clips.Select(clip =>
+                    (ItemViewData)new AttackDetectionClipViewData(
+                        clip, $"{clip.DetectionType} Detection")).ToArray();
+                return (TrackViewData)new AttackDetectionTrackViewData(track, items);
+            }).ToArray() ?? Array.Empty<TrackViewData>();
+            return new AttackDetectionGroupViewData(tracks);
+        }
+
+        /// <summary>
+        /// 创建攻击检测分组选择。
+        /// </summary>
+        public override SelectionState CreateGroupSelection() => new AttackDetectionGroupSelection();
+
+        /// <summary>
+        /// 创建攻击检测轨道选择。
+        /// </summary>
+        public override SelectionState CreateTrackSelection(string trackId) =>
+            new AttackDetectionTrackSelection(trackId);
+
+        /// <summary>
+        /// 创建攻击检测 Clip 选择。
+        /// </summary>
+        public override SelectionState CreateItemSelection(string trackId, string itemId) =>
+            new AttackDetectionClipSelection(trackId, itemId);
     }
 
     /// <summary>

@@ -56,6 +56,13 @@ internal sealed class AnimationGroupSelection : SelectionState
 }
 
 /// <summary>
+/// 表示攻击检测轨道分组选择。
+/// </summary>
+internal sealed class AttackDetectionGroupSelection : SelectionState
+{
+}
+
+/// <summary>
 /// 表示特效轨道分组选择。
 /// </summary>
 internal sealed class VfxGroupSelection : SelectionState
@@ -100,6 +107,19 @@ internal sealed class AnimationTrackSelection : TrackSelection
     /// 使用动画轨道 GUID 创建选择。
     /// </summary>
     public AnimationTrackSelection(string trackId) : base(trackId)
+    {
+    }
+}
+
+/// <summary>
+/// 表示攻击检测轨道选择。
+/// </summary>
+internal sealed class AttackDetectionTrackSelection : TrackSelection
+{
+    /// <summary>
+    /// 使用攻击检测轨道 GUID 创建选择。
+    /// </summary>
+    public AttackDetectionTrackSelection(string trackId) : base(trackId)
     {
     }
 }
@@ -178,6 +198,19 @@ internal sealed class AnimationClipSelection : ItemSelection
     /// 使用动画轨道与片段 GUID 创建选择。
     /// </summary>
     public AnimationClipSelection(string trackId, string itemId) : base(trackId, itemId)
+    {
+    }
+}
+
+/// <summary>
+/// 表示攻击检测片段选择。
+/// </summary>
+internal sealed class AttackDetectionClipSelection : ItemSelection
+{
+    /// <summary>
+    /// 使用攻击检测轨道与片段 GUID 创建选择。
+    /// </summary>
+    public AttackDetectionClipSelection(string trackId, string itemId) : base(trackId, itemId)
     {
     }
 }

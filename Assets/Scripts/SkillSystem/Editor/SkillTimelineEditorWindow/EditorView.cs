@@ -14,6 +14,7 @@ namespace RPG.SkillSystem.Editor
         #region 依赖与子视图
 
         private const string InspectorWidthSessionKey = "RPG.SkillTimeline.InspectorWidth";
+        private const string TrackHeaderWidthSessionKey = "RPG.SkillTimeline.TrackHeaderWidth";
         private readonly VisualElement root;
         private readonly EditorConfig config;
         private readonly TrackModuleRegistry modules;
@@ -54,7 +55,7 @@ namespace RPG.SkillSystem.Editor
             Unbind();
             viewModel = model;
             statusLabel = root.Q<Label>("StatusLabel");
-            ConfigureMainSplitView();
+            ConfigureSplitViews();
             toolbarView = new ToolbarView(root, canvasModel);
             canvasView = new CanvasView(root);
             canvasView.Initialize();
@@ -91,16 +92,24 @@ namespace RPG.SkillSystem.Editor
 
         #region 状态刷新
 
-        // 将技能窗口的 Inspector 尺寸范围和会话键注入通用 SplitView，不接管其 Pointer 交互。
-        private void ConfigureMainSplitView()
+        // 将 Inspector 与轨道标题宽度范围注入通用 SplitView，不接管其 Pointer 交互。
+        private void ConfigureSplitViews()
         {
-            CustomTwoPanelSplitView splitView = root.Q<CustomTwoPanelSplitView>("MainSplitView") ??
-                                                throw new InvalidOperationException("主 UXML 缺少 MainSplitView。");
-            splitView.ConfigureFixedPane(
+            CustomTwoPanelSplitView mainSplitView = root.Q<CustomTwoPanelSplitView>("MainSplitView") ??
+                                                    throw new InvalidOperationException("主 UXML 缺少 MainSplitView。");
+            mainSplitView.ConfigureFixedPane(
                 config.InspectorMinimumWidth,
                 config.InspectorDefaultWidth,
                 config.InspectorMaximumWidth,
                 InspectorWidthSessionKey);
+
+            CustomTwoPanelSplitView headerSplitView = root.Q<CustomTwoPanelSplitView>("HeaderTimelineSplit") ??
+                                                      throw new InvalidOperationException("主 UXML 缺少 HeaderTimelineSplit。");
+            headerSplitView.ConfigureFixedPane(
+                config.TrackHeaderMinimumWidth,
+                config.TrackHeaderDefaultWidth,
+                config.TrackHeaderMaximumWidth,
+                TrackHeaderWidthSessionKey);
         }
 
         // 刷新窗口底部状态提示，不参与任何资产修改。

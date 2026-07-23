@@ -247,9 +247,28 @@ namespace WS_Modules.UIToolkitExtensions.Editor
             return NormalizeFiniteDimension(margins);
         }
 
-        // 获取 Unity 创建的内部 DragLine Anchor；按需查询可兼容 UXML 子树延迟初始化。
-        private VisualElement GetDragLineAnchor() =>
-            this.Q<VisualElement>(className: DragLineAnchorClassName);
+        // 获取当前 SplitView 自己的 DragLine Anchor，排除嵌套 SplitView 创建的同名元素。
+        private VisualElement GetDragLineAnchor()
+        {
+            VisualElement ownedAnchor = null;
+            this.Query<VisualElement>(className: DragLineAnchorClassName).ForEach(candidate =>
+            {
+                if (ownedAnchor == null && IsOwnedDragLineAnchor(candidate)) ownedAnchor = candidate;
+            });
+            return ownedAnchor;
+        }
+
+        // 候选 DragLine 最近所属的 TwoPaneSplitView 必须是当前实例，避免外层抢占内层拖拽事件。
+        private bool IsOwnedDragLineAnchor(VisualElement candidate)
+        {
+            if (candidate == null) return false;
+            for (VisualElement ancestor = candidate.parent; ancestor != null; ancestor = ancestor.parent)
+            {
+                if (ancestor is TwoPaneSplitView splitView) return ReferenceEquals(splitView, this);
+            }
+
+            return false;
+        }
 
         // 过滤布局早期可能出现的非有限数值，并保证几何尺寸不为负数。
         private static float NormalizeFiniteDimension(float value) =>

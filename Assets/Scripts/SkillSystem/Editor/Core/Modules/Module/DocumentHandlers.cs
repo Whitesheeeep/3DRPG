@@ -1,7 +1,5 @@
 #if UNITY_EDITOR
 using System;
-using System.Collections.Generic;
-using RPG.SkillSystem;
 using UnityEditor;
 using UnityEngine;
 
@@ -65,6 +63,21 @@ namespace RPG.SkillSystem.Editor
         /// <param name="request">与当前 Handler 匹配的类型化编辑请求。</param>
         public abstract EditResult EditItem(Document document, string trackId, string itemId,
             IItemEditRequest request);
+
+        /// <summary>
+        /// 默认无需修复类型专用复制字段；包含 managed reference 的 Handler 可覆盖此钩子。
+        /// </summary>
+        public virtual void CopySpecificFields(SerializedProperty source, SerializedProperty destination)
+        {
+        }
+
+        /// <summary>
+        /// 默认没有额外帧字段需要重采样；具体 Handler 可覆盖此钩子。
+        /// </summary>
+        public virtual void ResampleSpecificFrameFields(SerializedProperty item,
+            int oldFrameRate, int newFrameRate)
+        {
+        }
 
         // 初始化某种 Item 独有字段，调用时公共帧字段已经有效。
         protected abstract void InitializeSpecificFields(SerializedProperty item);
@@ -167,6 +180,90 @@ namespace RPG.SkillSystem.Editor
     }
 
     /// <summary>
+    /// 定义攻击检测轨道序列化结构，并处理多态检测配置的编辑、复制与帧率重采样。
+    /// </summary>
+    internal sealed class AttackDetectionDocumentHandler : TrackDocumentHandler
+    {
+        /// <summary>
+        /// 创建攻击检测轨道数据处理器。
+        /// </summary>
+        public AttackDetectionDocumentHandler()
+            : base(DocumentFieldNames.AttackDetectionTracks, DocumentFieldNames.Clips,
+                DocumentFieldNames.StartFrame, DocumentFieldNames.DurationFrames, "攻击检测轨道", true)
+        {
+        }
+
+        /// <summary>
+        /// 攻击检测轨道不接收 Project 素材，内容由轨道“+”按钮创建。
+        /// </summary>
+        /// <param name="document">负责 Undo、校验和资产写入的文档。</param>
+        /// <param name="trackId">目标轨道头中的稳定 GUID。</param>
+        /// <param name="request">未受支持的素材创建请求。</param>
+        public override ItemsCreateResult CreateItems(Document document, string trackId,
+            IItemCreateRequest request) =>
+            ItemsCreateResult.Failure("攻击检测轨道不支持 Project 素材拖入。");
+
+        /// <summary>
+        /// 提交半开帧区间、采样间隔及独立的多态检测参数。
+        /// </summary>
+        /// <param name="document">负责 Undo、校验和资产写入的文档。</param>
+        /// <param name="trackId">目标轨道头中的稳定 GUID。</param>
+        /// <param name="itemId">目标攻击检测 Clip 的稳定 GUID。</param>
+        /// <param name="request">与当前 Handler 匹配的完整编辑请求。</param>
+        public override EditResult EditItem(Document document, string trackId, string itemId,
+            IItemEditRequest request)
+        {
+            if (request is not AttackDetectionEditRequest attack)
+                return EditResult.Failure("攻击检测轨道收到不匹配的编辑请求。");
+
+            return document.EditClip(this, trackId, itemId, attack.StartFrame,
+                attack.DurationFrames, "修改攻击检测 Clip", item =>
+                {
+                    item.FindPropertyRelative(DocumentFieldNames.SampleIntervalFrames).intValue =
+                        Mathf.Max(1, attack.SampleIntervalFrames);
+                    item.FindPropertyRelative(DocumentFieldNames.DetectionData).managedReferenceValue =
+                        AttackDetectionDataBase.Copy(attack.DetectionData);
+                });
+        }
+
+        /// <summary>
+        /// 复制 managed reference 为独立实例，避免副本与源 Clip 共享检测参数对象。
+        /// </summary>
+        /// <param name="source">复制后的权威源 Item。</param>
+        /// <param name="destination">需要写入独立 managed reference 的新 Item。</param>
+        public override void CopySpecificFields(SerializedProperty source, SerializedProperty destination)
+        {
+            AttackDetectionDataBase sourceData = source
+                .FindPropertyRelative(DocumentFieldNames.DetectionData).managedReferenceValue
+                as AttackDetectionDataBase;
+            destination.FindPropertyRelative(DocumentFieldNames.DetectionData).managedReferenceValue =
+                AttackDetectionDataBase.Copy(sourceData);
+        }
+
+        /// <summary>
+        /// 按实际时间重采样检测间隔，并保证至少每帧采样一次。
+        /// </summary>
+        /// <param name="item">正在重采样的攻击检测 Clip。</param>
+        /// <param name="oldFrameRate">修改前 FPS。</param>
+        /// <param name="newFrameRate">修改后 FPS。</param>
+        public override void ResampleSpecificFrameFields(SerializedProperty item,
+            int oldFrameRate, int newFrameRate)
+        {
+            SerializedProperty interval = item.FindPropertyRelative(DocumentFieldNames.SampleIntervalFrames);
+            interval.intValue = Mathf.Max(1,
+                Mathf.RoundToInt(interval.intValue * (float)newFrameRate / oldFrameRate));
+        }
+
+        // 新建检测 Clip 默认使用一帧采样间隔和 Box 配置。
+        protected override void InitializeSpecificFields(SerializedProperty item)
+        {
+            item.FindPropertyRelative(DocumentFieldNames.SampleIntervalFrames).intValue = 1;
+            item.FindPropertyRelative(DocumentFieldNames.DetectionData).managedReferenceValue =
+                AttackDetectionDataBase.Create(AttackDetectionType.Box);
+        }
+    }
+
+    /// <summary>
     /// 定义特效轨道序列化结构，并处理 Prefab Clip 的创建与字段编辑。
     /// </summary>
     internal sealed class VfxDocumentHandler : TrackDocumentHandler
@@ -231,7 +328,7 @@ namespace RPG.SkillSystem.Editor
         }
 
         /// <summary>
-        /// 校验特效编辑请求并提交区间、Prefab、绑定和局部变换字段。
+        /// 校验特效编辑请求并提交区间、Prefab 和局部变换字段。
         /// </summary>
         /// <param name="document">负责 Undo、校验和资产写入的文档。</param>
         /// <param name="trackId">目标轨道头中的稳定 GUID，不是轨道数组索引或显示名称。</param>
@@ -246,7 +343,6 @@ namespace RPG.SkillSystem.Editor
                 vfx.DurationFrames, "修改特效 Clip", item =>
                 {
                     item.FindPropertyRelative(DocumentFieldNames.Prefab).objectReferenceValue = vfx.Prefab;
-                    item.FindPropertyRelative(DocumentFieldNames.BindingPath).stringValue = vfx.BindingPath ?? string.Empty;
                     item.FindPropertyRelative(DocumentFieldNames.LocalPosition).vector3Value = vfx.LocalPosition;
                     item.FindPropertyRelative(DocumentFieldNames.LocalEulerAngles).vector3Value = vfx.LocalEulerAngles;
                     item.FindPropertyRelative(DocumentFieldNames.LocalScale).vector3Value = vfx.LocalScale;
@@ -255,11 +351,10 @@ namespace RPG.SkillSystem.Editor
                 });
         }
 
-        // 初始化特效 Clip 的 Prefab、绑定、局部变换和结束策略默认值。
+        // 初始化特效 Clip 的 Prefab、局部变换和结束策略默认值。
         protected override void InitializeSpecificFields(SerializedProperty item)
         {
             item.FindPropertyRelative(DocumentFieldNames.Prefab).objectReferenceValue = null;
-            item.FindPropertyRelative(DocumentFieldNames.BindingPath).stringValue = string.Empty;
             item.FindPropertyRelative(DocumentFieldNames.LocalPosition).vector3Value = Vector3.zero;
             item.FindPropertyRelative(DocumentFieldNames.LocalEulerAngles).vector3Value = Vector3.zero;
             item.FindPropertyRelative(DocumentFieldNames.LocalScale).vector3Value = Vector3.one;

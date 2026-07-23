@@ -1,9 +1,14 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
     <ui:VisualElement name="TrackHeaderRoot" class="timeline-header-row">
-        <ui:Label name="NameLabel" class="timeline-row-name" />
-        <ui:Button name="AddButton" text="+" class="timeline-header-button" />
-        <ui:Button name="MoveUpButton" text="↑" class="timeline-header-button" />
-        <ui:Button name="MoveDownButton" text="↓" class="timeline-header-button" />
-        <ui:Button name="RemoveButton" text="×" class="timeline-header-button" />
+        <ui:VisualElement name="NameContainer" class="timeline-row-main timeline-track-name-container">
+            <ui:Label name="NameLabel" class="timeline-row-name" />
+            <ui:TextField name="NameEditor" class="timeline-row-name-editor" />
+        </ui:VisualElement>
+        <ui:VisualElement class="timeline-row-actions">
+            <ui:Button name="AddButton" text="+" class="timeline-header-button" />
+            <ui:Button name="MoveUpButton" text="↑" class="timeline-header-button" />
+            <ui:Button name="MoveDownButton" text="↓" class="timeline-header-button" />
+            <ui:Button name="RemoveButton" text="×" class="timeline-header-button" />
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

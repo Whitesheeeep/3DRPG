@@ -292,7 +292,9 @@ namespace RPG.SkillSystem.Editor
             Mutate("复制技能时间轴内容", () =>
             {
                 items.InsertArrayElementAtIndex(index);
+                SerializedProperty source = items.GetArrayElementAtIndex(index);
                 SerializedProperty copy = items.GetArrayElementAtIndex(index + 1);
+                handler.CopySpecificFields(source, copy);
                 copy.FindPropertyRelative(DocumentFieldNames.Id).stringValue = newId;
                 SetItemFrame(handler, copy, proposed, duration);
                 ExpandDurationForItem(handler, copy);
@@ -368,6 +370,7 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 执行动画和特效片段共享的区间校验与资产修改流程。
         /// </summary>
+        /// <param name="editSpecific">用于编辑特定字段的回调函数。</param>
         // 对可持续内容执行公共半开区间校验，并在同一事务中写入类型专用字段。
         // trackId 是轨道头稳定 GUID，itemId 是该轨道内 Clip 的稳定 GUID，均不使用数组索引。
         internal EditResult EditClip(ITrackDocumentHandler handler, string trackId, string itemId, int startFrame,
@@ -689,7 +692,8 @@ namespace RPG.SkillSystem.Editor
                         int oldDuration = GetItemDuration(handler, item);
                         int newStart = Mathf.Max(0, Mathf.RoundToInt(oldStart * (float)newRate / oldRate));
                         int newEnd = Mathf.Max(newStart + 1, Mathf.RoundToInt((oldStart + oldDuration) * (float)newRate / oldRate));
-                        result.Add(new FrameTransform(handler, i, item, newStart, newEnd - newStart));
+                        result.Add(new FrameTransform(handler, i, item, newStart,
+                            newEnd - newStart, oldRate, newRate));
                     }
                 }
             }
@@ -751,23 +755,32 @@ namespace RPG.SkillSystem.Editor
             public int StartFrame { get; }
             public int DurationFrames { get; }
             private readonly SerializedProperty item;
+            private readonly int oldFrameRate;
+            private readonly int newFrameRate;
 
             /// <summary>
             /// 创建并初始化 FrameTransform。
             /// </summary>
-            public FrameTransform(ITrackDocumentHandler handler, int trackIndex, SerializedProperty item, int startFrame, int durationFrames)
+            public FrameTransform(ITrackDocumentHandler handler, int trackIndex, SerializedProperty item,
+                int startFrame, int durationFrames, int oldFrameRate, int newFrameRate)
             {
                 Handler = handler;
                 TrackIndex = trackIndex;
                 this.item = item.Copy();
                 StartFrame = startFrame;
                 DurationFrames = durationFrames;
+                this.oldFrameRate = oldFrameRate;
+                this.newFrameRate = newFrameRate;
             }
 
             /// <summary>
             /// 将重采样后的帧区间写入对应序列化属性。
             /// </summary>
-            public void Apply() => SetItemFrame(Handler, item, StartFrame, DurationFrames);
+            public void Apply()
+            {
+                SetItemFrame(Handler, item, StartFrame, DurationFrames);
+                Handler.ResampleSpecificFrameFields(item, oldFrameRate, newFrameRate);
+            }
         }
 
         #endregion

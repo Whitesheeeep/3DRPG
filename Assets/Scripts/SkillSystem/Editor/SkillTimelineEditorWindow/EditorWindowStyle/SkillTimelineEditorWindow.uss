@@ -77,6 +77,26 @@
     border-right-width: 1px;
     border-right-color: rgb(70, 70, 70);
 }
+.timeline-inner-split {
+    flex-grow: 1;
+    min-width: 0;
+    min-height: 0;
+}
+.timeline-header-pane {
+    min-width: 0;
+    min-height: 0;
+    flex-direction: column;
+    background-color: rgb(43, 43, 43);
+    border-right-width: 1px;
+    border-right-color: rgb(73, 73, 73);
+}
+.timeline-viewport-pane {
+    position: relative;
+    flex-grow: 1;
+    min-width: 320px;
+    min-height: 0;
+    flex-direction: column;
+}
 .timeline-ruler-row {
     height: 36px;
     flex-direction: row;
@@ -85,24 +105,24 @@
     border-bottom-color: rgb(76, 76, 76);
     background-color: rgb(48, 48, 48);
 }
-.timeline-header-spacer, .track-header-column {
-    width: 190px;
-    min-width: 190px;
-    max-width: 190px;
+.timeline-header-title {
+    height: 36px;
+    min-height: 36px;
     flex-shrink: 0;
-    border-right-width: 1px;
-    border-right-color: rgb(73, 73, 73);
-}
-.timeline-header-spacer {
     padding-left: 9px;
     -unity-text-align: middle-left;
     color: rgb(185, 185, 185);
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(76, 76, 76);
+    background-color: rgb(48, 48, 48);
 }
 .timeline-ruler-lane { position: relative; flex-grow: 1; overflow: hidden; }
 .timeline-ruler-drawing { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
 .vertical-scroller-spacer { width: 16px; min-width: 16px; flex-shrink: 0; }
-.timeline-body { flex-grow: 1; min-height: 0; flex-direction: row; overflow: hidden; }
 .track-header-column {
+    flex-grow: 1;
+    min-width: 0;
+    min-height: 0;
     flex-direction: column;
     background-color: rgb(43, 43, 43);
 }
@@ -162,12 +182,37 @@
     background-color: rgba(190, 68, 68, 0.18);
 }
 .timeline-header-row.is-selected { background-color: rgb(63, 78, 94); }
+.timeline-row-main {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    flex-direction: row;
+    align-items: center;
+    overflow: hidden;
+}
+.timeline-row-actions {
+    flex-direction: row;
+    flex-grow: 0;
+    flex-shrink: 0;
+}
 .timeline-row-name {
     flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
     overflow: hidden;
     white-space: nowrap;
     -unity-text-overflow-position: end;
 }
+.timeline-row-name-editor {
+    display: none;
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    margin-left: 0;
+    margin-right: 0;
+}
+.timeline-header-row.is-renaming .timeline-row-name { display: none; }
+.timeline-header-row.is-renaming .timeline-row-name-editor { display: flex; }
 .timeline-header-button {
     width: 24px;
     height: 22px;
@@ -177,7 +222,7 @@
 }
 .playhead-overlay {
     position: absolute;
-    left: 190px;
+    left: 0;
     right: 16px;
     top: 0;
     bottom: 16px;

@@ -16,6 +16,9 @@ MonoBehaviour:
   inspectorMinimumWidth: 240
   inspectorDefaultWidth: 300
   inspectorMaximumWidth: 520
+  trackHeaderMinimumWidth: 190
+  trackHeaderDefaultWidth: 240
+  trackHeaderMaximumWidth: 420
   defaultPixelsPerFrame: 12
   minimumPixelsPerFrame: 4
   maximumPixelsPerFrame: 48

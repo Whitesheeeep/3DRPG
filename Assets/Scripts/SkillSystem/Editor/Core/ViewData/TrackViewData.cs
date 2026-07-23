@@ -43,6 +43,20 @@ internal sealed class AnimationTrackViewData : TrackViewData
 }
 
 /// <summary>
+/// 提供攻击检测轨道的显示数据。
+/// </summary>
+internal sealed class AttackDetectionTrackViewData : TrackViewData
+{
+    /// <summary>
+    /// 创建攻击检测轨道显示投影。
+    /// </summary>
+    public AttackDetectionTrackViewData(AttackDetectionTrackConfig config, IReadOnlyList<ItemViewData> items)
+        : base(config.Header, items)
+    {
+    }
+}
+
+/// <summary>
 /// 提供特效轨道的显示数据。
 /// </summary>
 internal sealed class VfxTrackViewData : TrackViewData

@@ -38,6 +38,20 @@ internal sealed class AnimationGroupViewData : GroupViewData
 }
 
 /// <summary>
+/// 提供攻击检测轨道分组显示数据。
+/// </summary>
+internal sealed class AttackDetectionGroupViewData : GroupViewData
+{
+    /// <summary>
+    /// 创建攻击检测分组显示投影。
+    /// </summary>
+    public AttackDetectionGroupViewData(IReadOnlyList<TrackViewData> tracks)
+        : base("攻击检测", tracks)
+    {
+    }
+}
+
+/// <summary>
 /// 提供特效轨道分组显示数据。
 /// </summary>
 internal sealed class VfxGroupViewData : GroupViewData

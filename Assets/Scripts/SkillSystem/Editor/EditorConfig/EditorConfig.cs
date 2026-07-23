@@ -16,6 +16,9 @@ namespace RPG.SkillSystem.Editor
         [SerializeField, Min(1f)] private float inspectorMinimumWidth = 240f;
         [SerializeField, Min(1f)] private float inspectorDefaultWidth = 300f;
         [SerializeField, Min(1f)] private float inspectorMaximumWidth = 520f;
+        [SerializeField, Min(1f)] private float trackHeaderMinimumWidth = 190f;
+        [SerializeField, Min(1f)] private float trackHeaderDefaultWidth = 240f;
+        [SerializeField, Min(1f)] private float trackHeaderMaximumWidth = 420f;
 
         [Header("时间轴视口")]
         [SerializeField, Min(1f)] private float defaultPixelsPerFrame = 12f;
@@ -63,6 +66,9 @@ namespace RPG.SkillSystem.Editor
         public float InspectorMinimumWidth => inspectorMinimumWidth;
         public float InspectorDefaultWidth => inspectorDefaultWidth;
         public float InspectorMaximumWidth => inspectorMaximumWidth;
+        public float TrackHeaderMinimumWidth => trackHeaderMinimumWidth;
+        public float TrackHeaderDefaultWidth => trackHeaderDefaultWidth;
+        public float TrackHeaderMaximumWidth => trackHeaderMaximumWidth;
         public float DefaultPixelsPerFrame => defaultPixelsPerFrame;
         public float MinimumPixelsPerFrame => minimumPixelsPerFrame;
         public float MaximumPixelsPerFrame => maximumPixelsPerFrame;
@@ -100,6 +106,10 @@ namespace RPG.SkillSystem.Editor
             inspectorMinimumWidth = Mathf.Max(1f, inspectorMinimumWidth);
             inspectorMaximumWidth = Mathf.Max(inspectorMinimumWidth, inspectorMaximumWidth);
             inspectorDefaultWidth = Mathf.Clamp(inspectorDefaultWidth, inspectorMinimumWidth, inspectorMaximumWidth);
+            trackHeaderMinimumWidth = Mathf.Max(1f, trackHeaderMinimumWidth);
+            trackHeaderMaximumWidth = Mathf.Max(trackHeaderMinimumWidth, trackHeaderMaximumWidth);
+            trackHeaderDefaultWidth = Mathf.Clamp(
+                trackHeaderDefaultWidth, trackHeaderMinimumWidth, trackHeaderMaximumWidth);
             minimumPixelsPerFrame = Mathf.Max(1f, minimumPixelsPerFrame);
             maximumPixelsPerFrame = Mathf.Max(minimumPixelsPerFrame, maximumPixelsPerFrame);
             defaultPixelsPerFrame = Mathf.Clamp(defaultPixelsPerFrame, minimumPixelsPerFrame, maximumPixelsPerFrame);

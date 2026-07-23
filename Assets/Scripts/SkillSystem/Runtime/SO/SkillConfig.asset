@@ -31,8 +31,8 @@ MonoBehaviour:
       playbackSpeed: 1
     - id: 12c5f02b00b044f8a414800190cc7e7e
       animationClip: {fileID: 0}
-      startFrame: 22
-      durationFrames: 17
+      startFrame: 17
+      durationFrames: 21
       sourceStartFrame: 0
       playbackSpeed: 1
   - header:
@@ -44,10 +44,11 @@ MonoBehaviour:
     clips:
     - id: 727eba9f77e148d0953eebffd2273565
       animationClip: {fileID: 8993902097722301239, guid: 313e2a33bb58d4b4fa917fe3b5f06ffa, type: 3}
-      startFrame: 2
+      startFrame: 5
       durationFrames: 20
       sourceStartFrame: 0
       playbackSpeed: 1
+  attackDetectionTracks: []
   vfxTracks:
   - header:
       id: d217d68a8d44409d9a33d7812e52b89a
@@ -60,7 +61,6 @@ MonoBehaviour:
       prefab: {fileID: 0}
       startFrame: 6
       durationFrames: 3
-      bindingPath: 
       localPosition: {x: 0, y: 0, z: 0}
       localEulerAngles: {x: 0, y: 0, z: 0}
       localScale: {x: 1, y: 1, z: 1}
@@ -70,17 +70,15 @@ MonoBehaviour:
       prefab: {fileID: 0}
       startFrame: 11
       durationFrames: 3
-      bindingPath: 
       localPosition: {x: 0, y: 0, z: 0}
       localEulerAngles: {x: 0, y: 0, z: 0}
       localScale: {x: 1, y: 1, z: 1}
-      followMode: 0
+      followMode: 1
       stopMode: 0
     - id: 65d19fa0358d44ae8903c5346a98bb1d
       prefab: {fileID: 0}
       startFrame: 20
       durationFrames: 4
-      bindingPath: 
       localPosition: {x: 0, y: 0, z: 0}
       localEulerAngles: {x: 0, y: 0, z: 0}
       localScale: {x: 1, y: 1, z: 1}
@@ -93,6 +91,20 @@ MonoBehaviour:
       editorLocked: 0
       editorColor: {r: 1, g: 1, b: 1, a: 1}
     clips: []
+  audioTracks:
+  - header:
+      id: 837262c6129147aa9703e96f177db1c7
+      displayName: "\u97F3\u9891\u8F68\u9053 1"
+      muted: 0
+      editorLocked: 0
+      editorColor: {r: 1, g: 1, b: 1, a: 1}
+    clips:
+    - id: e3fe176fffba49009ad700e785dab21d
+      audioClip: {fileID: 0}
+      startFrame: 2
+      durationFrames: 9
+      volume: 1
+      pitch: 1
   eventTracks:
   - header:
       id: 7e500a0c029c4997b06b9d20655ab6cb

@@ -130,7 +130,6 @@ namespace RPG.SkillSystem.Editor
         public GameObject Prefab { get; }
         public int StartFrame { get; }
         public int DurationFrames { get; }
-        public string BindingPath { get; }
         public Vector3 LocalPosition { get; }
         public Vector3 LocalEulerAngles { get; }
         public Vector3 LocalScale { get; }
@@ -140,19 +139,41 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 创建并初始化 VfxEditRequest。
         /// </summary>
-        public VfxEditRequest(GameObject prefab, int startFrame, int durationFrames, string bindingPath,
+        public VfxEditRequest(GameObject prefab, int startFrame, int durationFrames,
             Vector3 localPosition, Vector3 localEulerAngles, Vector3 localScale,
             VfxFollowMode followMode, VfxStopMode stopMode)
         {
             Prefab = prefab;
             StartFrame = startFrame;
             DurationFrames = durationFrames;
-            BindingPath = bindingPath;
             LocalPosition = localPosition;
             LocalEulerAngles = localEulerAngles;
             LocalScale = localScale;
             FollowMode = followMode;
             StopMode = stopMode;
+        }
+    }
+
+    /// <summary>
+    /// 描述攻击检测片段 Inspector 提交的一次完整字段编辑请求。
+    /// </summary>
+    internal readonly struct AttackDetectionEditRequest : IItemEditRequest
+    {
+        public int StartFrame { get; }
+        public int DurationFrames { get; }
+        public int SampleIntervalFrames { get; }
+        public AttackDetectionDataBase DetectionData { get; }
+
+        /// <summary>
+        /// 创建攻击检测编辑请求，并复制 managed reference 数据以隔离 Inspector 临时状态。
+        /// </summary>
+        public AttackDetectionEditRequest(int startFrame, int durationFrames,
+            int sampleIntervalFrames, AttackDetectionDataBase detectionData)
+        {
+            StartFrame = startFrame;
+            DurationFrames = durationFrames;
+            SampleIntervalFrames = sampleIntervalFrames;
+            DetectionData = AttackDetectionDataBase.Copy(detectionData);
         }
     }
 

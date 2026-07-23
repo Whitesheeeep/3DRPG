@@ -319,6 +319,19 @@ namespace RPG.SkillSystem.Editor
         }
 
         /// <summary>
+        /// 提交指定轨道的最终显示名称，供标题栏内联编辑在选择变化时仍按稳定 GUID 定位目标。
+        /// </summary>
+        /// <param name="track">包含稳定轨道 GUID 和当前公共状态的只读投影。</param>
+        /// <param name="displayName">回车或失焦后提交的最终名称。</param>
+        public void RenameTrack(TrackViewData track, string displayName)
+        {
+            if (track == null) return;
+            TrackModule module = modules.Get(track);
+            Report(document.EditTrack(module.Document, track.Id,
+                displayName, track.Muted, track.Locked));
+        }
+
+        /// <summary>
         /// 在指定轨道末尾的可用帧创建默认内容项。
         /// </summary>
         public void AddItem(TrackViewData track)
