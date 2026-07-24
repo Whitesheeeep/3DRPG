@@ -209,5 +209,95 @@ namespace RPG.SkillSystem.Editor
 
         #endregion
     }
+
+    /// <summary>
+    /// 管理时间轴 Item 的右键菜单，并把播放头吸附及相邻轨道移动转换为 ViewModel 语义命令。
+    /// </summary>
+    internal sealed class ItemContextMenuController : IDisposable
+    {
+        #region 依赖与注册状态
+
+        private readonly EditorViewModel viewModel;
+        private readonly Dictionary<VisualElement, ContextualMenuManipulator> manipulators = new();
+
+        #endregion
+
+        #region 生命周期与注册
+
+        /// <summary>
+        /// 创建只负责 Item 右键交互的控制器，不持有或修改任何技能配置数据。
+        /// </summary>
+        /// <param name="viewModel">接收选择与移动语义命令的编辑器 ViewModel。</param>
+        public ItemContextMenuController(EditorViewModel viewModel) =>
+            this.viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+
+        /// <summary>
+        /// 为一个动态 Item View 注册播放头吸附与相邻轨道移动菜单。
+        /// </summary>
+        /// <param name="itemView">需要响应右键菜单的动态 Item View。</param>
+        public void Register(ItemView itemView)
+        {
+            if (itemView == null) throw new ArgumentNullException(nameof(itemView));
+            VisualElement element = itemView.Element;
+            if (manipulators.ContainsKey(element)) return;
+            ContextualMenuManipulator manipulator = new(evt => PopulateMenu(evt, itemView));
+            manipulators.Add(element, manipulator);
+            element.AddManipulator(manipulator);
+        }
+
+        /// <summary>
+        /// 解除全部动态 Item 的菜单操纵器，供时间轴重建时安全复用控制器。
+        /// </summary>
+        public void Reset()
+        {
+            foreach (KeyValuePair<VisualElement, ContextualMenuManipulator> pair in manipulators)
+                pair.Key.RemoveManipulator(pair.Value);
+            manipulators.Clear();
+        }
+
+        /// <summary>
+        /// 释放全部上下文菜单注册。
+        /// </summary>
+        public void Dispose() => Reset();
+
+        #endregion
+
+        #region 菜单构建
+
+        // 右键打开时冻结播放头帧并选中目标 Item，避免播放期间菜单落点继续变化。
+        private void PopulateMenu(ContextualMenuPopulateEvent evt, ItemView itemView)
+        {
+            int targetFrame = viewModel.CurrentFrame;
+            viewModel.SelectItem(itemView.Track, itemView.Item);
+            DropdownMenuAction.Status status = itemView.Track.Locked || itemView.Item.StartFrame == targetFrame
+                ? DropdownMenuAction.Status.Disabled
+                : DropdownMenuAction.Status.Normal;
+            evt.menu.AppendAction($"吸附到播放头（帧 {targetFrame}）",
+                _ => viewModel.MoveItem(itemView.Track, itemView.Item, targetFrame), status);
+            evt.menu.AppendSeparator();
+            AppendTrackMoveAction(evt, itemView, -1, "上方");
+            AppendTrackMoveAction(evt, itemView, 1, "下方");
+        }
+
+        // 菜单打开时冻结相邻目标轨道；禁用状态使用 Document 的只读校验，执行时仍会再次权威校验。
+        private void AppendTrackMoveAction(ContextualMenuPopulateEvent evt, ItemView itemView,
+            int offset, string direction)
+        {
+            TrackViewData targetTrack = viewModel.GetAdjacentTrack(itemView.Track, offset);
+            string label = targetTrack == null
+                ? $"移动到{direction}轨道"
+                : $"移动到{direction}轨道（{targetTrack.DisplayName}）";
+            EditResult availability = targetTrack == null
+                ? EditResult.Failure("不存在可用的相邻轨道。")
+                : viewModel.CanMoveItemToTrack(itemView.Track, itemView.Item, targetTrack);
+            DropdownMenuAction.Status status = availability.Succeeded
+                ? DropdownMenuAction.Status.Normal
+                : DropdownMenuAction.Status.Disabled;
+            evt.menu.AppendAction(label,
+                _ => viewModel.MoveItemToTrack(itemView.Track, itemView.Item, targetTrack), status);
+        }
+
+        #endregion
+    }
 }
 #endif

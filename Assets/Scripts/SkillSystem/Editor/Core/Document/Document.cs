@@ -286,7 +286,7 @@ namespace RPG.SkillSystem.Editor
             int start = GetItemStart(handler, item);
             int duration = GetItemDuration(handler, item);
             int proposed = handler.SupportsResize ? start + duration : start + 1;
-            if (handler.RequiresExclusiveIntervals && !CanPlaceInterval(handler, track, itemId, proposed, duration))
+            if (!CanPlaceInterval(handler, track, itemId, proposed, duration))
                 proposed = FindAvailableStartFrame(handler, track);
 
             Mutate("复制技能时间轴内容", () =>
@@ -314,7 +314,7 @@ namespace RPG.SkillSystem.Editor
                     out SerializedProperty item, out _)) return EditResult.Failure("时间轴内容不存在。");
             startFrame = Mathf.Max(0, startFrame);
             int duration = GetItemDuration(handler, item);
-            if (handler.RequiresExclusiveIntervals && !CanPlaceInterval(handler, track, itemId, startFrame, duration))
+            if (!CanPlaceInterval(handler, track, itemId, startFrame, duration))
                 return EditResult.Failure("目标位置与同轨内容重叠。");
 
             Mutate("移动技能时间轴内容", () =>
@@ -322,6 +322,46 @@ namespace RPG.SkillSystem.Editor
                 SetItemFrame(handler, item, startFrame, duration);
                 ExpandDurationForItem(handler, item);
                 SortItems(handler, items);
+            }, itemId, false);
+            return EditResult.Success();
+        }
+
+        /// <summary>
+        /// 只读检查一个 Item 能否保持原帧区间移动到同模块的另一条轨道。
+        /// </summary>
+        /// <param name="handler">源轨道与目标轨道共同使用的类型化数据处理器。</param>
+        /// <param name="sourceTrackId">源轨道头中的稳定 GUID。</param>
+        /// <param name="targetTrackId">目标轨道头中的稳定 GUID。</param>
+        /// <param name="itemId">需要跨轨道移动的稳定 Item GUID。</param>
+        /// <returns>可以移动时返回成功，否则携带锁定、缺失或区间冲突原因。</returns>
+        public EditResult CanMoveItemToTrack(ITrackDocumentHandler handler, string sourceTrackId,
+            string targetTrackId, string itemId) =>
+            ResolveItemTrackMove(handler, sourceTrackId, targetTrackId, itemId,
+                out _, out _, out _, out _, out _, out _);
+
+        /// <summary>
+        /// 在同一模块的两条轨道之间移动 Item，并保持 GUID、帧区间及类型专用数据不变。
+        /// </summary>
+        /// <param name="handler">源轨道与目标轨道共同使用的类型化数据处理器。</param>
+        /// <param name="sourceTrackId">源轨道头中的稳定 GUID。</param>
+        /// <param name="targetTrackId">目标轨道头中的稳定 GUID。</param>
+        /// <param name="itemId">需要跨轨道移动的稳定 Item GUID。</param>
+        /// <returns>事务提交成功或未修改资产的失败原因。</returns>
+        public EditResult MoveItemToTrack(ITrackDocumentHandler handler, string sourceTrackId,
+            string targetTrackId, string itemId)
+        {
+            EditResult validation = ResolveItemTrackMove(handler, sourceTrackId, targetTrackId, itemId,
+                out SerializedProperty sourceItems, out SerializedProperty sourceItem, out int sourceIndex,
+                out SerializedProperty targetItems, out int startFrame, out int durationFrames);
+            if (!validation.Succeeded) return validation;
+
+            Mutate("跨轨道移动技能时间轴内容", () =>
+            {
+                SerializedProperty destination = AppendItem(
+                    handler, targetItems, itemId, startFrame, durationFrames);
+                handler.CopySpecificFields(sourceItem, destination);
+                sourceItems.DeleteArrayElementAtIndex(sourceIndex);
+                SortItems(handler, targetItems);
             }, itemId, false);
             return EditResult.Success();
         }
@@ -363,11 +403,6 @@ namespace RPG.SkillSystem.Editor
             return handler.EditItem(this, trackId, itemId, request);
         }
         /// <summary>
-        /// 校验当前配置并返回全部数据问题。
-        /// </summary>
-        public IReadOnlyList<string> Validate() => ContentValidator.Validate(CurrentConfig);
-
-        /// <summary>
         /// 执行动画和特效片段共享的区间校验与资产修改流程。
         /// </summary>
         /// <param name="editSpecific">用于编辑特定字段的回调函数。</param>
@@ -397,6 +432,71 @@ namespace RPG.SkillSystem.Editor
         #region Serialization and validation helpers
 
         private bool HasConfig => CurrentConfig != null && serializedObject != null;
+
+        // 在一次 SerializedObject.Update 后解析跨轨道移动所需属性，确保只读查询与写入使用同一套锁定和半开区间规则。
+        private EditResult ResolveItemTrackMove(ITrackDocumentHandler handler, string sourceTrackId,
+            string targetTrackId, string itemId, out SerializedProperty sourceItems,
+            out SerializedProperty sourceItem, out int sourceIndex, out SerializedProperty targetItems,
+            out int startFrame, out int durationFrames)
+        {
+            sourceItems = null;
+            sourceItem = null;
+            sourceIndex = -1;
+            targetItems = null;
+            startFrame = 0;
+            durationFrames = 1;
+
+            if (!HasConfig) return EditResult.Failure("请先选择 SkillConfig。");
+            if (handler == null) return EditResult.Failure("轨道数据处理器不存在。");
+            if (string.IsNullOrEmpty(sourceTrackId) || string.IsNullOrEmpty(targetTrackId) ||
+                string.IsNullOrEmpty(itemId))
+                return EditResult.Failure("跨轨道移动缺少稳定 GUID。");
+            if (sourceTrackId == targetTrackId)
+                return EditResult.Failure("源轨道与目标轨道相同。");
+
+            serializedObject.Update();
+            SerializedProperty tracks = GetTracksProperty(handler);
+            SerializedProperty sourceTrack = null;
+            SerializedProperty targetTrack = null;
+            for (int trackIndex = 0; trackIndex < tracks.arraySize; trackIndex++)
+            {
+                SerializedProperty candidate = tracks.GetArrayElementAtIndex(trackIndex);
+                string candidateId = candidate.FindPropertyRelative(DocumentFieldNames.Header)
+                    .FindPropertyRelative(DocumentFieldNames.Id).stringValue;
+                if (candidateId == sourceTrackId) sourceTrack = candidate;
+                if (candidateId == targetTrackId) targetTrack = candidate;
+            }
+
+            if (sourceTrack == null) return EditResult.Failure("源轨道不存在。");
+            if (targetTrack == null) return EditResult.Failure("目标轨道不存在。");
+            if (IsTrackLocked(sourceTrack)) return EditResult.Failure("源轨道已锁定。");
+            if (IsTrackLocked(targetTrack)) return EditResult.Failure("目标轨道已锁定。");
+
+            sourceItems = GetItemsProperty(handler, sourceTrack);
+            for (int itemIndex = 0; itemIndex < sourceItems.arraySize; itemIndex++)
+            {
+                SerializedProperty candidate = sourceItems.GetArrayElementAtIndex(itemIndex);
+                if (candidate.FindPropertyRelative(DocumentFieldNames.Id).stringValue != itemId) continue;
+                sourceItem = candidate;
+                sourceIndex = itemIndex;
+                break;
+            }
+
+            if (sourceItem == null) return EditResult.Failure("时间轴内容不存在。");
+            startFrame = GetItemStart(handler, sourceItem);
+            durationFrames = GetItemDuration(handler, sourceItem);
+            targetItems = GetItemsProperty(handler, targetTrack);
+            for (int itemIndex = 0; itemIndex < targetItems.arraySize; itemIndex++)
+            {
+                SerializedProperty candidate = targetItems.GetArrayElementAtIndex(itemIndex);
+                if (candidate.FindPropertyRelative(DocumentFieldNames.Id).stringValue == itemId)
+                    return EditResult.Failure("目标轨道已存在相同 GUID 的内容。");
+            }
+
+            return CanPlaceInterval(handler, targetTrack, string.Empty, startFrame, durationFrames)
+                ? EditResult.Success()
+                : EditResult.Failure("目标轨道的对应帧区间已有内容。");
+        }
 
         /// <summary>
         /// 执行一次带 Undo、Dirty 标记和内容变更通知的资产修改。
@@ -608,7 +708,7 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 按起始帧稳定排序轨道内容。
         /// </summary>
-        // 按起始帧稳定排序，不改变相同帧事件 Marker 的相对顺序。
+        // 按起始帧稳定排序；即时区间校验已经保证同轨内容不会落在相同帧区间。
         internal static void SortItems(ITrackDocumentHandler handler, SerializedProperty items)
         {
             for (int i = 1; i < items.arraySize; i++)
@@ -706,14 +806,14 @@ namespace RPG.SkillSystem.Editor
         private static bool ValidateTransformedIntervals(List<FrameTransform> transforms, out string error)
         {
             foreach (IGrouping<(ITrackDocumentHandler Handler, int TrackIndex), FrameTransform> group in
-                     transforms.Where(x => x.Handler.RequiresExclusiveIntervals).GroupBy(x => (x.Handler, x.TrackIndex)))
+                     transforms.GroupBy(x => (x.Handler, x.TrackIndex)))
             {
                 FrameTransform[] ordered = group.OrderBy(x => x.StartFrame).ToArray();
                 for (int i = 1; i < ordered.Length; i++)
                 {
                     if (ordered[i].StartFrame < ordered[i - 1].StartFrame + ordered[i - 1].DurationFrames)
                     {
-                        error = "修改 FPS 会导致同轨 Clip 重叠，操作已取消。";
+                        error = "修改 FPS 会导致同轨内容重叠，操作已取消。";
                         return false;
                     }
                 }

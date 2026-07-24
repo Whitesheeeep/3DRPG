@@ -16,19 +16,17 @@ namespace RPG.SkillSystem.Editor
         public string DurationPropertyName { get; }
         public string DefaultTrackNamePrefix { get; }
         public bool SupportsResize => !string.IsNullOrEmpty(DurationPropertyName);
-        public bool RequiresExclusiveIntervals { get; }
 
         // 保存不可变序列化结构，不缓存会在 Undo 或 Apply 后失效的 SerializedProperty。
         protected TrackDocumentHandler(string tracksPropertyName, string itemsPropertyName,
             string startFramePropertyName, string durationPropertyName,
-            string defaultTrackNamePrefix, bool requiresExclusiveIntervals)
+            string defaultTrackNamePrefix)
         {
             TracksPropertyName = tracksPropertyName;
             ItemsPropertyName = itemsPropertyName;
             StartFramePropertyName = startFramePropertyName;
             DurationPropertyName = durationPropertyName ?? string.Empty;
             DefaultTrackNamePrefix = defaultTrackNamePrefix;
-            RequiresExclusiveIntervals = requiresExclusiveIntervals;
         }
 
         /// <summary>
@@ -65,11 +63,11 @@ namespace RPG.SkillSystem.Editor
             IItemEditRequest request);
 
         /// <summary>
-        /// 默认无需修复类型专用复制字段；包含 managed reference 的 Handler 可覆盖此钩子。
+        /// 复制一种 Item 的全部类型专用字段；公共 GUID 与帧区间由 Document 统一复制。
         /// </summary>
-        public virtual void CopySpecificFields(SerializedProperty source, SerializedProperty destination)
-        {
-        }
+        /// <param name="source">保持不变的权威源 Item。</param>
+        /// <param name="destination">已经初始化公共字段的目标 Item。</param>
+        public abstract void CopySpecificFields(SerializedProperty source, SerializedProperty destination);
 
         /// <summary>
         /// 默认没有额外帧字段需要重采样；具体 Handler 可覆盖此钩子。
@@ -93,7 +91,7 @@ namespace RPG.SkillSystem.Editor
         /// </summary>
         public AnimationDocumentHandler()
             : base(DocumentFieldNames.AnimationTracks, DocumentFieldNames.Clips, DocumentFieldNames.StartFrame,
-                DocumentFieldNames.DurationFrames, "动画轨道", true)
+                DocumentFieldNames.DurationFrames, "动画轨道")
         {
         }
 
@@ -170,6 +168,21 @@ namespace RPG.SkillSystem.Editor
                 });
         }
 
+        /// <summary>
+        /// 复制动画素材、源偏移和播放速度，供复制与跨轨道移动共用。
+        /// </summary>
+        /// <param name="source">保持不变的源动画 Clip。</param>
+        /// <param name="destination">接收动画专用字段的目标 Clip。</param>
+        public override void CopySpecificFields(SerializedProperty source, SerializedProperty destination)
+        {
+            destination.FindPropertyRelative(DocumentFieldNames.AnimationClip).objectReferenceValue =
+                source.FindPropertyRelative(DocumentFieldNames.AnimationClip).objectReferenceValue;
+            destination.FindPropertyRelative(DocumentFieldNames.SourceStartFrame).intValue =
+                source.FindPropertyRelative(DocumentFieldNames.SourceStartFrame).intValue;
+            destination.FindPropertyRelative(DocumentFieldNames.PlaybackSpeed).floatValue =
+                source.FindPropertyRelative(DocumentFieldNames.PlaybackSpeed).floatValue;
+        }
+
         // 初始化动画 Clip 的素材、源偏移和播放速度默认值。
         protected override void InitializeSpecificFields(SerializedProperty item)
         {
@@ -189,7 +202,7 @@ namespace RPG.SkillSystem.Editor
         /// </summary>
         public AttackDetectionDocumentHandler()
             : base(DocumentFieldNames.AttackDetectionTracks, DocumentFieldNames.Clips,
-                DocumentFieldNames.StartFrame, DocumentFieldNames.DurationFrames, "攻击检测轨道", true)
+                DocumentFieldNames.StartFrame, DocumentFieldNames.DurationFrames, "攻击检测轨道")
         {
         }
 
@@ -233,6 +246,8 @@ namespace RPG.SkillSystem.Editor
         /// <param name="destination">需要写入独立 managed reference 的新 Item。</param>
         public override void CopySpecificFields(SerializedProperty source, SerializedProperty destination)
         {
+            destination.FindPropertyRelative(DocumentFieldNames.SampleIntervalFrames).intValue =
+                source.FindPropertyRelative(DocumentFieldNames.SampleIntervalFrames).intValue;
             AttackDetectionDataBase sourceData = source
                 .FindPropertyRelative(DocumentFieldNames.DetectionData).managedReferenceValue
                 as AttackDetectionDataBase;
@@ -273,7 +288,7 @@ namespace RPG.SkillSystem.Editor
         /// </summary>
         public VfxDocumentHandler()
             : base(DocumentFieldNames.VfxTracks, DocumentFieldNames.Clips, DocumentFieldNames.StartFrame,
-                DocumentFieldNames.DurationFrames, "特效轨道", true)
+                DocumentFieldNames.DurationFrames, "特效轨道")
         {
         }
 
@@ -351,6 +366,27 @@ namespace RPG.SkillSystem.Editor
                 });
         }
 
+        /// <summary>
+        /// 复制特效 Prefab、局部变换、跟随和结束策略，供复制与跨轨道移动共用。
+        /// </summary>
+        /// <param name="source">保持不变的源特效 Clip。</param>
+        /// <param name="destination">接收特效专用字段的目标 Clip。</param>
+        public override void CopySpecificFields(SerializedProperty source, SerializedProperty destination)
+        {
+            destination.FindPropertyRelative(DocumentFieldNames.Prefab).objectReferenceValue =
+                source.FindPropertyRelative(DocumentFieldNames.Prefab).objectReferenceValue;
+            destination.FindPropertyRelative(DocumentFieldNames.LocalPosition).vector3Value =
+                source.FindPropertyRelative(DocumentFieldNames.LocalPosition).vector3Value;
+            destination.FindPropertyRelative(DocumentFieldNames.LocalEulerAngles).vector3Value =
+                source.FindPropertyRelative(DocumentFieldNames.LocalEulerAngles).vector3Value;
+            destination.FindPropertyRelative(DocumentFieldNames.LocalScale).vector3Value =
+                source.FindPropertyRelative(DocumentFieldNames.LocalScale).vector3Value;
+            destination.FindPropertyRelative(DocumentFieldNames.FollowMode).enumValueIndex =
+                source.FindPropertyRelative(DocumentFieldNames.FollowMode).enumValueIndex;
+            destination.FindPropertyRelative(DocumentFieldNames.StopMode).enumValueIndex =
+                source.FindPropertyRelative(DocumentFieldNames.StopMode).enumValueIndex;
+        }
+
         // 初始化特效 Clip 的 Prefab、局部变换和结束策略默认值。
         protected override void InitializeSpecificFields(SerializedProperty item)
         {
@@ -373,7 +409,7 @@ namespace RPG.SkillSystem.Editor
         /// </summary>
         public AudioDocumentHandler()
             : base(DocumentFieldNames.AudioTracks, DocumentFieldNames.Clips, DocumentFieldNames.StartFrame,
-                DocumentFieldNames.DurationFrames, "音频轨道", true)
+                DocumentFieldNames.DurationFrames, "音频轨道")
         {
         }
 
@@ -468,6 +504,21 @@ namespace RPG.SkillSystem.Editor
                 });
         }
 
+        /// <summary>
+        /// 复制音频素材、音量和 Pitch，供复制与跨轨道移动共用。
+        /// </summary>
+        /// <param name="source">保持不变的源音频 Clip。</param>
+        /// <param name="destination">接收音频专用字段的目标 Clip。</param>
+        public override void CopySpecificFields(SerializedProperty source, SerializedProperty destination)
+        {
+            destination.FindPropertyRelative(DocumentFieldNames.AudioClip).objectReferenceValue =
+                source.FindPropertyRelative(DocumentFieldNames.AudioClip).objectReferenceValue;
+            destination.FindPropertyRelative(DocumentFieldNames.Volume).floatValue =
+                source.FindPropertyRelative(DocumentFieldNames.Volume).floatValue;
+            destination.FindPropertyRelative(DocumentFieldNames.Pitch).floatValue =
+                source.FindPropertyRelative(DocumentFieldNames.Pitch).floatValue;
+        }
+
         // 初始化 Audio Clip 的素材、音量和 Pitch 默认值。
         protected override void InitializeSpecificFields(SerializedProperty item)
         {
@@ -486,7 +537,7 @@ namespace RPG.SkillSystem.Editor
         /// </summary>
         public EventDocumentHandler()
             : base(DocumentFieldNames.EventTracks, DocumentFieldNames.Markers, DocumentFieldNames.Frame,
-                string.Empty, "事件轨道", false)
+                string.Empty, "事件轨道")
         {
         }
 
@@ -511,12 +562,16 @@ namespace RPG.SkillSystem.Editor
         {
             if (request is not EventEditRequest marker)
                 return EditResult.Failure("事件轨道收到不匹配的编辑请求。");
-            if (!document.TryFindItem(this, trackId, itemId, out _, out SerializedProperty items,
+            if (!document.TryFindItem(this, trackId, itemId, out SerializedProperty track,
+                    out SerializedProperty items,
                     out SerializedProperty item, out _))
                 return EditResult.Failure("事件 Marker 不存在。");
+            int targetFrame = Mathf.Max(0, marker.Frame);
+            if (!document.CanPlaceInterval(this, track, itemId, targetFrame, 1))
+                return EditResult.Failure("目标帧已有其他 Event Marker。");
             document.Mutate("修改事件 Marker", () =>
             {
-                Document.SetItemFrame(this, item, Mathf.Max(0, marker.Frame), 1);
+                Document.SetItemFrame(this, item, targetFrame, 1);
                 item.FindPropertyRelative(DocumentFieldNames.EventTypeName).stringValue = marker.EventTypeName ?? string.Empty;
                 item.FindPropertyRelative(DocumentFieldNames.DisplayName).stringValue = string.IsNullOrWhiteSpace(marker.DisplayName)
                     ? "事件"
@@ -526,6 +581,21 @@ namespace RPG.SkillSystem.Editor
                 Document.SortItems(this, items);
             }, itemId, false);
             return EditResult.Success();
+        }
+
+        /// <summary>
+        /// 复制事件类型名、显示名和参数文本，供复制与跨轨道移动共用。
+        /// </summary>
+        /// <param name="source">保持不变的源事件 Marker。</param>
+        /// <param name="destination">接收事件专用字段的目标 Marker。</param>
+        public override void CopySpecificFields(SerializedProperty source, SerializedProperty destination)
+        {
+            destination.FindPropertyRelative(DocumentFieldNames.EventTypeName).stringValue =
+                source.FindPropertyRelative(DocumentFieldNames.EventTypeName).stringValue;
+            destination.FindPropertyRelative(DocumentFieldNames.DisplayName).stringValue =
+                source.FindPropertyRelative(DocumentFieldNames.DisplayName).stringValue;
+            destination.FindPropertyRelative(DocumentFieldNames.ParameterText).stringValue =
+                source.FindPropertyRelative(DocumentFieldNames.ParameterText).stringValue;
         }
 
         // 初始化事件 Marker 的类型名、显示名和参数文本默认值。

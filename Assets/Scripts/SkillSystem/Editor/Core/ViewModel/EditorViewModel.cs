@@ -113,12 +113,11 @@ namespace RPG.SkillSystem.Editor
         private void OnDocumentContentChanged()
         {
             RebuildTimelineFromModel();
-            if (!SelectionStillExists()) selection = SelectionState.None;
+            RestoreSelectionAfterTimelineRebuild();
             playback.ClampToDuration();
             TimelineChanged?.Invoke();
             SelectionChanged?.Invoke();
             InspectorChanged?.Invoke();
-            SetStatus(document.Validate().FirstOrDefault() ?? "配置有效。");
         }
 
         // 将播放头变化转换为 ViewModel 的细粒度通知。
@@ -151,6 +150,26 @@ namespace RPG.SkillSystem.Editor
         // Undo、重排或投影重建后，仅当模块仍能找到目标时保留选择。
         private bool SelectionStillExists() =>
             selection is NoneSelection || FindSelectedViewData() != null;
+
+        // 跨轨道移动或其 Undo/Redo 会改变 TrackId；ItemId 全局唯一时可在同一模块内恢复实际归属轨道。
+        private void RestoreSelectionAfterTimelineRebuild()
+        {
+            if (SelectionStillExists()) return;
+            if (selection is not ItemSelection itemSelection)
+            {
+                selection = SelectionState.None;
+                return;
+            }
+
+            TrackModule module = modules.Get(selection);
+            GroupViewData group = groups.FirstOrDefault(candidate =>
+                candidate.GetType() == module.Projection.GroupType);
+            TrackViewData actualTrack = group?.Tracks.FirstOrDefault(track =>
+                track.Items.Any(item => item.Id == itemSelection.ItemId));
+            selection = actualTrack == null
+                ? SelectionState.None
+                : module.Projection.CreateItemSelection(actualTrack.Id, itemSelection.ItemId);
+        }
 
         #endregion
 
@@ -388,6 +407,78 @@ namespace RPG.SkillSystem.Editor
         }
 
         /// <summary>
+        /// 获取当前分组中紧邻指定轨道的上一条或下一条同类轨道。
+        /// </summary>
+        /// <param name="sourceTrack">作为相邻查询起点的轨道投影。</param>
+        /// <param name="offset">仅接受 -1 表示上方，或 1 表示下方。</param>
+        /// <returns>存在相邻轨道时返回其投影，否则返回空。</returns>
+        public TrackViewData GetAdjacentTrack(TrackViewData sourceTrack, int offset)
+        {
+            if (sourceTrack == null || (offset != -1 && offset != 1)) return null;
+            TrackModule module = modules.Get(sourceTrack);
+            GroupViewData group = groups.FirstOrDefault(candidate =>
+                candidate.GetType() == module.Projection.GroupType);
+            if (group == null) return null;
+            int sourceIndex = -1;
+            for (int index = 0; index < group.Tracks.Count; index++)
+            {
+                TrackViewData candidate = group.Tracks[index];
+                if (candidate.GetType() != sourceTrack.GetType() || candidate.Id != sourceTrack.Id) continue;
+                sourceIndex = index;
+                break;
+            }
+
+            int targetIndex = sourceIndex + offset;
+            return sourceIndex >= 0 && targetIndex >= 0 && targetIndex < group.Tracks.Count
+                ? group.Tracks[targetIndex]
+                : null;
+        }
+
+        /// <summary>
+        /// 只读检查 Item 能否保持原帧区间移动到指定同模块轨道。
+        /// </summary>
+        /// <param name="sourceTrack">当前持有 Item 的源轨道。</param>
+        /// <param name="item">需要移动的 Item。</param>
+        /// <param name="targetTrack">相邻的目标轨道。</param>
+        /// <returns>可移动时返回成功，否则携带具体禁用原因。</returns>
+        public EditResult CanMoveItemToTrack(TrackViewData sourceTrack, ItemViewData item,
+            TrackViewData targetTrack)
+        {
+            if (sourceTrack == null || item == null || targetTrack == null)
+                return EditResult.Failure("不存在可用的相邻轨道。");
+            TrackModule sourceModule = modules.Get(sourceTrack);
+            if (!ReferenceEquals(sourceModule, modules.Get(item)) ||
+                !ReferenceEquals(sourceModule, modules.Get(targetTrack)))
+                return EditResult.Failure("只能在相同类型的轨道之间移动内容。");
+            return document.CanMoveItemToTrack(
+                sourceModule.Document, sourceTrack.Id, targetTrack.Id, item.Id);
+        }
+
+        /// <summary>
+        /// 把 Item 保持原帧区间移动到指定同模块轨道，并报告事务结果。
+        /// </summary>
+        /// <param name="sourceTrack">当前持有 Item 的源轨道。</param>
+        /// <param name="item">需要移动的 Item。</param>
+        /// <param name="targetTrack">相邻的目标轨道。</param>
+        /// <returns>跨轨道事务的成功状态或失败原因。</returns>
+        public EditResult MoveItemToTrack(TrackViewData sourceTrack, ItemViewData item,
+            TrackViewData targetTrack)
+        {
+            EditResult availability = CanMoveItemToTrack(sourceTrack, item, targetTrack);
+            if (!availability.Succeeded)
+            {
+                Report(availability);
+                return availability;
+            }
+
+            TrackModule module = modules.Get(sourceTrack);
+            EditResult result = document.MoveItemToTrack(
+                module.Document, sourceTrack.Id, targetTrack.Id, item.Id);
+            Report(result);
+            return result;
+        }
+
+        /// <summary>
         /// 校验并提交指定片段的新半开帧区间。
         /// </summary>
         public EditResult ResizeItem(TrackViewData track, ItemViewData item,
@@ -407,7 +498,9 @@ namespace RPG.SkillSystem.Editor
         {
             if (item == null || selection is not ItemSelection || selection.ItemId != item.Id) return;
             TrackModule module = modules.Get(item);
-            Report(document.EditItem(module.Document, selection.TrackId, item.Id, request));
+            EditResult result = document.EditItem(module.Document, selection.TrackId, item.Id, request);
+            Report(result);
+            if (!result.Succeeded) InspectorChanged?.Invoke();
         }
 
         #endregion

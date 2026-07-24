@@ -14,12 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: e926723cb93e479c881c301347beda4b
   frameRate: 30
-  durationFrames: 277
+  durationFrames: 45
   animationTracks:
   - header:
       id: 976cdc50707d4f4d9ada7c830639ab27
-      displayName: "\u52A8\u753B\u8F68\u9053 2"
       muted: 0
+      displayName: "\u52A8\u753B\u8F68\u9053 2"
       editorLocked: 0
       editorColor: {r: 1, g: 1, b: 1, a: 1}
     clips:
@@ -37,29 +37,61 @@ MonoBehaviour:
       playbackSpeed: 1
   - header:
       id: f4827efdb9314dea9e2869f5de5594ce
-      displayName: "\u52A8\u753B\u8F68\u9053 2"
       muted: 0
+      displayName: "\u52A8\u753B\u8F68\u9053 2"
       editorLocked: 0
       editorColor: {r: 1, g: 1, b: 1, a: 1}
     clips:
     - id: 727eba9f77e148d0953eebffd2273565
       animationClip: {fileID: 8993902097722301239, guid: 313e2a33bb58d4b4fa917fe3b5f06ffa, type: 3}
-      startFrame: 5
+      startFrame: 6
       durationFrames: 20
       sourceStartFrame: 0
       playbackSpeed: 1
-  attackDetectionTracks: []
+  attackDetectionTracks:
+  - header:
+      id: e71a5b89a45f4c3dad252bb5624d8a4c
+      muted: 0
+      displayName: "\u653B\u51FB"
+      editorLocked: 0
+      editorColor: {r: 1, g: 1, b: 1, a: 1}
+    clips:
+    - id: ec5656ac43c74a959547749ec713386e
+      startFrame: 0
+      durationFrames: 11
+      sampleIntervalFrames: 1
+      detectionData:
+        rid: 7552782297772851205
+    - id: 94b0783a1efb493689429f010923d8d2
+      startFrame: 11
+      durationFrames: 6
+      sampleIntervalFrames: 1
+      detectionData:
+        rid: 7552782297772851206
+  - header:
+      id: b534c6de57354449a0fab6328997076e
+      muted: 0
+      displayName: "\u653B\u51FB"
+      editorLocked: 0
+      editorColor: {r: 1, g: 1, b: 1, a: 1}
+    clips:
+    - id: 5528b1e78d8e4228a7d1bd658bd6e9c2
+      startFrame: 6
+      durationFrames: 15
+      sampleIntervalFrames: 1
+      detectionData:
+        rid: 7552782297772851207
   vfxTracks:
   - header:
       id: d217d68a8d44409d9a33d7812e52b89a
-      displayName: "\u7279\u6548\u8F68\u9053"
       muted: 0
+      displayName: "\u7279\u6548"
       editorLocked: 0
       editorColor: {r: 1, g: 1, b: 1, a: 1}
     clips:
     - id: 202f234d04b2451ea1440506b7407d5a
       prefab: {fileID: 0}
-      startFrame: 6
+      startFrame: 0
       durationFrames: 3
       localPosition: {x: 0, y: 0, z: 0}
       localEulerAngles: {x: 0, y: 0, z: 0}
@@ -68,8 +100,8 @@ MonoBehaviour:
       stopMode: 0
     - id: 48241619a4ef4558baa85c2def4b116a
       prefab: {fileID: 0}
-      startFrame: 11
-      durationFrames: 3
+      startFrame: 5
+      durationFrames: 17
       localPosition: {x: 0, y: 0, z: 0}
       localEulerAngles: {x: 0, y: 0, z: 0}
       localScale: {x: 1, y: 1, z: 1}
@@ -77,8 +109,8 @@ MonoBehaviour:
       stopMode: 0
     - id: 65d19fa0358d44ae8903c5346a98bb1d
       prefab: {fileID: 0}
-      startFrame: 20
-      durationFrames: 4
+      startFrame: 22
+      durationFrames: 14
       localPosition: {x: 0, y: 0, z: 0}
       localEulerAngles: {x: 0, y: 0, z: 0}
       localScale: {x: 1, y: 1, z: 1}
@@ -86,35 +118,70 @@ MonoBehaviour:
       stopMode: 0
   - header:
       id: dbca1aeef1514d76b5df4a8dd3176681
-      displayName: "\u7279\u6548\u8F68\u9053 2"
       muted: 0
+      displayName: "\u7279\u6548\u8F68\u9053 2"
       editorLocked: 0
       editorColor: {r: 1, g: 1, b: 1, a: 1}
     clips: []
   audioTracks:
   - header:
       id: 837262c6129147aa9703e96f177db1c7
-      displayName: "\u97F3\u9891\u8F68\u9053 1"
       muted: 0
+      displayName: "\u97F3\u9891\u8F68\u9053 1"
       editorLocked: 0
       editorColor: {r: 1, g: 1, b: 1, a: 1}
     clips:
     - id: e3fe176fffba49009ad700e785dab21d
       audioClip: {fileID: 0}
-      startFrame: 2
+      startFrame: 13
       durationFrames: 9
       volume: 1
       pitch: 1
   eventTracks:
   - header:
       id: 7e500a0c029c4997b06b9d20655ab6cb
-      displayName: "\u672A\u547D\u540D\u8F68\u9053"
       muted: 0
+      displayName: "\u4E8B\u4EF61"
       editorLocked: 0
       editorColor: {r: 1, g: 1, b: 1, a: 1}
     markers:
-    - id: f7f4c390d4064a2f9b40e1c3a2b5a26b
-      frame: 5
+    - id: d9cc3d9610f147e38a6304a51ea6857e
+      frame: 13
       eventTypeName: 
       displayName: "\u4E8B\u4EF6"
       parameterText: 
+    - id: b846ff60f60f41c6b81279fa25f7d126
+      frame: 20
+      eventTypeName: 
+      displayName: "\u4E8B\u4EF6"
+      parameterText: 
+  - header:
+      id: 87ae0e179eac4c85991e3b1b146be7ba
+      muted: 0
+      displayName: "\u4E8B\u4EF6\u8F68\u9053 2"
+      editorLocked: 0
+      editorColor: {r: 1, g: 1, b: 1, a: 1}
+    markers: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 7552782297772851205
+      type: {class: CapsuleAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        localPosition: {x: 0, y: 0, z: 0}
+        localEulerAngles: {x: 0, y: 0, z: 0}
+        radius: 0.5
+        height: 2
+        axis: 1
+    - rid: 7552782297772851206
+      type: {class: BoxAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        localPosition: {x: 0, y: 0, z: 0}
+        localEulerAngles: {x: 0, y: 0, z: 0}
+        size: {x: 1, y: 1, z: 1}
+    - rid: 7552782297772851207
+      type: {class: BoxAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        localPosition: {x: 0, y: 0, z: 0}
+        localEulerAngles: {x: 0, y: 0, z: 0}
+        size: {x: 1, y: 1, z: 1}

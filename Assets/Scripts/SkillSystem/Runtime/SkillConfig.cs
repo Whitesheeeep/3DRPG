@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -13,14 +14,14 @@ namespace RPG.SkillSystem
     [CreateAssetMenu(fileName = "SkillConfig", menuName = "RPG/Skill/Skill Config")]
     public sealed class SkillConfig : ScriptableObject
     {
-        [SerializeField] private string id = string.Empty;
-        [SerializeField, Min(1)] private int frameRate = 30;
-        [SerializeField, Min(1)] private int durationFrames = 1;
-        [SerializeField] private List<AnimationTrackConfig> animationTracks = new();
-        [SerializeField] private List<AttackDetectionTrackConfig> attackDetectionTracks = new();
-        [SerializeField] private List<VfxTrackConfig> vfxTracks = new();
-        [SerializeField] private List<AudioTrackConfig> audioTracks = new();
-        [SerializeField] private List<EventTrackConfig> eventTracks = new();
+        [SerializeField, ReadOnly, LabelText("技能 ID")] private string id = string.Empty;
+        [SerializeField, Min(1), LabelText("FPS")] private int frameRate = 30;
+        [SerializeField, Min(1), LabelText("总帧")] private int durationFrames = 1;
+        [SerializeField, LabelText("动画配置")] private List<AnimationTrackConfig> animationTracks = new();
+        [SerializeField, LabelText("攻击检测")] private List<AttackDetectionTrackConfig> attackDetectionTracks = new();
+        [SerializeField, LabelText("特效配置")] private List<VfxTrackConfig> vfxTracks = new();
+        [SerializeField, LabelText("音频配置")] private List<AudioTrackConfig> audioTracks = new();
+        [SerializeField, LabelText("事件配置")] private List<EventTrackConfig> eventTracks = new();
 
         public string Id => id;
         public int FrameRate => frameRate;
@@ -42,13 +43,13 @@ namespace RPG.SkillSystem
     [Serializable]
     public sealed class SkillTrackHeader
     {
-        [SerializeField] private string id = string.Empty;
-        [SerializeField] private bool muted;
+        [SerializeField, ReadOnly, LabelText("轨道 ID")] private string id = string.Empty;
+        [SerializeField, LabelText("静音")] private bool muted;
 
 #if UNITY_EDITOR
-        [SerializeField] private string displayName = "新轨道";
-        [SerializeField] private bool editorLocked;
-        [SerializeField] private Color editorColor;
+        [SerializeField, LabelText("轨道名称")] private string displayName = "新轨道";
+        [SerializeField, LabelText("锁定")] private bool editorLocked;
+        [SerializeField, LabelText("编辑颜色")] private Color editorColor;
 #endif
 
         public string Id => id;
@@ -135,7 +136,7 @@ namespace RPG.SkillSystem
     [Serializable]
     public sealed class AnimationSkillClipConfig
     {
-        [SerializeField] private string id = string.Empty;
+        [SerializeField, ReadOnly, LabelText("内容 ID")] private string id = string.Empty;
         [SerializeField] private AnimationClip animationClip;
         [SerializeField, Min(0)] private int startFrame;
         [SerializeField, Min(1)] private int durationFrames = 1;
@@ -176,7 +177,7 @@ namespace RPG.SkillSystem
     [Serializable]
     public sealed class VfxSkillClipConfig
     {
-        [SerializeField] private string id = string.Empty;
+        [SerializeField, ReadOnly, LabelText("内容 ID")] private string id = string.Empty;
         [SerializeField] private GameObject prefab;
         [SerializeField, Min(0)] private int startFrame;
         [SerializeField, Min(1)] private int durationFrames = 1;
@@ -474,7 +475,7 @@ namespace RPG.SkillSystem
     [Serializable]
     public sealed class AttackDetectionSkillClipConfig
     {
-        [SerializeField] private string id = string.Empty;
+        [SerializeField, ReadOnly, LabelText("内容 ID")] private string id = string.Empty;
         [SerializeField, Min(0)] private int startFrame;
         [SerializeField, Min(1)] private int durationFrames = 1;
         [SerializeField, Min(1)] private int sampleIntervalFrames = 1;
@@ -496,7 +497,7 @@ namespace RPG.SkillSystem
     [Serializable]
     public sealed class AudioSkillClipConfig
     {
-        [SerializeField] private string id = string.Empty;
+        [SerializeField, ReadOnly, LabelText("内容 ID")] private string id = string.Empty;
         [FormerlySerializedAs("clip"), SerializeField] private AudioClip audioClip;
         [SerializeField, Min(0)] private int startFrame;
         [SerializeField, Min(1)] private int durationFrames = 1;
@@ -518,7 +519,7 @@ namespace RPG.SkillSystem
     [Serializable]
     public sealed class SkillEventMarkerConfig
     {
-        [SerializeField] private string id = string.Empty;
+        [SerializeField, ReadOnly, LabelText("内容 ID")] private string id = string.Empty;
         [SerializeField, Min(0)] private int frame;
         [SerializeField] private string eventTypeName = string.Empty;
         [SerializeField] private string displayName = "事件";

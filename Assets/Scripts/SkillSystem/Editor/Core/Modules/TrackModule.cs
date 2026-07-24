@@ -57,7 +57,6 @@ namespace RPG.SkillSystem.Editor
         string DurationPropertyName { get; }
         string DefaultTrackNamePrefix { get; }
         bool SupportsResize { get; }
-        bool RequiresExclusiveIntervals { get; }
 
         /// <summary>
         /// 初始化一个新内容项的公共帧字段与类型专用字段。
@@ -82,10 +81,10 @@ namespace RPG.SkillSystem.Editor
         /// <param name="request">与当前 Handler 匹配的类型化编辑请求。</param>
         EditResult EditItem(Document document, string trackId, string itemId, IItemEditRequest request);
         /// <summary>
-        /// 在数组复制后修复类型专用深拷贝字段，避免 SerializeReference 数据共享。
+        /// 复制全部类型专用字段；实现必须保证 SerializeReference 等可变数据不会共享实例。
         /// </summary>
-        /// <param name="source">复制后的权威源 Item。</param>
-        /// <param name="destination">需要修复类型专用字段的新 Item。</param>
+        /// <param name="source">保持不变的权威源 Item。</param>
+        /// <param name="destination">已经初始化公共 GUID 与帧字段的目标 Item。</param>
         void CopySpecificFields(UnityEditor.SerializedProperty source,
             UnityEditor.SerializedProperty destination);
         /// <summary>

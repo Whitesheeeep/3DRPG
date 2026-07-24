@@ -23,6 +23,7 @@ namespace RPG.SkillSystem.Editor
         private readonly CoordinateMapper mapper;
         private readonly TrackModuleRegistry modules;
         private readonly ItemDragController dragController;
+        private readonly ItemContextMenuController contextMenuController;
         private readonly TrackDragController trackDragController;
 
         // 自己的数据
@@ -45,10 +46,19 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 创建三层轨道行集合视图。
         /// </summary>
+        /// <param name="headerRows">承载左侧分组与轨道标题行的容器。</param>
+        /// <param name="laneBackgroundRows">承载右侧 Lane 背景行的容器。</param>
+        /// <param name="laneItemRows">承载右侧 Item 行的容器。</param>
+        /// <param name="elementFactory">创建公共 UXML 元素的工厂。</param>
+        /// <param name="mapper">负责帧与时间轴像素坐标换算的映射器。</param>
+        /// <param name="modules">按具体 ViewData 解析轨道模块能力的注册表。</param>
+        /// <param name="dragController">管理 Item 本地拖拽草稿与最终提交的控制器。</param>
+        /// <param name="contextMenuController">管理 Item 右键吸附与相邻轨道移动菜单的控制器。</param>
+        /// <param name="trackDragController">管理 Project 素材拖入轨道的控制器。</param>
         public RowCollectionView(VisualElement headerRows, VisualElement laneBackgroundRows,
             VisualElement laneItemRows, ElementFactory elementFactory, CoordinateMapper mapper,
             TrackModuleRegistry modules, ItemDragController dragController,
-            TrackDragController trackDragController)
+            ItemContextMenuController contextMenuController, TrackDragController trackDragController)
         {
             this.headerRows = headerRows;
             this.laneBackgroundRows = laneBackgroundRows;
@@ -56,8 +66,11 @@ namespace RPG.SkillSystem.Editor
             this.elementFactory = elementFactory ?? throw new ArgumentNullException(nameof(elementFactory));
             this.mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
             this.modules = modules ?? throw new ArgumentNullException(nameof(modules));
-            this.dragController = dragController;
-            this.trackDragController = trackDragController;
+            this.dragController = dragController ?? throw new ArgumentNullException(nameof(dragController));
+            this.contextMenuController = contextMenuController ??
+                                         throw new ArgumentNullException(nameof(contextMenuController));
+            this.trackDragController = trackDragController ??
+                                       throw new ArgumentNullException(nameof(trackDragController));
         }
 
         /// <summary>
@@ -72,6 +85,7 @@ namespace RPG.SkillSystem.Editor
         {
             groups = nextGroups ?? Array.Empty<GroupViewData>();
             dragController.Reset();
+            contextMenuController.Reset();
             trackDragController.Reset();
             itemViews.Clear();
             rowSelections.Clear();
@@ -118,6 +132,7 @@ namespace RPG.SkillSystem.Editor
         public void Unbind()
         {
             dragController.Reset();
+            contextMenuController.Reset();
             trackDragController.Reset();
             headerRows.Clear();
             laneBackgroundRows.Clear();
@@ -206,6 +221,7 @@ namespace RPG.SkillSystem.Editor
                 itemRow.Add(itemView.Element);
                 itemViews.Add(itemView);
                 dragController.Register(itemView);
+                contextMenuController.Register(itemView);
             }
             laneItemRows.Add(itemRow);
         }

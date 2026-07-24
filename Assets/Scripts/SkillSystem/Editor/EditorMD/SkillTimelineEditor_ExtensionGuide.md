@@ -162,10 +162,11 @@ Unity Undo/Redo
 3. 增加 `ITrackDocumentHandler` 实现，声明：
    - 轨道列表、Item 列表、起始帧和持续帧字段。
    - 是否支持 Resize。
-   - 是否要求同轨区间互斥。
-   - 默认 Item 初始化、类型化创建和类型化编辑规则。
-4. 将 GUID、范围、排序和专用字段校验接入 `ContentValidator`。
-5. Handler 不缓存 `SerializedProperty`，每次操作都通过 TrackId/ItemId 重新查找。
+   - 默认 Item 初始化、类型化创建、类型化编辑和全部专用字段复制规则。
+4. 所有同轨 Item 均按半开区间执行互斥；Handler 必须在类型化创建或编辑写入前完成范围与专用字段校验，失败时返回 `EditResult`，不得部分写入。
+5. `CopySpecificFields()` 必须复制该类型全部专用字段，并对 `SerializeReference` 等可变引用执行深复制，以支持复制和同模块跨轨道移动。
+6. GUID 初始化与修复继续由 `EnsureStableIds()` 负责，不在内容变化后执行全量合法性扫描。
+7. Handler 不缓存 `SerializedProperty`，每次操作都通过 TrackId/ItemId 重新查找。
 
 ### 4.3 投影、选择和 UI
 

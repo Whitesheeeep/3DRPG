@@ -24,6 +24,7 @@ namespace RPG.SkillSystem.Editor
         #region 运行状态
 
         private ItemDragController dragController;
+        private ItemContextMenuController contextMenuController;
         private TrackDragController trackDragController;
         private ScrubController scrubController;
         private ViewportInputController viewportInputController;
@@ -85,6 +86,7 @@ namespace RPG.SkillSystem.Editor
                 rowCollectionView.Unbind();
             }
             trackDragController?.Dispose();
+            contextMenuController?.Dispose();
             dragController?.Dispose();
             gridView?.Dispose();
             rulerView?.Dispose();
@@ -93,6 +95,7 @@ namespace RPG.SkillSystem.Editor
             viewportInputController = null;
             rowCollectionView = null;
             trackDragController = null;
+            contextMenuController = null;
             dragController = null;
             gridView = null;
             rulerView = null;
@@ -109,12 +112,13 @@ namespace RPG.SkillSystem.Editor
         {
             dragController = new ItemDragController(canvasModel);
             dragController.Bind(viewModel);
+            contextMenuController = new ItemContextMenuController(viewModel);
             trackDragController = new TrackDragController(mapper, modules, viewModel);
 
             ElementFactory factory = new();
             rowCollectionView = new RowCollectionView(
                 view.TrackHeaderRows, view.LaneBackgroundRows, view.LaneItemRows,
-                factory, mapper, modules, dragController, trackDragController);
+                factory, mapper, modules, dragController, contextMenuController, trackDragController);
             rowCollectionView.Bind(viewModel);
             rowCollectionView.RowsChanged += OnRowsChanged;
 
