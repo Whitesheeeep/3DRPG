@@ -1,0 +1,23 @@
+.audio-clip-item {
+    top: 9px;
+    height: 36px;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-width: 1px;
+    border-radius: 3px;
+    border-color: rgb(190, 148, 76);
+    background-color: rgb(113, 82, 35);
+    -unity-text-align: middle-left;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.audio-clip-item:hover {
+    border-color: rgb(224, 180, 96);
+    background-color: rgb(132, 96, 40);
+}
+
+.audio-clip-item.is-selected {
+    border-width: 2px;
+    border-color: rgb(235, 195, 83);
+}

@@ -1,0 +1,17 @@
+.event-marker-item {
+    top: 12px;
+    width: 16px;
+    height: 28px;
+    translate: -50% 0;
+    color: rgb(232, 180, 62);
+    -unity-text-align: middle-center;
+}
+
+.event-marker-item:hover {
+    color: rgb(255, 207, 88);
+}
+
+.event-marker-item.is-selected {
+    color: rgb(255, 225, 120);
+    -unity-font-style: bold;
+}

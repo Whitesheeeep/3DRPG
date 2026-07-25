@@ -1,0 +1,18 @@
+.timeline-item {
+    position: absolute;
+}
+
+.timeline-resize-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 7px;
+}
+
+.timeline-resize-left {
+    left: 0;
+}
+
+.timeline-resize-right {
+    right: 0;
+}

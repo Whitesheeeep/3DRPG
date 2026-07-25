@@ -1,0 +1,23 @@
+.animation-clip-item {
+    top: 9px;
+    height: 36px;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-width: 1px;
+    border-radius: 3px;
+    border-color: rgb(80, 156, 181);
+    background-color: rgb(47, 102, 119);
+    -unity-text-align: middle-left;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.animation-clip-item:hover {
+    border-color: rgb(111, 184, 207);
+    background-color: rgb(56, 119, 138);
+}
+
+.animation-clip-item.is-selected {
+    border-width: 2px;
+    border-color: rgb(235, 195, 83);
+}
