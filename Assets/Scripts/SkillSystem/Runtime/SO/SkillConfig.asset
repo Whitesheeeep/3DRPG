@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: e926723cb93e479c881c301347beda4b
   frameRate: 30
-  durationFrames: 45
+  durationFrames: 38
   animationTracks:
   - header:
       id: 976cdc50707d4f4d9ada7c830639ab27
@@ -44,7 +44,7 @@ MonoBehaviour:
     clips:
     - id: 727eba9f77e148d0953eebffd2273565
       animationClip: {fileID: 8993902097722301239, guid: 313e2a33bb58d4b4fa917fe3b5f06ffa, type: 3}
-      startFrame: 6
+      startFrame: 0
       durationFrames: 20
       sourceStartFrame: 0
       playbackSpeed: 1
@@ -56,18 +56,18 @@ MonoBehaviour:
       editorLocked: 0
       editorColor: {r: 1, g: 1, b: 1, a: 1}
     clips:
-    - id: ec5656ac43c74a959547749ec713386e
-      startFrame: 0
-      durationFrames: 11
-      sampleIntervalFrames: 1
-      detectionData:
-        rid: 7552782297772851205
     - id: 94b0783a1efb493689429f010923d8d2
       startFrame: 11
       durationFrames: 6
       sampleIntervalFrames: 1
       detectionData:
         rid: 7552782297772851206
+    - id: ec5656ac43c74a959547749ec713386e
+      startFrame: 17
+      durationFrames: 11
+      sampleIntervalFrames: 1
+      detectionData:
+        rid: 7552782312009105414
   - header:
       id: b534c6de57354449a0fab6328997076e
       muted: 0
@@ -76,11 +76,11 @@ MonoBehaviour:
       editorColor: {r: 1, g: 1, b: 1, a: 1}
     clips:
     - id: 5528b1e78d8e4228a7d1bd658bd6e9c2
-      startFrame: 6
+      startFrame: 2
       durationFrames: 15
       sampleIntervalFrames: 1
       detectionData:
-        rid: 7552782297772851207
+        rid: 7552782312009105409
   vfxTracks:
   - header:
       id: d217d68a8d44409d9a33d7812e52b89a
@@ -165,7 +165,19 @@ MonoBehaviour:
   references:
     version: 2
     RefIds:
-    - rid: 7552782297772851205
+    - rid: 7552782297772851206
+      type: {class: BoxAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        localPosition: {x: 0, y: 0, z: 0}
+        localEulerAngles: {x: 0, y: 0, z: 0}
+        size: {x: 1, y: 1, z: 1}
+    - rid: 7552782312009105409
+      type: {class: BoxAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        localPosition: {x: 0, y: 0, z: 0}
+        localEulerAngles: {x: 0, y: 0, z: 0}
+        size: {x: 1, y: 1, z: 1}
+    - rid: 7552782312009105414
       type: {class: CapsuleAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
         localPosition: {x: 0, y: 0, z: 0}
@@ -173,15 +185,3 @@ MonoBehaviour:
         radius: 0.5
         height: 2
         axis: 1
-    - rid: 7552782297772851206
-      type: {class: BoxAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
-      data:
-        localPosition: {x: 0, y: 0, z: 0}
-        localEulerAngles: {x: 0, y: 0, z: 0}
-        size: {x: 1, y: 1, z: 1}
-    - rid: 7552782297772851207
-      type: {class: BoxAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
-      data:
-        localPosition: {x: 0, y: 0, z: 0}
-        localEulerAngles: {x: 0, y: 0, z: 0}
-        size: {x: 1, y: 1, z: 1}
