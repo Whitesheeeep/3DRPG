@@ -1,0 +1,6 @@
+﻿<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
+    <ui:VisualElement class="gas-tag-row">
+        <ui:Label name="RowLabel" class="gas-tag-row-label" />
+        <ui:TextField name="RowRenameField" class="gas-tag-row-rename is-hidden" />
+    </ui:VisualElement>
+</ui:UXML>

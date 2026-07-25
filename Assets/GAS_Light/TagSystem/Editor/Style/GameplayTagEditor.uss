@@ -1,0 +1,47 @@
+﻿.gas-tag-window { flex-grow: 1; min-width: 700px; }
+.gas-tag-toolbar { flex-shrink: 0; }
+.gas-tag-database { min-width: 280px; }
+.gas-tag-search { min-width: 160px; }
+.gas-tag-main-split { flex-grow: 1; }
+.gas-tag-tree-panel { min-width: 250px; padding: 6px; }
+.gas-tag-details-panel { min-width: 320px; padding: 8px; }
+.gas-tag-panel-title { -unity-font-style: bold; margin-bottom: 6px; }
+.gas-tag-tree { flex-grow: 1; }
+.gas-tag-description { min-height: 72px; }
+.gas-tag-validation-title { margin-top: 12px; }
+.gas-tag-validation { flex-grow: 1; min-height: 100px; border-top-width: 1px; border-top-color: #404040; }
+.gas-tag-validation-item { white-space: normal; margin-top: 3px; }
+.gas-tag-validation-item--error { color: #ff8b8b; }
+.gas-tag-validation-item--warning { color: #f0c36b; }
+.gas-tag-bake-state--dirty { color: #f0c36b; }
+.gas-tag-bake-state--clean { color: #8bd48b; }
+.gas-tag-row { flex-grow: 1; flex-direction: row; align-items: center; }
+.gas-tag-row-label { flex-grow: 1; }
+.gas-tag-row-rename { flex-grow: 1; }
+.is-hidden { display: none; }
+.gas-tag-row--drop-before { border-top-width: 2px; border-top-color: #5aa9ff; }
+.gas-tag-row--drop-inside { background-color: rgba(55, 115, 180, 0.45); }
+.gas-tag-row--drop-after { border-bottom-width: 2px; border-bottom-color: #5aa9ff; }
+.gas-tag-drop-level-indicator {
+    position: absolute;
+    height: 20px;
+    flex-direction: row;
+    align-items: center;
+    background-color: rgba(35, 76, 120, 0.92);
+    border-left-width: 2px;
+    border-left-color: #5aa9ff;
+    padding-left: 3px;
+    padding-right: 4px;
+}
+.gas-tag-drop-level-line {
+    height: 2px;
+    min-width: 18px;
+    flex-grow: 1;
+    background-color: #5aa9ff;
+}
+.gas-tag-drop-level-label {
+    margin-left: 5px;
+    color: #d7ebff;
+    -unity-font-style: bold;
+    font-size: 10px;
+}

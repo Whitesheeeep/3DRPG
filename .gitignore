@@ -41,3 +41,7 @@ crashlytics-build.properties
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Custom FileFolder
+Assets/GAS
+Assets/GAS.meta

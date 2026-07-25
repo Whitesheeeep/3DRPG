@@ -1,0 +1,37 @@
+﻿<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/GAS_Light/TagSystem/Editor/Style/GameplayTagEditor.uss" />
+    <ui:VisualElement class="gas-tag-window">
+        <uie:Toolbar class="gas-tag-toolbar">
+            <uie:ObjectField name="DatabaseField" label="Database" class="gas-tag-database" />
+            <uie:ToolbarSearchField name="SearchField" class="gas-tag-search" />
+            <uie:ToolbarButton name="AddRootButton" text="Add Root" />
+            <uie:ToolbarButton name="AddChildButton" text="Add Child" />
+            <uie:ToolbarButton name="DeleteButton" text="Delete" />
+            <uie:ToolbarSpacer flex="true" />
+            <ui:Label name="BakeStateLabel" class="gas-tag-bake-state" />
+            <uie:ToolbarButton name="BakeButton" text="Bake" />
+        </uie:Toolbar>
+        <ui:TwoPaneSplitView name="MainSplit" fixed-pane-index="0" fixed-pane-initial-dimension="360" orientation="Horizontal" class="gas-tag-main-split">
+            <ui:VisualElement name="TreePanel" class="gas-tag-tree-panel">
+                <ui:Label text="Tag Tree" class="gas-tag-panel-title" />
+                <ui:TreeView name="TagTree" fixed-item-height="24" selection-type="Single" reorderable="true" class="gas-tag-tree" />
+                <ui:VisualElement name="DropLevelIndicator" picking-mode="Ignore" class="gas-tag-drop-level-indicator is-hidden">
+                    <ui:VisualElement name="DropLevelLine" picking-mode="Ignore" class="gas-tag-drop-level-line" />
+                    <ui:Label name="DropLevelLabel" picking-mode="Ignore" class="gas-tag-drop-level-label" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement class="gas-tag-details-panel">
+                <ui:Label text="Selected Tag" class="gas-tag-panel-title" />
+                <ui:TextField name="NameField" label="Name" />
+                <ui:TextField name="PathField" label="Path" />
+                <ui:TextField name="GuidField" label="Guid" is-read-only="true" />
+                <ui:IntegerField name="TagIdField" label="TagId" is-read-only="true" />
+                <ui:TextField name="DescriptionField" label="Description" multiline="true" class="gas-tag-description" />
+                <ui:HelpBox name="SelectionHelp" message-type="Info" text="Select a tag to edit it." />
+                <ui:Label text="Validation" class="gas-tag-panel-title gas-tag-validation-title" />
+                <ui:ScrollView name="ValidationScroll" class="gas-tag-validation" />
+            </ui:VisualElement>
+        </ui:TwoPaneSplitView>
+    </ui:VisualElement>
+</ui:UXML>
+
