@@ -5,11 +5,11 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using WS_Modules.MVVM;
+using WS_Modules.UIToolkitExtensions.Editor;
 
 namespace RPG.SkillSystem.Editor
 {
     #region Shared helpers
-
     /// <summary>
     /// 提供具体 Inspector Drawer 共用的控件创建与样式辅助方法。
     /// </summary>
@@ -48,11 +48,9 @@ namespace RPG.SkillSystem.Editor
             row.Add(new Button(viewModel.RemoveSelectedItem) { text = "删除" });
         }
     }
-
     #endregion
 
     #region Concrete drawers
-
     /// <summary>
     /// 绘制所有具体轨道分组的只读信息与新增轨道操作。
     /// </summary>
@@ -136,8 +134,16 @@ namespace RPG.SkillSystem.Editor
             IntegerField duration = AddField(container, new IntegerField("持续帧") { value = clip.DurationFrames });
             IntegerField sourceStart = AddField(container, new IntegerField("源动画偏移") { value = clip.SourceStartFrame });
             FloatField speed = AddField(container, new FloatField("播放速度") { value = clip.PlaybackSpeed });
+
             void Submit() => viewModel.EditItem(item, new AnimationEditRequest(
                 animation.value as AnimationClip, start.value, duration.value, sourceStart.value, speed.value));
+
+            // 避免一改就提交，导致动画片段在拖动滑块时频繁刷新。
+            start.isDelayed = true;
+            duration.isDelayed = true;
+            sourceStart.isDelayed = true;
+            speed.isDelayed = true;
+
             animation.RegisterValueChangedCallback(_ => Submit());
             start.RegisterValueChangedCallback(_ => Submit());
             duration.RegisterValueChangedCallback(_ => Submit());
@@ -148,14 +154,12 @@ namespace RPG.SkillSystem.Editor
     }
 
 
-
     /// <summary>
     /// 绘制攻击检测 Clip 公共帧字段，并通过具体数据 Drawer 注册表绘制形状参数。
     /// </summary>
     internal sealed class AttackDetectionInspectorDrawer : InspectorDrawer, IInspectorDrawer
     {
         #region 字段与创建
-
         private readonly Dictionary<Type, IAttackDetectionDataDrawer> drawers = new();
 
         /// <summary>
@@ -169,11 +173,9 @@ namespace RPG.SkillSystem.Editor
             Register(new SectorAttackDetectionDataDrawer());
             Register(new WeaponTraceAttackDetectionDataDrawer());
         }
-
         #endregion
 
         #region 绘制
-
         /// <summary>
         /// 判断 ViewData 是否为攻击检测片段。
         /// </summary>
@@ -200,6 +202,10 @@ namespace RPG.SkillSystem.Editor
             void Submit(AttackDetectionDataBase data) => viewModel.EditItem(item,
                 new AttackDetectionEditRequest(start.value, duration.value, interval.value, data));
 
+            start.isDelayed = true;
+            duration.isDelayed = true;
+            interval.isDelayed = true;
+
             start.RegisterValueChangedCallback(_ => Submit(clip.DetectionData));
             duration.RegisterValueChangedCallback(_ => Submit(clip.DetectionData));
             interval.RegisterValueChangedCallback(_ => Submit(clip.DetectionData));
@@ -221,11 +227,9 @@ namespace RPG.SkillSystem.Editor
 
             AddItemActions(container, viewModel);
         }
-
         #endregion
 
         #region 注册校验
-
         // 使用精确具体类型注册 Drawer，避免主 Inspector 对检测 Type 写 switch。
         private void Register(IAttackDetectionDataDrawer drawer)
         {
@@ -233,7 +237,6 @@ namespace RPG.SkillSystem.Editor
             if (!drawers.TryAdd(drawer.DataType, drawer))
                 throw new InvalidOperationException($"攻击检测 Drawer 已注册：{drawer.DataType.FullName}");
         }
-
         #endregion
     }
 
@@ -257,8 +260,17 @@ namespace RPG.SkillSystem.Editor
                 new Vector3Field("局部旋转") { value = box.LocalEulerAngles });
             Vector3Field size = AddField(container,
                 new Vector3Field("尺寸") { value = box.Size });
+
             void Submit() => submit(new BoxAttackDetectionData(
                 position.value, rotation.value, ClampPositive(size.value)));
+
+            var floatFields = position.Query<FloatField>().ToList();
+            foreach (var floatField in floatFields) floatField.isDelayed = true;
+            floatFields = rotation.Query<FloatField>().ToList();
+            foreach (var floatField in floatFields) floatField.isDelayed = true;
+            floatFields = size.Query<FloatField>().ToList();
+            foreach (var floatField in floatFields) floatField.isDelayed = true;
+
             position.RegisterValueChangedCallback(_ => Submit());
             rotation.RegisterValueChangedCallback(_ => Submit());
             size.RegisterValueChangedCallback(_ => Submit());
@@ -287,8 +299,14 @@ namespace RPG.SkillSystem.Editor
                 new Vector3Field("局部位置") { value = sphere.LocalPosition });
             FloatField radius = AddField(container,
                 new FloatField("半径") { value = sphere.Radius });
+
             void Submit() => submit(new SphereAttackDetectionData(
                 position.value, Mathf.Max(0.001f, radius.value)));
+
+            var floatFields = position.Query<FloatField>().ToList();
+            foreach (var floatField in floatFields) floatField.isDelayed = true;
+            radius.isDelayed = true;
+
             position.RegisterValueChangedCallback(_ => Submit());
             radius.RegisterValueChangedCallback(_ => Submit());
         }
@@ -317,9 +335,18 @@ namespace RPG.SkillSystem.Editor
             FloatField height = AddField(container,
                 new FloatField("高度") { value = capsule.Height });
             EnumField axis = AddField(container, new EnumField("轴向", capsule.Axis));
+
             void Submit() => submit(new CapsuleAttackDetectionData(
                 position.value, rotation.value, Mathf.Max(0.001f, radius.value),
                 Mathf.Max(0.001f, height.value), (CapsuleAxis)axis.value));
+
+            var floatFields = position.Query<FloatField>().ToList();
+            foreach (var floatField in floatFields) floatField.isDelayed = true;
+            floatFields = rotation.Query<FloatField>().ToList();
+            foreach (var floatField in floatFields) floatField.isDelayed = true;
+            radius.isDelayed = true;
+            height.isDelayed = true;
+
             position.RegisterValueChangedCallback(_ => Submit());
             rotation.RegisterValueChangedCallback(_ => Submit());
             radius.RegisterValueChangedCallback(_ => Submit());
@@ -354,6 +381,7 @@ namespace RPG.SkillSystem.Editor
                 new FloatField("角度") { value = sector.Angle });
             FloatField height = AddField(container,
                 new FloatField("高度") { value = sector.Height });
+
             void Submit()
             {
                 float innerRadius = Mathf.Max(0f, inner.value);
@@ -361,6 +389,16 @@ namespace RPG.SkillSystem.Editor
                     innerRadius, Mathf.Max(Mathf.Max(innerRadius, 0.001f), outer.value),
                     Mathf.Clamp(angle.value, 0.01f, 360f), Mathf.Max(0.001f, height.value)));
             }
+
+            var floatFields = position.Query<FloatField>().ToList();
+            foreach (var floatField in floatFields) floatField.isDelayed = true;
+            floatFields = rotation.Query<FloatField>().ToList();
+            foreach (var floatField in floatFields) floatField.isDelayed = true;
+            inner.isDelayed = true;
+            outer.isDelayed = true;
+            angle.isDelayed = true;
+            height.isDelayed = true;
+
             position.RegisterValueChangedCallback(_ => Submit());
             rotation.RegisterValueChangedCallback(_ => Submit());
             inner.RegisterValueChangedCallback(_ => Submit());
@@ -386,6 +424,7 @@ namespace RPG.SkillSystem.Editor
             if (data is not WeaponTraceAttackDetectionData trace) return;
             IntegerField count = AddField(container,
                 new IntegerField("采样点数量") { value = trace.SamplePointCount });
+            count.isDelayed = true;
             count.RegisterValueChangedCallback(_ => submit(
                 new WeaponTraceAttackDetectionData(Mathf.Clamp(count.value, 2, 16))));
         }
@@ -424,6 +463,13 @@ namespace RPG.SkillSystem.Editor
             void Submit() => viewModel.EditItem(item, new VfxEditRequest(prefab.value as GameObject,
                 start.value, duration.value, position.value, rotation.value, scale.value,
                 (VfxFollowMode)follow.value, (VfxStopMode)stop.value));
+
+            start.isDelayed = true;
+            duration.isDelayed = true;
+            position.SetIsDelayed(true);
+            rotation.SetIsDelayed(true);
+            scale.SetIsDelayed(true);
+
             prefab.RegisterValueChangedCallback(_ => Submit());
             start.RegisterValueChangedCallback(_ => Submit());
             duration.RegisterValueChangedCallback(_ => Submit());
@@ -462,16 +508,41 @@ namespace RPG.SkillSystem.Editor
             IntegerField duration = AddField(container, new IntegerField("持续帧") { value = clip.DurationFrames });
             Slider volume = AddField(container, new Slider("音量", 0f, 1f) { value = clip.Volume });
             FloatField pitch = AddField(container, new FloatField("Pitch") { value = clip.Pitch });
+
             void Submit() => viewModel.EditItem(item, new AudioEditRequest(
                 audio.value as AudioClip, start.value, duration.value, volume.value, pitch.value));
+
+            bool volumeChanged = false;
+            void SliderSubmit()
+            {
+                container.schedule.Execute(Submit).StartingIn(100); // 延迟 100ms 提交，避免频繁刷新
+            }
+
+            start.isDelayed = true;
+            duration.isDelayed = true;
+            pitch.isDelayed = true;
+
             audio.RegisterValueChangedCallback(_ => Submit());
             start.RegisterValueChangedCallback(_ => Submit());
             duration.RegisterValueChangedCallback(_ => Submit());
-            volume.RegisterValueChangedCallback(_ => Submit());
+            volume.RegisterValueChangedCallback(_ => volumeChanged = true);
+            volume.RegisterCallback<PointerUpEvent>(_ =>
+            {
+                if (!volumeChanged) return;
+                volumeChanged  = false;
+                Submit();
+            });
+            volume.RegisterCallback<PointerCaptureOutEvent>(_ =>
+            {
+                if (!volumeChanged) return;
+                volumeChanged  = false;
+                Submit();
+            });
             pitch.RegisterValueChangedCallback(_ => Submit());
             AddItemActions(container, viewModel);
         }
     }
+
     /// <summary>
     /// 绘制事件标记配置并提交类型化编辑请求。
     /// </summary>
@@ -490,7 +561,11 @@ namespace RPG.SkillSystem.Editor
             if (viewData is not EventMarkerViewData item) return;
             SkillEventMarkerConfig marker = item.Config;
             AddTitle(container, item.DisplayName);
-            IntegerField frame = AddField(container, new IntegerField("触发帧") { value = marker.Frame });
+            IntegerField frame = AddField(container, new IntegerField("触发帧")
+            {
+                value = marker.Frame,
+                isDelayed = true
+            });
             TextField eventType = AddField(container, new TextField("事件类型名")
             {
                 value = marker.EventTypeName,
@@ -507,8 +582,10 @@ namespace RPG.SkillSystem.Editor
                 multiline = true,
                 isDelayed = true
             });
+
             void Submit() => viewModel.EditItem(item, new EventEditRequest(
                 frame.value, eventType.value, displayName.value, parameters.value));
+
             frame.RegisterValueChangedCallback(_ => Submit());
             eventType.RegisterValueChangedCallback(_ => Submit());
             displayName.RegisterValueChangedCallback(_ => Submit());
@@ -516,7 +593,6 @@ namespace RPG.SkillSystem.Editor
             AddItemActions(container, viewModel);
         }
     }
-
     #endregion
 }
 #endif

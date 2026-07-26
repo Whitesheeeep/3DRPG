@@ -20,5 +20,27 @@
       }
     },
     "isImported": false
+  },
+  {
+    "id": "TASK_3",
+    "priority": "LOW",
+    "tags": [],
+    "title": "给 VFX 的结束模式加上 tooltip",
+    "description": "",
+    "status": "TODO",
+    "date": {
+      "date": {
+        "year": 2026,
+        "month": 7,
+        "day": 26
+      },
+      "time": {
+        "hour": 16,
+        "minute": 10,
+        "second": 19,
+        "nano": 976177000
+      }
+    },
+    "isImported": false
   }
 ]
