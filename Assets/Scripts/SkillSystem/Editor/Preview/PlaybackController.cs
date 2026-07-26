@@ -20,9 +20,11 @@ namespace RPG.SkillSystem.Editor
 
         public event Action<int> FrameChanged;
         public event Action PlaybackChanged;
+        public event Action<string> PreviewStatusChanged;
 
         public int CurrentFrame { get; private set; }
         public bool IsPlaying { get; private set; }
+        public bool IsLooping { get; private set; }
 
         #endregion
 
@@ -34,6 +36,7 @@ namespace RPG.SkillSystem.Editor
         public PlaybackController(IPreview preview = null)
         {
             this.preview = preview;
+            if (this.preview != null) this.preview.StatusChanged += OnPreviewStatusChanged;
             EditorApplication.update += OnEditorUpdate;
         }
 
@@ -45,9 +48,11 @@ namespace RPG.SkillSystem.Editor
             if (disposed) return;
             disposed = true;
             EditorApplication.update -= OnEditorUpdate;
+            if (preview != null) preview.StatusChanged -= OnPreviewStatusChanged;
             preview?.Dispose();
             FrameChanged = null;
             PlaybackChanged = null;
+            PreviewStatusChanged = null;
         }
 
         /// <summary>
@@ -71,6 +76,7 @@ namespace RPG.SkillSystem.Editor
             IsPlaying = true;
             accumulatedFrames = 0d;
             lastUpdateTime = EditorApplication.timeSinceStartup;
+            preview?.SampleFrame(CurrentFrame, PreviewSampleReason.PlaybackStart);
             PlaybackChanged?.Invoke();
         }
 
@@ -100,6 +106,17 @@ namespace RPG.SkillSystem.Editor
         }
 
         /// <summary>
+        /// 设置是否在到达技能末帧后从第 0 帧继续播放。
+        /// </summary>
+        /// <param name="value">是否循环播放整个技能。</param>
+        public void SetLooping(bool value)
+        {
+            if (IsLooping == value) return;
+            IsLooping = value;
+            PlaybackChanged?.Invoke();
+        }
+
+        /// <summary>
         /// 有技能时按技能末帧夹紧；空技能时保存非负虚拟帧且不触发 Preview。
         /// </summary>
         public void Seek(int frame)
@@ -107,15 +124,10 @@ namespace RPG.SkillSystem.Editor
             frame = config != null
                 ? Mathf.Clamp(frame, 0, Mathf.Max(0, config.DurationFrames - 1))
                 : Mathf.Max(0, frame);
-            if (CurrentFrame == frame)
-            {
-                if (config != null) preview?.SampleFrame(frame);
-                return;
-            }
-
-            CurrentFrame = frame;
-            if (config != null) preview?.SampleFrame(frame);
-            FrameChanged?.Invoke(frame);
+            PreviewSampleReason reason = IsPlaying
+                ? PreviewSampleReason.PlaybackStart
+                : PreviewSampleReason.Scrub;
+            ApplyFrame(frame, reason);
         }
 
         /// <summary>
@@ -141,11 +153,47 @@ namespace RPG.SkillSystem.Editor
         /// </summary>
         public void ClampToDuration() => Seek(CurrentFrame);
 
+        /// <summary>
+        /// 将演示角色设置转交给可选 Preview 实现。
+        /// </summary>
+        public void SetPreviewActor(GameObject actor) => preview?.SetPreviewActor(actor);
+
+        /// <summary>
+        /// 将 Root Motion 设置转交给可选 Preview 实现。
+        /// </summary>
+        public void SetApplyRootMotion(bool value) => preview?.SetApplyRootMotion(value);
+
+        /// <summary>
+        /// 通知 Preview 当前 SkillConfig 内容已变化，并清除其派生缓存。
+        /// </summary>
+        public void InvalidatePreviewContent() => preview?.InvalidateContent();
+
+        /// <summary>
+        /// 使用当前播放头立即重新采样 Preview，不改变播放状态或当前帧。
+        /// </summary>
+        public void RefreshPreview()
+        {
+            if (config == null) return;
+            preview?.SampleFrame(CurrentFrame, IsPlaying
+                ? PreviewSampleReason.PlaybackStart
+                : PreviewSampleReason.Scrub);
+        }
+
+        /// <summary>
+        /// 清理 Preview 持有的场景对象和轨道资源，不改变当前 SkillConfig。
+        /// </summary>
+        public void ClearPreview() => preview?.Clear();
+        #endregion
+
+        #region Preview 状态
+
+        // 将 Preview 的去重状态消息转发给 ViewModel，不让具体 Preview 依赖界面层。
+        private void OnPreviewStatusChanged(string message) => PreviewStatusChanged?.Invoke(message);
+
         #endregion
 
         #region Editor clock
-
-        // 根据编辑器时钟推进整数帧；到达技能末帧后停止且不循环。
+        // 根据编辑器时钟推进整数帧；循环时完整显示末帧，并在下一次越界推进时取模回到开头。
         private void OnEditorUpdate()
         {
             if (!IsPlaying || config == null) return;
@@ -157,19 +205,42 @@ namespace RPG.SkillSystem.Editor
             if (advance <= 0) return;
             accumulatedFrames -= advance;
             int target = CurrentFrame + advance;
-            int lastFrame = Mathf.Max(0, config.DurationFrames - 1);
-            if (target >= lastFrame)
+            int frameCount = Mathf.Max(1, config.DurationFrames);
+            int lastFrame = frameCount - 1;
+            if (target < lastFrame)
             {
-                CurrentFrame = lastFrame;
-                preview?.SampleFrame(CurrentFrame);
-                FrameChanged?.Invoke(CurrentFrame);
+                ApplyFrame(target, PreviewSampleReason.PlaybackAdvance);
+                return;
+            }
+            if (!IsLooping)
+            {
+                ApplyFrame(lastFrame, PreviewSampleReason.PlaybackAdvance);
                 IsPlaying = false;
                 accumulatedFrames = 0d;
                 preview?.Stop();
                 PlaybackChanged?.Invoke();
                 return;
             }
-            Seek(target);
+            if (target == lastFrame)
+            {
+                ApplyFrame(lastFrame, PreviewSampleReason.PlaybackAdvance);
+                return;
+            }
+            int wrappedFrame = target % frameCount;
+            ApplyFrame(wrappedFrame, PreviewSampleReason.PlaybackStart);
+        }
+
+        #endregion
+
+        #region 帧状态辅助
+
+        // 提交权威整数帧并使用明确采样原因刷新预览，避免播放时钟被误判为手动跳帧。
+        private void ApplyFrame(int frame, PreviewSampleReason reason)
+        {
+            bool changed = CurrentFrame != frame;
+            CurrentFrame = frame;
+            if (config != null) preview?.SampleFrame(frame, reason);
+            if (changed) FrameChanged?.Invoke(frame);
         }
 
         #endregion

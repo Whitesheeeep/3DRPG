@@ -2,6 +2,7 @@
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace RPG.SkillSystem.Editor
 {
@@ -16,6 +17,19 @@ namespace RPG.SkillSystem.Editor
 
         public SceneAsset PreviewScene => settings.PreviewScene;
         public GameObject PreviewActor => settings.PreviewActor;
+        public bool ApplyRootMotion => settings.PreviewApplyRootMotion;
+        public bool IsPreviewSceneLoaded
+        {
+            get
+            {
+                SceneAsset scene = settings.PreviewScene;
+                if (scene == null) return false;
+                string path = AssetDatabase.GetAssetPath(scene);
+                Scene activeScene = SceneManager.GetActiveScene();
+                return activeScene.IsValid() && activeScene.isLoaded && !string.IsNullOrEmpty(path) &&
+                       activeScene.path == path;
+            }
+        }
 
         /// <summary>
         /// 创建并初始化 PreviewSceneService。
@@ -45,6 +59,15 @@ namespace RPG.SkillSystem.Editor
         public void SetPreviewActor(GameObject actor)
         {
             settings.SetPreviewActor(actor);
+            SettingsChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// 保存动画预览的 Root Motion 开关。
+        /// </summary>
+        public void SetApplyRootMotion(bool value)
+        {
+            settings.SetPreviewApplyRootMotion(value);
             SettingsChanged?.Invoke();
         }
 

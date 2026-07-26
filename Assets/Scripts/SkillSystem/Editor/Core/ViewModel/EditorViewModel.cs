@@ -45,8 +45,10 @@ namespace RPG.SkillSystem.Editor
         public SkillConfig CurrentConfig => document.CurrentConfig;
         public int CurrentFrame => playback.CurrentFrame;
         public bool IsPlaying => playback.IsPlaying;
+        public bool IsLooping => playback.IsLooping;
         public SceneAsset PreviewScene => previewSceneService.PreviewScene;
         public GameObject PreviewActor => previewSceneService.PreviewActor;
+        public bool PreviewApplyRootMotion => previewSceneService.ApplyRootMotion;
         public string StatusMessage { get; private set; } = "请选择或新建 SkillConfig。";
         public IViewData SelectedViewData => FindSelectedViewData();
 
@@ -68,7 +70,10 @@ namespace RPG.SkillSystem.Editor
             document.ConfigChanged += OnConfigChanged;
             playback.FrameChanged += OnFrameChanged;
             playback.PlaybackChanged += OnPlaybackChanged;
+            playback.PreviewStatusChanged += OnPreviewStatusChanged;
             previewSceneService.SettingsChanged += OnSettingsChanged;
+            playback.SetPreviewActor(previewSceneService.PreviewActor);
+            playback.SetApplyRootMotion(previewSceneService.ApplyRootMotion);
             RebuildTimelineFromModel();
         }
 
@@ -83,6 +88,7 @@ namespace RPG.SkillSystem.Editor
             document.ConfigChanged -= OnConfigChanged;
             playback.FrameChanged -= OnFrameChanged;
             playback.PlaybackChanged -= OnPlaybackChanged;
+            playback.PreviewStatusChanged -= OnPreviewStatusChanged;
             previewSceneService.SettingsChanged -= OnSettingsChanged;
             TimelineChanged = null;
             SelectionChanged = null;
@@ -114,6 +120,7 @@ namespace RPG.SkillSystem.Editor
         {
             RebuildTimelineFromModel();
             RestoreSelectionAfterTimelineRebuild();
+            playback.InvalidatePreviewContent();
             playback.ClampToDuration();
             TimelineChanged?.Invoke();
             SelectionChanged?.Invoke();
@@ -126,8 +133,18 @@ namespace RPG.SkillSystem.Editor
         // 将播放状态变化转换为 ViewModel 的细粒度通知。
         private void OnPlaybackChanged() => PlaybackChanged?.Invoke();
 
-        // 将固定编辑器设置变化转换为 ViewModel 通知。
-        private void OnSettingsChanged() => SettingsChanged?.Invoke();
+        // 设置变化后释放旧预览上下文，并使用当前播放头重建角色与轨道状态。
+        private void OnSettingsChanged()
+        {
+            playback.ClearPreview();
+            playback.SetPreviewActor(previewSceneService.PreviewActor);
+            playback.SetApplyRootMotion(previewSceneService.ApplyRootMotion);
+            playback.RefreshPreview();
+            SettingsChanged?.Invoke();
+        }
+
+        // 将 Preview 初始化或采样状态写入窗口已有状态栏。
+        private void OnPreviewStatusChanged(string message) => SetStatus(message);
 
         // 每个模块只投影自身显式运行时列表，ViewModel 不判断具体轨道类型。
         private void RebuildTimelineFromModel()
@@ -258,6 +275,12 @@ namespace RPG.SkillSystem.Editor
         public void Stop() => playback.Stop();
 
         /// <summary>
+        /// 设置是否循环播放整个技能时间范围。
+        /// </summary>
+        /// <param name="value">是否开启循环播放。</param>
+        public void SetLooping(bool value) => playback.SetLooping(value);
+
+        /// <summary>
         /// 将播放头移动到上一帧。
         /// </summary>
         public void StepPreviousFrame() => playback.StepPreviousFrame();
@@ -276,6 +299,11 @@ namespace RPG.SkillSystem.Editor
         /// 保存固定演示角色的 GlobalObjectId。
         /// </summary>
         public void SetPreviewActor(GameObject actor) => previewSceneService.SetPreviewActor(actor);
+
+        /// <summary>
+        /// 保存并立即应用动画预览的 Root Motion 开关。
+        /// </summary>
+        public void SetPreviewApplyRootMotion(bool value) => previewSceneService.SetApplyRootMotion(value);
 
         /// <summary>
         /// 询问保存当前场景后打开固定预览场景。

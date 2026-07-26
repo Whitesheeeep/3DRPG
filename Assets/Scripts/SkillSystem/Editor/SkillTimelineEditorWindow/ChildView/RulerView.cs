@@ -100,7 +100,8 @@ namespace RPG.SkillSystem.Editor
 
             if (skillConfig != null)
             {
-                float endX = mapper.FrameToViewportX(skillConfig.DurationFrames);
+                int lastValidFrame = Mathf.Max(0, skillConfig.DurationFrames - 1);
+                float endX = mapper.FrameToViewportX(lastValidFrame);
                 Handles.color = editorConfig.DurationBoundaryColor;
                 Handles.DrawLine(new Vector3(endX, 0f), new Vector3(endX, rect.height));
             }
@@ -112,7 +113,7 @@ namespace RPG.SkillSystem.Editor
         private void DrawOutsideRange(Rect rect, SkillConfig skillConfig)
         {
             if (skillConfig == null) return;
-            float endX = mapper.FrameToViewportX(skillConfig.DurationFrames);
+            float endX = mapper.FrameToViewportX(skillConfig.DurationFrames - 1);
             if (endX >= rect.width) return;
             float start = Mathf.Clamp(endX, 0f, rect.width);
             EditorGUI.DrawRect(new Rect(start, 0f, rect.width - start, rect.height),

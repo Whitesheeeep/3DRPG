@@ -20,6 +20,7 @@ namespace RPG.SkillSystem.Editor
         private ObjectField configField;
         private ObjectField previewSceneField;
         private ObjectField previewActorField;
+        private Toggle rootMotionToggle;
         private IntegerField frameRateField;
         private IntegerField durationField;
         private IntegerField currentFrameField;
@@ -28,6 +29,7 @@ namespace RPG.SkillSystem.Editor
         private Button trimButton;
         private Button openPreviewSceneButton;
         private Button playPauseButton;
+        private Button loopButton;
         private Button stopButton;
         private Button previousFrameButton;
         private Button nextFrameButton;
@@ -72,6 +74,7 @@ namespace RPG.SkillSystem.Editor
             configField.UnregisterValueChangedCallback(OnConfigChanged);
             previewSceneField.UnregisterValueChangedCallback(OnPreviewSceneChanged);
             previewActorField.UnregisterValueChangedCallback(OnPreviewActorChanged);
+            rootMotionToggle.UnregisterValueChangedCallback(OnRootMotionChanged);
             frameRateField.UnregisterValueChangedCallback(OnFrameRateChanged);
             durationField.UnregisterValueChangedCallback(OnDurationChanged);
             currentFrameField.UnregisterValueChangedCallback(OnCurrentFrameChanged);
@@ -79,6 +82,7 @@ namespace RPG.SkillSystem.Editor
             trimButton.clicked -= viewModel.TrimToContent;
             openPreviewSceneButton.clicked -= viewModel.OpenPreviewScene;
             playPauseButton.clicked -= OnPlayPauseClicked;
+            loopButton.clicked -= OnLoopClicked;
             stopButton.clicked -= viewModel.Stop;
             previousFrameButton.clicked -= viewModel.StepPreviousFrame;
             nextFrameButton.clicked -= viewModel.StepNextFrame;
@@ -95,6 +99,7 @@ namespace RPG.SkillSystem.Editor
             configField = root.Q<ObjectField>("ConfigField");
             previewSceneField = root.Q<ObjectField>("PreviewSceneField");
             previewActorField = root.Q<ObjectField>("PreviewActorField");
+            rootMotionToggle = root.Q<Toggle>("RootMotionToggle");
             frameRateField = root.Q<IntegerField>("FrameRateField");
             durationField = root.Q<IntegerField>("DurationField");
             currentFrameField = root.Q<IntegerField>("CurrentFrameField");
@@ -105,6 +110,7 @@ namespace RPG.SkillSystem.Editor
             trimButton = root.Q<Button>("TrimButton");
             openPreviewSceneButton = root.Q<Button>("OpenPreviewSceneButton");
             playPauseButton = root.Q<Button>("PlayPauseButton");
+            loopButton = root.Q<Button>("LoopButton");
             stopButton = root.Q<Button>("StopButton");
             previousFrameButton = root.Q<Button>("PreviousFrameButton");
             nextFrameButton = root.Q<Button>("NextFrameButton");
@@ -127,6 +133,7 @@ namespace RPG.SkillSystem.Editor
             configField.RegisterValueChangedCallback(OnConfigChanged);
             previewSceneField.RegisterValueChangedCallback(OnPreviewSceneChanged);
             previewActorField.RegisterValueChangedCallback(OnPreviewActorChanged);
+            rootMotionToggle.RegisterValueChangedCallback(OnRootMotionChanged);
             frameRateField.RegisterValueChangedCallback(OnFrameRateChanged);
             durationField.RegisterValueChangedCallback(OnDurationChanged);
             currentFrameField.RegisterValueChangedCallback(OnCurrentFrameChanged);
@@ -135,6 +142,7 @@ namespace RPG.SkillSystem.Editor
             trimButton.clicked += viewModel.TrimToContent;
             openPreviewSceneButton.clicked += viewModel.OpenPreviewScene;
             playPauseButton.clicked += OnPlayPauseClicked;
+            loopButton.clicked += OnLoopClicked;
             stopButton.clicked += viewModel.Stop;
             previousFrameButton.clicked += viewModel.StepPreviousFrame;
             nextFrameButton.clicked += viewModel.StepNextFrame;
@@ -171,6 +179,7 @@ namespace RPG.SkillSystem.Editor
             durationField.SetEnabled(enabled);
             trimButton.SetEnabled(enabled);
             playPauseButton.SetEnabled(enabled);
+            loopButton.SetEnabled(enabled);
             stopButton.SetEnabled(enabled);
             previousFrameButton.SetEnabled(enabled);
             nextFrameButton.SetEnabled(enabled);
@@ -179,14 +188,19 @@ namespace RPG.SkillSystem.Editor
         // 刷新贯穿时间轴的播放头位置。
         private void RefreshPlayhead() => currentFrameField.SetValueWithoutNotify(viewModel.CurrentFrame);
 
-        // 刷新播放按钮的播放或暂停文字。
-        private void RefreshPlayback() => playPauseButton.text = viewModel.IsPlaying ? "暂停" : "播放";
+        // 刷新播放文字和循环按钮的激活状态，避免 UI 自行持有播放状态。
+        private void RefreshPlayback()
+        {
+            playPauseButton.text = viewModel.IsPlaying ? "暂停" : "播放";
+            loopButton.EnableInClassList("loop-button--active", viewModel.IsLooping);
+        }
 
         // 刷新固定预览场景和演示角色字段。
         private void RefreshSettings()
         {
             previewSceneField.SetValueWithoutNotify(viewModel.PreviewScene);
             previewActorField.SetValueWithoutNotify(viewModel.PreviewActor);
+            rootMotionToggle.SetValueWithoutNotify(viewModel.PreviewApplyRootMotion);
         }
         // 缩放变化后同步 Slider，避免状态刷新反向触发输入回调。
         private void RefreshZoom() => zoomSlider.SetValueWithoutNotify(canvasModel.PixelsPerFrame);
@@ -210,6 +224,9 @@ namespace RPG.SkillSystem.Editor
             else viewModel.Play();
         }
 
+        // 把循环按钮点击转换为明确的播放状态设置意图。
+        private void OnLoopClicked() => viewModel.SetLooping(!viewModel.IsLooping);
+
         // 把 Config ObjectField 变化转换为打开配置意图。
         private void OnConfigChanged(ChangeEvent<UnityEngine.Object> evt) => viewModel.OpenConfig(evt.newValue as SkillConfig);
 
@@ -218,6 +235,10 @@ namespace RPG.SkillSystem.Editor
 
         // 把演示角色字段变化写入固定编辑器设置。
         private void OnPreviewActorChanged(ChangeEvent<UnityEngine.Object> evt) => viewModel.SetPreviewActor(evt.newValue as GameObject);
+
+        // 把 Root Motion Toggle 转换为项目级预览设置并立即重采样当前帧。
+        private void OnRootMotionChanged(ChangeEvent<bool> evt) =>
+            viewModel.SetPreviewApplyRootMotion(evt.newValue);
 
         // 把帧率输入转换为保持实际时间的重采样请求。
         private void OnFrameRateChanged(ChangeEvent<int> evt) => viewModel.ChangeFrameRate(evt.newValue);

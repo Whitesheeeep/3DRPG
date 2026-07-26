@@ -35,8 +35,19 @@ TrackModule
 ├── ITrackDocumentHandler    SerializedObject 路由、创建、编辑和帧规则
 ├── ITrackDropHandler        可选；Project 素材 → IItemCreateRequest
 ├── IItemViewFactory         Item ViewData → 具体 UXML/View
-└── IInspectorDrawer         Item ViewData → Inspector 与 IItemEditRequest
+├── IInspectorDrawer         Item ViewData → Inspector 与 IItemEditRequest
+└── ITrackPreviewFactory     可选；创建窗口私有的轨道预览处理器
 ```
+
+Module 的物理目录按契约与实现分离：
+
+```text
+Core/Modules/
+├── Interface/    六类 Module 能力接口
+└── Concrete/     Registry、Projection、Document、Drop、Item View、Inspector 与 Preview 实现
+```
+
+新增轨道时先在 `Interface` 中确认所需能力契约，再在 `Concrete` 的对应能力文件中增加实现；宿主 View、Document、CompositePreview 和输入 Controller 不放入 Module 目录。
 
 `TrackModuleRegistry` 是编辑器内唯一的轨道能力注册表：
 
@@ -143,6 +154,26 @@ Unity Undo/Redo
 → Canvas 与 Inspector 刷新
 ```
 
+### 3.6 Scene View 预览
+
+```text
+播放、跳帧或 Config 内容变化
+→ EditorViewModel 通知 PlaybackController
+→ PlaybackController 标记 Scrub / PlaybackStart / PlaybackAdvance
+→ CompositePreview 准备不可保存的隔离角色副本
+→ 按 Module 注册顺序调用 ITrackPreviewHandler.SampleFrame(context)
+├── AnimationPreviewHandler：Animancer 姿势与绝对 Root Motion
+├── VfxPreviewHandler：ParticleSystem 绝对时间模拟
+└── AudioPreviewHandler：窗口私有 PlayableGraph 连续播放
+```
+
+`ITrackPreviewFactory` 是 Module 的无状态可选能力，负责为每个时间轴窗口创建独立 Handler。Handler 可以持有 VFX 实例、音频 Graph 或帧缓存，但不能访问 View、Selection、Document 或修改 SkillConfig。未注册 Preview Factory 的轨道会被自然跳过。
+
+Animation Module 同时实现 `IPreviewActorPoseProvider`，复用 Root Motion 缓存为 VFX 的 `KeepWorldPosition` 查询 Clip 起始帧根姿态。VFX 只依赖该接口，不依赖 Animancer 或 Animation Handler 的具体类型；`FollowBinding` 则直接使用当前预览角色根 Transform。
+
+Audio Preview 不接入运行时 `AudioManager`。每个窗口持有独立 `PlayableGraph`，通过 `AudioClipPlayable.SetSpeed()` 和 Mixer 输入权重表现 Pitch 与 Volume；Scrub 保持静音，开始播放或播放中重新定位时按当前帧源偏移重建 Voice。
+
+新增 Preview 能力时继续在对应 TrackModule 注册 Factory/Handler，不在 `CompositePreview` 中增加轨道类型判断。AttackDetection 和 Event 尚未注册 Preview Factory。
 ## 4. 新增一种轨道时的扩展清单
 
 新增轨道应按下面顺序完成，避免 Editor 层先引用尚未稳定的运行时数据。

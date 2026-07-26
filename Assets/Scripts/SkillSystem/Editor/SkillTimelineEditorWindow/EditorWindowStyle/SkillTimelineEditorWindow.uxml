@@ -26,10 +26,14 @@
             <ui:VisualElement class="toolbar-section actor-section">
                 <uie:ObjectField name="PreviewActorField" label="演示角色" type="UnityEngine.GameObject, UnityEngine.CoreModule" class="preview-field compact-object-field unity-base-field__aligned" />
             </ui:VisualElement>
+            <ui:VisualElement class="toolbar-section root-motion-section">
+                <ui:Toggle name="RootMotionToggle" label="Root Motion" class="root-motion-toggle" />
+            </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement class="toolbar-row toolbar-wrap-row playback-row">
             <ui:VisualElement class="toolbar-section playback-buttons-section">
                 <ui:Button name="PlayPauseButton" text="播放" class="toolbar-button primary-button" />
+                <ui:Button name="LoopButton" text="循环" tooltip="循环播放整个技能" class="toolbar-button loop-button" />
                 <ui:Button name="StopButton" text="停止" class="toolbar-button" />
                 <ui:Button name="PreviousFrameButton" text="上一帧" class="toolbar-button" />
                 <ui:Button name="NextFrameButton" text="下一帧" class="toolbar-button" />

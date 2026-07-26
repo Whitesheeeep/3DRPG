@@ -7,11 +7,12 @@ namespace RPG.SkillSystem.Editor
     /// <summary>
     /// 保存技能时间轴编辑器的全局设置，包括固定预览场景和演示角色。
     /// </summary>
-    [FilePath("ProjectSettings/EditorSettings.asset", FilePathAttribute.Location.ProjectFolder)]
+    [FilePath("ProjectSettings/SkillTimelineEditorSettings.asset", FilePathAttribute.Location.ProjectFolder)]
     internal sealed class EditorSettings : ScriptableSingleton<EditorSettings>
     {
         [SerializeField] private string previewSceneGuid = string.Empty;
         [SerializeField] private string previewActorGlobalObjectId = string.Empty;
+        [SerializeField] private bool previewApplyRootMotion;
 
         public SceneAsset PreviewScene
         {
@@ -21,6 +22,8 @@ namespace RPG.SkillSystem.Editor
                 return string.IsNullOrEmpty(path) ? null : AssetDatabase.LoadAssetAtPath<SceneAsset>(path);
             }
         }
+
+        public bool PreviewApplyRootMotion => previewApplyRootMotion;
 
         public GameObject PreviewActor
         {
@@ -50,6 +53,16 @@ namespace RPG.SkillSystem.Editor
             previewActorGlobalObjectId = actor != null
                 ? GlobalObjectId.GetGlobalObjectIdSlow(actor).ToString()
                 : string.Empty;
+            Save(true);
+        }
+
+        /// <summary>
+        /// 保存动画预览是否应用绝对帧 Root Motion。
+        /// </summary>
+        public void SetPreviewApplyRootMotion(bool value)
+        {
+            if (previewApplyRootMotion == value) return;
+            previewApplyRootMotion = value;
             Save(true);
         }
     }

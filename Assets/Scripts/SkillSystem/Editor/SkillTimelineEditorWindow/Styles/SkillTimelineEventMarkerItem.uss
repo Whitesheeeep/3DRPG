@@ -12,6 +12,6 @@
 }
 
 .event-marker-item.is-selected {
-    color: rgb(255, 225, 120);
+    color: rgb(190, 255, 8);
     -unity-font-style: bold;
 }

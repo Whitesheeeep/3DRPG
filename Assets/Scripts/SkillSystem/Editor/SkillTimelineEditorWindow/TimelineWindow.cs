@@ -62,7 +62,9 @@ namespace RPG.SkillSystem.Editor
             modules = TrackModuleRegistry.CreateDefault(editorConfig);
             document = new Document(modules.DocumentHandlers);
             previewSceneService = new PreviewSceneService(EditorSettings.instance);
-            playback = new PlaybackController();
+            CompositePreview preview = new(previewSceneService, new PreviewActorFactory(),
+                modules.CreatePreviewHandlers());
+            playback = new PlaybackController(preview);
             viewModel = new EditorViewModel(document, playback, previewSceneService, modules);
             view = new EditorView(rootVisualElement, editorConfig, modules);
             view.Bind(viewModel);
