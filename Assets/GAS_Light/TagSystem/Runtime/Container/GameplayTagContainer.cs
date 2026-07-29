@@ -2,52 +2,6 @@
 
 namespace WS_Modules.GAS.TAG
 {
-    /// <summary>定义纯运行时 Gameplay Tag 容器的核心集合和查询操作。</summary>
-    public interface IGameplayTagContainer
-    {
-        /// <summary>获取显式添加的标签只读集合。</summary>
-        IReadOnlyCollection<GameplayTag> Tags { get; }
-        /// <summary>获取由显式标签派生的隐式祖先只读集合。</summary>
-        IReadOnlyCollection<GameplayTag> ParentTags { get; }
-        /// <summary>获取显式标签数量。</summary>
-        int Count { get; }
-        /// <summary>获取容器是否不含任何显式标签。</summary>
-        bool IsEmpty { get; }
-
-        /// <summary>添加一个存在于数据库中的显式标签。</summary>
-        bool AddTag(GameplayTag tag);
-
-        /// <summary>删除一个显式标签。</summary>
-        bool RemoveTag(GameplayTag tag);
-
-        /// <summary>合并另一个容器的显式标签。</summary>
-        void AppendTags(IGameplayTagContainer other);
-
-        /// <summary>删除另一个容器中列出的显式标签。</summary>
-        void RemoveTags(IGameplayTagContainer other);
-
-        /// <summary>清空全部显式和隐式标签。</summary>
-        void Reset();
-
-        /// <summary>判断容器是否具有能满足查询的显式标签或其隐式祖先。</summary>
-        bool HasTag(GameplayTag tag);
-
-        /// <summary>判断容器是否显式包含查询标签。</summary>
-        bool HasTagExact(GameplayTag tag);
-
-        /// <summary>判断是否满足另一个容器任一显式查询标签。</summary>
-        bool HasAny(IGameplayTagContainer other);
-
-        /// <summary>判断是否精确包含另一个容器任一显式标签。</summary>
-        bool HasAnyExact(IGameplayTagContainer other);
-
-        /// <summary>判断是否满足另一个容器全部显式查询标签。</summary>
-        bool HasAll(IGameplayTagContainer other);
-
-        /// <summary>判断是否精确包含另一个容器全部显式标签。</summary>
-        bool HasAllExact(IGameplayTagContainer other);
-    }
-
     /// <summary>保存显式 Gameplay Tag，并缓存由其派生的全部祖先标签。</summary>
     public sealed class GameplayTagContainer : IGameplayTagContainer
     {
@@ -82,14 +36,14 @@ namespace WS_Modules.GAS.TAG
         }
 
         /// <inheritdoc />
-        public void AppendTags(IGameplayTagContainer other)
+        public void AppendTags(IReadOnlyGameplayTagContainer other)
         {
             if (other == null || ReferenceEquals(this, other)) return;
             foreach (GameplayTag tag in other.Tags) AddTag(tag);
         }
 
         /// <inheritdoc />
-        public void RemoveTags(IGameplayTagContainer other)
+        public void RemoveTags(IReadOnlyGameplayTagContainer other)
         {
             if (other == null) return;
             if (ReferenceEquals(this, other))
@@ -120,7 +74,7 @@ namespace WS_Modules.GAS.TAG
         public bool HasTagExact(GameplayTag tag) => GameplayTagManager.Instance.IsValidTag(tag) && tags.Contains(tag);
 
         /// <inheritdoc />
-        public bool HasAny(IGameplayTagContainer other)
+        public bool HasAny(IReadOnlyGameplayTagContainer other)
         {
             if (other == null) return false;
             foreach (GameplayTag tag in other.Tags)
@@ -130,7 +84,7 @@ namespace WS_Modules.GAS.TAG
         }
 
         /// <inheritdoc />
-        public bool HasAnyExact(IGameplayTagContainer other)
+        public bool HasAnyExact(IReadOnlyGameplayTagContainer other)
         {
             if (other == null) return false;
             foreach (GameplayTag tag in other.Tags)
@@ -140,7 +94,7 @@ namespace WS_Modules.GAS.TAG
         }
 
         /// <inheritdoc />
-        public bool HasAll(IGameplayTagContainer other)
+        public bool HasAll(IReadOnlyGameplayTagContainer other)
         {
             if (other == null) return true;
             foreach (GameplayTag tag in other.Tags)
@@ -150,7 +104,7 @@ namespace WS_Modules.GAS.TAG
         }
 
         /// <inheritdoc />
-        public bool HasAllExact(IGameplayTagContainer other)
+        public bool HasAllExact(IReadOnlyGameplayTagContainer other)
         {
             if (other == null) return true;
             foreach (GameplayTag tag in other.Tags)

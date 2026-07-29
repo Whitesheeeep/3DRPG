@@ -1,0 +1,6 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
+    <ui:VisualElement class="attribute-row">
+        <ui:Label name="NameLabel" class="attribute-row-name" />
+        <ui:Label name="TypeLabel" class="attribute-row-id" />
+    </ui:VisualElement>
+</ui:UXML>

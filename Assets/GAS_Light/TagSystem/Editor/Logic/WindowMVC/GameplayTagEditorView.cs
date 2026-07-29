@@ -8,7 +8,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using WS_Modules.GAS.TAG;
 
-namespace WSFrame.GAS.Editor
+namespace WS_Modules.GAS.Editor
 {
     /// <summary>使用 UI Toolkit 实现 Gameplay Tag Editor 的控件绑定、交互转发和视觉刷新。</summary>
     public sealed class GameplayTagEditorView : IGameplayTagEditorView

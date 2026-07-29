@@ -1,0 +1,54 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <Style src="project://database/Assets/GAS_Light/AttributeSystem/Editor/Style/GameplayAttributeEditor.uss?fileID=7433441132597879392&amp;guid=f02e9a5a353d9e54ab44c9c3d3827761&amp;type=3#GameplayAttributeEditor" />
+    <ui:VisualElement class="attribute-page">
+        <ui:VisualElement class="attribute-sub-tabs">
+            <ui:Button name="SpecsPageButton" text="Attribute Specs" class="attribute-sub-tab" />
+            <ui:Button name="SetsPageButton" text="Attribute Sets" class="attribute-sub-tab" />
+            <ui:VisualElement class="attribute-grow" />
+            <uie:ToolbarSearchField name="SearchField" class="attribute-search" />
+        </ui:VisualElement>
+        <ui:VisualElement name="SpecsPage" class="attribute-content-page">
+            <ui:VisualElement class="attribute-toolbar" style="flex-wrap: nowrap; flex-shrink: 1;">
+                <uie:ObjectField name="RegistryField" label="Registry" class="attribute-object-field" style="position: relative; width: auto;" />
+                <ui:Button name="CreateSpecButton" text="Add Spec" />
+                <ui:Button name="DeleteSpecButton" text="Delete" />
+                <ui:Button name="BakeButton" text="Bake Specs" class="attribute-primary-button" />
+            </ui:VisualElement>
+            <ui:TwoPaneSplitView fixed-pane-index="0" fixed-pane-initial-dimension="330" orientation="Horizontal" class="attribute-main-split">
+                <ui:VisualElement class="attribute-list-panel">
+                    <ui:ListView name="SpecList" class="attribute-list" />
+                </ui:VisualElement>
+                <ui:ScrollView class="attribute-details">
+                    <ui:Label text="Attribute Spec" class="attribute-section-title" />
+                    <ui:TextField name="SpecNameField" label="Name" is-delayed="true" />
+                    <ui:TextField name="SpecGuidField" label="Guid" is-read-only="true" />
+                    <ui:IntegerField name="SpecIdField" label="AttributeId" is-read-only="true" />
+                    <ui:TextField name="SpecDescriptionField" label="Description" multiline="true" is-delayed="true" />
+                </ui:ScrollView>
+            </ui:TwoPaneSplitView>
+        </ui:VisualElement>
+        <ui:VisualElement name="SetsPage" class="attribute-content-page">
+            <ui:VisualElement class="attribute-toolbar">
+                <uie:ObjectField name="SetField" label="Attribute Set" class="attribute-object-field" />
+                <ui:Button name="CreateSetButton" text="Create Set" />
+                <ui:Button name="AddStatButton" text="Add Stat" />
+                <ui:Button name="AddResourceButton" text="Add Resource" />
+                <ui:Button name="DeleteDefinitionButton" text="Delete" />
+            </ui:VisualElement>
+            <ui:TwoPaneSplitView fixed-pane-index="0" fixed-pane-initial-dimension="330" orientation="Horizontal" class="attribute-main-split">
+                <ui:VisualElement class="attribute-list-panel">
+                    <ui:TreeView name="DefinitionTree" class="attribute-list" />
+                </ui:VisualElement>
+                <ui:ScrollView class="attribute-details">
+                    <ui:Label text="Attribute Definition" class="attribute-section-title" />
+                    <ui:DropdownField name="DefinitionAttributeField" label="Attribute" />
+                    <ui:EnumField name="DefinitionTypeField" label="Type" />
+                    <ui:FloatField name="DefinitionDefaultField" label="Default Value" is-delayed="true" />
+                    <ui:FloatField name="DefinitionMinField" label="Min Value" is-delayed="true" />
+                    <ui:FloatField name="DefinitionMaxField" label="Max Value" is-delayed="true" />
+                </ui:ScrollView>
+            </ui:TwoPaneSplitView>
+        </ui:VisualElement>
+        <ui:HelpBox name="StatusBox" class="attribute-status" />
+    </ui:VisualElement>
+</ui:UXML>

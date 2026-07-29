@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using WS_Modules.GAS.TAG;
 
-namespace WSFrame.GAS.Editor
+namespace WS_Modules.GAS.Editor
 {
     /// <summary>定义 Gameplay Tag Editor 的用户意图与展示能力，不暴露任何 UI Toolkit 控件。</summary>
     public interface IGameplayTagEditorView : IDisposable

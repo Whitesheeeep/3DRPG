@@ -6,7 +6,7 @@ using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using WS_Modules.GAS.TAG;
 
-namespace WSFrame.GAS.Editor
+namespace WS_Modules.GAS.Editor
 {
     /// <summary>在进入 Play Mode 和正式构建前阻止使用过期或非法 Tag 数据。</summary>
     [InitializeOnLoad]

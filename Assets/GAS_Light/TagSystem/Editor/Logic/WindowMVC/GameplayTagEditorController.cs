@@ -5,7 +5,7 @@ using System.Linq;
 using UnityEditor;
 using WS_Modules.GAS.TAG;
 
-namespace WSFrame.GAS.Editor
+namespace WS_Modules.GAS.Editor
 {
     /// <summary>协调 Gameplay Tag Editor 的用户意图、作者数据服务和 View 刷新。</summary>
     public sealed class GameplayTagEditorController : IDisposable

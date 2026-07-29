@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6e84e2142115a5341b8d72b92b399c34, type: 3}
+  m_Name: GameplayAttributeRegistry
+  m_EditorClassIdentifier: 
+  nodes:
+  - guid: e3508c9a368a4a41a3bac0bb9153ef23
+    name: Health
+    description: 
+  - guid: 3d7a2a71fc664644b0d0449b432145bf
+    name: MaxHealth
+    description: 
+  - guid: 6e6dab5bd4ec45cca70d20c6e003fc53
+    name: Armor
+    description: 
+  - guid: 262c03ccb17c4ba080d6765cd9ad7bee
+    name: MP
+    description: 
+  idRecords:
+  - guid: e3508c9a368a4a41a3bac0bb9153ef23
+    id: 0
+  - guid: 3d7a2a71fc664644b0d0449b432145bf
+    id: 1
+  - guid: 6e6dab5bd4ec45cca70d20c6e003fc53
+    id: 2
+  - guid: 262c03ccb17c4ba080d6765cd9ad7bee
+    id: 3
+  retiredIds: 
+  nextId: 4
+  bakeDirty: 0

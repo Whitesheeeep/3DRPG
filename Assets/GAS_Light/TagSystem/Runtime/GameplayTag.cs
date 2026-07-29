@@ -14,6 +14,7 @@ namespace WS_Modules.GAS.TAG
         public const int InvalidId = -1;
         /// <summary>表示未设置或非法标签的空值。</summary>
         public static readonly GameplayTag Empty = new GameplayTag(InvalidId);
+
         [SerializeField]
         private int id;
         #endregion

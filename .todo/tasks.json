@@ -1,0 +1,24 @@
+[
+  {
+    "id": "TASK_1",
+    "priority": "LOW",
+    "tags": [],
+    "title": "序列化测试",
+    "description": "",
+    "status": "TODO",
+    "date": {
+      "date": {
+        "year": 2026,
+        "month": 7,
+        "day": 29
+      },
+      "time": {
+        "hour": 15,
+        "minute": 1,
+        "second": 12,
+        "nano": 998510200
+      }
+    },
+    "isImported": false
+  }
+]
