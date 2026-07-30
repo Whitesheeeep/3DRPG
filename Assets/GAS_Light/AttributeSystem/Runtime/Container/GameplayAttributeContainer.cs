@@ -47,7 +47,7 @@ namespace WS_Modules.GAS.AttributeSystem
         #endregion
 
         #region 字段
-        [SerializeField, HideInInspector]
+        [SerializeField]
         private List<GameplayAttributeDefinition> attributes = new();
 
         // 事务对象统一管理 Post FIFO、重复排队、修改环和 Modifier 防重入状态。

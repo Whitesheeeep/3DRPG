@@ -4925,26 +4925,45 @@ MonoBehaviour:
   modifierMagnitude: 2
   modifierPriority: 0
   selectedModifierIndex: 0
+  fourAttributeTestSet: {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
   container:
     attributes:
     - attribute:
         id: 0
-      type: 0
-      defaultValue: 3
+      type: 1
+      defaultValue: 100
       minValue: 0
       maxValue: 1000
-      baseValue: 3
-      currentValue: 3
-      ownerSet: {fileID: 11400000, guid: fa050d1171257b24bbba13162066da88, type: 2}
+      baseValue: 60
+      currentValue: 60
+      ownerSet: {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
     - attribute:
         id: 1
       type: 0
-      defaultValue: 65
-      minValue: -Infinity
-      maxValue: Infinity
-      baseValue: 130
-      currentValue: 130
-      ownerSet: {fileID: 11400000, guid: fa050d1171257b24bbba13162066da88, type: 2}
+      defaultValue: 100
+      minValue: 1
+      maxValue: 1000
+      baseValue: 100
+      currentValue: 100
+      ownerSet: {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
+    - attribute:
+        id: 2
+      type: 0
+      defaultValue: 10
+      minValue: 0
+      maxValue: 1000
+      baseValue: 10
+      currentValue: 10
+      ownerSet: {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
+    - attribute:
+        id: 3
+      type: 1
+      defaultValue: 50
+      minValue: 0
+      maxValue: 100
+      baseValue: 50
+      currentValue: 50
+      ownerSet: {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
 --- !u!1 &1368122516 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 7751052659558418680, guid: 86a21ed9bdb231049bb000f679088fb9, type: 3}
