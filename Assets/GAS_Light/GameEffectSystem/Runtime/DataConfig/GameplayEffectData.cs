@@ -1,79 +1,112 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using GAS;
 using UnityEngine;
+using WS_Modules.GAS.TAG;
+#if UNITY_EDITOR
+using WS_Modules.GAS.AttributeSystem;
+#endif
 
 namespace WS_Modules.GAS.GameplayEffect
 {
-    /// <summary>
-    /// 编辑器数据
-    /// </summary>
-    [Serializable]
-    public sealed class GameplayEffectData
+    /// <summary>保存可复用的 Gameplay Effect 作者配置；运行时状态由 Runtime 独立承载。</summary>
+    [CreateAssetMenu(fileName = "GameplayEffectData", menuName = "WSFrame/GAS/Gameplay Effect")]
+    public sealed class GameplayEffectData : ScriptableObject
     {
-        [SerializeField]
-        private string Name;
-        [SerializeField]
-        private string Description;
+        #region 基础配置
 
-        /// <summary>
-        /// 游戏效果ID
-        /// </summary>
-        [SerializeField]
-        private string EffectId;
+        [SerializeField, TextArea] private string description;
+        [SerializeField, Tooltip("决定 GE 是立即结算、有限持续还是无限持续。")]
+        private E_GameEffectDurationType durationType;
+        [SerializeField, Min(0f), Tooltip("Duration GE 的完整持续时间；其他类型忽略。")]
+        private float duration;
+        [SerializeField, Min(0f), Tooltip("大于 0 时按周期执行 Instant 结算；支持 Duration 与 Infinite。")]
+        private float period;
+        [SerializeField, Tooltip("周期 GE 应用成功时是否立即执行第一轮。")]
+        private bool executePeriodicOnApplication;
 
-        /// <summary>
-        /// 游戏效果等级
-        /// </summary>
-        [SerializeField]
-        private int Level = 1;
+        #endregion
 
-        [Tooltip("游戏效果持续时间策略")]
-        [SerializeField]
-        private E_GameEffectDurationType GE_DurationType;
+        #region Tag 与数值计算
 
-        /// <summary>
-        /// 游戏效果持续时间
-        /// </summary>
-        [Tooltip("GE 持续时间，对于 Instant 和 Infinite 无效")]
-        [SerializeField]
-        private float Duration = 0f;
+        [SerializeField, Tooltip("目标必须满足该查询才能应用；空查询表示不限制。")]
+        private GameplayTagQuery targetTagQuery;
+        [SerializeField, Tooltip("非 Instant GE 激活期间赋予 Target 的标签。")]
+        private GameplayTag[] grantedTags = Array.Empty<GameplayTag>();
+        [SerializeReference, Tooltip("按列表顺序执行；每项生成一个最终 Attribute Modifier。")]
+        private List<GameplayEffectModifier> modifiers = new();
 
-        /// <summary>
-        /// 效果轮次周期时长，对于 Period 适用
-        /// </summary>
-        [Tooltip("GE 每多长时间触发一次，对于 Instant 和 Infinite 无效")]
-        [SerializeField]
-        private float Period = 0f;
+        #endregion
 
-        // 该 GE 的 Modifier 结果
-        [SerializeField]
-        private List<Modifier> Modifiers;
+#if UNITY_EDITOR
+        #region Editor 校验范围
 
-        #region 策略
-        [Header("叠层策略")]
-        [SerializeField]
-        private int MaxStackCount = 1;
+        [SerializeField, Tooltip("仅用于 GE Editor 校验；空列表表示扫描项目全部 AttributeSet。")]
+        private List<GameplayAttributeSet> validationSets = new();
 
-        [Tooltip("GE 叠层策略：不合并叠层、按 Source 合并叠层、按 Target 合并叠层")]
-        [SerializeField]
-        private E_GameEffectStackingType GE_StackingType;
+        #endregion
+#endif
 
-        [Tooltip("GE 叠层持续时间策略：每次成功应用都会把剩余时间重置为完整持续时间、成功增加叠层时不改变当前剩余时间、成功增加叠层时将剩余时间增加到完整持续时间")]
-        [SerializeField]
-        private E_GameEffectStackingDurationPolicy GE_StackingDurationPolicy;
+        #region 叠层策略
 
-        [Tooltip("GE 叠层周期刷新策略：成功应用后刷新当次周期结算；成功叠层不影响当次周期结算；成功叠层后刷新当次周期结算")]
-        [SerializeField]
-        private E_GameEffectStackingPeriodPolicy GE_StackingPeriodPolicy;
+        [SerializeField, Tooltip("决定重复应用是否合并到现有 Runtime。")]
+        private E_GameEffectStackingType stackingType;
+        [SerializeField, Min(1), Tooltip("合并叠层时允许的最大层数；None 时忽略。")]
+        private int maxStackCount = 1;
+        [SerializeField, Tooltip("达到最大层数后是否完全拒绝本次应用。")]
+        private bool denyOverflowApplication = true;
+        [SerializeField, Tooltip("成功重复应用时如何更新剩余持续时间。")]
+        private E_GameEffectStackingDurationPolicy stackingDurationPolicy;
+        [SerializeField, Tooltip("成功重复应用时如何更新下一次周期计时。")]
+        private E_GameEffectStackingPeriodPolicy stackingPeriodPolicy;
+        [SerializeField, Tooltip("Duration 到期时如何处理现有层数。")]
+        private E_GameEffectStackingExpirationPolicy stackingExpirationPolicy;
 
-        [Tooltip("GE 叠层过期策略：当叠层过期时移除所有叠层；当叠层过期时移除最早的叠层；当叠层过期时移除最晚的叠层")]
-        [SerializeField]
-        private E_GameEffectStackingExpirationPolicy GE_StackingExpirationPolicy;
+        #endregion
 
-        [Tooltip("GE 叠层修饰器策略：始终只结算一次；Modifier 叠加")]
-        [SerializeField]
-        private E_GameEffectModifierStackPolicy GE_ModifierStackPolicy;
+        #region 属性
+
+        /// <summary>获取供编辑器和日志显示的说明。</summary>
+        public string Description => description;
+        /// <summary>获取持续时间类型。</summary>
+        public E_GameEffectDurationType DurationType => durationType;
+        /// <summary>获取 Duration GE 的完整持续时间。</summary>
+        public float Duration => duration;
+        /// <summary>获取周期时长；零表示非周期持续效果。</summary>
+        public float Period => period;
+        /// <summary>获取周期 GE 是否在应用成功时立即执行第一轮。</summary>
+        public bool ExecutePeriodicOnApplication => executePeriodicOnApplication;
+        /// <summary>获取目标应用 Tag 查询。</summary>
+        public GameplayTagQuery TargetTagQuery => targetTagQuery;
+        /// <summary>获取激活期间赋予 Target 的标签。</summary>
+        public IReadOnlyList<GameplayTag> GrantedTags => grantedTags;
+        /// <summary>获取按顺序计算并提交的 GE Modifier 作者配置。</summary>
+        public IReadOnlyList<GameplayEffectModifier> Modifiers => modifiers;
+        /// <summary>获取重复应用时的合并规则。</summary>
+        public E_GameEffectStackingType StackingType => stackingType;
+        /// <summary>获取允许的最大叠层数。</summary>
+        public int MaxStackCount => maxStackCount;
+        /// <summary>获取达到最大层数时是否完全拒绝应用。</summary>
+        public bool DenyOverflowApplication => denyOverflowApplication;
+        /// <summary>获取成功重复应用时的持续时间规则。</summary>
+        public E_GameEffectStackingDurationPolicy StackingDurationPolicy => stackingDurationPolicy;
+        /// <summary>获取成功重复应用时的周期计时规则。</summary>
+        public E_GameEffectStackingPeriodPolicy StackingPeriodPolicy => stackingPeriodPolicy;
+        /// <summary>获取 Duration 到期时的叠层规则。</summary>
+        public E_GameEffectStackingExpirationPolicy StackingExpirationPolicy => stackingExpirationPolicy;
+        /// <summary>获取该配置是否为周期 GE。</summary>
+        public bool IsPeriodic => period > 0f;
+
+        #endregion
+
+        #region Modifier 计算契约
+
+        // 汇总所有 Modifier 声明的动态输入 Key，供 Controller 在唯一公开失败入口统一检查。
+        internal void CollectRequiredSetByCallerKeys(ISet<GameplayTag> keys)
+        {
+            for (int i = 0; i < Modifiers.Count; i++)
+                Modifiers[i].CollectRequiredSetByCallerKeys(keys);
+        }
+
         #endregion
     }
 }

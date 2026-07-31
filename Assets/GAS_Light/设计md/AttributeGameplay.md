@@ -53,7 +53,7 @@ Set 是可直接使用的配置模板 SO，而不是需要再次 Bake 的中间�
 
 ## Aggregator 与 Modifier
 
-每个运行时 Stat Definition 持有非序列化 Aggregator。`AttributeModifierConfig` 是未来 GE 资产的共享内联配置，只保存 Attribute、Add/Multiply/Override、Magnitude 与 Priority；Apply 后创建的 `AttributeModifier` 才保存运行时 `IModifierSource`，并以对象引用作为精确删除 Handle。运行时 Modifier 创建后不可变，业务层不得直接更新其 Magnitude。
+每个运行时 Stat Definition 持有非序列化 Aggregator。GE 资产中的多态 `GameplayEffectModifier` 同时承担作者配置和 Magnitude 计算，计算后直接创建包含 Source、Attribute、Add/Multiply/Override、最终 Magnitude 与 Priority 的不可变 `AttributeModifier`。提交前它是候选结果；成功绑定 Container 后，同一对象引用就是精确删除 Handle。业务层不得修改其 Magnitude。
 
 Aggregator 按 Priority 从小到大计算，同一 Priority 先合并 Add、再连乘 Multiply，最后由该 Priority 中唯一的 Override 覆盖：
 
@@ -73,7 +73,7 @@ Aggregator 内部 List 在 Add 和 Restore 后直接按 Priority 排序，`TryEv
 
 ### Instant 结算
 
-`TryApplyInstantModifier` 对单个 Config 执行 Add、Multiply 或 Override，忽略 Priority，不创建 Source、Handle 或运行时 Modifier。
+`ApplyInstantModifier` 与 `TryApplyInstantModifiers` 直接接收已计算的 `AttributeModifier`，按列表顺序执行 Add、Multiply 或 Override，忽略 Priority。Instant 仍保留 Source 作为本次结算身份，但不绑定 Container Owner，也不进入 Aggregator；结算完成后即可释放。
 
 - Stat 以内部 BaseValue 为输入，提交后重新聚合 CurrentValue。
 - Resource 以 CurrentValue 为输入，完成 Base Pre、Current Pre 与动态 Clamp 后，将最终结算结果同步到内部 BaseValue 和 CurrentValue。
@@ -89,6 +89,8 @@ Container 内部将 Instant、Reset 和 Post FIFO 请求统一视为 BaseValue �
 持续 Modifier 的添加或删除仅允许 Stat，不改变内部 BaseValue，只重新聚合 CurrentValue 并执行 Current Pre/Post。单项和按 Source 批量操作都是原子事务，非法输入、计算溢出或 Pre 返回非法结果时恢复 Modifier 集合与旧 CurrentValue。
 
 未来 GE 的 Level、SetByCaller 或动态 Magnitude 变化由 Active GE 层处理：重新计算配置后，以同一个 Source 原子替换其整组 Modifier。本阶段不公开单项 Modifier 更新 API，也不允许业务代码绕过 Active GE 修改底层 Modifier。
+
+GE 集成增加两个批量事务入口：`TryApplyInstantModifiers` 按输出顺序计算并整体提交一次 Instant 结果；`TryReplaceModifiers` 以同一 `IModifierSource` 原子替换整组持续 Modifier。两者都会先完成全部配置、聚合与 Pre 校验，再写入 Base/Current 或 Aggregator；失败时不保留部分 Modifier 和数值结果。
 
 固定 Min/Max Clamp 在 Set 基类的两个 Pre 中完成。派生 Set 覆写 Pre 时必须调用 `base`。
 

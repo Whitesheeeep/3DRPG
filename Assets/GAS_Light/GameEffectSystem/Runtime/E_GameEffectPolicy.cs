@@ -92,27 +92,7 @@
         /// <summary>
         /// 到期时移除一层；仍有剩余层数时刷新完整持续时间。
         /// </summary>
-        RemoveSingleStackAndRefreshDuration,
-
-        /// <summary>
-        /// 到期时不减少层数，仅刷新完整持续时间。
-        /// </summary>
-        RefreshDuration
+        RemoveSingleStackAndRefreshDuration
     }
 
-    /// <summary>
-    /// 定义单项 Gameplay Effect Modifier 是否根据 Active Gameplay Effect 的层数重复计算。
-    /// </summary>
-    public enum E_GameEffectModifierStackPolicy
-    {
-        /// <summary>
-        /// Modifier 始终只计算一次，StackCount 不影响其 Magnitude。
-        /// </summary>
-        IgnoreStackCount,
-
-        /// <summary>
-        /// 按 StackCount 重复同一运算；Add 线性累加，Multiply 连乘。
-        /// </summary>
-        RepeatPerStack
-    }
 }

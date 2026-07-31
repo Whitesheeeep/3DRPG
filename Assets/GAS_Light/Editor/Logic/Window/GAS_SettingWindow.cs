@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using WS_Modules.GAS.AttributeSystem;
+using WS_Modules.GAS.GameplayEffect;
 using WS_Modules.GAS.TAG;
 
 namespace WS_Modules.GAS.Editor
@@ -21,6 +22,7 @@ namespace WS_Modules.GAS.Editor
         [SerializeField] private GameplayTagDatabase requestedTagDatabase;
         [SerializeField] private GameplayAttributeRegistry requestedAttributeRegistry;
         [SerializeField] private GameplayAttributeSet requestedAttributeSet;
+        [SerializeField] private GameplayEffectData requestedGameplayEffect;
         [SerializeField] private GameplayAttributeEditorPage requestedAttributePage =
             GameplayAttributeEditorPage.Specs;
 
@@ -31,6 +33,7 @@ namespace WS_Modules.GAS.Editor
         private VisualElement contentHost;
         private IGameplayTagWindow gameplayTagWindow;
         private IGameplayAttributeWindow gameplayAttributeWindow;
+        private IGameplayEffectWindow gameplayEffectWindow;
         private GASEditorModule activeModule = GASEditorModule.GameplayTags;
         private bool hasActiveModule;
 
@@ -116,6 +119,25 @@ namespace WS_Modules.GAS.Editor
             window.Show();
         }
 
+        /// <summary>打开主窗口 GE 选项卡并选择指定 GameplayEffectData。</summary>
+        /// <param name="effect">需要编辑的 GE；null 时恢复 SessionState 资产。</param>
+        public static void ShowGameplayEffect(GameplayEffectData effect)
+        {
+            GAS_SettingWindow window = GetConfiguredWindow();
+            GameplayEffectData target = effect != null
+                ? effect
+                : GameplayEffectEditorSession.GetEffect();
+            window.requestedGameplayEffect = target;
+            window.SelectModule(GASEditorModule.GameplayEffects);
+            if (window.gameplayEffectWindow != null)
+            {
+                window.gameplayEffectWindow.SetEffect(target, true);
+                window.requestedGameplayEffect = null;
+            }
+
+            window.Show();
+        }
+
         /// <summary>切换当前选项卡；切换前释放旧页面，随后在同一内容宿主中创建目标页面。</summary>
         /// <param name="module">需要显示的模块。</param>
         /// <exception cref="ArgumentOutOfRangeException">模块值未在当前版本中定义。</exception>
@@ -154,7 +176,11 @@ namespace WS_Modules.GAS.Editor
                     ClearRequestedAttributeAssets();
                     break;
                 case GASEditorModule.GameplayEffects:
-                    ShowPlaceholder("Gameplay Effects", "Gameplay Effects editor is not implemented yet.");
+                    GameplayEffectData effect = requestedGameplayEffect != null
+                        ? requestedGameplayEffect
+                        : GameplayEffectEditorSession.GetEffect();
+                    gameplayEffectWindow = new GameplayEffectWindow(contentHost, effect);
+                    requestedGameplayEffect = null;
                     break;
                 case GASEditorModule.GameplayAbilities:
                     ShowPlaceholder("Gameplay Abilities", "Gameplay Abilities editor is not implemented yet.");
@@ -215,7 +241,7 @@ namespace WS_Modules.GAS.Editor
         private void OnGameplayAttributesClicked() =>
             SelectModule(GASEditorModule.GameplayAttributes);
 
-        // GE 选项卡切换到同一内容宿主中的占位页面。
+        // GE 选项卡在同一内容宿主中创建可释放的子 MVC。
         private void OnGameplayEffectsClicked() => SelectModule(GASEditorModule.GameplayEffects);
 
         // GA 选项卡切换到同一内容宿主中的占位页面。
@@ -232,6 +258,8 @@ namespace WS_Modules.GAS.Editor
             gameplayTagWindow = null;
             gameplayAttributeWindow?.Dispose();
             gameplayAttributeWindow = null;
+            gameplayEffectWindow?.Dispose();
+            gameplayEffectWindow = null;
             contentHost?.Clear();
             hasActiveModule = false;
         }

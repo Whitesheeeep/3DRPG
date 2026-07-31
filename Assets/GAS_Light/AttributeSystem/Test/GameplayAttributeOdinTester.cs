@@ -75,16 +75,17 @@ namespace WS_Modules.GAS.AttributeSystem
 
         #region 通用 Modifier 测试
 
-        /// <summary>对选中 Attribute 执行一次不保留 Source 或 Handle 的即时结算。</summary>
+        /// <summary>对选中 Attribute 执行一次不绑定 Container Owner 的即时结算。</summary>
         [Button("执行 Instant Modifier")]
         public void ApplyInstantModifier()
         {
-            var config = new AttributeModifierConfig(
+            var modifier = new AttributeModifier(
+                this,
                 attribute,
                 modifierType,
                 modifierMagnitude,
                 modifierPriority);
-            container.ApplyInstantModifier(config);
+            container.ApplyInstantModifier(modifier);
             Debug.Log(
                 $"Instant 结算完成：Attribute={attribute.Id}, Type={modifierType}, " +
                 $"Magnitude={modifierMagnitude}, Current={GetCurrentValueText(attribute)}");
@@ -94,12 +95,13 @@ namespace WS_Modules.GAS.AttributeSystem
         [Button("添加 Modifier")]
         public void AddModifier()
         {
-            var config = new AttributeModifierConfig(
+            var modifier = new AttributeModifier(
+                this,
                 attribute,
                 modifierType,
                 modifierMagnitude,
                 modifierPriority);
-            bool success = container.TryAddModifier(this, config, out AttributeModifier modifier);
+            bool success = container.TryAddModifier(modifier);
             if (success)
             {
                 appliedModifiers.Add(modifier);
@@ -149,6 +151,53 @@ namespace WS_Modules.GAS.AttributeSystem
             Debug.Log(success
                 ? $"按 Source 移除成功：Removed={removedCount}"
                 : "按 Source 移除失败：当前 Source 没有已应用 Modifier。");
+        }
+
+        /// <summary>验证持续 Modifier 的 Owner 绑定、跨 Container 拒绝与移除后重新绑定。</summary>
+        [Button("测试 Modifier Owner 生命周期")]
+        public void TestModifierOwnerLifecycle()
+        {
+            if (!container.TryInitialize(sets, out string firstError) ||
+                !TryGetFirstStat(container, out GameplayAttribute target))
+            {
+                Debug.LogError($"[AttributeTest][Owner] 主 Container 初始化或 Stat 查找失败：{firstError}");
+                return;
+            }
+
+            var secondContainer = new GameplayAttributeContainer();
+            if (!secondContainer.TryInitialize(sets, out string secondError))
+            {
+                Debug.LogError($"[AttributeTest][Owner] 第二个 Container 初始化失败：{secondError}");
+                return;
+            }
+
+            var persistent = new AttributeModifier(
+                this,
+                target,
+                AttributeModifierType.Add,
+                1f);
+            bool firstAdd = container.TryAddModifier(persistent);
+            bool duplicateRejected = !container.TryAddModifier(persistent);
+            bool crossContainerRejected = !secondContainer.TryAddModifier(persistent);
+            bool firstRemove = container.TryRemoveModifier(persistent);
+            bool rebound = secondContainer.TryAddModifier(persistent);
+            bool secondRemove = secondContainer.TryRemoveModifier(persistent);
+
+            var instant = new AttributeModifier(
+                this,
+                target,
+                AttributeModifierType.Add,
+                0f);
+            container.ApplyInstantModifier(instant);
+            bool instantRemainsUnbound = instant.Owner == null;
+
+            LogBooleanResult("Modifier 首次绑定", firstAdd, true);
+            LogBooleanResult("Modifier 重复添加被拒绝", duplicateRejected, true);
+            LogBooleanResult("Modifier 跨 Container 添加被拒绝", crossContainerRejected, true);
+            LogBooleanResult("Modifier 从第一个 Container 移除", firstRemove, true);
+            LogBooleanResult("Modifier 解绑后可重新绑定", rebound, true);
+            LogBooleanResult("Modifier 从第二个 Container 移除", secondRemove, true);
+            LogBooleanResult("Instant Modifier 不绑定 Owner", instantRemainsUnbound, true);
         }
 
         #endregion
@@ -257,15 +306,13 @@ namespace WS_Modules.GAS.AttributeSystem
             AssertCurrentValue("MaxHealth Post FIFO Clamp Health",
                 GameplayAttributes.Attribute_Health, 60f);
 
-            bool healthModifierAccepted = container.TryAddModifier(
+            var invalidHealthModifier = new AttributeModifier(
                 this,
-                new AttributeModifierConfig(
-                    GameplayAttributes.Attribute_Health,
-                    AttributeModifierType.Add,
-                    10f),
-                out AttributeModifier invalidHealthModifier);
-            if (healthModifierAccepted && invalidHealthModifier != null)
-                appliedModifiers.Add(invalidHealthModifier);
+                GameplayAttributes.Attribute_Health,
+                AttributeModifierType.Add,
+                10f);
+            bool healthModifierAccepted = container.TryAddModifier(invalidHealthModifier);
+            if (healthModifierAccepted) appliedModifiers.Add(invalidHealthModifier);
             LogBooleanResult("Resource Health 持续 Modifier 应被拒绝",
                 healthModifierAccepted, false);
 
@@ -281,7 +328,7 @@ namespace WS_Modules.GAS.AttributeSystem
                 GameplayAttributes.Attribute_Health, 60f);
         }
 
-        // 创建 Config 并调用 Instant 入口，不复制 Container 的运算或 Clamp 实现。
+        // 创建已计算 Modifier 并调用 Instant 入口，不复制 Container 的运算或 Clamp 实现。
         private void ApplyScenarioInstant(
             string step,
             GameplayAttribute target,
@@ -293,7 +340,7 @@ namespace WS_Modules.GAS.AttributeSystem
                 $"[AttributeTest][Input] Step={step}, Attribute={target.Id}, " +
                 $"Type={type}, Magnitude={magnitude}");
             container.ApplyInstantModifier(
-                new AttributeModifierConfig(target, type, magnitude));
+                new AttributeModifier(this, target, type, magnitude));
             AssertCurrentValue(step, target, expected);
         }
 
@@ -304,10 +351,8 @@ namespace WS_Modules.GAS.AttributeSystem
             float magnitude,
             int priority)
         {
-            bool success = container.TryAddModifier(
-                this,
-                new AttributeModifierConfig(target, type, magnitude, priority),
-                out AttributeModifier modifier);
+            var modifier = new AttributeModifier(this, target, type, magnitude, priority);
+            bool success = container.TryAddModifier(modifier);
             if (success) appliedModifiers.Add(modifier);
             Debug.Log(
                 $"[AttributeTest][Input] AddModifier Attribute={target.Id}, Type={type}, " +
@@ -361,6 +406,24 @@ namespace WS_Modules.GAS.AttributeSystem
 
             modifier = appliedModifiers[selectedModifierIndex];
             return true;
+        }
+
+        // 手动测试选取任意 Stat，避免 Resource 的持续 Modifier 禁止规则干扰 Owner 验证。
+        private static bool TryGetFirstStat(
+            GameplayAttributeContainer targetContainer,
+            out GameplayAttribute target)
+        {
+            IReadOnlyList<GameplayAttributeDefinition> definitions = targetContainer.Attributes;
+            for (int i = 0; i < definitions.Count; i++)
+            {
+                GameplayAttributeDefinition definition = definitions[i];
+                if (definition == null || definition.Type != GameplayAttributeType.Stat) continue;
+                target = definition.Attribute;
+                return true;
+            }
+
+            target = GameplayAttribute.Empty;
+            return false;
         }
 
         // 返回日志使用的 CurrentValue 文本，不向测试脚本复制业务计算。

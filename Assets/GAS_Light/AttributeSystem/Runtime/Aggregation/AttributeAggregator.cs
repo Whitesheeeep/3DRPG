@@ -51,6 +51,13 @@ namespace WS_Modules.GAS.AttributeSystem
             SortByPriority();
         }
 
+        // Container 被清空或重新初始化时解除全部 Handle，并清空当前聚合集合。
+        internal void DetachAll(GameplayAttributeContainer owner)
+        {
+            for (int i = 0; i < modifiers.Count; i++) modifiers[i].Detach(owner);
+            modifiers.Clear();
+        }
+
         #endregion
 
         #region 聚合计算

@@ -1,26 +1,26 @@
+using System.Collections.Generic;
+
 namespace WS_Modules.GAS.AttributeSystem
 {
     /// <summary>在只读查询基础上提供受控 Attribute 修改操作。</summary>
     public interface IGameplayAttributeContainer : IReadOnlyGameplayAttributeContainer
     {
-        /// <summary>执行一次不保留 Source 或 Handle 的即时数值结算。</summary>
-        /// <param name="config">包含目标、运算类型和 Magnitude 的单项配置；Priority 被忽略。</param>
-        /// <returns>配置和目标合法，且结算请求被接受时返回 true。</returns>
-        void ApplyInstantModifier(AttributeModifierConfig config);
+        /// <summary>执行一次不绑定 Container Owner 的即时数值结算。</summary>
+        /// <param name="modifier">已经计算完成的单项 Modifier；Priority 被忽略。</param>
+        void ApplyInstantModifier(AttributeModifier modifier);
 
-        /// <summary>从 Config 创建并应用一个由 Source 拥有的运行时 Modifier。</summary>
-        /// <param name="source">未来 ActiveGameplayEffect 提供的运行时身份。</param>
-        /// <param name="config">不包含 Source 的共享作者配置。</param>
-        /// <param name="modifier">成功时返回可用于精确移除的运行时 Modifier Handle。</param>
-        /// <returns>配置合法、目标存在且聚合结果已原子提交时返回 true。</returns>
-        bool TryAddModifier(
-            IModifierSource source,
-            AttributeModifierConfig config,
-            out AttributeModifier modifier);
+        /// <summary>按列表顺序原子结算一组 Instant Modifier。</summary>
+        /// <param name="modifiers">允许为空的已计算 Modifier 列表。</param>
+        /// <returns>全部 Modifier、Pre 与数值计算成功并整体提交时返回 true。</returns>
+        bool TryApplyInstantModifiers(IReadOnlyList<AttributeModifier> modifiers);
 
+        /// <summary>应用一个已经计算完成的持续 Modifier。</summary>
+        /// <param name="modifier">未归属其他 Container 的候选 Modifier。</param>
+        /// <returns>Modifier 合法、目标为 Stat 且聚合结果已原子提交时返回 true。</returns>
+        bool TryAddModifier(AttributeModifier modifier);
 
         /// <summary>按对象引用移除一个运行时 Modifier。</summary>
-        /// <param name="modifier">当前 Container 创建的运行时 Modifier。</param>
+        /// <param name="modifier">已绑定当前 Container 的运行时 Modifier。</param>
         /// <returns>Modifier 已移除且新 CurrentValue 已原子提交时返回 true。</returns>
         bool TryRemoveModifier(AttributeModifier modifier);
 
@@ -29,6 +29,14 @@ namespace WS_Modules.GAS.AttributeSystem
         /// <param name="removedCount">成功时返回移除数量。</param>
         /// <returns>至少找到一个 Modifier 且全部受影响 CurrentValue 已原子提交时返回 true。</returns>
         bool TryRemoveModifiers(IModifierSource source, out int removedCount);
+
+        /// <summary>原子替换指定 Source 在当前 Container 中持有的全部持续 Modifier。</summary>
+        /// <param name="source">Active GE 等运行时 Modifier Source。</param>
+        /// <param name="modifiers">替换后的完整候选 Modifier；空列表表示只移除旧值。</param>
+        /// <returns>全部旧值移除、新值创建和受影响 CurrentValue 提交成功时返回 true。</returns>
+        bool TryReplaceModifiers(
+            IModifierSource source,
+            IReadOnlyList<AttributeModifier> modifiers);
 
         /// <summary>通过受控修改流程恢复全部默认值。</summary>
         void ResetToDefaultValues();

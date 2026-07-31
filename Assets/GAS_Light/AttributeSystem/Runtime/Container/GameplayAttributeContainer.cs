@@ -32,6 +32,28 @@ namespace WS_Modules.GAS.AttributeSystem
             internal float NewValue { get; }
         }
 
+        /// <summary>保存已经通过 Base/Current Pre、等待批量提交的完整数值变化。</summary>
+        private readonly struct PreparedBaseValueChange
+        {
+            // 同时捕获 Base 与 Current 旧值，保证批量提交后仍能发送准确 Post。
+            internal PreparedBaseValueChange(
+                GameplayAttributeDefinition definition,
+                float oldBaseValue,
+                float newBaseValue,
+                PreparedCurrentValueChange currentChange)
+            {
+                Definition = definition;
+                OldBaseValue = oldBaseValue;
+                NewBaseValue = newBaseValue;
+                CurrentChange = currentChange;
+            }
+
+            internal GameplayAttributeDefinition Definition { get; }
+            internal float OldBaseValue { get; }
+            internal float NewBaseValue { get; }
+            internal PreparedCurrentValueChange CurrentChange { get; }
+        }
+
         /// <summary>保存按 Source 暂时移除的一组 Modifier，供失败事务整体恢复。</summary>
         private sealed class RemovedModifierGroup
         {
@@ -125,6 +147,7 @@ namespace WS_Modules.GAS.AttributeSystem
                 }
             }
 
+            DetachAllModifiers();
             attributes = imported;
             ResetTransientState();
             error = string.Empty;
@@ -135,6 +158,7 @@ namespace WS_Modules.GAS.AttributeSystem
         public void Clear()
         {
             attributes ??= new List<GameplayAttributeDefinition>();
+            DetachAllModifiers();
             attributes.Clear();
             ResetTransientState();
         }
@@ -190,13 +214,14 @@ namespace WS_Modules.GAS.AttributeSystem
 
         #region Instant 与内部结算
         /// <inheritdoc />
-        public void ApplyInstantModifier(AttributeModifierConfig config)
+        public void ApplyInstantModifier(AttributeModifier modifier)
         {
-            if (config == null ||
-                !config.IsValid() ||
-                !TryGetDefinition(config.Attribute, out GameplayAttributeDefinition definition))
+            if (modifier == null ||
+                !modifier.IsValid() ||
+                modifier.Owner != null ||
+                !TryGetDefinition(modifier.Attribute, out GameplayAttributeDefinition definition))
             {
-                throw new Exception("Modifier config 为空或者 config Type、数值不对, 或者不存在该 Attribute.");
+                throw new Exception("Modifier 已归属 Container、字段非法，或者不存在目标 Attribute。");
             }
 
             float inputValue;
@@ -207,10 +232,71 @@ namespace WS_Modules.GAS.AttributeSystem
 
             if (TryCalculateInstantValue(
                     inputValue,
-                    config.Type,
-                    config.Magnitude,
+                    modifier.Type,
+                    modifier.Magnitude,
                     out float settledValue))
-                TrySetBaseValue(config.Attribute, settledValue);
+                TrySetBaseValue(modifier.Attribute, settledValue);
+        }
+
+        /// <inheritdoc />
+        public bool TryApplyInstantModifiers(IReadOnlyList<AttributeModifier> modifiers)
+        {
+            if (modifiers == null) return false;
+            if (modifiers.Count == 0) return true;
+            EnsureTransientState();
+            if (changeTransaction.IsProcessing) return false;
+
+            // 暂存此次 Modifier 结果
+            var values = new Dictionary<GameplayAttribute, float>();
+            var orderedDefinitions = new List<GameplayAttributeDefinition>();
+            for (int i = 0; i < modifiers.Count; i++)
+            {
+                AttributeModifier modifier = modifiers[i];
+                if (modifier == null || !modifier.IsValid() || modifier.Owner != null ||
+                    !TryGetDefinition(modifier.Attribute, out GameplayAttributeDefinition definition))
+                    return false;
+
+                // inputValue 是上一轮结算后的值，并不是初始值，如果是第一次才是初始值
+                if (!values.TryGetValue(modifier.Attribute, out float inputValue))
+                {
+                    inputValue = definition.Type == GameplayAttributeType.Stat
+                        ? definition.BaseValue
+                        : definition.CurrentValue;
+                    orderedDefinitions.Add(definition);
+                }
+
+                if (!TryCalculateInstantValue(
+                        inputValue,
+                        modifier.Type,
+                        modifier.Magnitude,
+                        out float result))
+                    return false;
+                values[modifier.Attribute] = result;
+            }
+
+            if (!changeTransaction.TryBegin()) return false;
+            try
+            {
+                var changes = new List<PreparedBaseValueChange>(orderedDefinitions.Count);
+                for (int i = 0; i < orderedDefinitions.Count; i++)
+                {
+                    GameplayAttributeDefinition definition = orderedDefinitions[i];
+                    if (!TryPrepareBaseValueChange(
+                            definition,
+                            values[definition.Attribute],
+                            out PreparedBaseValueChange change))
+                        return false;
+                    changes.Add(change);
+                }
+
+                CommitBaseValueChanges(changes);
+                DrainPendingChanges();
+                return true;
+            }
+            finally
+            {
+                changeTransaction.Complete();
+            }
         }
 
         // 设置内部结算值并进入统一 FIFO；该入口不属于公共业务 API。
@@ -257,41 +343,36 @@ namespace WS_Modules.GAS.AttributeSystem
 
         #region Modifier 操作
         /// <inheritdoc />
-        public bool TryAddModifier(
-            IModifierSource source,
-            AttributeModifierConfig config,
-            out AttributeModifier modifier)
+        public bool TryAddModifier(AttributeModifier modifier)
         {
-            modifier = null;
-            if (source == null ||
-                config == null ||
-                !config.IsValid() ||
-                !TryGetDefinition(config.Attribute, out GameplayAttributeDefinition definition) ||
+            if (modifier == null ||
+                !modifier.IsValid() ||
+                modifier.Owner != null ||
+                !TryGetDefinition(modifier.Attribute, out GameplayAttributeDefinition definition) ||
                 definition.Type != GameplayAttributeType.Stat ||
                 !TryBeginModifierTransaction())
                 return false;
 
-            var candidate = new AttributeModifier(source, config);
             bool keepMutation = false;
             try
             {
-                definition.Aggregator.Add(candidate);
+                definition.Aggregator.Add(modifier);
                 if (!TryPrepareCurrentValueChange(
                         definition,
                         definition.BaseValue,
                         out PreparedCurrentValueChange change))
                     return false;
 
+                modifier.Attach(this);
                 keepMutation = true;
                 CommitCurrentValueChange(change);
                 // PostAttributeChange 可能会有通过 context.RequestSetValue 的后续修改请求，必须在当前事务中处理完毕。
                 DrainPendingChanges();
-                modifier = candidate;
                 return true;
             }
             finally
             {
-                if (!keepMutation) definition.Aggregator.Remove(candidate);
+                if (!keepMutation) definition.Aggregator.Remove(modifier);
                 changeTransaction.Complete();
             }
         }
@@ -314,6 +395,7 @@ namespace WS_Modules.GAS.AttributeSystem
                         out PreparedCurrentValueChange change))
                     return false;
 
+                modifier.Detach(this);
                 keepMutation = true;
                 CommitCurrentValueChange(change);
                 DrainPendingChanges();
@@ -371,6 +453,7 @@ namespace WS_Modules.GAS.AttributeSystem
                     changes.Add(change);
                 }
 
+                DetachModifierGroups(groups);
                 keepMutation = true;
                 CommitCurrentValueChanges(changes);
                 DrainPendingChanges();
@@ -383,6 +466,89 @@ namespace WS_Modules.GAS.AttributeSystem
                 if (!keepMutation)
                     for (int i = 0; i < groups.Count; i++)
                         groups[i].Definition.Aggregator.Restore(groups[i].Modifiers);
+                changeTransaction.Complete();
+            }
+        }
+
+        /// <inheritdoc />
+        public bool TryReplaceModifiers(
+            IModifierSource source,
+            IReadOnlyList<AttributeModifier> modifiers)
+        {
+            EnsureTransientState();
+            if (source == null || modifiers == null || changeTransaction.IsProcessing) return false;
+
+            var newDefinitions = new List<GameplayAttributeDefinition>(modifiers.Count);
+            var uniqueModifiers = new HashSet<AttributeModifier>();
+            for (int i = 0; i < modifiers.Count; i++)
+            {
+                AttributeModifier modifier = modifiers[i];
+                if (modifier == null || !modifier.IsValid() || modifier.Owner != null ||
+                    !uniqueModifiers.Add(modifier) ||
+                    !ReferenceEquals(modifier.Source, source) ||
+                    !TryGetDefinition(modifier.Attribute, out GameplayAttributeDefinition definition) ||
+                    definition.Type != GameplayAttributeType.Stat)
+                    return false;
+                newDefinitions.Add(definition);
+            }
+
+            if (!changeTransaction.TryBegin()) return false;
+            var removedGroups = new List<RemovedModifierGroup>();
+            bool keepMutation = false;
+            try
+            {
+                var affected = new List<GameplayAttributeDefinition>();
+                for (int i = 0; i < attributes.Count; i++)
+                {
+                    GameplayAttributeDefinition definition = attributes[i];
+                    if (definition == null) continue;
+                    var group = new RemovedModifierGroup(definition);
+                    if (definition.Aggregator.RemoveBySource(source, group.Modifiers) == 0) continue;
+                    removedGroups.Add(group);
+                    AddAffectedDefinition(affected, definition);
+                }
+
+                for (int i = 0; i < modifiers.Count; i++)
+                {
+                    AttributeModifier modifier = modifiers[i];
+                    newDefinitions[i].Aggregator.Add(modifier);
+                    AddAffectedDefinition(affected, newDefinitions[i]);
+                }
+
+                var changes = new List<PreparedCurrentValueChange>(affected.Count);
+                for (int i = 0; i < affected.Count; i++)
+                {
+                    GameplayAttributeDefinition definition = affected[i];
+                    if (!TryPrepareCurrentValueChange(
+                            definition,
+                            definition.BaseValue,
+                            out PreparedCurrentValueChange change))
+                        return false;
+                    changes.Add(change);
+                }
+
+                DetachModifierGroups(removedGroups);
+                for (int i = 0; i < modifiers.Count; i++) modifiers[i].Attach(this);
+                keepMutation = true;
+                CommitCurrentValueChanges(changes);
+                DrainPendingChanges();
+                return true;
+            }
+            finally
+            {
+                if (!keepMutation)
+                {
+                    for (int i = 0; i < modifiers.Count; i++)
+                    {
+                        AttributeModifier modifier = modifiers[i];
+                        if (TryGetDefinition(modifier.Attribute, out GameplayAttributeDefinition definition))
+                            definition.Aggregator.Remove(modifier);
+                    }
+
+                    for (int i = 0; i < removedGroups.Count; i++)
+                        removedGroups[i].Definition.Aggregator.Restore(removedGroups[i].Modifiers);
+                }
+
                 changeTransaction.Complete();
             }
         }
@@ -431,35 +597,12 @@ namespace WS_Modules.GAS.AttributeSystem
         private bool ApplyBaseValueChange(GameplayAttribute attribute, float requestedValue)
         {
             if (!TryGetDefinition(attribute, out GameplayAttributeDefinition definition) ||
-                definition.OwnerSet == null)
-                return false;
-
-            float newBaseValue = requestedValue;
-            definition.OwnerSet.DispatchPreAttributeBaseChange(this, attribute, ref newBaseValue);
-            // 拿到 CurrentValue 的变化，会经历一次对 CurrentValue 的 PreAttributeChange 的处理
-            if (!IsFinite(newBaseValue) ||
-                !TryPrepareCurrentValueChange(
+                !TryPrepareBaseValueChange(
                     definition,
-                    newBaseValue,
-                    out PreparedCurrentValueChange currentChange))
+                    requestedValue,
+                    out PreparedBaseValueChange change))
                 return false;
-
-            // Resource 将 Current Pre 后的最终值同步到 BaseValue；Stat 保留不含持续 Modifier 的新 BaseValue。
-            float committedBaseValue = definition.Type == GameplayAttributeType.Resource
-                ? currentChange.NewValue
-                : newBaseValue;
-            float oldBaseValue = definition.BaseValue;
-            definition.SetBaseValue(committedBaseValue);
-            definition.SetCurrentValue(currentChange.NewValue);
-
-            var context = new GameplayAttributePostChangeContext(this);
-            if (!Mathf.Approximately(oldBaseValue, committedBaseValue))
-                definition.OwnerSet.DispatchPostAttributeBaseChange(
-                    context,
-                    attribute,
-                    oldBaseValue,
-                    committedBaseValue);
-            NotifyCurrentValueChange(context, currentChange);
+            CommitBaseValueChange(change);
             return true;
         }
 
@@ -505,6 +648,79 @@ namespace WS_Modules.GAS.AttributeSystem
 
             change = new PreparedCurrentValueChange(definition, evaluatedValue);
             return true;
+        }
+
+        // Base Pre 后继续准备 Current；Resource 将 Current Pre 的最终值同步作为提交 Base。
+        private bool TryPrepareBaseValueChange(
+            GameplayAttributeDefinition definition,
+            float requestedValue,
+            out PreparedBaseValueChange change)
+        {
+            change = default;
+            if (definition == null || definition.OwnerSet == null) return false;
+
+            float newBaseValue = requestedValue;
+            definition.OwnerSet.DispatchPreAttributeBaseChange(
+                this,
+                definition.Attribute,
+                ref newBaseValue);
+            if (!IsFinite(newBaseValue) ||
+                !TryPrepareCurrentValueChange(
+                    definition,
+                    newBaseValue,
+                    out PreparedCurrentValueChange currentChange))
+                return false;
+
+            float committedBaseValue = definition.Type == GameplayAttributeType.Resource
+                ? currentChange.NewValue
+                : newBaseValue;
+            change = new PreparedBaseValueChange(
+                definition,
+                definition.BaseValue,
+                committedBaseValue,
+                currentChange);
+            return true;
+        }
+
+        // 提交单项 Base/Current，并按 Base Post、Current Post 与事件顺序发送通知。
+        private void CommitBaseValueChange(PreparedBaseValueChange change)
+        {
+            change.Definition.SetBaseValue(change.NewBaseValue);
+            change.Definition.SetCurrentValue(change.CurrentChange.NewValue);
+            var context = new GameplayAttributePostChangeContext(this);
+            NotifyBaseValueChange(context, change);
+            NotifyCurrentValueChange(context, change.CurrentChange);
+        }
+
+        // 批量操作先写入全部 Base/Current，再发送 Post，避免观察到部分提交状态。
+        private void CommitBaseValueChanges(IReadOnlyList<PreparedBaseValueChange> changes)
+        {
+            for (int i = 0; i < changes.Count; i++)
+            {
+                PreparedBaseValueChange change = changes[i];
+                change.Definition.SetBaseValue(change.NewBaseValue);
+                change.Definition.SetCurrentValue(change.CurrentChange.NewValue);
+            }
+
+            var context = new GameplayAttributePostChangeContext(this);
+            for (int i = 0; i < changes.Count; i++)
+            {
+                NotifyBaseValueChange(context, changes[i]);
+                NotifyCurrentValueChange(context, changes[i].CurrentChange);
+            }
+        }
+
+        // BaseValue 实际变化时才触发 Base Post，Current 通知保持独立判断。
+        private static void NotifyBaseValueChange(
+            GameplayAttributePostChangeContext context,
+            PreparedBaseValueChange change)
+        {
+            if (Mathf.Approximately(change.OldBaseValue, change.NewBaseValue)) return;
+            change.Definition.OwnerSet.DispatchPostAttributeBaseChange(
+                context,
+                change.Definition.Attribute,
+                change.OldBaseValue,
+                change.NewBaseValue);
         }
 
         // 提交单个 CurrentValue，并在实际变化时发送 Post 和 AttributeChanged。
@@ -566,8 +782,41 @@ namespace WS_Modules.GAS.AttributeSystem
         {
             definition = null;
             return modifier != null &&
+                   ReferenceEquals(modifier.Owner, this) &&
                    TryGetDefinition(modifier.Attribute, out definition) &&
                    definition.Aggregator.Contains(modifier);
+        }
+
+        // 成功移除或替换 Source 时解除全部旧 Handle 的 Container 归属。
+        private void DetachModifierGroups(IReadOnlyList<RemovedModifierGroup> groups)
+        {
+            for (int i = 0; i < groups.Count; i++)
+            {
+                IReadOnlyList<AttributeModifier> modifiers = groups[i].Modifiers;
+                for (int j = 0; j < modifiers.Count; j++) modifiers[j].Detach(this);
+            }
+        }
+
+        // Initialize 与 Clear 替换运行时 Definition 前解除全部 Modifier Handle。
+        private void DetachAllModifiers()
+        {
+            if (attributes == null) return;
+            for (int i = 0; i < attributes.Count; i++)
+            {
+                GameplayAttributeDefinition definition = attributes[i];
+                if (definition != null) definition.Aggregator.DetachAll(this);
+            }
+        }
+
+        // 受影响 Attribute 数量较少，使用引用线性去重避免额外 HashSet 与自定义比较器。
+        private static void AddAffectedDefinition(
+            ICollection<GameplayAttributeDefinition> affected,
+            GameplayAttributeDefinition definition)
+        {
+            foreach (GameplayAttributeDefinition item in affected)
+                if (ReferenceEquals(item, definition))
+                    return;
+            affected.Add(definition);
         }
 
         // 恢复事件事务所需的非序列化集合。
