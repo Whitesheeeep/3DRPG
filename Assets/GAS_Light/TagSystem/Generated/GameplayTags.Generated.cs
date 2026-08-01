@@ -18,7 +18,13 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_NewTag_NewTag1_NewTag6 = new GameplayTag(4);
         /// <summary>Test</summary>
         public static readonly GameplayTag Tag_Test = new GameplayTag(5);
-        /// <summary>Test.Test_Level</summary>
-        public static readonly GameplayTag Tag_Test_Test_Level = new GameplayTag(6);
+        /// <summary>Test.GE</summary>
+        public static readonly GameplayTag Tag_Test_GE = new GameplayTag(7);
+        /// <summary>Test.GE.Granted</summary>
+        public static readonly GameplayTag Tag_Test_GE_Granted = new GameplayTag(8);
+        /// <summary>Test.GE.Required</summary>
+        public static readonly GameplayTag Tag_Test_GE_Required = new GameplayTag(9);
+        /// <summary>Test.Test_SetByCaller</summary>
+        public static readonly GameplayTag Tag_Test_Test_SetByCaller = new GameplayTag(6);
     }
 }

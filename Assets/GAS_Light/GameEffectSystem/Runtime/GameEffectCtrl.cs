@@ -293,10 +293,10 @@ namespace WS_Modules.GAS.GameplayEffect
             AbilitySystemComponentBase source)
         {
             if (data.StackingType == E_GameEffectStackingType.None) return null;
-            for (int i = 0; i < activeEffects.Count; i++)
+            foreach (var runtime in activeEffects)
             {
-                GameEffectRuntime runtime = activeEffects[i];
                 if (!ReferenceEquals(runtime.Data, data)) continue;
+                // 找到
                 if (data.StackingType == E_GameEffectStackingType.AggregateByTarget ||
                     ReferenceEquals(runtime.Source, source))
                     return runtime;

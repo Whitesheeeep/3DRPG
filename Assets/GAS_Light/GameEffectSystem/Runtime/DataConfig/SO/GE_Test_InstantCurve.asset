@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ea401299909b4bb199d79ae4b9da5407, type: 3}
-  m_Name: GameplayEffectData
+  m_Name: GE_Test_InstantCurve
   m_EditorClassIdentifier: 
-  description: 
-  durationType: 1
-  duration: 0.87
+  description: "Instant Curve GE: Base 10, Level 1/2/3 => Magnitude 10/20/30"
+  durationType: 0
+  duration: 0
   period: 0
   executePeriodicOnApplication: 0
   targetTagQuery:
@@ -23,11 +23,10 @@ MonoBehaviour:
     noneTags: []
   grantedTags: []
   modifiers:
-  - rid: 7552782473606201344
-  - rid: 7552782473606201345
-  - rid: 7552782473606201346
-  validationSets: []
-  stackingType: 1
+  - rid: 7552782473606201367
+  validationSets:
+  - {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
+  stackingType: 0
   maxStackCount: 1
   denyOverflowApplication: 1
   stackingDurationPolicy: 0
@@ -36,16 +35,8 @@ MonoBehaviour:
   references:
     version: 2
     RefIds:
-    - rid: 7552782473606201344
-      type: {class: FixedGameplayEffectModifier, ns: WS_Modules.GAS.GameplayEffect, asm: Assembly-CSharp}
-      data:
-        attribute:
-          id: 1
-        type: 0
-        priority: 0
-        magnitude: 2
-    - rid: 7552782473606201345
-      type: {class: LevelGameplayEffectModifier, ns: WS_Modules.GAS.GameplayEffect, asm: Assembly-CSharp}
+    - rid: 7552782473606201367
+      type: {class: CurveGameplayEffectModifier, ns: WS_Modules.GAS.GameplayEffect, asm: Assembly-CSharp}
       data:
         attribute:
           id: 2
@@ -56,32 +47,23 @@ MonoBehaviour:
           serializedVersion: 2
           m_Curve:
           - serializedVersion: 3
-            time: 0
-            value: 0
-            inSlope: 2
-            outSlope: 2
+            time: 1
+            value: 1
+            inSlope: 1
+            outSlope: 1
             tangentMode: 34
             weightedMode: 0
             inWeight: 0
             outWeight: 0.33333334
           - serializedVersion: 3
-            time: 1
-            value: 2
-            inSlope: 2
-            outSlope: Infinity
-            tangentMode: 69
+            time: 3
+            value: 3
+            inSlope: 1
+            outSlope: 1
+            tangentMode: 34
             weightedMode: 0
             inWeight: 0.33333334
             outWeight: 0
           m_PreInfinity: 2
           m_PostInfinity: 2
           m_RotationOrder: 4
-    - rid: 7552782473606201346
-      type: {class: SetByCallerGameplayEffectModifier, ns: WS_Modules.GAS.GameplayEffect, asm: Assembly-CSharp}
-      data:
-        attribute:
-          id: 2
-        type: 0
-        priority: 0
-        key:
-          id: 0

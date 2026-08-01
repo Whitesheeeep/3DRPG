@@ -16,6 +16,8 @@ namespace WS_Modules.GAS.Editor
         event Action<GameplayEffectData> EffectSelectionChanged;
         /// <summary>用户请求在 Project 窗口定位指定 GE 资产时触发。</summary>
         event Action<GameplayEffectData> PingEffectRequested;
+        /// <summary>用户提交 GE 资产新名称时触发。</summary>
+        event Action<GameplayEffectRenameRequest> RenameEffectSubmitted;
         /// <summary>用户选择新资产路径后触发。</summary>
         event Action<string> CreateEffectRequested;
         /// <summary>请求复制当前 GE 时触发。</summary>
@@ -46,6 +48,14 @@ namespace WS_Modules.GAS.Editor
         /// <param name="effects">当前可见 GE 资产。</param>
         /// <param name="selected">当前选中资产。</param>
         void RenderEffects(IReadOnlyList<GameplayEffectData> effects, GameplayEffectData selected);
+        /// <summary>渲染 GE 资产列表的最高校验严重程度；Info 与无问题资产不包含在字典中。</summary>
+        /// <param name="states">以 GE 资产引用为键的 Error/Warning 状态只读字典。</param>
+        void RenderEffectValidationStates(
+            IReadOnlyDictionary<GameplayEffectData, GameplayEffectValidationSeverity> states);
+        /// <summary>重命名失败后恢复指定资产的行内输入和焦点。</summary>
+        /// <param name="effect">需要继续编辑的 GE 资产。</param>
+        /// <param name="attemptedName">上一次被拒绝的输入。</param>
+        void RestoreEffectRename(GameplayEffectData effect, string attemptedName);
         /// <summary>设置用于把稳定 AttributeId 解析为作者名称的 Registry。</summary>
         /// <param name="registry">当前明确的 Registry；null 表示无法解析名称。</param>
         /// <param name="unavailableReason">Registry 不明确时显示在 Tooltip 中的原因。</param>
@@ -83,6 +93,24 @@ namespace WS_Modules.GAS.Editor
         void ShowError(string title, string message);
 
         #endregion
+    }
+
+    /// <summary>描述一次 GE 资产重命名提交。</summary>
+    public readonly struct GameplayEffectRenameRequest
+    {
+        /// <summary>创建 GE 资产重命名请求。</summary>
+        /// <param name="effect">需要重命名的 GE 资产。</param>
+        /// <param name="name">用户提交的新名称。</param>
+        public GameplayEffectRenameRequest(GameplayEffectData effect, string name)
+        {
+            Effect = effect;
+            Name = name ?? string.Empty;
+        }
+
+        /// <summary>获取需要重命名的 GE 资产。</summary>
+        public GameplayEffectData Effect { get; }
+        /// <summary>获取用户提交的新名称。</summary>
+        public string Name { get; }
     }
 
     /// <summary>描述一次 Modifier 列表索引移动意图。</summary>

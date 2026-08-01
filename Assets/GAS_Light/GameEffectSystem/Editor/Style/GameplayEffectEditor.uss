@@ -31,9 +31,16 @@
 }
 
 .ge-main-split,
+.ge-details-host,
+.ge-details-page,
 .ge-details-root {
     flex-grow: 1;
     min-height: 0;
+}
+
+.ge-details-host,
+.ge-details-page {
+    min-width: 0;
 }
 
 .ge-assets-panel {
@@ -119,10 +126,28 @@
     flex-direction: column;
 }
 
+.ge-effect-row.has-validation-error {
+    background-color: rgba(132, 42, 42, 0.58);
+}
+
+.ge-effect-row.has-validation-warning {
+    background-color: rgba(137, 109, 31, 0.52);
+}
+
 .ge-effect-row-header {
     flex-direction: row;
     align-items: center;
     min-height: 20px;
+}
+
+.is-hidden {
+    display: none;
+}
+
+.ge-row-rename {
+    flex-grow: 1;
+    height: 20px;
+    margin: 0;
 }
 
 .ge-effect-ping {

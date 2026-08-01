@@ -13,49 +13,7 @@
                 <ui:Label text="Gameplay Effects" class="ge-section-title" />
                 <ui:ListView name="EffectList" class="ge-asset-list" />
             </ui:VisualElement>
-            <ui:ScrollView name="DetailsScroll" class="ge-details-scroll">
-                <ui:Label name="EmptySelectionLabel" text="Select or create a GameplayEffectData asset." class="ge-empty-label" />
-                <ui:VisualElement name="DetailsRoot" class="ge-details-root">
-                    <ui:Label name="EffectTitle" class="ge-effect-title" />
-                    <ui:Label text="Author Configuration" class="ge-section-title" />
-                    <uie:PropertyField name="DescriptionField" binding-path="description" label="Description" />
-                    <uie:PropertyField name="ValidationSetsField" binding-path="validationSets" label="Validation Sets" />
-                    <uie:PropertyField name="DurationTypeField" binding-path="durationType" label="Duration Type" />
-                    <uie:PropertyField name="DurationField" binding-path="duration" label="Duration" />
-                    <uie:PropertyField name="PeriodField" binding-path="period" label="Period" />
-                    <uie:PropertyField name="ExecutePeriodField" binding-path="executePeriodicOnApplication" label="Execute On Application" />
-                    <uie:PropertyField name="TargetTagQueryField" binding-path="targetTagQuery" label="Target Tag Query" />
-                    <uie:PropertyField name="GrantedTagsField" binding-path="grantedTags" label="Granted Tags" />
-                    <ui:VisualElement name="StackingGroup" class="ge-config-group">
-                        <ui:Label text="Stacking" class="ge-section-title" />
-                        <uie:PropertyField name="StackingTypeField" binding-path="stackingType" label="Stacking Type" />
-                        <uie:PropertyField name="MaxStackCountField" binding-path="maxStackCount" label="Max Stack Count" />
-                        <uie:PropertyField name="DenyOverflowField" binding-path="denyOverflowApplication" label="Deny Overflow" />
-                        <uie:PropertyField name="DurationPolicyField" binding-path="stackingDurationPolicy" label="Duration Policy" />
-                        <uie:PropertyField name="PeriodPolicyField" binding-path="stackingPeriodPolicy" label="Period Policy" />
-                        <uie:PropertyField name="ExpirationPolicyField" binding-path="stackingExpirationPolicy" label="Expiration Policy" />
-                    </ui:VisualElement>
-                    <ui:VisualElement class="ge-modifier-header">
-                        <ui:Label text="Modifiers" class="ge-section-title" />
-                        <ui:VisualElement class="ge-grow" />
-                        <ui:Button name="AddModifierButton" text="Add Modifier" />
-                        <ui:Button name="RemoveModifierButton" text="Remove" />
-                    </ui:VisualElement>
-                    <ui:TwoPaneSplitView fixed-pane-index="0" fixed-pane-initial-dimension="245" orientation="Horizontal" class="ge-modifier-split">
-                        <ui:ListView name="ModifierList" class="ge-modifier-list" />
-                        <ui:VisualElement class="ge-modifier-details">
-                            <ui:Label name="ModifierEmptyLabel" text="Select a Modifier." class="ge-empty-label" />
-                            <ui:VisualElement name="ModifierPropertyHost" />
-                        </ui:VisualElement>
-                    </ui:TwoPaneSplitView>
-                    <ui:VisualElement class="ge-validation-header">
-                        <ui:Label text="Validation" class="ge-section-title" />
-                        <ui:VisualElement class="ge-grow" />
-                        <ui:Button name="ValidateButton" text="Refresh" />
-                    </ui:VisualElement>
-                    <ui:VisualElement name="ValidationContainer" class="ge-validation-container" />
-                </ui:VisualElement>
-            </ui:ScrollView>
+            <ui:VisualElement name="DetailsHost" class="ge-details-host" />
         </ui:TwoPaneSplitView>
     </ui:VisualElement>
 </ui:UXML>

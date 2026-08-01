@@ -10,63 +10,31 @@ using WS_Modules.GAS.GameplayEffect;
 
 namespace WS_Modules.GAS.Editor
 {
-    /// <summary>使用 UI Toolkit 实现 GE 资产列表、原生绑定、Modifier 编辑与校验显示。</summary>
+    /// <summary>组合 GE Editor 顶栏、资产列表和独立右侧详情 View。</summary>
     public sealed class GameplayEffectEditorView : IGameplayEffectEditorView
     {
         #region 常量与字段
 
         private const string EffectRowUxmlPath =
             "Assets/GAS_Light/GameEffectSystem/Editor/Style/GameplayEffectAssetRow.uxml";
-        private const string ModifierRowUxmlPath =
-            "Assets/GAS_Light/GameEffectSystem/Editor/Style/GameplayEffectModifierRow.uxml";
-        private const float ModifierDragThresholdSquared = 16f;
 
         private readonly VisualElement root;
         private readonly VisualTreeAsset effectRowAsset;
-        private readonly VisualTreeAsset modifierRowAsset;
         private readonly ToolbarSearchField searchField;
         private readonly Button createEffectButton;
         private readonly Button duplicateEffectButton;
         private readonly Button deleteEffectButton;
         private readonly ListView effectList;
-        private readonly VisualElement detailsRoot;
-        private readonly Label emptySelectionLabel;
-        private readonly Label effectTitle;
-        private readonly VisualElement durationField;
-        private readonly VisualElement periodField;
-        private readonly VisualElement executePeriodField;
-        private readonly VisualElement grantedTagsField;
-        private readonly VisualElement stackingGroup;
-        private readonly VisualElement maxStackCountField;
-        private readonly VisualElement denyOverflowField;
-        private readonly VisualElement durationPolicyField;
-        private readonly VisualElement periodPolicyField;
-        private readonly VisualElement expirationPolicyField;
-        private readonly Button addModifierButton;
-        private readonly Button removeModifierButton;
-        private readonly ListView modifierList;
-        private readonly VisualElement modifierPropertyHost;
-        private readonly Label modifierEmptyLabel;
-        private PropertyField modifierPropertyField;
-        private readonly Button validateButton;
-        private readonly VisualElement validationContainer;
-
+        private readonly IGameplayEffectDetailsView detailsView;
         private readonly List<GameplayEffectData> renderedEffects = new();
-        private readonly List<GameplayEffectModifier> renderedModifiers = new();
-        private readonly List<Type> availableModifierTypes = new();
-        private readonly List<Button> effectPingButtons = new();
+        private readonly List<EffectRowState> effectRows = new();
 
-        private SerializedObject boundObject;
-        private GameplayEffectData currentEffect;
-        private GameplayAttributeRegistry attributeRegistry;
-        private Vector2 modifierPointerDownPosition;
-        private string attributeRegistryUnavailableReason = string.Empty;
-        private int pendingModifierBindingIndex = -1;
-        private bool binding;
+        private IReadOnlyDictionary<GameplayEffectData, GameplayEffectValidationSeverity>
+            effectValidationStates;
+        private GameplayEffectData renamingEffect;
+        private string pendingRenameValue = string.Empty;
+        private int renameRequestVersion;
         private bool disposed;
-        private bool modifierBindingRestoreScheduled;
-        private bool modifierInteractionFrozen;
-        private bool modifierPointerTracking;
 
         #endregion
 
@@ -79,67 +47,74 @@ namespace WS_Modules.GAS.Editor
         /// <inheritdoc />
         public event Action<GameplayEffectData> PingEffectRequested;
         /// <inheritdoc />
+        public event Action<GameplayEffectRenameRequest> RenameEffectSubmitted;
+        /// <inheritdoc />
         public event Action<string> CreateEffectRequested;
         /// <inheritdoc />
         public event Action DuplicateEffectRequested;
         /// <inheritdoc />
         public event Action DeleteEffectRequested;
         /// <inheritdoc />
-        public event Action EffectSerializedChanged;
+        public event Action EffectSerializedChanged
+        {
+            add => detailsView.EffectSerializedChanged += value;
+            remove => detailsView.EffectSerializedChanged -= value;
+        }
         /// <inheritdoc />
-        public event Action<int> ModifierSelectionChanged;
+        public event Action<int> ModifierSelectionChanged
+        {
+            add => detailsView.ModifierSelectionChanged += value;
+            remove => detailsView.ModifierSelectionChanged -= value;
+        }
         /// <inheritdoc />
-        public event Action<Type> AddModifierRequested;
+        public event Action<Type> AddModifierRequested
+        {
+            add => detailsView.AddModifierRequested += value;
+            remove => detailsView.AddModifierRequested -= value;
+        }
         /// <inheritdoc />
-        public event Action RemoveModifierRequested;
+        public event Action RemoveModifierRequested
+        {
+            add => detailsView.RemoveModifierRequested += value;
+            remove => detailsView.RemoveModifierRequested -= value;
+        }
         /// <inheritdoc />
-        public event Action<GameplayEffectModifierMoveRequest> MoveModifierRequested;
+        public event Action<GameplayEffectModifierMoveRequest> MoveModifierRequested
+        {
+            add => detailsView.MoveModifierRequested += value;
+            remove => detailsView.MoveModifierRequested -= value;
+        }
         /// <inheritdoc />
-        public event Action ValidateRequested;
+        public event Action ValidateRequested
+        {
+            add => detailsView.ValidateRequested += value;
+            remove => detailsView.ValidateRequested -= value;
+        }
 
         #endregion
 
         #region 生命周期
 
-        /// <summary>查询必需 UXML 控件、配置两个 ListView 并注册 UI 回调。</summary>
-        /// <param name="root">已实例化 GE UXML 的页面根元素。</param>
+        /// <summary>查询顶栏与资产列表控件，并在右侧宿主中创建独立 Details View。</summary>
+        /// <param name="root">已实例化 GE 主 UXML 的页面根元素。</param>
         /// <exception cref="ArgumentNullException">root 为 null。</exception>
-        /// <exception cref="InvalidOperationException">UXML 或行模板缺失必需元素。</exception>
+        /// <exception cref="InvalidOperationException">主 UXML、右侧 UXML 或行模板缺失。</exception>
         public GameplayEffectEditorView(VisualElement root)
         {
             this.root = root ?? throw new ArgumentNullException(nameof(root));
             effectRowAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(EffectRowUxmlPath);
-            modifierRowAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(ModifierRowUxmlPath);
-            if (effectRowAsset == null || modifierRowAsset == null)
-                throw new InvalidOperationException("Gameplay Effect Editor 行 UXML 资源缺失。");
+            if (effectRowAsset == null)
+                throw new InvalidOperationException("Gameplay Effect asset row UXML is missing.");
 
             searchField = Require<ToolbarSearchField>("SearchField");
             createEffectButton = Require<Button>("CreateEffectButton");
             duplicateEffectButton = Require<Button>("DuplicateEffectButton");
             deleteEffectButton = Require<Button>("DeleteEffectButton");
             effectList = Require<ListView>("EffectList");
-            detailsRoot = Require<VisualElement>("DetailsRoot");
-            emptySelectionLabel = Require<Label>("EmptySelectionLabel");
-            effectTitle = Require<Label>("EffectTitle");
-            durationField = Require<VisualElement>("DurationField");
-            periodField = Require<VisualElement>("PeriodField");
-            executePeriodField = Require<VisualElement>("ExecutePeriodField");
-            grantedTagsField = Require<VisualElement>("GrantedTagsField");
-            stackingGroup = Require<VisualElement>("StackingGroup");
-            maxStackCountField = Require<VisualElement>("MaxStackCountField");
-            denyOverflowField = Require<VisualElement>("DenyOverflowField");
-            durationPolicyField = Require<VisualElement>("DurationPolicyField");
-            periodPolicyField = Require<VisualElement>("PeriodPolicyField");
-            expirationPolicyField = Require<VisualElement>("ExpirationPolicyField");
-            addModifierButton = Require<Button>("AddModifierButton");
-            removeModifierButton = Require<Button>("RemoveModifierButton");
-            modifierList = Require<ListView>("ModifierList");
-            modifierPropertyHost = Require<VisualElement>("ModifierPropertyHost");
-            modifierEmptyLabel = Require<Label>("ModifierEmptyLabel");
-            validateButton = Require<Button>("ValidateButton");
-            validationContainer = Require<VisualElement>("ValidationContainer");
+            VisualElement detailsHost = Require<VisualElement>("DetailsHost");
+            detailsView = new GameplayEffectDetailsView(detailsHost);
 
-            ConfigureLists();
+            ConfigureEffectList();
             RegisterCallbacks();
         }
 
@@ -148,12 +123,10 @@ namespace WS_Modules.GAS.Editor
         {
             if (disposed) return;
             disposed = true;
-            CancelModifierBindingRestore();
             UnregisterCallbacks();
-            UnregisterEffectRowCallbacks();
-            UnbindCurrentEffect();
+            UnregisterEffectRows();
             effectList.itemsSource = null;
-            modifierList.itemsSource = null;
+            detailsView.Dispose();
         }
 
         #endregion
@@ -171,150 +144,60 @@ namespace WS_Modules.GAS.Editor
         {
             renderedEffects.Clear();
             if (effects != null) renderedEffects.AddRange(effects);
+            if (renamingEffect != null && !renderedEffects.Contains(renamingEffect))
+                CancelEffectRename(false);
             effectList.RefreshItems();
             int index = renderedEffects.IndexOf(selected);
             effectList.SetSelectionWithoutNotify(index < 0 ? Array.Empty<int>() : new[] { index });
         }
 
         /// <inheritdoc />
+        public void RenderEffectValidationStates(
+            IReadOnlyDictionary<GameplayEffectData, GameplayEffectValidationSeverity> states)
+        {
+            effectValidationStates = states;
+            effectList.RefreshItems();
+        }
+
+        /// <inheritdoc />
+        public void RestoreEffectRename(GameplayEffectData effect, string attemptedName) =>
+            QueueEffectRename(effect, attemptedName);
+
+        /// <inheritdoc />
         public void SetAttributeRegistry(
             GameplayAttributeRegistry registry,
-            string unavailableReason)
-        {
-            string reason = unavailableReason ?? string.Empty;
-            bool changed = attributeRegistry != registry ||
-                           attributeRegistryUnavailableReason != reason;
-            attributeRegistry = registry;
-            attributeRegistryUnavailableReason = reason;
-            if (changed) modifierList.RefreshItems();
-        }
+            string unavailableReason) =>
+            detailsView.SetAttributeRegistry(registry, unavailableReason);
 
         /// <inheritdoc />
         public void BindEffect(GameplayEffectData effect)
         {
-            ResetModifierInteraction();
-            binding = true;
-            try
-            {
-                UnbindCurrentEffect();
-                currentEffect = effect;
-                bool hasEffect = currentEffect != null;
-                detailsRoot.style.display = hasEffect ? DisplayStyle.Flex : DisplayStyle.None;
-                emptySelectionLabel.style.display = hasEffect ? DisplayStyle.None : DisplayStyle.Flex;
-                duplicateEffectButton.SetEnabled(hasEffect);
-                deleteEffectButton.SetEnabled(hasEffect);
-                addModifierButton.SetEnabled(hasEffect && availableModifierTypes.Count > 0);
-                effectTitle.text = hasEffect ? currentEffect.name : string.Empty;
-                SetModifierDetailsVisible(false);
-                if (!hasEffect) return;
-
-                boundObject = new SerializedObject(currentEffect);
-                detailsRoot.Bind(boundObject);
-                detailsRoot.schedule.Execute(ConfigureDelayedInputs);
-            }
-            finally
-            {
-                binding = false;
-            }
+            if (renamingEffect != null && !ReferenceEquals(renamingEffect, effect))
+                CancelEffectRename();
+            bool hasEffect = effect != null;
+            duplicateEffectButton.SetEnabled(hasEffect);
+            deleteEffectButton.SetEnabled(hasEffect);
+            detailsView.BindEffect(effect);
         }
 
         /// <inheritdoc />
-        public void BindModifier(int selectedModifierIndex)
-        {
-            if (modifierInteractionFrozen)
-            {
-                if (selectedModifierIndex >= 0)
-                    pendingModifierBindingIndex = selectedModifierIndex;
-                return;
-            }
-
-            binding = true;
-            try
-            {
-                ClearModifierBinding();
-                bool hasModifier = currentEffect != null &&
-                                   boundObject != null &&
-                                   selectedModifierIndex >= 0 &&
-                                   selectedModifierIndex < currentEffect.Modifiers.Count;
-                SetModifierDetailsVisible(hasModifier);
-                if (!hasModifier) return;
-
-                modifierPropertyField = new PropertyField
-                {
-                    name = "ModifierPropertyField",
-                    bindingPath = $"modifiers.Array.data[{selectedModifierIndex}]"
-                };
-                modifierPropertyHost.Add(modifierPropertyField);
-                modifierPropertyField.Bind(boundObject);
-                modifierPropertyField.schedule.Execute(ConfigureDelayedInputs);
-            }
-            finally
-            {
-                binding = false;
-            }
-        }
+        public void BindModifier(int selectedModifierIndex) =>
+            detailsView.BindModifier(selectedModifierIndex);
 
         /// <inheritdoc />
         public void RenderModifiers(
             IReadOnlyList<GameplayEffectModifier> modifiers,
             int selectedIndex,
-            IReadOnlyList<Type> availableTypes)
-        {
-            renderedModifiers.Clear();
-            if (modifiers != null) renderedModifiers.AddRange(modifiers);
-            availableModifierTypes.Clear();
-            if (availableTypes != null) availableModifierTypes.AddRange(availableTypes);
-            modifierList.RefreshItems();
-            modifierList.SetSelectionWithoutNotify(
-                selectedIndex < 0 ? Array.Empty<int>() : new[] { selectedIndex });
-            addModifierButton.SetEnabled(currentEffect != null && availableModifierTypes.Count > 0);
-            removeModifierButton.SetEnabled(
-                currentEffect != null && selectedIndex >= 0 && selectedIndex < renderedModifiers.Count);
-        }
+            IReadOnlyList<Type> availableTypes) =>
+            detailsView.RenderModifiers(modifiers, selectedIndex, availableTypes);
 
         /// <inheritdoc />
-        public void RefreshPolicyVisibility(GameplayEffectData effect)
-        {
-            bool hasEffect = effect != null;
-            bool instant = hasEffect && effect.DurationType == E_GameEffectDurationType.Instant;
-            bool duration = hasEffect && effect.DurationType == E_GameEffectDurationType.Duration;
-            bool periodic = hasEffect && effect.IsPeriodic;
-            bool stacking = hasEffect && !instant &&
-                            effect.StackingType != E_GameEffectStackingType.None;
-
-            SetVisible(durationField, duration);
-            SetVisible(periodField, hasEffect && !instant);
-            SetVisible(executePeriodField, hasEffect && !instant && periodic);
-            SetVisible(grantedTagsField, hasEffect && !instant);
-            SetVisible(stackingGroup, hasEffect && !instant);
-            SetVisible(maxStackCountField, stacking);
-            SetVisible(denyOverflowField, stacking);
-            SetVisible(durationPolicyField, stacking && duration);
-            SetVisible(periodPolicyField, stacking && periodic);
-            SetVisible(expirationPolicyField, stacking && duration);
-        }
+        public void RefreshPolicyVisibility(GameplayEffectData effect) =>
+            detailsView.RefreshPolicyVisibility(effect);
 
         /// <inheritdoc />
-        public void RenderValidation(IReadOnlyList<GameplayEffectValidationIssue> issues)
-        {
-            validationContainer.Clear();
-            if (currentEffect == null) return;
-            if (issues == null || issues.Count == 0)
-            {
-                validationContainer.Add(new HelpBox(
-                    "Gameplay Effect validation passed.",
-                    HelpBoxMessageType.Info));
-                return;
-            }
-
-            for (int i = 0; i < issues.Count; i++)
-            {
-                GameplayEffectValidationIssue issue = issues[i];
-                validationContainer.Add(new HelpBox(
-                    issue.Message,
-                    ToHelpBoxType(issue.Severity)));
-            }
-        }
+        public void RenderValidation(IReadOnlyList<GameplayEffectValidationIssue> issues) =>
+            detailsView.RenderValidation(issues);
 
         /// <inheritdoc />
         public bool Confirm(string title, string message) =>
@@ -326,60 +209,46 @@ namespace WS_Modules.GAS.Editor
 
         #endregion
 
-        #region ListView 配置与绑定
+        #region 资产列表
 
-        // 两个 ListView 只保存 Model 引用；Modifier 的真实排序由 Service 写回资产。
-        private void ConfigureLists()
+        // 资产 ListView 只保存真实 Model 引用，虚拟化行负责显示和交互状态。
+        private void ConfigureEffectList()
         {
             effectList.selectionType = SelectionType.Single;
             effectList.fixedItemHeight = 38f;
             effectList.makeItem = CreateEffectRow;
             effectList.bindItem = BindEffectRow;
             effectList.itemsSource = renderedEffects;
-
-            modifierList.selectionType = SelectionType.Single;
-            modifierList.fixedItemHeight = 28f;
-            modifierList.reorderable = true;
-            modifierList.reorderMode = ListViewReorderMode.Simple;
-            modifierList.makeItem = () => modifierRowAsset.Instantiate();
-            modifierList.bindItem = BindModifierRow;
-            modifierList.itemsSource = renderedModifiers;
         }
 
-        // 创建虚拟化资产行并只注册一次 Ping 回调，后续 bindItem 仅替换对应 Model。
+        // 创建虚拟化资产行状态并只注册一次回调，后续 bindItem 仅切换对应 Model。
         private VisualElement CreateEffectRow()
         {
             VisualElement row = effectRowAsset.Instantiate();
-            Button pingButton = row.Q<Button>("PingButton");
-            if (pingButton == null)
-                throw new InvalidOperationException(
-                    "Gameplay Effect asset row UXML is missing required element 'PingButton'.");
-
-            pingButton.RegisterCallback<PointerDownEvent>(OnEffectPingPointerDown);
-            pingButton.RegisterCallback<ClickEvent>(OnEffectPingClicked);
-            effectPingButtons.Add(pingButton);
+            var state = new EffectRowState(this, row);
+            state.Register();
+            row.userData = state;
+            effectRows.Add(state);
             return row;
         }
 
-        // 资产行显示名称和路径，同名资产仍可明确区分。
+        // 资产行绑定真实 Model，并根据当前重命名目标切换 Label 与 TextField。
         private void BindEffectRow(VisualElement element, int index)
         {
-            GameplayEffectData item = renderedEffects[index];
-            element.Q<Label>("NameLabel").text = item.name;
-            element.Q<Label>("PathLabel").text = AssetDatabase.GetAssetPath(item);
-            element.Q<Button>("PingButton").userData = item;
-        }
+            var state = element.userData as EffectRowState;
+            if (state == null)
+                throw new InvalidOperationException("Gameplay Effect asset row state is missing.");
 
-        // Modifier 行只格式化现有 Model 引用，不创建字段副本。
-        private void BindModifierRow(VisualElement element, int index)
-        {
-            GameplayEffectModifier modifier = renderedModifiers[index];
-            element.Q<Label>("IndexLabel").text = index.ToString();
-            element.Q<Label>("NameLabel").text = modifier == null
-                ? "Missing Modifier Type"
-                : BuildModifierTypeName(modifier.GetType());
-            Label attributeLabel = element.Q<Label>("AttributeLabel");
-            BindModifierAttribute(attributeLabel, modifier);
+            GameplayEffectData item = renderedEffects[index];
+            GameplayEffectValidationSeverity? severity = null;
+            if (effectValidationStates != null &&
+                effectValidationStates.TryGetValue(item, out GameplayEffectValidationSeverity stateSeverity))
+                severity = stateSeverity;
+            state.Bind(
+                item,
+                ReferenceEquals(renamingEffect, item),
+                pendingRenameValue,
+                severity);
         }
 
         #endregion
@@ -407,262 +276,77 @@ namespace WS_Modules.GAS.Editor
         private void OnDeleteEffectClicked() => DeleteEffectRequested?.Invoke();
 
         // 将 ListView 选择转换为稳定 Model 引用。
-        private void OnEffectSelectionChanged(IEnumerable<object> selection)
-        {
+        private void OnEffectSelectionChanged(IEnumerable<object> selection) =>
             EffectSelectionChanged?.Invoke(selection.OfType<GameplayEffectData>().FirstOrDefault());
-        }
 
-        // Ping 按钮优先消费按下事件，避免 ListView 将定位操作解释为资产选择。
-        private void OnEffectPingPointerDown(PointerDownEvent evt) => evt.StopPropagation();
-
-        // 从虚拟化按钮的当前 userData 读取 Model，确保滚动复用后仍定位正确资产。
-        private void OnEffectPingClicked(ClickEvent evt)
+        // 双击释放后延迟到当前 Pointer 生命周期结束，再切换行内输入和焦点。
+        private void QueueEffectRename(GameplayEffectData effect, string value)
         {
-            evt.StopPropagation();
-            if (evt.currentTarget is Button { userData: GameplayEffectData effect })
-                PingEffectRequested?.Invoke(effect);
-        }
-
-        // 详情中任意 SerializedProperty 提交后通知 Controller 刷新派生状态。
-        private void OnSerializedPropertyChanged(SerializedPropertyChangeEvent evt)
-        {
-            if (evt.changedProperty.propertyPath.StartsWith(
-                    "modifiers.Array.data[",
-                    StringComparison.Ordinal) &&
-                modifierList.selectedIndex >= 0 &&
-                modifierList.selectedIndex < renderedModifiers.Count)
-                modifierList.RefreshItem(modifierList.selectedIndex);
-            if (!binding && !disposed) EffectSerializedChanged?.Invoke();
-        }
-
-        // Modifier 列表只转发选中索引；冻结期间 View 会延后真正的详情绑定。
-        private void OnModifierSelectionChanged(IEnumerable<object> selection) =>
-            ModifierSelectionChanged?.Invoke(modifierList.selectedIndex);
-
-        // 左键按下只记录候选拖拽；普通点击不会冻结详情。
-        private void OnModifierPointerDown(PointerDownEvent evt)
-        {
-            if (evt.button != 0) return;
-            modifierPointerTracking = true;
-            modifierPointerDownPosition = evt.position;
-        }
-
-        // 超过拖拽阈值后立即移除详情，确保旧 IMGUIContainer 早于数组移动退出 Panel。
-        private void OnModifierPointerMove(PointerMoveEvent evt)
-        {
-            if (!modifierPointerTracking || modifierInteractionFrozen ||
-                (evt.pressedButtons & 1) == 0)
-                return;
-
-            Vector2 delta = (Vector2)evt.position - modifierPointerDownPosition;
-            if (delta.sqrMagnitude < ModifierDragThresholdSquared) return;
-            FreezeModifierInteraction();
-        }
-
-        // PointerUp 后跨两次 Editor 更新恢复，保证延迟的数组移动已经提交完成。
-        private void OnModifierPointerUp(PointerUpEvent evt)
-        {
-            if (evt.button != 0) return;
-            modifierPointerTracking = false;
-            if (modifierInteractionFrozen) ScheduleModifierBindingRestore();
-        }
-
-        // Pointer 被系统取消时使用相同恢复路径，避免详情长期保持冻结。
-        private void OnModifierPointerCancel(PointerCancelEvent evt)
-        {
-            modifierPointerTracking = false;
-            if (modifierInteractionFrozen) ScheduleModifierBindingRestore();
-        }
-
-        // Drop 先让 Controller 排队数组移动，再排队详情恢复，保证两者执行顺序稳定。
-        private void OnModifierIndexChanged(int fromIndex, int toIndex)
-        {
-            MoveModifierRequested?.Invoke(new GameplayEffectModifierMoveRequest(fromIndex, toIndex));
-            if (modifierInteractionFrozen) ScheduleModifierBindingRestore();
-        }
-
-        // Add 菜单仅显示 Service 已确认可实例化的派生类型。
-        private void OnAddModifierClicked()
-        {
-            var menu = new GenericMenu();
-            for (int i = 0; i < availableModifierTypes.Count; i++)
+            if (effect == null || disposed) return;
+            renamingEffect = effect;
+            pendingRenameValue = value ?? effect.name;
+            int requestVersion = ++renameRequestVersion;
+            root.schedule.Execute(() =>
             {
-                Type type = availableModifierTypes[i];
-                menu.AddItem(
-                    new GUIContent(BuildModifierTypeName(type)),
-                    false,
-                    () => AddModifierRequested?.Invoke(type));
-            }
-
-            if (availableModifierTypes.Count == 0)
-                menu.AddDisabledItem(new GUIContent("No serializable Modifier types"));
-            menu.ShowAsContext();
+                if (disposed || requestVersion != renameRequestVersion) return;
+                effectList.RefreshItems();
+            });
         }
 
-        // 删除意图由 Controller 使用当前索引执行。
-        private void OnRemoveModifierClicked() => RemoveModifierRequested?.Invoke();
+        // 行内输入先退出可视状态，再把稳定资产引用和名称提交给 Controller。
+        private void SubmitEffectRename(EffectRowState state)
+        {
+            if (state?.Effect == null || !ReferenceEquals(renamingEffect, state.Effect)) return;
+            GameplayEffectData effect = state.Effect;
+            string value = state.RenameField.value;
+            CancelEffectRename();
+            RenameEffectSubmitted?.Invoke(new GameplayEffectRenameRequest(effect, value));
+        }
 
-        // 手动刷新仅请求重新校验。
-        private void OnValidateClicked() => ValidateRequested?.Invoke();
+        // 取消当前或尚未执行的重命名请求，并按需恢复所有可见行。
+        private void CancelEffectRename(bool refresh = true)
+        {
+            renameRequestVersion++;
+            renamingEffect = null;
+            pendingRenameValue = string.Empty;
+            if (refresh && !disposed) effectList.RefreshItems();
+        }
 
         #endregion
 
-        #region 绑定与显示辅助
+        #region 回调与辅助
 
-        // 切换资产前解除旧 SerializedObject，避免两个资产同时被绑定。
-        private void UnbindCurrentEffect()
+        // 注册顶栏与资产列表回调，由 Dispose 对称解除。
+        private void RegisterCallbacks()
         {
-            ClearModifierBinding();
-            detailsRoot.Unbind();
-            boundObject = null;
-            currentEffect = null;
+            searchField.RegisterValueChangedCallback(OnSearchChanged);
+            createEffectButton.clicked += OnCreateEffectClicked;
+            duplicateEffectButton.clicked += OnDuplicateEffectClicked;
+            deleteEffectButton.clicked += OnDeleteEffectClicked;
+            effectList.selectionChanged += OnEffectSelectionChanged;
         }
 
-        // 拖拽期间冻结详情，但保留最终应恢复的 Modifier 索引。
-        private void FreezeModifierInteraction()
+        // 释放时解除顶栏与资产列表回调。
+        private void UnregisterCallbacks()
         {
-            modifierInteractionFrozen = true;
-            pendingModifierBindingIndex = modifierList.selectedIndex;
-            ClearModifierBinding();
-            modifierEmptyLabel.text = "Modifier details paused while reordering.";
-            SetModifierDetailsVisible(false);
+            searchField.UnregisterValueChangedCallback(OnSearchChanged);
+            createEffectButton.clicked -= OnCreateEffectClicked;
+            duplicateEffectButton.clicked -= OnDuplicateEffectClicked;
+            deleteEffectButton.clicked -= OnDeleteEffectClicked;
+            effectList.selectionChanged -= OnEffectSelectionChanged;
         }
 
-        // PointerUp 的第一阶段只排队下一次恢复，使数组提交始终先于 PropertyField 重建。
-        private void ScheduleModifierBindingRestore()
+        // View 释放时解除全部虚拟化资产行回调和待执行焦点任务。
+        private void UnregisterEffectRows()
         {
-            if (modifierBindingRestoreScheduled) return;
-            modifierBindingRestoreScheduled = true;
-            EditorApplication.delayCall += QueueModifierBindingRestore;
+            renameRequestVersion++;
+            for (int i = 0; i < effectRows.Count; i++) effectRows[i].Unregister();
+            effectRows.Clear();
+            renamingEffect = null;
+            pendingRenameValue = string.Empty;
         }
 
-        // 再跨一次 Editor 更新，避开 Unity 2022.3 当前 Panel 中残留的 IMGUI 绘制回调。
-        private void QueueModifierBindingRestore()
-        {
-            EditorApplication.delayCall += RestoreModifierBinding;
-        }
-
-        // 使用最终选择索引创建全新的 PropertyField，不复用拖拽前 SerializedProperty。
-        private void RestoreModifierBinding()
-        {
-            modifierBindingRestoreScheduled = false;
-            if (disposed) return;
-            modifierInteractionFrozen = false;
-            modifierEmptyLabel.text = "Select a Modifier.";
-            int index = pendingModifierBindingIndex;
-            pendingModifierBindingIndex = -1;
-            BindModifier(index);
-        }
-
-        // 切换 GE 或释放 View 时取消所有延迟恢复，并清空纯交互状态。
-        private void ResetModifierInteraction()
-        {
-            CancelModifierBindingRestore();
-            modifierPointerTracking = false;
-            modifierInteractionFrozen = false;
-            pendingModifierBindingIndex = -1;
-            modifierEmptyLabel.text = "Select a Modifier.";
-        }
-
-        // 对称移除两阶段 delayCall；无论当前处于哪一阶段都不会残留回调。
-        private void CancelModifierBindingRestore()
-        {
-            EditorApplication.delayCall -= QueueModifierBindingRestore;
-            EditorApplication.delayCall -= RestoreModifierBinding;
-            modifierBindingRestoreScheduled = false;
-        }
-
-        // 完整移除动态 PropertyField，使其内部 IMGUIContainer 不再持有旧 SerializedProperty。
-        private void ClearModifierBinding()
-        {
-            if (modifierPropertyField != null)
-            {
-                modifierPropertyField.Unbind();
-                modifierPropertyField.RemoveFromHierarchy();
-                modifierPropertyField = null;
-            }
-
-            modifierPropertyHost.Clear();
-        }
-
-        // 使用当前 Registry 即时解析作者名称；名称只用于显示，不写入 GE 资产。
-        private void BindModifierAttribute(
-            Label label,
-            GameplayEffectModifier modifier)
-        {
-            if (modifier == null)
-            {
-                label.text = "Invalid";
-                label.tooltip = "Modifier type is missing.";
-                return;
-            }
-
-            int attributeId = modifier.Attribute.Id;
-            if (attributeRegistry == null)
-            {
-                label.text = $"Attribute {attributeId}";
-                label.tooltip = string.IsNullOrEmpty(attributeRegistryUnavailableReason)
-                    ? $"AttributeId: {attributeId}"
-                    : $"{attributeRegistryUnavailableReason}\nAttributeId: {attributeId}";
-                return;
-            }
-
-            if (attributeRegistry.TryGetNodeById(
-                    attributeId,
-                    out GameplayAttributeEditorNode node))
-            {
-                label.text = node.Name;
-                label.tooltip = $"AttributeId: {attributeId}";
-                return;
-            }
-
-            label.text = $"Invalid AttributeId ({attributeId})";
-            label.tooltip = $"AttributeId {attributeId} 未在当前 Registry 中烘焙。";
-        }
-
-        // 原生 PropertyField 实例化子控件后将文本和数字输入统一设为延迟提交。
-        private void ConfigureDelayedInputs()
-        {
-            if (disposed || currentEffect == null) return;
-            detailsRoot.Query<TextField>().ForEach(field => field.isDelayed = true);
-            detailsRoot.Query<FloatField>().ForEach(field => field.isDelayed = true);
-            detailsRoot.Query<IntegerField>().ForEach(field => field.isDelayed = true);
-        }
-
-        // Modifier 详情和空提示始终互斥。
-        private void SetModifierDetailsVisible(bool visible)
-        {
-            modifierPropertyHost.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
-            modifierEmptyLabel.style.display = visible ? DisplayStyle.None : DisplayStyle.Flex;
-            removeModifierButton.SetEnabled(visible);
-        }
-
-        // 统一切换策略字段的 DisplayStyle。
-        private static void SetVisible(VisualElement element, bool visible) =>
-            element.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
-
-        // 去掉通用后缀后生成稳定可读的 Add 菜单和行名称。
-        private static string BuildModifierTypeName(Type type)
-        {
-            const string suffix = "GameplayEffectModifier";
-            string name = type.Name.EndsWith(suffix, StringComparison.Ordinal)
-                ? type.Name.Substring(0, type.Name.Length - suffix.Length)
-                : type.Name;
-            return ObjectNames.NicifyVariableName(name);
-        }
-
-        // 将领域严重程度映射到 Unity HelpBox 样式。
-        private static HelpBoxMessageType ToHelpBoxType(GameplayEffectValidationSeverity severity)
-        {
-            return severity switch
-            {
-                GameplayEffectValidationSeverity.Error => HelpBoxMessageType.Error,
-                GameplayEffectValidationSeverity.Warning => HelpBoxMessageType.Warning,
-                _ => HelpBoxMessageType.Info
-            };
-        }
-
-        // 查询必需 UXML 元素，缺失时立即暴露资源与代码契约不一致。
+        // 查询主 UXML 必需控件，缺失时立即暴露资源与代码契约不一致。
         private T Require<T>(string name) where T : VisualElement
         {
             T element = root.Q<T>(name);
@@ -673,77 +357,245 @@ namespace WS_Modules.GAS.Editor
         }
 
         #endregion
+        #region 嵌套类型
 
-        #region 回调注册
-
-        // 注册全部 UI 回调，由 Dispose 对称解除。
-        private void RegisterCallbacks()
+        /// <summary>保存单个虚拟化 GE 资产行的绑定、重命名和 Pointer 状态。</summary>
+        private sealed class EffectRowState
         {
-            searchField.RegisterValueChangedCallback(OnSearchChanged);
-            createEffectButton.clicked += OnCreateEffectClicked;
-            duplicateEffectButton.clicked += OnDuplicateEffectClicked;
-            deleteEffectButton.clicked += OnDeleteEffectClicked;
-            effectList.selectionChanged += OnEffectSelectionChanged;
-            detailsRoot.RegisterCallback<SerializedPropertyChangeEvent>(OnSerializedPropertyChanged);
-            modifierList.selectionChanged += OnModifierSelectionChanged;
-            modifierList.itemIndexChanged += OnModifierIndexChanged;
-            modifierList.RegisterCallback<PointerDownEvent>(
-                OnModifierPointerDown,
-                TrickleDown.TrickleDown);
-            modifierList.RegisterCallback<PointerMoveEvent>(
-                OnModifierPointerMove,
-                TrickleDown.TrickleDown);
-            modifierList.RegisterCallback<PointerUpEvent>(
-                OnModifierPointerUp,
-                TrickleDown.TrickleDown);
-            modifierList.RegisterCallback<PointerCancelEvent>(
-                OnModifierPointerCancel,
-                TrickleDown.TrickleDown);
-            addModifierButton.clicked += OnAddModifierClicked;
-            removeModifierButton.clicked += OnRemoveModifierClicked;
-            validateButton.clicked += OnValidateClicked;
-        }
+            private readonly GameplayEffectEditorView owner;
+            private readonly VisualElement root;
+            private readonly VisualElement visualRoot;
+            private readonly Label nameLabel;
+            private readonly Label pathLabel;
+            private readonly Button pingButton;
+            private bool suppressNextFocusCommit;
+            private bool wasRenaming;
+            private int bindVersion;
+            private int pendingFocusVersion = -1;
+            private int pendingRenamePointerId = -1;
+            private GameplayEffectData pendingRenameEffect;
 
-        // 释放时注销全部 UI 回调，防止离开 GE 页后残留订阅。
-        private void UnregisterCallbacks()
-        {
-            searchField.UnregisterValueChangedCallback(OnSearchChanged);
-            createEffectButton.clicked -= OnCreateEffectClicked;
-            duplicateEffectButton.clicked -= OnDuplicateEffectClicked;
-            deleteEffectButton.clicked -= OnDeleteEffectClicked;
-            effectList.selectionChanged -= OnEffectSelectionChanged;
-            detailsRoot.UnregisterCallback<SerializedPropertyChangeEvent>(OnSerializedPropertyChanged);
-            modifierList.selectionChanged -= OnModifierSelectionChanged;
-            modifierList.itemIndexChanged -= OnModifierIndexChanged;
-            modifierList.UnregisterCallback<PointerDownEvent>(
-                OnModifierPointerDown,
-                TrickleDown.TrickleDown);
-            modifierList.UnregisterCallback<PointerMoveEvent>(
-                OnModifierPointerMove,
-                TrickleDown.TrickleDown);
-            modifierList.UnregisterCallback<PointerUpEvent>(
-                OnModifierPointerUp,
-                TrickleDown.TrickleDown);
-            modifierList.UnregisterCallback<PointerCancelEvent>(
-                OnModifierPointerCancel,
-                TrickleDown.TrickleDown);
-            addModifierButton.clicked -= OnAddModifierClicked;
-            removeModifierButton.clicked -= OnRemoveModifierClicked;
-            validateButton.clicked -= OnValidateClicked;
-        }
+            /// <summary>获取当前虚拟化行绑定的 GE 资产。</summary>
+            public GameplayEffectData Effect { get; private set; }
+            /// <summary>获取行内重命名输入框。</summary>
+            public TextField RenameField { get; }
 
-        // View 释放时解除所有已创建虚拟化行的回调，防止页面重建后残留旧 View 引用。
-        private void UnregisterEffectRowCallbacks()
-        {
-            for (int i = 0; i < effectPingButtons.Count; i++)
+            // 缓存行控件，确保虚拟化复用时只改变绑定数据而不重复注册回调。
+            internal EffectRowState(GameplayEffectEditorView owner, VisualElement root)
             {
-                Button button = effectPingButtons[i];
-                button.UnregisterCallback<PointerDownEvent>(OnEffectPingPointerDown);
-                button.UnregisterCallback<ClickEvent>(OnEffectPingClicked);
-                button.userData = null;
+                this.owner = owner;
+                this.root = root;
+                visualRoot = root.Q<VisualElement>(className: "ge-effect-row") ??
+                    throw new InvalidOperationException(
+                        "Gameplay Effect asset row UXML is missing the 'ge-effect-row' root class.");
+                nameLabel = RequireRowElement<Label>("NameLabel");
+                pathLabel = RequireRowElement<Label>("PathLabel");
+                pingButton = RequireRowElement<Button>("PingButton");
+                RenameField = RequireRowElement<TextField>("RenameField");
             }
 
-            effectPingButtons.Clear();
+            // 注册当前虚拟化行全部输入回调，由 View.Dispose 对称解除。
+            internal void Register()
+            {
+                nameLabel.RegisterCallback<PointerDownEvent>(OnNamePointerDown);
+                nameLabel.RegisterCallback<PointerUpEvent>(OnNamePointerUp);
+                nameLabel.RegisterCallback<PointerCaptureOutEvent>(OnNamePointerCaptureOut);
+                RenameField.RegisterCallback<KeyDownEvent>(OnRenameKeyDown);
+                RenameField.RegisterCallback<FocusOutEvent>(OnRenameFocusOut);
+                RenameField.RegisterCallback<FocusInEvent>(OnRenameFocusIn);
+                RenameField.RegisterCallback<GeometryChangedEvent>(OnRenameGeometryChanged);
+                pingButton.RegisterCallback<PointerDownEvent>(OnPingPointerDown);
+                pingButton.RegisterCallback<ClickEvent>(OnPingClicked);
+            }
+
+            // 解除行回调、Pointer 捕获和焦点任务，防止页面重建后残留旧 View 引用。
+            internal void Unregister()
+            {
+                ClearPendingRenamePointer();
+                CancelPendingFocus();
+                nameLabel.UnregisterCallback<PointerDownEvent>(OnNamePointerDown);
+                nameLabel.UnregisterCallback<PointerUpEvent>(OnNamePointerUp);
+                nameLabel.UnregisterCallback<PointerCaptureOutEvent>(OnNamePointerCaptureOut);
+                RenameField.UnregisterCallback<KeyDownEvent>(OnRenameKeyDown);
+                RenameField.UnregisterCallback<FocusOutEvent>(OnRenameFocusOut);
+                RenameField.UnregisterCallback<FocusInEvent>(OnRenameFocusIn);
+                RenameField.UnregisterCallback<GeometryChangedEvent>(OnRenameGeometryChanged);
+                pingButton.UnregisterCallback<PointerDownEvent>(OnPingPointerDown);
+                pingButton.UnregisterCallback<ClickEvent>(OnPingClicked);
+                Effect = null;
+            }
+
+            // 绑定当前资产，并在进入重命名时安全聚焦；普通复用不会覆盖正在输入的文本。
+            internal void Bind(
+                GameplayEffectData effect,
+                bool renaming,
+                string renameValue,
+                GameplayEffectValidationSeverity? severity)
+            {
+                bool bindingChanged = !ReferenceEquals(Effect, effect);
+                if (bindingChanged)
+                {
+                    ClearPendingRenamePointer();
+                    CancelPendingFocus();
+                    suppressNextFocusCommit = false;
+                }
+
+                bindVersion++;
+                Effect = effect;
+                nameLabel.text = effect.name;
+                pathLabel.text = AssetDatabase.GetAssetPath(effect);
+                if (!renaming || bindingChanged || !wasRenaming)
+                    RenameField.SetValueWithoutNotify(renaming ? renameValue : effect.name);
+                nameLabel.EnableInClassList("is-hidden", renaming);
+                RenameField.EnableInClassList("is-hidden", !renaming);
+                visualRoot.EnableInClassList(
+                    "has-validation-error",
+                    severity == GameplayEffectValidationSeverity.Error);
+                visualRoot.EnableInClassList(
+                    "has-validation-warning",
+                    severity == GameplayEffectValidationSeverity.Warning);
+                wasRenaming = renaming;
+                if (renaming) FocusRename();
+                else
+                {
+                    CancelPendingFocus();
+                    suppressNextFocusCommit = false;
+                }
+            }
+
+            // 第二次按下只记录名称目标，并等待 PointerUp 后再请求切换 UI。
+            private void OnNamePointerDown(PointerDownEvent evt)
+            {
+                if (evt.button != 0 || evt.clickCount != 2 || Effect == null) return;
+                ClearPendingRenamePointer();
+                pendingRenameEffect = Effect;
+                pendingRenamePointerId = evt.pointerId;
+                nameLabel.CapturePointer(pendingRenamePointerId);
+                evt.StopImmediatePropagation();
+            }
+
+            // PointerUp 后释放捕获并排队重命名，避免当前点击事件夺回输入焦点。
+            private void OnNamePointerUp(PointerUpEvent evt)
+            {
+                if (evt.pointerId != pendingRenamePointerId || pendingRenameEffect == null) return;
+                GameplayEffectData effect = pendingRenameEffect;
+                ClearPendingRenamePointer();
+                evt.StopImmediatePropagation();
+                owner.QueueEffectRename(effect, effect.name);
+            }
+
+            // Pointer 捕获意外丢失时取消未完成的双击请求。
+            private void OnNamePointerCaptureOut(PointerCaptureOutEvent evt)
+            {
+                if (evt.pointerId != pendingRenamePointerId) return;
+                pendingRenamePointerId = -1;
+                pendingRenameEffect = null;
+            }
+
+            // Enter 提交当前输入，Escape 取消且不发送资产操作。
+            private void OnRenameKeyDown(KeyDownEvent evt)
+            {
+                if (evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter)
+                {
+                    suppressNextFocusCommit = true;
+                    owner.SubmitEffectRename(this);
+                    evt.StopImmediatePropagation();
+                }
+                else if (evt.keyCode == KeyCode.Escape)
+                {
+                    suppressNextFocusCommit = true;
+                    owner.CancelEffectRename();
+                    evt.StopImmediatePropagation();
+                }
+            }
+
+            // 正常失焦提交；Enter/Escape 引发的单次 FocusOut 已被显式抑制。
+            private void OnRenameFocusOut(FocusOutEvent evt)
+            {
+                if (suppressNextFocusCommit)
+                {
+                    suppressNextFocusCommit = false;
+                    return;
+                }
+
+                if (Effect != null && ReferenceEquals(owner.renamingEffect, Effect))
+                    owner.SubmitEffectRename(this);
+            }
+
+            // 输入框实际获得焦点后全选文本，并完成本次待聚焦任务。
+            private void OnRenameFocusIn(FocusInEvent evt)
+            {
+                suppressNextFocusCommit = false;
+                CompletePendingFocus();
+            }
+
+            // 隐藏状态切换并完成布局后重试聚焦。
+            private void OnRenameGeometryChanged(GeometryChangedEvent evt) => TryFocusRename();
+
+            // Ping 只定位当前绑定资产，不让 Pointer 继续触发 ListView 选择。
+            private void OnPingPointerDown(PointerDownEvent evt) => evt.StopPropagation();
+
+            // 虚拟化复用后通过当前 Effect 引用发送正确的 Ping 意图。
+            private void OnPingClicked(ClickEvent evt)
+            {
+                evt.StopPropagation();
+                if (Effect != null) owner.PingEffectRequested?.Invoke(Effect);
+            }
+
+            // 保存当前绑定版本，等待输入框附着并完成样式布局后聚焦。
+            private void FocusRename()
+            {
+                pendingFocusVersion = bindVersion;
+                RenameField.schedule.Execute(TryFocusRename);
+            }
+
+            // 只有行仍绑定同一重命名资产时才允许旧调度任务获取焦点。
+            private void TryFocusRename()
+            {
+                if (pendingFocusVersion != bindVersion ||
+                    Effect == null ||
+                    !ReferenceEquals(owner.renamingEffect, Effect))
+                {
+                    CancelPendingFocus();
+                    return;
+                }
+
+                if (RenameField.panel == null || RenameField.ClassListContains("is-hidden")) return;
+                RenameField.Focus();
+                if (RenameField.panel?.focusController?.focusedElement == RenameField)
+                    CompletePendingFocus();
+            }
+
+            // 输入框获得焦点后全选文本并使旧任务失效。
+            private void CompletePendingFocus()
+            {
+                if (pendingFocusVersion < 0) return;
+                RenameField.SelectAll();
+                CancelPendingFocus();
+            }
+
+            // 取消尚未完成的聚焦任务。
+            private void CancelPendingFocus() => pendingFocusVersion = -1;
+
+            // 清除双击 Pointer 状态；先清标记再释放捕获，避免 CaptureOut 重入。
+            private void ClearPendingRenamePointer()
+            {
+                int pointerId = pendingRenamePointerId;
+                pendingRenamePointerId = -1;
+                pendingRenameEffect = null;
+                if (pointerId >= 0 && nameLabel.HasPointerCapture(pointerId))
+                    nameLabel.ReleasePointer(pointerId);
+            }
+
+            // 查询行模板必需控件，缺失时立即暴露 UXML 与代码契约不一致。
+            private T RequireRowElement<T>(string name) where T : VisualElement
+            {
+                T element = root.Q<T>(name);
+                if (element == null)
+                    throw new InvalidOperationException(
+                        $"Gameplay Effect asset row UXML is missing required element '{name}'.");
+                return element;
+            }
         }
 
         #endregion

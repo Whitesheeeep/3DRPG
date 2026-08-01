@@ -85,7 +85,7 @@ namespace WS_Modules.GAS.GameplayEffect
         public E_GameEffectStackingType StackingType => stackingType;
         /// <summary>获取允许的最大叠层数。</summary>
         public int MaxStackCount => maxStackCount;
-        /// <summary>获取达到最大层数时是否完全拒绝应用。</summary>
+        /// <summary>获取达到最大层数时是否完全拒绝应用：不会刷新 Duration 和 Period</summary>
         public bool DenyOverflowApplication => denyOverflowApplication;
         /// <summary>获取成功重复应用时的持续时间规则。</summary>
         public E_GameEffectStackingDurationPolicy StackingDurationPolicy => stackingDurationPolicy;

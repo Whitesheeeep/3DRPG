@@ -15,15 +15,24 @@ namespace WS_Modules.GAS.Editor
         private readonly GameplayEffectEditorService service;
         private readonly List<GameplayEffectData> allEffects = new();
         private readonly List<Type> modifierTypes;
+        private readonly Dictionary<GameplayEffectData, GameplayEffectValidationSeverity>
+            effectValidationStates = new();
 
         private GameplayEffectData effect;
         private GameplayEffectData pendingModifierMoveEffect;
+        private GameplayEffectData pendingModifierStructureEffect;
         private GameplayAttributeRegistry attributeRegistry;
         private GameplayEffectModifierMoveRequest pendingModifierMove;
+        private Type pendingModifierAddType;
         private string search;
         private int selectedModifierIndex;
+        private int pendingModifierRemoveIndex = -1;
+        private ModifierStructureOperation pendingModifierStructureOperation;
         private bool modifierMoveScheduled;
-        private bool validationScheduled;
+        private bool modifierStructureApplyScheduled;
+        private bool modifierStructureRebindScheduled;
+        private bool pendingModifierStructureChanged;
+        private ValidationRequestScope scheduledValidationScope;
         private bool disposed;
 
         #endregion
@@ -43,6 +52,7 @@ namespace WS_Modules.GAS.Editor
             RegisterEvents();
             RefreshAssets();
             SetEffect(GameplayEffectEditorSession.GetEffect(), true);
+            ScheduleValidation(ValidationRequestScope.All);
         }
 
         /// <inheritdoc />
@@ -51,6 +61,7 @@ namespace WS_Modules.GAS.Editor
             if (disposed) return;
             disposed = true;
             CancelScheduledModifierMove();
+            CancelScheduledModifierStructureChange();
             CancelScheduledValidation();
             UnregisterEvents();
         }
@@ -66,6 +77,7 @@ namespace WS_Modules.GAS.Editor
         {
             if (disposed) return;
             CancelScheduledModifierMove();
+            CancelScheduledModifierStructureChange();
             effect = target;
             GameplayEffectEditorSession.SetEffect(effect);
             selectedModifierIndex = restoreSelection
@@ -87,15 +99,33 @@ namespace WS_Modules.GAS.Editor
             RefreshEffectList();
         }
 
-        // 资产列表已完成视觉选择，只切换详情，避免再次刷新整张 Effect 列表。
+        // 资产列表已完成视觉选择，只切换详情，避免再次刷新整个 Effect 列表。
         private void OnEffectSelectionChanged(GameplayEffectData selected)
         {
             CancelScheduledModifierMove();
+            CancelScheduledModifierStructureChange();
             effect = selected;
             GameplayEffectEditorSession.SetEffect(effect);
             selectedModifierIndex = -1;
             NormalizeModifierSelection();
             RefreshEffectDetails();
+        }
+
+        // 资产重命名成功后重排列表并重绑标题；失败时恢复原行输入和焦点。
+        private void OnRenameEffectSubmitted(GameplayEffectRenameRequest request)
+        {
+            if (!service.TryRenameEffect(request.Effect, request.Name, out string error))
+            {
+                view.ShowError("Rename Gameplay Effect", error);
+                view.RestoreEffectRename(request.Effect, request.Name);
+                return;
+            }
+
+            effect = request.Effect;
+            GameplayEffectEditorSession.SetEffect(effect);
+            NormalizeModifierSelection();
+            RefreshAssets();
+            RefreshAll();
         }
 
         // View 已完成路径对话，Service 只负责创建资产。
@@ -135,12 +165,16 @@ namespace WS_Modules.GAS.Editor
                     $"将 '{effect.name}' 移入系统回收站？"))
                 return;
 
+            CancelScheduledModifierMove();
+            CancelScheduledModifierStructureChange();
             if (!service.MoveEffectToTrash(effect, out string error))
             {
                 view.ShowError("Delete Gameplay Effect", error);
                 return;
             }
 
+            effectValidationStates.Remove(effect);
+            view.RenderEffectValidationStates(effectValidationStates);
             effect = null;
             GameplayEffectEditorSession.SetEffect(null);
             selectedModifierIndex = -1;
@@ -154,52 +188,126 @@ namespace WS_Modules.GAS.Editor
         {
             if (effect == null) return;
             view.RefreshPolicyVisibility(effect);
-            ScheduleValidation();
+            ScheduleValidation(ValidationRequestScope.Current);
         }
 
-        // 选择索引是纯 UI 状态，使用 SessionState 跨域重载保存。
+        // 选择索引是纯 UI 状态；结构事务期间只记录选择，不创建持有旧属性的详情控件。
         private void OnModifierSelectionChanged(int index)
         {
             selectedModifierIndex = index;
             NormalizeModifierSelection();
-            if (!modifierMoveScheduled) view.BindModifier(selectedModifierIndex);
+            if (!modifierMoveScheduled && !IsModifierStructureChangePending)
+                view.BindModifier(selectedModifierIndex);
         }
 
-        // 添加前先销毁旧 SerializedProperty 控件，避免扩容 SerializeReference 数组后遗留失效句柄。
+        // 添加请求先销毁旧详情，下一次 Editor 更新才扩容 SerializeReference 数组。
         private void OnAddModifierRequested(Type type)
         {
+            if (disposed || modifierMoveScheduled || IsModifierStructureChangePending) return;
             view.BindModifier(-1);
-            if (!service.TryAddModifier(effect, type, out int newIndex, out string error))
-            {
-                view.BindModifier(selectedModifierIndex);
-                view.ShowError("Add Gameplay Effect Modifier", error);
-                return;
-            }
-
-            selectedModifierIndex = newIndex;
-            GameplayEffectEditorSession.SelectedModifierIndex = newIndex;
-            RefreshModifiers(true);
-            ScheduleValidation();
+            pendingModifierStructureEffect = effect;
+            pendingModifierAddType = type;
+            pendingModifierRemoveIndex = -1;
+            pendingModifierStructureOperation = ModifierStructureOperation.Add;
+            modifierStructureApplyScheduled = true;
+            EditorApplication.delayCall += ApplyScheduledModifierStructureChange;
         }
 
-        // 删除前先销毁旧 SerializedProperty 控件，提交后再绑定同一位置或前一项。
+        // 删除请求先销毁旧详情，下一次 Editor 更新才缩减 SerializeReference 数组。
         private void OnRemoveModifierRequested()
         {
+            if (disposed || modifierMoveScheduled || IsModifierStructureChangePending) return;
             view.BindModifier(-1);
-            if (!service.RemoveModifier(effect, selectedModifierIndex))
+            pendingModifierStructureEffect = effect;
+            pendingModifierAddType = null;
+            pendingModifierRemoveIndex = selectedModifierIndex;
+            pendingModifierStructureOperation = ModifierStructureOperation.Remove;
+            modifierStructureApplyScheduled = true;
+            EditorApplication.delayCall += ApplyScheduledModifierStructureChange;
+        }
+
+        // 第一阶段在旧 PropertyField 离开当前 IMGUI 事件后修改数组，但不创建新详情控件。
+        private void ApplyScheduledModifierStructureChange()
+        {
+            modifierStructureApplyScheduled = false;
+            GameplayEffectData target = pendingModifierStructureEffect;
+            if (disposed || effect != target)
             {
-                view.BindModifier(selectedModifierIndex);
+                ResetPendingModifierStructureChange();
                 return;
             }
 
-            NormalizeModifierSelection();
-            RefreshModifiers(true);
-            ScheduleValidation();
+            bool changed;
+            if (pendingModifierStructureOperation == ModifierStructureOperation.Add)
+            {
+                changed = service.TryAddModifier(
+                    target,
+                    pendingModifierAddType,
+                    out int newIndex,
+                    out string error);
+                if (changed)
+                {
+                    selectedModifierIndex = newIndex;
+                    GameplayEffectEditorSession.SelectedModifierIndex = newIndex;
+                }
+                else
+                {
+                    view.ShowError("Add Gameplay Effect Modifier", error);
+                }
+            }
+            else
+            {
+                changed = service.RemoveModifier(target, pendingModifierRemoveIndex);
+                if (changed) NormalizeModifierSelection();
+            }
+
+            pendingModifierStructureChanged = changed;
+            RefreshModifiers(false);
+            modifierStructureRebindScheduled = true;
+            EditorApplication.delayCall += RestoreModifierBindingAfterStructureChange;
+        }
+
+        // 第二阶段重新创建 PropertyField，确保它只持有数组修改后的新 SerializedProperty。
+        private void RestoreModifierBindingAfterStructureChange()
+        {
+            modifierStructureRebindScheduled = false;
+            GameplayEffectData target = pendingModifierStructureEffect;
+            bool changed = pendingModifierStructureChanged;
+            if (!disposed && effect == target)
+            {
+                view.BindModifier(selectedModifierIndex);
+                if (changed) ScheduleValidation(ValidationRequestScope.Current);
+            }
+
+            ResetPendingModifierStructureChange();
+        }
+
+        // 页面或数据上下文变化时撤销两个阶段的回调，禁止延迟修改已离开的资产。
+        private void CancelScheduledModifierStructureChange()
+        {
+            if (modifierStructureApplyScheduled)
+                EditorApplication.delayCall -= ApplyScheduledModifierStructureChange;
+            if (modifierStructureRebindScheduled)
+                EditorApplication.delayCall -= RestoreModifierBindingAfterStructureChange;
+            ResetPendingModifierStructureChange();
+        }
+
+        // 清空一次结构操作携带的目标与参数，供成功、取消及生命周期结束共用。
+        private void ResetPendingModifierStructureChange()
+        {
+            pendingModifierStructureEffect = null;
+            pendingModifierAddType = null;
+            pendingModifierRemoveIndex = -1;
+            pendingModifierStructureOperation = ModifierStructureOperation.None;
+            modifierStructureApplyScheduled = false;
+            modifierStructureRebindScheduled = false;
+            pendingModifierStructureChanged = false;
         }
 
         // Drop 时先销毁旧详情；数组移动延迟到当前 Panel/IMGUI 事件完全结束后执行。
         private void OnMoveModifierRequested(GameplayEffectModifierMoveRequest request)
         {
+            if (IsModifierStructureChangePending) return;
             view.BindModifier(-1);
             pendingModifierMoveEffect = effect;
             pendingModifierMove = request;
@@ -226,7 +334,7 @@ namespace WS_Modules.GAS.Editor
             selectedModifierIndex = request.ToIndex;
             GameplayEffectEditorSession.SelectedModifierIndex = selectedModifierIndex;
             RefreshModifiers(true);
-            ScheduleValidation();
+            ScheduleValidation(ValidationRequestScope.Current);
         }
 
         // 页面释放或切换 GE 时取消尚未提交的拖放，防止修改已经离开的资产。
@@ -238,16 +346,19 @@ namespace WS_Modules.GAS.Editor
             pendingModifierMoveEffect = null;
         }
 
-        // 手动校验取消待执行请求并立即查询当前 Model。
+        // 手动校验立即刷新当前 GE；已排队的全量校验仍保留，用于更新其他资产行。
         private void OnValidateRequested()
         {
-            CancelScheduledValidation();
-            RefreshValidation();
+            if (scheduledValidationScope == ValidationRequestScope.Current)
+                CancelScheduledValidation();
+            RefreshCurrentValidation();
         }
 
         // 项目资产变化后重新扫描；当前 GUID 丢失时清空详情。
         private void OnProjectChanged()
         {
+            CancelScheduledModifierMove();
+            CancelScheduledModifierStructureChange();
             service.InvalidateValidationSetCache();
             RefreshAssets();
             RefreshAttributeRegistry();
@@ -256,17 +367,21 @@ namespace WS_Modules.GAS.Editor
             else
             {
                 RefreshEffectList();
-                RefreshModifiers(false);
-                ScheduleValidation();
+                RefreshModifiers(true);
             }
+
+            ScheduleValidation(ValidationRequestScope.All);
         }
 
         // Undo/Redo 后重新加载 Session 资产并重建原生绑定。
         private void OnUndoRedo()
         {
+            CancelScheduledModifierMove();
+            CancelScheduledModifierStructureChange();
             effect = GameplayEffectEditorSession.GetEffect();
             NormalizeModifierSelection();
             RefreshAll();
+            ScheduleValidation(ValidationRequestScope.All);
         }
 
         #endregion
@@ -308,31 +423,84 @@ namespace WS_Modules.GAS.Editor
             if (rebind) view.BindModifier(selectedModifierIndex);
         }
 
-        // 校验从当前 Model 和缓存的项目 Set 引用计算，不保存校验结果。
-        private void RefreshValidation() =>
-            view.RenderValidation(service.Validate(effect));
-
-        // 把同一 UI 周期内的多个自动校验请求合并到下一次 Editor 更新。
-        private void ScheduleValidation()
+        // 校验当前 GE，同时更新右侧问题与对应资产行的最高严重程度。
+        private void RefreshCurrentValidation()
         {
-            if (disposed || validationScheduled) return;
-            validationScheduled = true;
+            List<GameplayEffectValidationIssue> issues = service.Validate(effect);
+            view.RenderValidation(issues);
+            UpdateValidationState(effect, issues);
+            view.RenderEffectValidationStates(effectValidationStates);
+        }
+
+        // 批量校验项目中的全部 GE，并以同一轮结果同步当前右侧问题。
+        private void RefreshAllValidation()
+        {
+            effectValidationStates.Clear();
+            List<GameplayEffectValidationIssue> currentIssues = null;
+            for (int i = 0; i < allEffects.Count; i++)
+            {
+                GameplayEffectData item = allEffects[i];
+                List<GameplayEffectValidationIssue> issues = service.Validate(item);
+                UpdateValidationState(item, issues);
+                if (ReferenceEquals(item, effect)) currentIssues = issues;
+            }
+
+            view.RenderEffectValidationStates(effectValidationStates);
+            view.RenderValidation(currentIssues ?? service.Validate(effect));
+        }
+
+        // 只缓存会改变列表背景的最高 Error/Warning；Info 与无问题资产不占用条目。
+        private void UpdateValidationState(
+            GameplayEffectData target,
+            IReadOnlyList<GameplayEffectValidationIssue> issues)
+        {
+            if (target == null) return;
+            bool hasWarning = false;
+            for (int i = 0; i < issues.Count; i++)
+            {
+                if (issues[i].Severity == GameplayEffectValidationSeverity.Error)
+                {
+                    effectValidationStates[target] = GameplayEffectValidationSeverity.Error;
+                    return;
+                }
+
+                if (issues[i].Severity == GameplayEffectValidationSeverity.Warning)
+                    hasWarning = true;
+            }
+
+            if (hasWarning)
+                effectValidationStates[target] = GameplayEffectValidationSeverity.Warning;
+            else
+                effectValidationStates.Remove(target);
+        }
+
+        // 合并同一 UI 周期内的校验请求；All 的覆盖范围高于 Current。
+        private void ScheduleValidation(ValidationRequestScope scope)
+        {
+            if (disposed || scope == ValidationRequestScope.None) return;
+            if (scope <= scheduledValidationScope) return;
+            bool alreadyScheduled = scheduledValidationScope != ValidationRequestScope.None;
+            scheduledValidationScope = scope;
+            if (alreadyScheduled) return;
             EditorApplication.delayCall += RunScheduledValidation;
         }
 
-        // 延迟回调只消费最新的当前 GE，避免字段提交或 Drop 阻塞当前输入事件。
+        // 延迟回调消费合并后的最高范围，避免字段提交、Drop 或项目扫描阻塞当前 UI 事件。
         private void RunScheduledValidation()
         {
-            validationScheduled = false;
-            if (!disposed) RefreshValidation();
+            ValidationRequestScope scope = scheduledValidationScope;
+            scheduledValidationScope = ValidationRequestScope.None;
+            if (disposed) return;
+            if (scope == ValidationRequestScope.All) RefreshAllValidation();
+            else if (scope == ValidationRequestScope.Current) RefreshCurrentValidation();
         }
 
-        // 释放或手动刷新时移除尚未执行的延迟回调。
+        // 页面释放或明确消费 Current 请求时移除尚未执行的延迟回调。
         private void CancelScheduledValidation()
         {
-            if (!validationScheduled) return;
+            if (scheduledValidationScope == ValidationRequestScope.None) return;
             EditorApplication.delayCall -= RunScheduledValidation;
-            validationScheduled = false;
+            scheduledValidationScope = ValidationRequestScope.None;
         }
 
         // 使用与 Attribute PropertyDrawer 相同的 Session/唯一资产规则解析显示名称。
@@ -358,7 +526,7 @@ namespace WS_Modules.GAS.Editor
             RefreshModifiers(false);
             view.BindModifier(selectedModifierIndex);
             view.RefreshPolicyVisibility(effect);
-            ScheduleValidation();
+            ScheduleValidation(ValidationRequestScope.Current);
         }
 
         // Modifier 索引始终与当前列表一致，并同步 SessionState。
@@ -373,6 +541,16 @@ namespace WS_Modules.GAS.Editor
 
         #endregion
 
+        #region 状态查询
+
+        // 结构操作覆盖数组修改与下一帧详情重建两个阶段，期间禁止交错其他结构操作。
+        private bool IsModifierStructureChangePending =>
+            modifierStructureApplyScheduled ||
+            modifierStructureRebindScheduled ||
+            pendingModifierStructureOperation != ModifierStructureOperation.None;
+
+        #endregion
+
         #region 事件连接
 
         // 统一建立 View、Undo 与项目资产事件。
@@ -381,6 +559,7 @@ namespace WS_Modules.GAS.Editor
             view.SearchChanged += OnSearchChanged;
             view.EffectSelectionChanged += OnEffectSelectionChanged;
             view.PingEffectRequested += service.PingEffect;
+            view.RenameEffectSubmitted += OnRenameEffectSubmitted;
             view.CreateEffectRequested += OnCreateEffectRequested;
             view.DuplicateEffectRequested += OnDuplicateEffectRequested;
             view.DeleteEffectRequested += OnDeleteEffectRequested;
@@ -400,6 +579,7 @@ namespace WS_Modules.GAS.Editor
             view.SearchChanged -= OnSearchChanged;
             view.EffectSelectionChanged -= OnEffectSelectionChanged;
             view.PingEffectRequested -= service.PingEffect;
+            view.RenameEffectSubmitted -= OnRenameEffectSubmitted;
             view.CreateEffectRequested -= OnCreateEffectRequested;
             view.DuplicateEffectRequested -= OnDuplicateEffectRequested;
             view.DeleteEffectRequested -= OnDeleteEffectRequested;
@@ -411,6 +591,26 @@ namespace WS_Modules.GAS.Editor
             view.ValidateRequested -= OnValidateRequested;
             Undo.undoRedoPerformed -= OnUndoRedo;
             EditorApplication.projectChanged -= OnProjectChanged;
+        }
+
+        #endregion
+
+        #region 嵌套类型
+
+        /// <summary>区分待执行的 Modifier 数组扩容与删除操作。</summary>
+        private enum ModifierStructureOperation
+        {
+            None,
+            Add,
+            Remove
+        }
+
+        /// <summary>定义一次延迟校验需要覆盖当前 GE 还是全部 GE。</summary>
+        private enum ValidationRequestScope
+        {
+            None,
+            Current,
+            All
         }
 
         #endregion

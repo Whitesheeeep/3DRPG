@@ -47,6 +47,46 @@ namespace WS_Modules.GAS.Editor
             if (effect != null) EditorGUIUtility.PingObject(effect);
         }
 
+        /// <summary>通过 AssetDatabase 重命名 GE 资产并保留原 Asset GUID。</summary>
+        /// <param name="effect">需要重命名的 GE 资产。</param>
+        /// <param name="newName">不包含扩展名的新名称。</param>
+        /// <param name="error">失败时返回输入或 AssetDatabase 的具体错误。</param>
+        /// <returns>名称无需改变或资产重命名成功时返回 true。</returns>
+        public bool TryRenameEffect(
+            GameplayEffectData effect,
+            string newName,
+            out string error)
+        {
+            if (effect == null)
+            {
+                error = "未指定需要重命名的 GameplayEffectData。";
+                return false;
+            }
+
+            string trimmedName = newName?.Trim() ?? string.Empty;
+            if (trimmedName.Length == 0)
+            {
+                error = "GameplayEffectData 名称不能为空。";
+                return false;
+            }
+
+            if (string.Equals(effect.name, trimmedName, StringComparison.Ordinal))
+            {
+                error = string.Empty;
+                return true;
+            }
+
+            string path = AssetDatabase.GetAssetPath(effect);
+            if (string.IsNullOrEmpty(path))
+            {
+                error = "GameplayEffectData 不是可重命名的项目资产。";
+                return false;
+            }
+
+            error = AssetDatabase.RenameAsset(path, trimmedName);
+            return string.IsNullOrEmpty(error);
+        }
+
         /// <summary>在指定 Assets 路径创建 GE 资产。</summary>
         /// <param name="assetPath">已由 Editor 对话框选择的项目路径。</param>
         /// <param name="error">失败时的具体原因。</param>
@@ -407,15 +447,66 @@ namespace WS_Modules.GAS.Editor
                 return;
             }
 
-            if (modifier is not LevelGameplayEffectModifier) return;
+            if (modifier is CurveGameplayEffectModifier)
+            {
+                ValidateCurveModifier(element, index, issues);
+                return;
+            }
+
+            if (modifier is LevelGameplayEffectModifier)
+                ValidateLevelModifier(element, index, issues);
+        }
+
+        // Curve Modifier 保留原有基础值与等级倍率曲线校验。
+        private static void ValidateCurveModifier(
+            SerializedProperty element,
+            int index,
+            ICollection<GameplayEffectValidationIssue> issues)
+        {
             SerializedProperty baseMagnitude = element.FindPropertyRelative("baseMagnitude");
             if (baseMagnitude != null && !IsFinite(baseMagnitude.floatValue))
-                AddError(issues, $"Modifier [{index}] Level Base Magnitude 必须为有限数值。");
+                AddError(issues, $"Modifier [{index}] Curve Base Magnitude 必须为有限数值。");
             SerializedProperty curve = element.FindPropertyRelative("levelCurve");
             if (curve != null && curve.animationCurveValue == null)
                 issues.Add(new GameplayEffectValidationIssue(
                     GameplayEffectValidationSeverity.Warning,
-                    $"Modifier [{index}] 未配置 Level Curve，运行时使用倍率 1。"));
+                    $"Modifier [{index}] 未配置 Curve，运行时使用倍率 1。"));
+        }
+
+        // Level Modifier 校验离散等级覆盖、唯一性与每项最终 Magnitude。
+        private static void ValidateLevelModifier(
+            SerializedProperty element,
+            int index,
+            ICollection<GameplayEffectValidationIssue> issues)
+        {
+            SerializedProperty entries = element.FindPropertyRelative("levelMagnitudes");
+            if (entries == null || entries.arraySize == 0)
+            {
+                AddError(issues, $"Modifier [{index}] Level Magnitudes 不能为空。");
+                return;
+            }
+
+            var configuredLevels = new HashSet<int>();
+            bool containsLevelOne = false;
+            for (int i = 0; i < entries.arraySize; i++)
+            {
+                SerializedProperty entry = entries.GetArrayElementAtIndex(i);
+                SerializedProperty level = entry.FindPropertyRelative("level");
+                SerializedProperty magnitude = entry.FindPropertyRelative("magnitude");
+                int configuredLevel = level.intValue;
+                if (configuredLevel < 1)
+                    AddError(issues, $"Modifier [{index}] Level Magnitudes [{i}] 的等级必须至少为 1。");
+                else if (!configuredLevels.Add(configuredLevel))
+                    AddError(issues, $"Modifier [{index}] 存在重复等级 {configuredLevel}。");
+                else if (configuredLevel == 1)
+                    containsLevelOne = true;
+
+                if (!IsFinite(magnitude.floatValue))
+                    AddError(issues, $"Modifier [{index}] Level Magnitudes [{i}] 必须为有限数值。");
+            }
+
+            if (!containsLevelOne)
+                AddError(issues, $"Modifier [{index}] Level Magnitudes 必须包含 Level 1。");
         }
 
         #endregion

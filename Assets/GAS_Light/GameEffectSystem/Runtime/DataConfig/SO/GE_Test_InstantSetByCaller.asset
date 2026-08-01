@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ea401299909b4bb199d79ae4b9da5407, type: 3}
-  m_Name: GameplayEffectData2
+  m_Name: GE_Test_InstantSetByCaller
   m_EditorClassIdentifier: 
-  description: 
+  description: "Instant SetByCaller GE: Test.Test_SetByCaller controls Health delta"
   durationType: 0
   duration: 0
   period: 0
@@ -22,7 +22,8 @@ MonoBehaviour:
     anyTags: []
     noneTags: []
   grantedTags: []
-  modifiers: []
+  modifiers:
+  - rid: 7552782473606201368
   validationSets: []
   stackingType: 0
   maxStackCount: 1
@@ -32,4 +33,13 @@ MonoBehaviour:
   stackingExpirationPolicy: 0
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 7552782473606201368
+      type: {class: SetByCallerGameplayEffectModifier, ns: WS_Modules.GAS.GameplayEffect, asm: Assembly-CSharp}
+      data:
+        attribute:
+          id: 0
+        type: 0
+        priority: 0
+        key:
+          id: 6
