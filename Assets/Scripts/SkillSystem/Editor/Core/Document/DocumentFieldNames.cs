@@ -48,6 +48,8 @@ namespace RPG.SkillSystem.Editor
         internal const string PlaybackSpeed = "playbackSpeed";
         /// <summary>特效内容引用的 Prefab Asset。</summary>
         internal const string Prefab = "prefab";
+        /// <summary>特效内容在角色层级中按语义解析的 MarkerKey；空值表示角色根节点。</summary>
+        internal const string MarkerKey = "markerKey";
         /// <summary>特效内容的局部位置。</summary>
         internal const string LocalPosition = "localPosition";
         /// <summary>特效内容的局部欧拉角。</summary>

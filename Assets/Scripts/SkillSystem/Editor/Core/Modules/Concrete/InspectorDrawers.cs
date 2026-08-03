@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using RPG.Markers;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -441,7 +442,7 @@ namespace RPG.SkillSystem.Editor
         public bool CanDraw(IViewData viewData) => viewData is VfxClipViewData;
 
         /// <summary>
-        /// 绘制特效资源、帧区间和局部变换字段。
+        /// 绘制特效资源、语义挂点、帧区间和局部变换字段。
         /// </summary>
         public void Draw(VisualElement container, IViewData viewData, EditorViewModel viewModel)
         {
@@ -452,6 +453,10 @@ namespace RPG.SkillSystem.Editor
             {
                 objectType = typeof(GameObject), allowSceneObjects = false, value = clip.Prefab
             });
+            ObjectField marker = AddField(container, new ObjectField("挂点")
+            {
+                objectType = typeof(MarkerKey), allowSceneObjects = false, value = clip.MarkerKey
+            });
             IntegerField start = AddField(container, new IntegerField("起始帧") { value = clip.StartFrame });
             IntegerField duration = AddField(container, new IntegerField("持续帧") { value = clip.DurationFrames });
             Vector3Field position = AddField(container, new Vector3Field("局部位置") { value = clip.LocalPosition });
@@ -459,9 +464,12 @@ namespace RPG.SkillSystem.Editor
             Vector3Field scale = AddField(container, new Vector3Field("局部缩放") { value = clip.LocalScale });
             EnumField follow = AddField(container, new EnumField("跟随模式", clip.FollowMode));
             EnumField stop = AddField(container, new EnumField("结束模式", clip.StopMode));
+            stop.tooltip = "ReturnToPoolAtEnd：到达结束帧时立即回收或销毁特效。\n"
+                           + "StopEmissionAtEnd：到达结束帧时停止发射，已生成粒子继续播放至自然消失。\n"
+                           + "KeepAlive：到达结束帧后不停止发射或回收，特效继续运行。";
 
             void Submit() => viewModel.EditItem(item, new VfxEditRequest(prefab.value as GameObject,
-                start.value, duration.value, position.value, rotation.value, scale.value,
+                marker.value as MarkerKey, start.value, duration.value, position.value, rotation.value, scale.value,
                 (VfxFollowMode)follow.value, (VfxStopMode)stop.value));
 
             start.isDelayed = true;
@@ -471,6 +479,7 @@ namespace RPG.SkillSystem.Editor
             scale.SetIsDelayed(true);
 
             prefab.RegisterValueChangedCallback(_ => Submit());
+            marker.RegisterValueChangedCallback(_ => Submit());
             start.RegisterValueChangedCallback(_ => Submit());
             duration.RegisterValueChangedCallback(_ => Submit());
             position.RegisterValueChangedCallback(_ => Submit());
@@ -478,6 +487,19 @@ namespace RPG.SkillSystem.Editor
             scale.RegisterValueChangedCallback(_ => Submit());
             follow.RegisterValueChangedCallback(_ => Submit());
             stop.RegisterValueChangedCallback(_ => Submit());
+
+            bool sceneEditing = viewModel.IsVfxSceneEditing(item);
+            VisualElement editRow = AddActionRow(container);
+            Button beginEdit = sceneEditing
+                ? new Button(() => viewModel.SelectVfxSceneEditProxy(item)) { text = "选择编辑代理" }
+                : new Button(() => viewModel.BeginVfxSceneEdit(item)) { text = "在场景中编辑" };
+            Button applyEdit = new(() => viewModel.ApplyVfxSceneEdit(item)) { text = "应用预览 Transform" };
+            Button cancelEdit = new(viewModel.CancelVfxSceneEdit) { text = "取消场景编辑" };
+            applyEdit.SetEnabled(sceneEditing);
+            cancelEdit.SetEnabled(sceneEditing);
+            editRow.Add(beginEdit);
+            editRow.Add(applyEdit);
+            editRow.Add(cancelEdit);
             AddItemActions(container, viewModel);
         }
     }

@@ -2,7 +2,7 @@
 
 ## 1. 文档目的
 
-本文记录技能时间轴新增轨道类型时需要扩展的位置，以及数据从运行时配置、Editor View、ViewModel 到 Document 的完整流转。
+本文记录技能时间轴新增轨道类型时需要扩展的位置，以及数据从运行时配置、Editor View、ViewModel 到 Document 的完整流转。角色挂点的配置、收集、运行时查询和 VFX 场景编辑方式见 [Marker 系统使用指南](MarkerSystem.md)。
 
 当前已经注册的模块顺序为：
 
@@ -169,7 +169,7 @@ Unity Undo/Redo
 
 `ITrackPreviewFactory` 是 Module 的无状态可选能力，负责为每个时间轴窗口创建独立 Handler。Handler 可以持有 VFX 实例、音频 Graph 或帧缓存，但不能访问 View、Selection、Document 或修改 SkillConfig。未注册 Preview Factory 的轨道会被自然跳过。
 
-Animation Module 同时实现 `IPreviewActorPoseProvider`，复用 Root Motion 缓存为 VFX 的 `KeepWorldPosition` 查询 Clip 起始帧根姿态。VFX 只依赖该接口，不依赖 Animancer 或 Animation Handler 的具体类型；`FollowBinding` 则直接使用当前预览角色根 Transform。
+Animation Module 同时实现 `IPreviewActorPoseProvider` 和 `IPreviewActorBindingPoseProvider`。前者提供绝对帧 Root Motion，后者按每个 `VfxSkillClipConfig.MarkerKey` 临时采样任意帧的完整动画姿势并读取 Marker 世界矩阵，随后恢复当前播放头帧。VFX 不依赖 Animancer 或 Animation Handler 的具体类型：`FollowBinding` 使用当前帧的 Clip Marker，`KeepWorldPosition` 冻结该 Clip 起始帧 Marker；空 Key 使用角色根节点。MarkerKey 的创建、角色收集、Inspector 配置与运行时查询方式见 [Marker 系统使用指南](MarkerSystem.md)。
 
 Audio Preview 不接入运行时 `AudioManager`。每个窗口持有独立 `PlayableGraph`，通过 `AudioClipPlayable.SetSpeed()` 和 Mixer 输入权重表现 Pitch 与 Volume；Scrub 保持静音，开始播放或播放中重新定位时按当前帧源偏移重建 Voice。
 

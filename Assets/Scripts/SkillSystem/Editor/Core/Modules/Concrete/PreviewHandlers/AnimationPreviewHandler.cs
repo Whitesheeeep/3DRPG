@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using RPG.Markers;
 using UnityEngine;
 
 namespace RPG.SkillSystem.Editor
@@ -212,9 +213,10 @@ namespace RPG.SkillSystem.Editor
     }
 
     /// <summary>
-    /// 使用 Animancer 采样动画姿势，并按绝对帧 Root Motion 缓存定位角色副本。
+    /// 使用 Animancer 采样动画与 Root Motion，并为表现轨道提供任意帧 Marker 世界姿态。
     /// </summary>
-    internal sealed class AnimationPreviewHandler : ITrackPreviewHandler, IPreviewActorPoseProvider
+    internal sealed class AnimationPreviewHandler : ITrackPreviewHandler, IPreviewActorPoseProvider,
+        IPreviewActorBindingPoseProvider
     {
         #region 依赖与状态
 
@@ -257,14 +259,7 @@ namespace RPG.SkillSystem.Editor
         public void SampleFrame(in PreviewFrameContext context)
         {
             if (disposed || context.Actor == null || context.Config == null) return;
-            RootPose rootPose = context.ResolveRootPose(context.Frame);
-
-            if (selector.TrySelect(context.Config, context.Frame, out AnimationSample sample))
-                context.Actor.SamplePose(sample);
-            else
-                context.Actor.RestoreBindPose();
-
-            context.Actor.ApplyAbsoluteRootPose(rootPose);
+            SampleActorAtFrame(context.Config, context.Actor, context.Frame, context.ApplyRootMotion);
         }
 
         /// <summary>
@@ -274,6 +269,45 @@ namespace RPG.SkillSystem.Editor
             disposed || config == null || actor == null
                 ? RootPose.Identity
                 : rootMotion.GetPose(config, actor, frame);
+
+        /// <summary>
+        /// 临时采样目标帧的完整动画姿势并读取 Marker 世界矩阵，随后恢复播放头当前帧。
+        /// </summary>
+        public bool TryGetBindingWorldMatrix(SkillConfig config, PreviewActorInstance actor,
+            MarkerKey markerKey, int frame, int restoreFrame, bool applyRootMotion,
+            out Matrix4x4 matrix)
+        {
+            matrix = default;
+            if (disposed || config == null || actor == null) return false;
+
+            bool found;
+            try
+            {
+                SampleActorAtFrame(config, actor, frame, applyRootMotion);
+                found = actor.TryGetMarker(markerKey, out Transform marker, out _);
+                if (found) matrix = marker.localToWorldMatrix;
+            }
+            finally
+            {
+                SampleActorAtFrame(config, actor, restoreFrame, applyRootMotion);
+            }
+
+            return found;
+        }
+
+        // 使用与正常预览完全一致的动画选择和 Root Motion 规则定位任意整数帧。
+        private void SampleActorAtFrame(SkillConfig config, PreviewActorInstance actor,
+            int frame, bool applyRootMotion)
+        {
+            RootPose rootPose = applyRootMotion
+                ? rootMotion.GetPose(config, actor, frame)
+                : RootPose.Identity;
+            if (selector.TrySelect(config, frame, out AnimationSample sample))
+                actor.SamplePose(sample);
+            else
+                actor.RestoreBindPose();
+            actor.ApplyAbsoluteRootPose(rootPose);
+        }
 
         /// <summary>
         /// 动画使用绝对帧采样，停止时保留当前显示姿势。

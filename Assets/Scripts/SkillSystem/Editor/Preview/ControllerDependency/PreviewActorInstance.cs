@@ -2,6 +2,7 @@
 using System;
 using Animancer;
 using Animancer.Editor.Previews;
+using RPG.Markers;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -122,7 +123,7 @@ namespace RPG.SkillSystem.Editor
     }
 
     /// <summary>
-    /// 管理隔离角色副本、AnimancerGraph、绝对根变换和源对象可见性。
+    /// 管理隔离角色副本、Marker 索引、AnimancerGraph、绝对根变换和源对象可见性。
     /// </summary>
     internal sealed class PreviewActorInstance : IDisposable
     {
@@ -132,6 +133,8 @@ namespace RPG.SkillSystem.Editor
         private readonly GameObject instance;
         private readonly Animator animator;
         private readonly AnimancerGraph graph;
+        private readonly MarkerCollection markers = new();
+        private readonly string markerCollectionError;
         private readonly Vector3 initialPosition;
         private readonly Quaternion initialRotation;
         private readonly Vector3 initialScale;
@@ -153,6 +156,8 @@ namespace RPG.SkillSystem.Editor
             this.source = source;
             this.instance = instance ?? throw new ArgumentNullException(nameof(instance));
             this.animator = animator ?? throw new ArgumentNullException(nameof(animator));
+            if (!markers.TryRebuild(instance.transform, out markerCollectionError))
+                markers.Clear();
             initialPosition = instance.transform.position;
             initialRotation = instance.transform.rotation;
             initialScale = instance.transform.localScale;
@@ -186,6 +191,33 @@ namespace RPG.SkillSystem.Editor
         #endregion
 
         #region 姿势与根运动采样
+
+        // 解析预览副本中的语义挂点；空 Key 明确返回角色根节点，错误配置不会静默回退。
+        internal bool TryGetMarker(MarkerKey key, out Transform marker, out string error)
+        {
+            if (key == null)
+            {
+                marker = RootTransform;
+                error = marker != null ? string.Empty : "预览角色已经失效。";
+                return marker != null;
+            }
+
+            if (!string.IsNullOrEmpty(markerCollectionError))
+            {
+                marker = null;
+                error = markerCollectionError;
+                return false;
+            }
+
+            if (markers.TryGetMarker(key, out marker))
+            {
+                error = string.Empty;
+                return true;
+            }
+
+            error = $"预览角色中不存在 MarkerKey“{key.name}”。";
+            return false;
+        }
 
         // 使用 AnimancerGraph 绝对定位源动画时间；根节点位移由 RootMotionCache 单独应用。
         internal void SamplePose(AnimationSample sample)

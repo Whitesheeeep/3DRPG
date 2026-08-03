@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using RPG.Markers;
 using UnityEngine;
 
 namespace RPG.SkillSystem.Editor
@@ -52,7 +53,7 @@ namespace RPG.SkillSystem.Editor
     }
 
     /// <summary>
-    /// 保存一次预览采样需要的只读技能、角色、帧、采样原因和 Root Motion 查询能力。
+    /// 保存一次预览采样所需的技能、角色、帧、Marker 绑定及任意帧姿态查询能力。
     /// </summary>
     internal readonly struct PreviewFrameContext
     {
@@ -63,13 +64,15 @@ namespace RPG.SkillSystem.Editor
         public bool ApplyRootMotion { get; }
         public PreviewSampleReason Reason { get; }
         public IPreviewActorPoseProvider ActorPoseProvider { get; }
+        public IPreviewActorBindingPoseProvider BindingPoseProvider { get; }
 
         /// <summary>
         /// 创建统一的逐帧预览上下文。
         /// </summary>
         public PreviewFrameContext(SkillConfig config, PreviewActorInstance actor,
             int frame, bool applyRootMotion, PreviewSampleReason reason,
-            IPreviewActorPoseProvider actorPoseProvider)
+            IPreviewActorPoseProvider actorPoseProvider,
+            IPreviewActorBindingPoseProvider bindingPoseProvider)
         {
             Config = config;
             Actor = actor;
@@ -80,6 +83,7 @@ namespace RPG.SkillSystem.Editor
             ApplyRootMotion = applyRootMotion;
             Reason = reason;
             ActorPoseProvider = actorPoseProvider;
+            BindingPoseProvider = bindingPoseProvider;
         }
 
         // 仅在启用 Root Motion 且动画模块提供姿态查询时读取历史根姿态，否则返回角色初始姿态。
@@ -87,6 +91,19 @@ namespace RPG.SkillSystem.Editor
             ApplyRootMotion && ActorPoseProvider != null
                 ? ActorPoseProvider.GetRootPose(Config, Actor, frame)
                 : RootPose.Identity;
+
+        // 从当前预览角色解析指定语义挂点；空 Key 明确返回角色根节点。
+        internal bool TryGetBindingTransform(MarkerKey markerKey, out Transform transform,
+            out string error) => Actor.TryGetMarker(markerKey, out transform, out error);
+
+        // 通过动画模块临时采样目标帧的完整角色姿势与 Root Motion，并在查询后恢复当前帧。
+        internal bool TryResolveBindingWorldMatrix(MarkerKey markerKey, int frame,
+            out Matrix4x4 matrix)
+        {
+            matrix = Matrix4x4.identity;
+            return BindingPoseProvider.TryGetBindingWorldMatrix(
+                Config, Actor, markerKey, frame, Frame, ApplyRootMotion, out matrix);
+        }
     }
 }
 #endif

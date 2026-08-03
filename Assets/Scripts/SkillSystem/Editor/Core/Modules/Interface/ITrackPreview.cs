@@ -1,5 +1,7 @@
 #if UNITY_EDITOR
 using System;
+using RPG.Markers;
+using UnityEngine;
 
 namespace RPG.SkillSystem.Editor
 {
@@ -30,6 +32,17 @@ namespace RPG.SkillSystem.Editor
     }
 
     /// <summary>
+    /// 允许轨道预览处理器向组合预览报告不阻断其他模块的局部状态。
+    /// </summary>
+    internal interface ITrackPreviewStatusProvider
+    {
+        /// <summary>
+        /// 获取最近一次采样产生的局部状态；空字符串表示该 Handler 正常。
+        /// </summary>
+        string StatusMessage { get; }
+    }
+
+    /// <summary>
     /// 作为 TrackModule 的无状态可选能力，为每个窗口创建独立轨道预览处理器。
     /// </summary>
     internal interface ITrackPreviewFactory
@@ -49,6 +62,27 @@ namespace RPG.SkillSystem.Editor
         /// 查询指定整数帧相对角色初始变换的累计 Root Motion 姿态。
         /// </summary>
         RootPose GetRootPose(SkillConfig config, PreviewActorInstance actor, int frame);
+    }
+
+    /// <summary>
+    /// 为表现轨道确定性查询角色任意帧的完整挂点世界矩阵，并负责恢复查询前的当前帧姿势。
+    /// </summary>
+    internal interface IPreviewActorBindingPoseProvider
+    {
+        /// <summary>
+        /// 临时采样目标帧后读取挂点世界矩阵，并在返回前恢复指定当前帧。
+        /// </summary>
+        /// <param name="config">当前技能配置。</param>
+        /// <param name="actor">窗口私有预览角色。</param>
+        /// <param name="markerKey">目标挂点；空值表示角色根节点。</param>
+        /// <param name="frame">需要读取绑定姿态的目标帧。</param>
+        /// <param name="restoreFrame">查询结束后必须恢复的当前播放头帧。</param>
+        /// <param name="applyRootMotion">是否把动画累计 Root Motion 应用到世界矩阵。</param>
+        /// <param name="matrix">成功时返回挂点的世界 TRS 矩阵。</param>
+        /// <returns>角色中存在目标挂点且矩阵已读取时返回 true。</returns>
+        bool TryGetBindingWorldMatrix(SkillConfig config, PreviewActorInstance actor,
+            MarkerKey markerKey, int frame, int restoreFrame, bool applyRootMotion,
+            out Matrix4x4 matrix);
     }
 }
 #endif

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using RPG.Markers;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -172,13 +173,14 @@ namespace RPG.SkillSystem
     }
 
     /// <summary>
-    /// 保存特效 Prefab、半开帧区间、局部变换和生命周期策略。
+    /// 保存特效 Prefab、语义挂点、半开帧区间、局部变换和生命周期策略。
     /// </summary>
     [Serializable]
     public sealed class VfxSkillClipConfig
     {
         [SerializeField, ReadOnly, LabelText("内容 ID")] private string id = string.Empty;
         [SerializeField] private GameObject prefab;
+        [SerializeField, LabelText("挂点")] private MarkerKey markerKey;
         [SerializeField, Min(0)] private int startFrame;
         [SerializeField, Min(1)] private int durationFrames = 1;
         [SerializeField] private Vector3 localPosition;
@@ -189,6 +191,7 @@ namespace RPG.SkillSystem
 
         public string Id => id;
         public GameObject Prefab => prefab;
+        public MarkerKey MarkerKey => markerKey;
         public int StartFrame => startFrame;
         public int DurationFrames => durationFrames;
         public int EndFrame => startFrame + durationFrames;

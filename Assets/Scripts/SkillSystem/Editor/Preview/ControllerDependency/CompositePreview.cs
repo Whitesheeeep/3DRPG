@@ -7,9 +7,9 @@ using UnityEngine;
 namespace RPG.SkillSystem.Editor
 {
     /// <summary>
-    /// 管理共享预览角色并按注册顺序调度全部轨道预览处理器。
+    /// 管理共享预览角色、按 Clip 解析的 Marker 上下文、轨道采样与 VFX 场景编辑服务。
     /// </summary>
-    internal sealed class CompositePreview : IPreview
+    internal sealed class CompositePreview : IPreview, IVfxSceneEditService
     {
         #region 依赖与状态
         // 依赖
@@ -17,6 +17,8 @@ namespace RPG.SkillSystem.Editor
         private readonly PreviewActorFactory actorFactory;
         private readonly IReadOnlyList<ITrackPreviewHandler> handlers;
         private readonly IPreviewActorPoseProvider actorPoseProvider;
+        private readonly IPreviewActorBindingPoseProvider bindingPoseProvider;
+        private readonly IVfxSceneEditService vfxSceneEditService;
         private SkillConfig config;
 
         // 状态
@@ -42,6 +44,8 @@ namespace RPG.SkillSystem.Editor
             this.actorFactory = actorFactory ?? throw new ArgumentNullException(nameof(actorFactory));
             this.handlers = handlers ?? throw new ArgumentNullException(nameof(handlers));
             actorPoseProvider = ResolveActorPoseProvider(handlers);
+            bindingPoseProvider = ResolveBindingPoseProvider(handlers);
+            vfxSceneEditService = ResolveVfxSceneEditService(handlers);
         }
 
         /// <summary>
@@ -124,12 +128,14 @@ namespace RPG.SkillSystem.Editor
             if (!EnsureActor()) return;
             int clampedFrame = Mathf.Clamp(frame, 0, Mathf.Max(0, config.DurationFrames - 1));
             PreviewFrameContext context = new(
-                config, actorInstance, clampedFrame, applyRootMotion, reason, actorPoseProvider);
+                config, actorInstance, clampedFrame, applyRootMotion, reason, actorPoseProvider,
+                bindingPoseProvider);
             try
             {
                 foreach (ITrackPreviewHandler handler in handlers)
                     handler?.SampleFrame(context);
-                ReportStatus("预览已就绪。");
+                string handlerStatus = ResolveHandlerStatus();
+                ReportStatus(string.IsNullOrEmpty(handlerStatus) ? "预览已就绪。" : handlerStatus);
                 SceneView.RepaintAll();
             }
             catch (Exception exception)
@@ -160,6 +166,36 @@ namespace RPG.SkillSystem.Editor
 
         #endregion
 
+        #region VFX 场景编辑
+
+        /// <summary>
+        /// 判断指定 VFX Clip 是否正在通过当前窗口的独立代理编辑。
+        /// </summary>
+        public bool IsEditing(string clipId) => vfxSceneEditService.IsEditing(clipId);
+
+        /// <summary>
+        /// 将 VFX Clip 的场景编辑请求转交给唯一 VFX Preview Handler。
+        /// </summary>
+        public EditResult BeginEdit(VfxSkillClipConfig clip) => vfxSceneEditService.BeginEdit(clip);
+
+        /// <summary>
+        /// 将指定 Clip 的重新选择请求转交给唯一 VFX Preview Handler。
+        /// </summary>
+        public EditResult SelectProxy(string clipId) => vfxSceneEditService.SelectProxy(clipId);
+
+        /// <summary>
+        /// 从独立编辑代理读取相对于冻结挂点矩阵的局部 Transform 快照。
+        /// </summary>
+        public EditResult Capture(string clipId, out VfxTransformSnapshot snapshot) =>
+            vfxSceneEditService.Capture(clipId, out snapshot);
+
+        /// <summary>
+        /// 销毁当前窗口尚未提交的 VFX 场景编辑代理。
+        /// </summary>
+        public void CancelEdit() => vfxSceneEditService.CancelEdit();
+
+        #endregion
+
         #region 角色与状态辅助
 
         // 从模块 Handler 中解析唯一角色姿态提供器，防止多个动画来源导致 VFX 绑定结果不确定。
@@ -176,6 +212,38 @@ namespace RPG.SkillSystem.Editor
             }
 
             return result;
+        }
+
+        // 从模块 Handler 中解析唯一的完整挂点姿态提供器，确保 VFX 起始帧冻结结果确定。
+        private static IPreviewActorBindingPoseProvider ResolveBindingPoseProvider(
+            IReadOnlyList<ITrackPreviewHandler> previewHandlers)
+        {
+            IPreviewActorBindingPoseProvider result = null;
+            foreach (ITrackPreviewHandler handler in previewHandlers)
+            {
+                if (handler is not IPreviewActorBindingPoseProvider candidate) continue;
+                if (result != null)
+                    throw new InvalidOperationException("预览中注册了多个角色挂点姿态提供器。");
+                result = candidate;
+            }
+
+            return result;
+        }
+
+        // 从模块 Handler 中解析唯一 VFX 场景编辑能力，避免 ViewModel 依赖具体 Handler 类型。
+        private static IVfxSceneEditService ResolveVfxSceneEditService(
+            IReadOnlyList<ITrackPreviewHandler> previewHandlers)
+        {
+            IVfxSceneEditService result = null;
+            foreach (ITrackPreviewHandler handler in previewHandlers)
+            {
+                if (handler is not IVfxSceneEditService candidate) continue;
+                if (result != null)
+                    throw new InvalidOperationException("预览中注册了多个 VFX 场景编辑服务。");
+                result = candidate;
+            }
+
+            return result ?? throw new InvalidOperationException("VFX 模块没有注册场景编辑服务。");
         }
 
         // 延迟创建预览角色，并保证创建失败不会阻止播放头继续工作。
@@ -200,6 +268,19 @@ namespace RPG.SkillSystem.Editor
                 handler?.Clear();
             actorInstance?.Dispose();
             actorInstance = null;
+        }
+
+        // 按模块顺序读取首个局部预览错误，使单个 VFX Clip 失败不会阻断其他 Handler。
+        private string ResolveHandlerStatus()
+        {
+            foreach (ITrackPreviewHandler handler in handlers)
+            {
+                if (handler is ITrackPreviewStatusProvider provider &&
+                    !string.IsNullOrEmpty(provider.StatusMessage))
+                    return provider.StatusMessage;
+            }
+
+            return string.Empty;
         }
 
         // 仅在消息变化时通知 ViewModel，避免 EditorApplication.update 每帧重复刷新状态栏。

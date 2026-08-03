@@ -42,5 +42,49 @@
       }
     },
     "isImported": false
+  },
+  {
+    "id": "TASK_6",
+    "priority": "LOW",
+    "tags": [],
+    "title": "点击 event marker 中间的 Scroll view 会收缩到最小容纳视窗，点击其他有会恢复",
+    "description": "",
+    "status": "TODO",
+    "date": {
+      "date": {
+        "year": 2026,
+        "month": 7,
+        "day": 31
+      },
+      "time": {
+        "hour": 15,
+        "minute": 23,
+        "second": 22,
+        "nano": 424208000
+      }
+    },
+    "isImported": false
+  },
+  {
+    "id": "TASK_10",
+    "priority": "LOW",
+    "tags": [],
+    "title": "角色的 Marker 系统",
+    "description": "",
+    "status": "TODO",
+    "date": {
+      "date": {
+        "year": 2026,
+        "month": 8,
+        "day": 3
+      },
+      "time": {
+        "hour": 16,
+        "minute": 39,
+        "second": 16,
+        "nano": 671991100
+      }
+    },
+    "isImported": false
   }
 ]

@@ -20,6 +20,7 @@ namespace RPG.SkillSystem.Editor
         private readonly PlaybackController playback;
         private readonly PreviewSceneService previewSceneService;
         private readonly TrackModuleRegistry modules;
+        private readonly IVfxSceneEditService vfxSceneEditService;
         private readonly List<GroupViewData> groups = new();
         private SelectionState selection = SelectionState.None;
         private bool disposed;
@@ -60,12 +61,15 @@ namespace RPG.SkillSystem.Editor
         /// 创建窗口私有 ViewModel，并订阅 Document、播放控制器和编辑器设置事件。
         /// </summary>
         public EditorViewModel(Document document, PlaybackController playback,
-            PreviewSceneService previewSceneService, TrackModuleRegistry modules)
+            PreviewSceneService previewSceneService, TrackModuleRegistry modules,
+            IVfxSceneEditService vfxSceneEditService)
         {
             this.document = document ?? throw new ArgumentNullException(nameof(document));
             this.playback = playback ?? throw new ArgumentNullException(nameof(playback));
             this.previewSceneService = previewSceneService ?? throw new ArgumentNullException(nameof(previewSceneService));
             this.modules = modules ?? throw new ArgumentNullException(nameof(modules));
+            this.vfxSceneEditService = vfxSceneEditService ??
+                                       throw new ArgumentNullException(nameof(vfxSceneEditService));
             document.ContentChanged += OnDocumentContentChanged;
             document.ConfigChanged += OnConfigChanged;
             playback.FrameChanged += OnFrameChanged;
@@ -214,6 +218,10 @@ namespace RPG.SkillSystem.Editor
         {
             next ??= SelectionState.None;
             if (selection.Equals(next)) return;
+            bool restorePreview = SelectedViewData is VfxClipViewData currentVfx &&
+                                  vfxSceneEditService.IsEditing(currentVfx.Id);
+            vfxSceneEditService.CancelEdit();
+            if (restorePreview) playback.RefreshPreview();
             selection = next;
             SelectionChanged?.Invoke();
             InspectorChanged?.Invoke();
@@ -522,13 +530,74 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 把类型化字段请求交给当前内容所属模块处理。
         /// </summary>
-        public void EditItem(ItemViewData item, IItemEditRequest request)
+        public EditResult EditItem(ItemViewData item, IItemEditRequest request)
         {
-            if (item == null || selection is not ItemSelection || selection.ItemId != item.Id) return;
+            if (item == null || selection is not ItemSelection || selection.ItemId != item.Id)
+                return EditResult.Failure("当前选择与待编辑内容不一致。");
             TrackModule module = modules.Get(item);
             EditResult result = document.EditItem(module.Document, selection.TrackId, item.Id, request);
             Report(result);
             if (!result.Succeeded) InspectorChanged?.Invoke();
+            return result;
+        }
+
+        /// <summary>
+        /// 暂停播放、确保当前帧已采样，并为指定 VFX Clip 创建独立场景编辑代理。
+        /// </summary>
+        public void BeginVfxSceneEdit(VfxClipViewData item)
+        {
+            if (item == null) return;
+            playback.Pause();
+            playback.RefreshPreview();
+            Report(vfxSceneEditService.BeginEdit(item.Config));
+            InspectorChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// 判断指定 VFX Clip 是否拥有未提交的场景 Transform 草稿。
+        /// </summary>
+        public bool IsVfxSceneEditing(VfxClipViewData item) =>
+            item != null && vfxSceneEditService.IsEditing(item.Id);
+
+        /// <summary>
+        /// 重新选择并在 Scene View 中定位指定 VFX Clip 的场景编辑代理。
+        /// </summary>
+        public void SelectVfxSceneEditProxy(VfxClipViewData item)
+        {
+            if (item == null) return;
+            Report(vfxSceneEditService.SelectProxy(item.Id));
+        }
+
+        /// <summary>
+        /// 读取代理 Transform 并通过现有 VfxEditRequest 提交一条 Document Undo。
+        /// </summary>
+        public void ApplyVfxSceneEdit(VfxClipViewData item)
+        {
+            if (item == null) return;
+            EditResult capture = vfxSceneEditService.Capture(item.Id, out VfxTransformSnapshot snapshot);
+            if (!capture.Succeeded)
+            {
+                Report(capture);
+                InspectorChanged?.Invoke();
+                return;
+            }
+
+            VfxSkillClipConfig clip = item.Config;
+            EditResult result = EditItem(item, new VfxEditRequest(
+                clip.Prefab, clip.MarkerKey, clip.StartFrame, clip.DurationFrames,
+                snapshot.LocalPosition, snapshot.LocalEulerAngles, snapshot.LocalScale,
+                clip.FollowMode, clip.StopMode));
+            if (result.Succeeded) vfxSceneEditService.CancelEdit();
+        }
+
+        /// <summary>
+        /// 取消当前窗口的 VFX 场景编辑并丢弃未提交 Transform 草稿。
+        /// </summary>
+        public void CancelVfxSceneEdit()
+        {
+            vfxSceneEditService.CancelEdit();
+            playback.RefreshPreview();
+            InspectorChanged?.Invoke();
         }
 
         #endregion

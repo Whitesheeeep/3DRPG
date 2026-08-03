@@ -343,7 +343,7 @@ namespace RPG.SkillSystem.Editor
         }
 
         /// <summary>
-        /// 校验特效编辑请求并提交区间、Prefab 和局部变换字段。
+        /// 校验特效编辑请求并提交区间、Prefab、MarkerKey 和局部变换字段。
         /// </summary>
         /// <param name="document">负责 Undo、校验和资产写入的文档。</param>
         /// <param name="trackId">目标轨道头中的稳定 GUID，不是轨道数组索引或显示名称。</param>
@@ -358,6 +358,7 @@ namespace RPG.SkillSystem.Editor
                 vfx.DurationFrames, "修改特效 Clip", item =>
                 {
                     item.FindPropertyRelative(DocumentFieldNames.Prefab).objectReferenceValue = vfx.Prefab;
+                    item.FindPropertyRelative(DocumentFieldNames.MarkerKey).objectReferenceValue = vfx.MarkerKey;
                     item.FindPropertyRelative(DocumentFieldNames.LocalPosition).vector3Value = vfx.LocalPosition;
                     item.FindPropertyRelative(DocumentFieldNames.LocalEulerAngles).vector3Value = vfx.LocalEulerAngles;
                     item.FindPropertyRelative(DocumentFieldNames.LocalScale).vector3Value = vfx.LocalScale;
@@ -367,7 +368,7 @@ namespace RPG.SkillSystem.Editor
         }
 
         /// <summary>
-        /// 复制特效 Prefab、局部变换、跟随和结束策略，供复制与跨轨道移动共用。
+        /// 复制特效 Prefab、MarkerKey、局部变换、跟随和结束策略，供复制与跨轨道移动共用。
         /// </summary>
         /// <param name="source">保持不变的源特效 Clip。</param>
         /// <param name="destination">接收特效专用字段的目标 Clip。</param>
@@ -375,6 +376,8 @@ namespace RPG.SkillSystem.Editor
         {
             destination.FindPropertyRelative(DocumentFieldNames.Prefab).objectReferenceValue =
                 source.FindPropertyRelative(DocumentFieldNames.Prefab).objectReferenceValue;
+            destination.FindPropertyRelative(DocumentFieldNames.MarkerKey).objectReferenceValue =
+                source.FindPropertyRelative(DocumentFieldNames.MarkerKey).objectReferenceValue;
             destination.FindPropertyRelative(DocumentFieldNames.LocalPosition).vector3Value =
                 source.FindPropertyRelative(DocumentFieldNames.LocalPosition).vector3Value;
             destination.FindPropertyRelative(DocumentFieldNames.LocalEulerAngles).vector3Value =
@@ -387,10 +390,11 @@ namespace RPG.SkillSystem.Editor
                 source.FindPropertyRelative(DocumentFieldNames.StopMode).enumValueIndex;
         }
 
-        // 初始化特效 Clip 的 Prefab、局部变换和结束策略默认值。
+        // 初始化特效 Clip 的 Prefab、空 MarkerKey、局部变换和结束策略默认值。
         protected override void InitializeSpecificFields(SerializedProperty item)
         {
             item.FindPropertyRelative(DocumentFieldNames.Prefab).objectReferenceValue = null;
+            item.FindPropertyRelative(DocumentFieldNames.MarkerKey).objectReferenceValue = null;
             item.FindPropertyRelative(DocumentFieldNames.LocalPosition).vector3Value = Vector3.zero;
             item.FindPropertyRelative(DocumentFieldNames.LocalEulerAngles).vector3Value = Vector3.zero;
             item.FindPropertyRelative(DocumentFieldNames.LocalScale).vector3Value = Vector3.one;

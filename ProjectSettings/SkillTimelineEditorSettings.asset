@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   previewSceneGuid: d09c3d8c5c214a942bedb2612b34ffbc
-  previewActorGlobalObjectId: GlobalObjectId_V1-2-d09c3d8c5c214a942bedb2612b34ffbc-919132149155446097-1425183969
-  previewApplyRootMotion: 0
+  previewActorGlobalObjectId: GlobalObjectId_V1-2-d09c3d8c5c214a942bedb2612b34ffbc-919132148298918320-0
+  previewApplyRootMotion: 1

@@ -1309,36 +1309,6 @@ MonoBehaviour:
   boneID: 207
   ikEnabled: 0
   ikWeight: 1
---- !u!21 &330386358
-Material:
-  serializedVersion: 8
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: MMD4Mecanim/MMDLit-NEXTEdge-Pass4
-  m_Shader: {fileID: 4800000, guid: 684f8af9b4ff4bc459588db5b0f6275d, type: 3}
-  m_Parent: {fileID: 0}
-  m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
-  m_InvalidKeywords: []
-  m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
-  m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 2001
-  stringTagMap: {}
-  disabledShaderPasses: []
-  m_LockedProperties: 
-  m_SavedProperties:
-    serializedVersion: 3
-    m_TexEnvs: []
-    m_Ints: []
-    m_Floats:
-    - _EdgeSize: 0.005
-    - _PostfixRenderQueue: 1
-    m_Colors:
-    - _EdgeColor: {r: 0.39999998, g: 1, b: 1, a: 1}
-  m_BuildTextureStacks: []
 --- !u!1 &332956213 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -7522148916306829363, guid: 86a21ed9bdb231049bb000f679088fb9, type: 3}
@@ -3313,36 +3283,6 @@ MonoBehaviour:
   boneID: 15
   ikEnabled: 0
   ikWeight: 1
---- !u!21 &959414018
-Material:
-  serializedVersion: 8
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: MMD4Mecanim/MMDLit-NEXTEdge-Pass8
-  m_Shader: {fileID: 4800000, guid: ff1e1d0bbf6980244a107d25ff535f9a, type: 3}
-  m_Parent: {fileID: 0}
-  m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
-  m_InvalidKeywords: []
-  m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
-  m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 2001
-  stringTagMap: {}
-  disabledShaderPasses: []
-  m_LockedProperties: 
-  m_SavedProperties:
-    serializedVersion: 3
-    m_TexEnvs: []
-    m_Ints: []
-    m_Floats:
-    - _EdgeSize: 0.005
-    - _PostfixRenderQueue: 1
-    m_Colors:
-    - _EdgeColor: {r: 0.39999998, g: 1, b: 1, a: 1}
-  m_BuildTextureStacks: []
 --- !u!1 &973860793 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8048965401240984599, guid: 86a21ed9bdb231049bb000f679088fb9, type: 3}
@@ -6434,6 +6374,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -6130579843105092520, guid: 86a21ed9bdb231049bb000f679088fb9, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2045860455}
+    - targetCorrespondingSourceObject: {fileID: -6130579843105092520, guid: 86a21ed9bdb231049bb000f679088fb9, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2045860456}
     - targetCorrespondingSourceObject: {fileID: -4077000829794653583, guid: 86a21ed9bdb231049bb000f679088fb9, type: 3}
       insertIndex: -1
       addedObject: {fileID: 202353677}
@@ -7478,8 +7421,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2dbcb8f64d6a7a640a973b2df934eb10, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  nextEdgeMaterial_Pass4: {fileID: 330386358}
-  nextEdgeMaterial_Pass8: {fileID: 959414018}
+  nextEdgeMaterial_Pass4: {fileID: 0}
+  nextEdgeMaterial_Pass8: {fileID: 0}
   nextEdgePass: 0
   nextEdgeSize: 1
   nextEdgeColor: {r: 0.4, g: 1, b: 1, a: 1}
@@ -11149,6 +11092,19 @@ MonoBehaviour:
   boneID: 13
   ikEnabled: 0
   ikWeight: 1
+--- !u!114 &2045860456
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2045860453}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4ac1c0465eb642648ab7aee5e3ce1fa7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  key: {fileID: 11400000, guid: 0eb3ef8ce14e44847be619f8ff168f28, type: 2}
 --- !u!1 &2067493938 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -2093670536653707418, guid: 86a21ed9bdb231049bb000f679088fb9, type: 3}

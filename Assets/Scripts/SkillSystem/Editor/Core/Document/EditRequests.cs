@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using RPG.Markers;
 using UnityEngine;
 
 /**************************************
@@ -128,6 +129,7 @@ namespace RPG.SkillSystem.Editor
     internal readonly struct VfxEditRequest : IItemEditRequest
     {
         public GameObject Prefab { get; }
+        public MarkerKey MarkerKey { get; }
         public int StartFrame { get; }
         public int DurationFrames { get; }
         public Vector3 LocalPosition { get; }
@@ -139,11 +141,12 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 创建并初始化 VfxEditRequest。
         /// </summary>
-        public VfxEditRequest(GameObject prefab, int startFrame, int durationFrames,
+        public VfxEditRequest(GameObject prefab, MarkerKey markerKey, int startFrame, int durationFrames,
             Vector3 localPosition, Vector3 localEulerAngles, Vector3 localScale,
             VfxFollowMode followMode, VfxStopMode stopMode)
         {
             Prefab = prefab;
+            MarkerKey = markerKey;
             StartFrame = startFrame;
             DurationFrames = durationFrames;
             LocalPosition = localPosition;

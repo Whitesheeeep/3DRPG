@@ -5,7 +5,7 @@ using UnityEngine;
 namespace RPG.SkillSystem.Editor
 {
     /// <summary>
-    /// 保存技能时间轴编辑器的全局设置，包括固定预览场景和演示角色。
+    /// 保存技能时间轴编辑器的固定预览场景、演示角色和 Root Motion 设置。
     /// </summary>
     [FilePath("ProjectSettings/SkillTimelineEditorSettings.asset", FilePathAttribute.Location.ProjectFolder)]
     internal sealed class EditorSettings : ScriptableSingleton<EditorSettings>
