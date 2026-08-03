@@ -1,0 +1,114 @@
+.ga-editor {
+    flex-grow: 1;
+    min-width: 0;
+    min-height: 0;
+}
+
+.ga-toolbar {
+    flex-shrink: 0;
+    padding-left: 4px;
+    padding-right: 4px;
+    flex-direction: row;
+}
+
+.ga-toolbar-spacer {
+    flex-grow: 1;
+}
+
+.ga-search {
+    width: 220px;
+}
+
+.ga-assets-pane {
+    flex-grow: 1;
+    min-width: 0;
+    padding: 6px;
+    border-right-width: 1px;
+    border-right-color: rgb(58, 58, 58);
+}
+
+.ga-ability-list {
+    flex-grow: 1;
+    min-height: 0;
+    margin-top: 4px;
+}
+
+.ga-details-scroll {
+    flex-grow: 1;
+    padding: 10px 12px 18px 12px;
+}
+
+.ga-details-title {
+    font-size: 17px;
+    -unity-font-style: bold;
+    margin-bottom: 10px;
+}
+
+.ga-details-root {
+    flex-grow: 1;
+}
+
+.ga-section-title {
+    -unity-font-style: bold;
+    margin-top: 3px;
+    margin-bottom: 5px;
+}
+
+.ga-section-gap {
+    margin-top: 14px;
+}
+
+.ga-validation {
+    margin-top: 4px;
+}
+
+.ga-asset-row {
+    flex-grow: 1;
+    min-width: 0;
+    padding: 3px 5px;
+}
+
+.ga-asset-row.has-validation-error {
+    background-color: rgba(132, 42, 42, 0.58);
+}
+
+.ga-asset-row-top {
+    flex-direction: row;
+    align-items: center;
+    min-width: 0;
+}
+
+.ga-asset-name {
+    flex-grow: 1;
+    min-width: 0;
+    -unity-font-style: bold;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ga-asset-rename {
+    flex-grow: 1;
+    min-width: 0;
+    margin: 0 4px 0 0;
+}
+
+.ga-ping-button {
+    width: 42px;
+    height: 20px;
+    margin: 0;
+    padding: 0 4px;
+    font-size: 10px;
+}
+
+.ga-asset-path {
+    color: rgb(145, 145, 145);
+    font-size: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.is-hidden {
+    display: none;
+}

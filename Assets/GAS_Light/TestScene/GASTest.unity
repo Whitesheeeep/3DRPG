@@ -341,7 +341,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1696073708}
-  - component: {fileID: 1696073707}
+  - component: {fileID: 1696073710}
+  - component: {fileID: 1696073709}
   m_Layer: 0
   m_Name: Test
   m_TagString: Untagged
@@ -349,43 +350,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1696073707
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1696073706}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c0ac746f1dbfe3542bc57c922b060126, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  effect: {fileID: 11400000, guid: 6861f23c72baf27428de65bec7d0d062, type: 2}
-  level: 1
-  tickDelta: 1
-  setByCaller:
-  - key:
-      id: 6
-    value: 10
-  sourceSets:
-  - {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
-  targetSets:
-  - {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
-  tagDatabase: {fileID: 11400000, guid: 44d0d73125b5f0d4d82269bceac4ca8c, type: 2}
-  testAttributeSet: {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
-  instantFixed: {fileID: 11400000, guid: 6861f23c72baf27428de65bec7d0d062, type: 2}
-  instantCurve: {fileID: 11400000, guid: 298384d269a684c46878becc671051f7, type: 2}
-  instantLevel: {fileID: 11400000, guid: 722e1c1078050cb47a164eda857d5d8c, type: 2}
-  instantSetByCaller: {fileID: 11400000, guid: 21ce0758e961ed841996d10cdd97d599, type: 2}
-  durationPeriod: {fileID: 11400000, guid: b91394775fc00f64bbab6c0a30c0f0af, type: 2}
-  durationStat: {fileID: 11400000, guid: ab00e5b49e1ee3e4f8a4ddaaaf5f0e22, type: 2}
-  infinitePeriod: {fileID: 11400000, guid: 14ee25b1fb5c7304db9867749744cb0e, type: 2}
-  infiniteStatAndTag: {fileID: 11400000, guid: ed8a7455c1f49cf4b9f27138e7162329, type: 2}
-  stackBySourceRefresh: {fileID: 11400000, guid: 8100345541735b74b8b0f55b158bf5c7, type: 2}
-  stackByTargetExtendExpiration: {fileID: 11400000, guid: a8ebdabedc3dbdf40906f8e7ee70814b, type: 2}
-  stackPeriodPreserveTiming: {fileID: 11400000, guid: 44253bf35667cbf4e929c19e817e1d45, type: 2}
-  stackPeriodResetTiming: {fileID: 11400000, guid: e77cb86d9cd84c70a7b3e8ae37455d82, type: 2}
 --- !u!4 &1696073708
 Transform:
   m_ObjectHideFlags: 0
@@ -401,6 +365,61 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1696073709
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1696073706}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0ac746f1dbfe3542bc57c922b060126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  effect: {fileID: 0}
+  level: 1
+  tickDelta: 1
+  setByCaller: []
+  sourceSets: []
+  targetSets: []
+  tagDatabase: {fileID: 0}
+  testAttributeSet: {fileID: 0}
+  instantFixed: {fileID: 0}
+  instantCurve: {fileID: 0}
+  instantLevel: {fileID: 0}
+  instantSetByCaller: {fileID: 0}
+  durationPeriod: {fileID: 0}
+  durationStat: {fileID: 0}
+  infinitePeriod: {fileID: 0}
+  infiniteStatAndTag: {fileID: 0}
+  stackBySourceRefresh: {fileID: 0}
+  stackByTargetExtendExpiration: {fileID: 0}
+  stackPeriodPreserveTiming: {fileID: 0}
+  stackPeriodResetTiming: {fileID: 0}
+--- !u!114 &1696073710
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1696073706}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e3cb4403e669af4091c525994244159, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ability: {fileID: 11400000, guid: b1870e4bd65efaf498195a5852f8554c, type: 2}
+  level: 1
+  setByCaller:
+  - key:
+      id: 6
+    value: 10
+  tagDatabase: {fileID: 11400000, guid: 44d0d73125b5f0d4d82269bceac4ca8c, type: 2}
+  sourceSets:
+  - {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
+  targetSets:
+  - {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

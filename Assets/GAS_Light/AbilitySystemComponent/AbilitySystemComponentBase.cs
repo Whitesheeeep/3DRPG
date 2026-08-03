@@ -1,5 +1,6 @@
 using WS_Modules.GAS.AttributeSystem;
 using WS_Modules.GAS.GameplayEffect;
+using WS_Modules.GAS.GameplayAbilitySystem;
 using WS_Modules.GAS.TAG;
 
 namespace WS_Modules.GAS.AbilitySystemComponent
@@ -15,6 +16,8 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         public GameplayAttributeContainer Attributes { get; }
         /// <summary>获取以当前实例为隐式 Target 的 GE Controller。</summary>
         public IGameEffectCtrl GameEffectCtrl { get; }
+        /// <summary>获取以当前实例为 Source 的 Gameplay Ability Controller。</summary>
+        public IGameplayAbilityCtrl Abilities { get; }
 
         #endregion
 
@@ -26,6 +29,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             Tags = new GameplayTagCountContainer();
             Attributes = new GameplayAttributeContainer();
             GameEffectCtrl = new GameEffectCtrl(this);
+            Abilities = new GameplayAbilityCtrl(this);
         }
 
         #endregion

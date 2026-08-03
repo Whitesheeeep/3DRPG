@@ -64,6 +64,16 @@ namespace WS_Modules.GAS.GameplayEffect
         }
 
         /// <inheritdoc />
+        public bool HasActiveEffect(GameplayEffectData data)
+        {
+            if (data == null) return false;
+            for (int i = 0; i < activeEffects.Count; i++)
+                if (ReferenceEquals(activeEffects[i].Data, data))
+                    return true;
+            return false;
+        }
+
+        /// <inheritdoc />
         public bool TryRemove(GameEffectRuntime activeEffect)
         {
             int index = activeEffects.IndexOf(activeEffect);

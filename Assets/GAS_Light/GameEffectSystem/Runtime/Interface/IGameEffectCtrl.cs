@@ -32,6 +32,11 @@ namespace WS_Modules.GAS.GameplayEffect
             IReadOnlyDictionary<GameplayTag, float> setByCaller,
             out GameEffectRuntime activeEffect);
 
+        /// <summary>判断当前 Target 是否存在由指定配置产生的 Active GE。</summary>
+        /// <param name="data">需要查询的 GE 配置引用。</param>
+        /// <returns>存在引用相同且仍 Active 的 Runtime 时返回 true。</returns>
+        bool HasActiveEffect(GameplayEffectData data);
+
         /// <summary>移除一个属于当前 Controller 的 Active Runtime。</summary>
         /// <param name="activeEffect">需要移除的 Runtime 引用。</param>
         /// <returns>Runtime 属于当前 Controller 且已完成清理时返回 true。</returns>

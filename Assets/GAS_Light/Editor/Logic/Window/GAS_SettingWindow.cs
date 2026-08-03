@@ -4,12 +4,13 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using WS_Modules.GAS.AttributeSystem;
+using WS_Modules.GAS.GameplayAbilitySystem;
 using WS_Modules.GAS.GameplayEffect;
 using WS_Modules.GAS.TAG;
 
 namespace WS_Modules.GAS.Editor
 {
-    /// <summary>使用选项卡承载 Gameplay Tag、Attribute、Effect 与 Ability 编辑页面。</summary>
+    /// <summary>使用单一 EditorWindow 选项卡承载 Tag、Attribute、Effect 与 Ability 编辑页面。</summary>
     public sealed class GAS_SettingWindow : EditorWindow, IGASSettingWindow
     {
         #region 常量与字段
@@ -23,6 +24,7 @@ namespace WS_Modules.GAS.Editor
         [SerializeField] private GameplayAttributeRegistry requestedAttributeRegistry;
         [SerializeField] private GameplayAttributeSet requestedAttributeSet;
         [SerializeField] private GameplayEffectData requestedGameplayEffect;
+        [SerializeField] private GameplayAbilityData requestedGameplayAbility;
         [SerializeField] private GameplayAttributeEditorPage requestedAttributePage =
             GameplayAttributeEditorPage.Specs;
 
@@ -34,6 +36,7 @@ namespace WS_Modules.GAS.Editor
         private IGameplayTagWindow gameplayTagWindow;
         private IGameplayAttributeWindow gameplayAttributeWindow;
         private IGameplayEffectWindow gameplayEffectWindow;
+        private IGameplayAbilityWindow gameplayAbilityWindow;
         private GASEditorModule activeModule = GASEditorModule.GameplayTags;
         private bool hasActiveModule;
 
@@ -57,11 +60,6 @@ namespace WS_Modules.GAS.Editor
             window.Show();
         }
 
-        // 保留原 Gameplay Tags 菜单，但统一路由到主窗口的 Tag 选项卡。
-        /*[MenuItem("WSFrame/GAS/Gameplay Tags")]
-        private static void ShowGameplayTagsMenu() =>
-            ShowGameplayTags(GameplayTagEditorSession.GetDatabase());*/
-
         /// <summary>打开或聚焦 GAS 设置窗口，并显示指定模块。</summary>
         /// <param name="module">需要显示的模块。</param>
         public static void ShowWindow(GASEditorModule module)
@@ -71,26 +69,28 @@ namespace WS_Modules.GAS.Editor
             window.Show();
         }
 
-        /// <summary>打开主窗口的 Tag 选项卡，并选择指定数据库。</summary>
-        /// <param name="database">需要编辑的数据库；null 时恢复 SessionState 数据库。</param>
+        /// <summary>打开 Tag 页并选择指定数据库。</summary>
+        /// <param name="database">目标数据库；null 时恢复 SessionState 数据库。</param>
         public static void ShowGameplayTags(GameplayTagDatabase database)
         {
             GAS_SettingWindow window = GetConfiguredWindow();
-            GameplayTagDatabase targetDatabase =
-                database != null ? database : GameplayTagEditorSession.GetDatabase();
-            window.requestedTagDatabase = targetDatabase;
+            GameplayTagDatabase target = database != null
+                ? database
+                : GameplayTagEditorSession.GetDatabase();
+            window.requestedTagDatabase = target;
             window.SelectModule(GASEditorModule.GameplayTags);
             if (window.gameplayTagWindow != null)
             {
-                window.gameplayTagWindow.SetDatabase(targetDatabase, true);
+                window.gameplayTagWindow.SetDatabase(target, true);
                 window.requestedTagDatabase = null;
             }
+
             window.Show();
         }
 
-        /// <summary>打开主窗口的 Attribute 选项卡，并定位到指定作者资源和子页面。</summary>
-        /// <param name="registry">需要编辑的 Attribute Registry；null 时恢复 SessionState 资源。</param>
-        /// <param name="set">需要编辑的 Attribute Set；null 时恢复 SessionState 资源。</param>
+        /// <summary>打开 Attribute 页并定位作者资源与子页面。</summary>
+        /// <param name="registry">目标 Registry；null 时恢复 SessionState。</param>
+        /// <param name="set">目标 AttributeSet；null 时恢复 SessionState。</param>
         /// <param name="page">需要显示的 Attribute 子页面。</param>
         public static void ShowGameplayAttributes(
             GameplayAttributeRegistry registry,
@@ -119,8 +119,8 @@ namespace WS_Modules.GAS.Editor
             window.Show();
         }
 
-        /// <summary>打开主窗口 GE 选项卡并选择指定 GameplayEffectData。</summary>
-        /// <param name="effect">需要编辑的 GE；null 时恢复 SessionState 资产。</param>
+        /// <summary>打开 GE 页并选择指定 GameplayEffectData。</summary>
+        /// <param name="effect">目标 GE；null 时恢复 SessionState 资产。</param>
         public static void ShowGameplayEffect(GameplayEffectData effect)
         {
             GAS_SettingWindow window = GetConfiguredWindow();
@@ -138,9 +138,28 @@ namespace WS_Modules.GAS.Editor
             window.Show();
         }
 
-        /// <summary>切换当前选项卡；切换前释放旧页面，随后在同一内容宿主中创建目标页面。</summary>
+        /// <summary>打开 GA 页并选择指定 GameplayAbilityData。</summary>
+        /// <param name="ability">目标 GA；null 时恢复 SessionState 资产。</param>
+        public static void ShowGameplayAbility(GameplayAbilityData ability)
+        {
+            GAS_SettingWindow window = GetConfiguredWindow();
+            GameplayAbilityData target = ability != null
+                ? ability
+                : GameplayAbilityEditorSession.GetAbility();
+            window.requestedGameplayAbility = target;
+            window.SelectModule(GASEditorModule.GameplayAbilities);
+            if (window.gameplayAbilityWindow != null)
+            {
+                window.gameplayAbilityWindow.SetAbility(target, true);
+                window.requestedGameplayAbility = null;
+            }
+
+            window.Show();
+        }
+
+        /// <summary>释放当前页面并在同一内容宿主中创建目标模块页面。</summary>
         /// <param name="module">需要显示的模块。</param>
-        /// <exception cref="ArgumentOutOfRangeException">模块值未在当前版本中定义。</exception>
+        /// <exception cref="ArgumentOutOfRangeException">模块值未定义。</exception>
         public void SelectModule(GASEditorModule module)
         {
             ValidateModule(module);
@@ -183,8 +202,14 @@ namespace WS_Modules.GAS.Editor
                     requestedGameplayEffect = null;
                     break;
                 case GASEditorModule.GameplayAbilities:
-                    ShowPlaceholder("Gameplay Abilities", "Gameplay Abilities editor is not implemented yet.");
+                    GameplayAbilityData ability = requestedGameplayAbility != null
+                        ? requestedGameplayAbility
+                        : GameplayAbilityEditorSession.GetAbility();
+                    gameplayAbilityWindow = new GameplayAbilityWindow(contentHost, ability);
+                    requestedGameplayAbility = null;
                     break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(module), module, "未知的 GAS 编辑模块。");
             }
 
             RefreshTabState();
@@ -194,10 +219,10 @@ namespace WS_Modules.GAS.Editor
 
         #region 生命周期
 
-        // 域重载后恢复上次有效选项卡；页面本身由 CreateGUI 重建。
+        // 域重载后恢复上次模块，页面由 CreateGUI 统一重建。
         private void OnEnable() => requestedModule = RestoreActiveModule();
 
-        // 加载宿主布局、订阅选项卡，并在唯一内容区域中创建当前模块页面。
+        // 加载宿主布局、订阅选项卡，并创建当前模块页面。
         private void CreateGUI()
         {
             ReleaseWindowContent();
@@ -207,7 +232,8 @@ namespace WS_Modules.GAS.Editor
             if (windowAsset == null)
             {
                 rootVisualElement.Add(new HelpBox(
-                    "GAS Setting Window UXML asset is missing.", HelpBoxMessageType.Error));
+                    "GAS Setting Window UXML asset is missing.",
+                    HelpBoxMessageType.Error));
                 return;
             }
 
@@ -227,31 +253,28 @@ namespace WS_Modules.GAS.Editor
             SelectModule(requestedModule);
         }
 
-        // 域重载或窗口关闭时释放当前子 MVC，并注销宿主选项卡回调。
+        // 窗口关闭或域重载时释放子 MVC 和宿主事件。
         private void OnDisable() => ReleaseWindowContent();
 
         #endregion
 
         #region 事件处理
 
-        // Tag 选项卡仅请求宿主切换，不了解 Tag 页面内部结构。
+        // 各选项卡只请求宿主切换，不感知子页面内部 UI。
         private void OnGameplayTagsClicked() => SelectModule(GASEditorModule.GameplayTags);
-
-        // Attribute 选项卡承载 Spec 与 Set 两个子页面。
+        // Attribute 选项卡请求切换到 Attribute 子 MVC。
         private void OnGameplayAttributesClicked() =>
             SelectModule(GASEditorModule.GameplayAttributes);
-
-        // GE 选项卡在同一内容宿主中创建可释放的子 MVC。
+        // Effect 选项卡请求切换到 GE 子 MVC。
         private void OnGameplayEffectsClicked() => SelectModule(GASEditorModule.GameplayEffects);
-
-        // GA 选项卡切换到同一内容宿主中的占位页面。
+        // Ability 选项卡请求切换到 GA 子 MVC。
         private void OnGameplayAbilitiesClicked() => SelectModule(GASEditorModule.GameplayAbilities);
 
         #endregion
 
         #region 页面与状态刷新
 
-        // 释放当前模块页面；Tag 页面会对称注销 Controller、View 和 Undo 回调。
+        // 释放当前子 MVC；Controller 会先解除 Undo、项目和 View 事件。
         private void ReleaseActivePage()
         {
             gameplayTagWindow?.Dispose();
@@ -260,25 +283,13 @@ namespace WS_Modules.GAS.Editor
             gameplayAttributeWindow = null;
             gameplayEffectWindow?.Dispose();
             gameplayEffectWindow = null;
+            gameplayAbilityWindow?.Dispose();
+            gameplayAbilityWindow = null;
             contentHost?.Clear();
             hasActiveModule = false;
         }
 
-        // 为尚未实现的模块创建同一内容区域内的说明页面。
-        private void ShowPlaceholder(string title, string message)
-        {
-            var placeholder = new VisualElement();
-            placeholder.AddToClassList("gas-setting-placeholder");
-            var titleLabel = new Label(title);
-            titleLabel.AddToClassList("gas-setting-placeholder-title");
-            var messageLabel = new Label(message);
-            messageLabel.AddToClassList("gas-setting-placeholder-message");
-            placeholder.Add(titleLabel);
-            placeholder.Add(messageLabel);
-            contentHost.Add(placeholder);
-        }
-
-        // 只通过 USS 状态类表达当前选项卡，避免在 C# 中写固定视觉样式。
+        // 仅通过 USS 状态类表达当前选项卡。
         private void RefreshTabState()
         {
             gameplayTagsTab?.EnableInClassList(
@@ -295,7 +306,7 @@ namespace WS_Modules.GAS.Editor
 
         #region 内部辅助
 
-        // 创建并配置唯一的 GAS EditorWindow 实例。
+        // 创建并配置唯一 GAS EditorWindow 实例。
         private static GAS_SettingWindow GetConfiguredWindow()
         {
             GAS_SettingWindow window = GetWindow<GAS_SettingWindow>();
@@ -304,24 +315,25 @@ namespace WS_Modules.GAS.Editor
             return window;
         }
 
-        // 恢复 SessionState 中的有效模块值，未知值回退到 Tag。
+        // 恢复有效 Session 模块，未知值回退到 Tag。
         private GASEditorModule RestoreActiveModule()
         {
             var module = (GASEditorModule)SessionState.GetInt(
-                ActiveModuleSessionKey, (int)GASEditorModule.GameplayTags);
+                ActiveModuleSessionKey,
+                (int)GASEditorModule.GameplayTags);
             return Enum.IsDefined(typeof(GASEditorModule), module)
                 ? module
                 : GASEditorModule.GameplayTags;
         }
 
-        // 在改变页面前验证模块值，防止无内容但选项卡状态已改变。
+        // 在改变页面前验证枚举值，避免产生无内容的激活选项卡。
         private static void ValidateModule(GASEditorModule module)
         {
             if (!Enum.IsDefined(typeof(GASEditorModule), module))
                 throw new ArgumentOutOfRangeException(nameof(module), module, "未知的 GAS 编辑模块。");
         }
 
-        // 查询必需 UXML 元素；缺失时立即暴露资源与代码契约不一致。
+        // 查询必需 UXML 元素，缺失时立即暴露布局与代码契约不一致。
         private T RequireElement<T>(string name) where T : VisualElement
         {
             T element = rootVisualElement.Q<T>(name);
@@ -331,7 +343,7 @@ namespace WS_Modules.GAS.Editor
             return element;
         }
 
-        // 清除一次性导航参数，后续切换页面时改由 Attribute SessionState 恢复。
+        // 清除一次性 Attribute 导航参数，后续切页使用 SessionState。
         private void ClearRequestedAttributeAssets()
         {
             requestedAttributeRegistry = null;
@@ -339,7 +351,7 @@ namespace WS_Modules.GAS.Editor
             requestedAttributePage = GameplayAttributeEditorSession.Page;
         }
 
-        // 按页面、回调、控件引用的顺序释放宿主窗口资源。
+        // 按页面、回调和控件引用顺序释放窗口资源。
         private void ReleaseWindowContent()
         {
             ReleaseActivePage();
@@ -347,7 +359,8 @@ namespace WS_Modules.GAS.Editor
             if (gameplayAttributesTab != null)
                 gameplayAttributesTab.clicked -= OnGameplayAttributesClicked;
             if (gameplayEffectsTab != null) gameplayEffectsTab.clicked -= OnGameplayEffectsClicked;
-            if (gameplayAbilitiesTab != null) gameplayAbilitiesTab.clicked -= OnGameplayAbilitiesClicked;
+            if (gameplayAbilitiesTab != null)
+                gameplayAbilitiesTab.clicked -= OnGameplayAbilitiesClicked;
 
             gameplayTagsTab = null;
             gameplayAttributesTab = null;

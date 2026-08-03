@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ff5e423f9444cef9054d5317345dca6, type: 3}
+  m_Name: GA_Test
+  m_EditorClassIdentifier: 
+  description: "\u6D4B\u8BD5\u7528 GA"
+  activationTagQuery:
+    allTags: []
+    anyTags: []
+    noneTags: []
+  costEffect: {fileID: 11400000, guid: c4005860abd1f1a47be545ea558a6a3c, type: 2}
+  cooldownEffect: {fileID: 11400000, guid: f42153ccd11d0b64d95d878f0ce9053d, type: 2}
+  selfEffects:
+  - {fileID: 11400000, guid: 504f792f671132a47b66379cd5d0e9c7, type: 2}
+  targetEffects:
+  - {fileID: 11400000, guid: 6861f23c72baf27428de65bec7d0d062, type: 2}
