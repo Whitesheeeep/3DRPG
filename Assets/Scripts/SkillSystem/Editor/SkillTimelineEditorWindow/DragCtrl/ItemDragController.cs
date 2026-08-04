@@ -180,7 +180,7 @@ namespace RPG.SkillSystem.Editor
             evt.StopPropagation();
         }
 
-        // 清理 Pointer Capture 后，把最终整数帧作为一次语义操作提交给 ViewModel。
+        // 清理 Pointer Capture 后，仅在帧草稿实际变化时提交一次语义操作，普通点击只保留选择行为。
         private void OnPointerUp(PointerUpEvent evt)
         {
             if (state == null || activeView == null || pointerId != evt.pointerId) return;
@@ -192,6 +192,12 @@ namespace RPG.SkillSystem.Editor
             pointerId = -1;
             if (capture.HasPointerCapture(evt.pointerId)) capture.ReleasePointer(evt.pointerId);
 
+            if (!HasDraftChanged(completed))
+            {
+                evt.StopPropagation();
+                return;
+            }
+
             EditResult result = completed.Mode == DragMode.Move
                 ? viewModel.MoveItem(completed.Track, completed.Item, completed.DraftStartFrame)
                 : viewModel.ResizeItem(completed.Track, completed.Item,
@@ -200,6 +206,11 @@ namespace RPG.SkillSystem.Editor
                 itemView.RefreshGeometry(completed.OriginalStartFrame, completed.OriginalDurationFrames);
             evt.StopPropagation();
         }
+
+        // 同时比较开始帧与持续帧，避免点击、零像素拖动或吸附回原位触发无意义的资产事务。
+        private static bool HasDraftChanged(DragState dragState) =>
+            dragState.DraftStartFrame != dragState.OriginalStartFrame ||
+            dragState.DraftDurationFrames != dragState.OriginalDurationFrames;
 
         // Pointer Capture 意外丢失时恢复权威位置，避免草稿残留。
         private void OnPointerCaptureOut(PointerCaptureOutEvent _)

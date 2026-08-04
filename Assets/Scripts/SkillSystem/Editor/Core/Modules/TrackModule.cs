@@ -68,7 +68,8 @@ namespace RPG.SkillSystem.Editor
                 new AnimationItemFactory(), new AnimationInspectorDrawer(), new AnimationPreviewFactory()));
             registry.Register(new TrackModule(
                 new AttackDetectionProjection(), new AttackDetectionDocumentHandler(), null,
-                new AttackDetectionItemFactory(), new AttackDetectionInspectorDrawer()));
+                new AttackDetectionItemFactory(), new AttackDetectionInspectorDrawer(),
+                new AttackDetectionPreviewFactory(config)));
             registry.Register(new TrackModule(
                 new VfxProjection(), new VfxDocumentHandler(), new VfxDropHandler(config),
                 new VfxItemFactory(), new VfxInspectorDrawer(), new VfxPreviewFactory()));

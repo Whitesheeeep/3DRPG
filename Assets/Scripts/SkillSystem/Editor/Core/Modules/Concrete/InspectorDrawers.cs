@@ -132,7 +132,17 @@ namespace RPG.SkillSystem.Editor
                 objectType = typeof(AnimationClip), allowSceneObjects = false, value = clip.AnimationClip
             });
             IntegerField start = AddField(container, new IntegerField("起始帧") { value = clip.StartFrame });
-            IntegerField duration = AddField(container, new IntegerField("持续帧") { value = clip.DurationFrames });
+            VisualElement durationRow = AddActionRow(container);
+            IntegerField duration = new("持续帧") { value = clip.DurationFrames };
+            duration.AddToClassList("inspector-field");
+            durationRow.Add(duration);
+            Button matchDuration = new(() => viewModel.MatchAnimationDuration(item))
+            {
+                text = "匹配动画长度",
+                tooltip = "按 AnimationClip 原始时长和当前技能 FPS 恢复持续帧。"
+            };
+            matchDuration.SetEnabled(viewModel.CanMatchAnimationDuration(item));
+            durationRow.Add(matchDuration);
             IntegerField sourceStart = AddField(container, new IntegerField("源动画偏移") { value = clip.SourceStartFrame });
             FloatField speed = AddField(container, new FloatField("播放速度") { value = clip.PlaybackSpeed });
 

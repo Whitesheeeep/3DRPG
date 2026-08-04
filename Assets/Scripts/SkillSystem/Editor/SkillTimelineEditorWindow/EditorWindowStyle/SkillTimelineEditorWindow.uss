@@ -1,11 +1,14 @@
 .skill-timeline-root {
     flex-grow: 1;
+    flex-direction: column;
     min-width: 640px;
     min-height: 480px;
+    overflow: hidden;
     background-color: rgb(36, 36, 36);
 }
 .toolbar-row {
     min-height: 36px;
+    flex-shrink: 0;
     flex-direction: row;
     align-items: center;
     padding-left: 8px;
@@ -79,13 +82,16 @@
 .zoom-slider { flex-grow: 1; min-width: 180px; max-width: 320px; margin-left: 8px; }
 .main-content {
     flex-grow: 1;
+    flex-shrink: 1;
     min-width: 644px;
-    min-height: 340px;
+    min-height: 0;
+    overflow: hidden;
 }
 .timeline-panel {
     position: relative;
     flex-grow: 1;
     min-width: 400px;
+    min-height: 0;
     overflow: hidden;
     border-right-width: 1px;
     border-right-color: rgb(70, 70, 70);
@@ -94,10 +100,12 @@
     flex-grow: 1;
     min-width: 0;
     min-height: 0;
+    overflow: hidden;
 }
 .timeline-header-pane {
     min-width: 0;
     min-height: 0;
+    overflow: hidden;
     flex-direction: column;
     background-color: rgb(43, 43, 43);
     border-right-width: 1px;
@@ -108,6 +116,7 @@
     flex-grow: 1;
     min-width: 320px;
     min-height: 0;
+    overflow: hidden;
     flex-direction: column;
 }
 .timeline-ruler-row {
@@ -137,6 +146,7 @@
     min-width: 0;
     min-height: 0;
     flex-direction: column;
+    overflow: hidden;
     background-color: rgb(43, 43, 43);
 }
 .track-header-scroll {
@@ -153,7 +163,7 @@
     border-top-width: 1px;
     border-top-color: rgb(64, 64, 64);
 }
-.timeline-scroll { flex-grow: 1; min-width: 0; min-height: 0; }
+.timeline-scroll { flex-grow: 1; min-width: 0; min-height: 0; overflow: hidden; }
 .timeline-content { position: relative; min-height: 100%; }
 .timeline-lane-background-rows { position: relative; flex-shrink: 0; }
 .timeline-grid-host, .timeline-lane-item-rows {
@@ -250,6 +260,8 @@
 }
 .inspector-panel {
     min-width: 240px;
+    min-height: 0;
+    overflow: hidden;
     border-left-width: 1px;
     border-left-color: rgb(88, 88, 88);
 }
@@ -261,7 +273,7 @@
     border-bottom-width: 1px;
     border-bottom-color: rgb(74, 74, 74);
 }
-.inspector-scroll { flex-grow: 1; }
+.inspector-scroll { flex-grow: 1; min-height: 0; overflow: hidden; }
 .inspector-container { padding: 10px; }
 .inspector-title { margin-bottom: 8px; -unity-font-style: bold; }
 .inspector-field { margin-bottom: 6px; }
@@ -270,6 +282,7 @@
 .empty-inspector { color: rgb(160, 160, 160); white-space: normal; }
 .status-label {
     height: 24px;
+    flex-shrink: 0;
     padding-left: 8px;
     -unity-text-align: middle-left;
     border-top-width: 1px;

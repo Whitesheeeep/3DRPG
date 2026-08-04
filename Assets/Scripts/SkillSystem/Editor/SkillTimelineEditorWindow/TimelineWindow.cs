@@ -66,7 +66,7 @@ namespace RPG.SkillSystem.Editor
                 modules.CreatePreviewHandlers());
             playback = new PlaybackController(preview);
             viewModel = new EditorViewModel(
-                document, playback, previewSceneService, modules, preview);
+                document, playback, previewSceneService, modules, preview, preview);
             view = new EditorView(rootVisualElement, editorConfig, modules);
             view.Bind(viewModel);
         }

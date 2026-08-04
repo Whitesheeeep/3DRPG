@@ -24,7 +24,7 @@ MonoBehaviour:
       editorColor: {r: 1, g: 1, b: 1, a: 1}
     clips:
     - id: 1c5da0ec848947989be2338f30b62949
-      animationClip: {fileID: 1827226128182048838, guid: ea00480b278368243ae061e7356a61a2, type: 3}
+      animationClip: {fileID: 3094330708855449807, guid: 48fa84abc2c3a744e8561044d83beb93, type: 3}
       startFrame: 0
       durationFrames: 62
       sourceStartFrame: 0
@@ -42,30 +42,24 @@ MonoBehaviour:
       durationFrames: 6
       sampleIntervalFrames: 1
       detectionData:
-        rid: 7552782297772851206
-    - id: ec5656ac43c74a959547749ec713386e
+        rid: 3428733649235476483
+    - id: 85ce1dd5ae964632bd83ef46955b44e6
       startFrame: 6
-      durationFrames: 50
-      sampleIntervalFrames: 1
+      durationFrames: 31
+      sampleIntervalFrames: 5
       detectionData:
-        rid: 7552782363227848710
+        rid: 3428733649235476497
   - header:
       id: b534c6de57354449a0fab6328997076e
       muted: 0
       displayName: "\u653B\u51FB"
       editorLocked: 0
       editorColor: {r: 1, g: 1, b: 1, a: 1}
-    clips:
-    - id: 5528b1e78d8e4228a7d1bd658bd6e9c2
-      startFrame: 0
-      durationFrames: 15
-      sampleIntervalFrames: 1
-      detectionData:
-        rid: 7552782312009105409
+    clips: []
   vfxTracks:
   - header:
       id: d217d68a8d44409d9a33d7812e52b89a
-      muted: 0
+      muted: 1
       displayName: "\u7279\u6548"
       editorLocked: 0
       editorColor: {r: 1, g: 1, b: 1, a: 1}
@@ -78,15 +72,8 @@ MonoBehaviour:
       localPosition: {x: 1.8782309e-11, y: 1.46, z: 0.2732489}
       localEulerAngles: {x: 1.710553e-16, y: 270.00003, z: 9.4713285e-17}
       localScale: {x: 1, y: 1, z: 1}
-      followMode: 0
+      followMode: 1
       stopMode: 2
-  - header:
-      id: dbca1aeef1514d76b5df4a8dd3176681
-      muted: 0
-      displayName: "\u7279\u6548\u8F68\u9053 2"
-      editorLocked: 0
-      editorColor: {r: 1, g: 1, b: 1, a: 1}
-    clips: []
   audioTracks:
   - header:
       id: c66d70027a1545b48a4d7d6d71024b6c
@@ -98,7 +85,7 @@ MonoBehaviour:
     - id: 42c6282e0bcb4a999d18fd359c1969bc
       audioClip: {fileID: 8300000, guid: b97ffed8c0171224f91bb0a6dd0e00f2, type: 3}
       startFrame: 0
-      durationFrames: 5
+      durationFrames: 23
       volume: 0.135
       pitch: 1
   eventTracks:
@@ -129,23 +116,13 @@ MonoBehaviour:
   references:
     version: 2
     RefIds:
-    - rid: 7552782297772851206
+    - rid: 3428733649235476483
       type: {class: BoxAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
-        localPosition: {x: 0, y: 0, z: 0}
-        localEulerAngles: {x: 0, y: 0, z: 0}
-        size: {x: 1, y: 1, z: 1}
-    - rid: 7552782312009105409
-      type: {class: BoxAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+        localPosition: {x: 8.155961e-12, y: 0.63398814, z: -0.0045732185}
+        localEulerAngles: {x: -1.8598637e-18, y: 355.35153, z: -2.1054238e-17}
+        size: {x: 1, y: 0.9861382, z: 2.027857}
+    - rid: 3428733649235476497
+      type: {class: WeaponTraceAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
-        localPosition: {x: 0, y: 0, z: 0}
-        localEulerAngles: {x: 0, y: 0, z: 0}
-        size: {x: 1, y: 1, z: 1}
-    - rid: 7552782363227848710
-      type: {class: CapsuleAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
-      data:
-        localPosition: {x: 0, y: 0, z: 0}
-        localEulerAngles: {x: 0, y: 0, z: 0}
-        radius: 0.5
-        height: 2
-        axis: 1
+        samplePointCount: 4

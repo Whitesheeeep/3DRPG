@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using RPG.Markers;
 using UnityEngine;
 
@@ -213,7 +214,7 @@ namespace RPG.SkillSystem.Editor
     }
 
     /// <summary>
-    /// 使用 Animancer 采样动画与 Root Motion，并为表现轨道提供任意帧 Marker 世界姿态。
+    /// 使用 Animancer 采样动画与 Root Motion，并为表现轨道提供任意帧 Marker 或预览节点世界姿态。
     /// </summary>
     internal sealed class AnimationPreviewHandler : ITrackPreviewHandler, IPreviewActorPoseProvider,
         IPreviewActorBindingPoseProvider
@@ -293,6 +294,35 @@ namespace RPG.SkillSystem.Editor
             }
 
             return found;
+        }
+
+        /// <summary>
+        /// 临时采样目标帧并批量读取预览副本节点世界矩阵，最后恢复当前播放头姿态。
+        /// </summary>
+        public bool TryGetWorldMatrices(SkillConfig config, PreviewActorInstance actor,
+            IReadOnlyList<Transform> transforms, int frame, int restoreFrame,
+            bool applyRootMotion, out Matrix4x4[] matrices)
+        {
+            matrices = Array.Empty<Matrix4x4>();
+            if (disposed || config == null || actor == null || transforms == null) return false;
+            Matrix4x4[] result = new Matrix4x4[transforms.Count];
+            try
+            {
+                SampleActorAtFrame(config, actor, frame, applyRootMotion);
+                for (int index = 0; index < transforms.Count; index++)
+                {
+                    Transform target = transforms[index];
+                    if (target == null) return false;
+                    result[index] = target.localToWorldMatrix;
+                }
+            }
+            finally
+            {
+                SampleActorAtFrame(config, actor, restoreFrame, applyRootMotion);
+            }
+
+            matrices = result;
+            return true;
         }
 
         // 使用与正常预览完全一致的动画选择和 Root Motion 规则定位任意整数帧。

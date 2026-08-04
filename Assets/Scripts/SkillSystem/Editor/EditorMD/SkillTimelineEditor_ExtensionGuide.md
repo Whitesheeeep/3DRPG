@@ -2,7 +2,7 @@
 
 ## 1. 文档目的
 
-本文记录技能时间轴新增轨道类型时需要扩展的位置，以及数据从运行时配置、Editor View、ViewModel 到 Document 的完整流转。角色挂点的配置、收集、运行时查询和 VFX 场景编辑方式见 [Marker 系统使用指南](MarkerSystem.md)。
+本文记录技能时间轴新增轨道类型时需要扩展的位置，以及数据从运行时配置、Editor View、ViewModel 到 Document 的完整流转。角色挂点的配置、收集、运行时查询和 VFX 场景编辑方式见 [Marker 系统使用指南](../../../Markers/MarkerSystem.md)。
 
 当前已经注册的模块顺序为：
 
@@ -169,7 +169,7 @@ Unity Undo/Redo
 
 `ITrackPreviewFactory` 是 Module 的无状态可选能力，负责为每个时间轴窗口创建独立 Handler。Handler 可以持有 VFX 实例、音频 Graph 或帧缓存，但不能访问 View、Selection、Document 或修改 SkillConfig。未注册 Preview Factory 的轨道会被自然跳过。
 
-Animation Module 同时实现 `IPreviewActorPoseProvider` 和 `IPreviewActorBindingPoseProvider`。前者提供绝对帧 Root Motion，后者按每个 `VfxSkillClipConfig.MarkerKey` 临时采样任意帧的完整动画姿势并读取 Marker 世界矩阵，随后恢复当前播放头帧。VFX 不依赖 Animancer 或 Animation Handler 的具体类型：`FollowBinding` 使用当前帧的 Clip Marker，`KeepWorldPosition` 冻结该 Clip 起始帧 Marker；空 Key 使用角色根节点。MarkerKey 的创建、角色收集、Inspector 配置与运行时查询方式见 [Marker 系统使用指南](MarkerSystem.md)。
+Animation Module 同时实现 `IPreviewActorPoseProvider` 和 `IPreviewActorBindingPoseProvider`。前者提供绝对帧 Root Motion，后者按每个 `VfxSkillClipConfig.MarkerKey` 临时采样任意帧的完整动画姿势并读取 Marker 世界矩阵，随后恢复当前播放头帧。VFX 不依赖 Animancer 或 Animation Handler 的具体类型：`FollowBinding` 使用当前帧的 Clip Marker，`KeepWorldPosition` 冻结该 Clip 起始帧 Marker；空 Key 使用角色根节点。MarkerKey 的创建、角色收集、Inspector 配置与运行时查询方式见 [Marker 系统使用指南](../../../Markers/MarkerSystem.md)。
 
 Audio Preview 不接入运行时 `AudioManager`。每个窗口持有独立 `PlayableGraph`，通过 `AudioClipPlayable.SetSpeed()` 和 Mixer 输入权重表现 Pitch 与 Volume；Scrub 保持静音，开始播放或播放中重新定位时按当前帧源偏移重建 Voice。
 
@@ -229,7 +229,7 @@ AttackDetectionSkillClipConfig
 └── [SerializeReference] AttackDetectionDataBase detectionData
 ```
 
-`detectionData` 当前支持 Box、Sphere、Capsule、Sector 和 WeaponTrace。Config 只保存局部形状参数；角色、武器、刀根和刀尖等检测基准由未来运行时调用方传入，不保存绑定路径。
+`detectionData` 当前支持 Box、Sphere、Capsule、Sector 和 WeaponTrace。普通体积 Config 只保存相对角色根的局部形状参数；WeaponTrace Config 只保存采样点数量，运行时由当前武器 MarkerProvider 解析标准刀根/刀尖 Socket 后把 Transform 传入技能上下文。两者都不保存绑定路径。
 
 AttackDetection Module 已包含：
 
@@ -241,6 +241,11 @@ AttackDetection Module 已包含：
 - Inspector 的 `IAttackDetectionDataDrawer` 注册表按具体配置类型绘制字段，主 Drawer 不判断具体形状。
 - Type 切换通过 `AttackDetectionDataBase.Create(type)` 创建全新默认配置。
 - 复制 Clip 时深拷贝 managed reference，修改 FPS 时同步重采样采样间隔。
+- `AttackDetectionPreviewFactory / Handler` 在 Animation 采样之后收集当前有效 Clip，并通过 `SceneView.duringSceneGui` 绘制。
+- `IAttackDetectionSceneDrawer` 按具体 DetectionData 类型注册 Box、Sphere、Capsule、Sector 和 WeaponTrace 的绘制策略；Handler 不判断 Type。
+- 暂停或手动 Scrub 时，只有当前选中且仍有效的体积 Clip 显示 Handles；拖动期间使用本地草稿，MouseUp 后才提交一次 `AttackDetectionEditRequest`。
+- 实际采样帧使用实色，间隔内的非采样帧使用弱化透明度；颜色由 `EditorConfig` 统一配置。
+- WeaponTrace 当前只支持单刃；刀根和刀尖不进入 SkillConfig，由装备系统从当前武器 MarkerProvider 解析后传入运行时上下文。
 
 AttackDetection 数据写入流转：
 
@@ -251,7 +256,22 @@ Track “+”或 Inspector 修改
 → Document 事务
 → SkillConfig.attackDetectionTracks
 → AttackDetectionProjection 重建
-→ Canvas / Inspector / 未来 SceneView 预览刷新
+→ Canvas / Inspector / SceneView 预览刷新
+
+Scene Handle Drag
+→ AttackDetectionPreviewHandler 本地 DetectionData 草稿
+→ MouseUp
+→ IAttackDetectionSceneEditService.EditCommitted
+→ EditorViewModel.EditItem
+→ AttackDetectionEditRequest
+→ Document / 一条 Undo
+
+WeaponTrace Preview
+→ EditorConfig 提供固定刀根 / 刀尖 MarkerKey
+→ PreviewActorInstance 查找唯一匹配的激活 MarkerProvider
+→ AnimationPreviewHandler 临时采样上一采样帧 Transform
+→ 恢复当前帧
+→ WeaponTraceSceneDrawer 绘制单刃前后姿态与插值扫掠线
 ```
 
 ## 6. State 轨道与 Custom Item Window
@@ -301,7 +321,7 @@ Custom Window 的约束：
 - 一次语义操作只产生一条 Undo；非法区间或非法参数不会留下部分写入。
 - Undo/Redo、轨道重排和投影重建后，Selection 能通过 GUID 恢复。
 - 新 Item 的 UXML 可由 UI Builder 打开，视觉尺寸和颜色只定义在 USS。
-- AttackDetection、State 的运行时播放器和 Preview 尚未接入时，编辑器仍可稳定保存、显示和修改数据。
+- AttackDetection Preview 只绘制形状和编辑配置，不执行 Physics 查询；State 尚未接入时仍可独立扩展。
 - 新增类型、公开方法、非公开方法和复杂类 Region 遵循根 `AGENTS.md` 的中文注释规范。
 
 ## 8. 尚待确定的运行时决策
@@ -309,4 +329,4 @@ Custom Window 的约束：
 - AttackDetection 的伤害、阵营、重复命中和过滤数据归属。
 - State 使用区间 Clip、单帧 Marker，还是拆成两种 Module。
 - Custom Window 编辑的是单个 State Item，还是独立的状态定义资产。
-- AttackDetection 和 State 在 Preview 中只绘制，还是需要执行无副作用模拟。
+- State 在 Preview 中只绘制，还是需要执行无副作用模拟；AttackDetection 当前固定为只绘制。

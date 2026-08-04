@@ -5,7 +5,7 @@
     "tags": [],
     "title": "Animation Track：在 Inspector Animation 中添加一个按钮，将轨道持续帧恢复与动画一致。",
     "description": "",
-    "status": "TODO",
+    "status": "DONE",
     "date": {
       "date": {
         "year": 2026,
@@ -19,6 +19,19 @@
         "nano": 967901400
       }
     },
+    "finishDate": {
+      "date": {
+        "year": 2026,
+        "month": 8,
+        "day": 3
+      },
+      "time": {
+        "hour": 20,
+        "minute": 40,
+        "second": 36,
+        "nano": 361586200
+      }
+    },
     "isImported": false
   },
   {
@@ -27,7 +40,7 @@
     "tags": [],
     "title": "给 VFX 的结束模式加上 tooltip",
     "description": "",
-    "status": "TODO",
+    "status": "DONE",
     "date": {
       "date": {
         "year": 2026,
@@ -41,6 +54,19 @@
         "nano": 976177000
       }
     },
+    "finishDate": {
+      "date": {
+        "year": 2026,
+        "month": 8,
+        "day": 3
+      },
+      "time": {
+        "hour": 20,
+        "minute": 40,
+        "second": 51,
+        "nano": 677879300
+      }
+    },
     "isImported": false
   },
   {
@@ -49,7 +75,7 @@
     "tags": [],
     "title": "点击 event marker 中间的 Scroll view 会收缩到最小容纳视窗，点击其他有会恢复",
     "description": "",
-    "status": "TODO",
+    "status": "DONE",
     "date": {
       "date": {
         "year": 2026,
@@ -63,6 +89,19 @@
         "nano": 424208000
       }
     },
+    "finishDate": {
+      "date": {
+        "year": 2026,
+        "month": 8,
+        "day": 4
+      },
+      "time": {
+        "hour": 19,
+        "minute": 5,
+        "second": 13,
+        "nano": 726198800
+      }
+    },
     "isImported": false
   },
   {
@@ -71,7 +110,7 @@
     "tags": [],
     "title": "角色的 Marker 系统",
     "description": "",
-    "status": "TODO",
+    "status": "DONE",
     "date": {
       "date": {
         "year": 2026,
@@ -83,6 +122,76 @@
         "minute": 39,
         "second": 16,
         "nano": 671991100
+      }
+    },
+    "finishDate": {
+      "date": {
+        "year": 2026,
+        "month": 8,
+        "day": 4
+      },
+      "time": {
+        "hour": 17,
+        "minute": 14,
+        "second": 10,
+        "nano": 790269700
+      }
+    },
+    "isImported": false
+  },
+  {
+    "id": "TASK_19",
+    "priority": "LOW",
+    "tags": [],
+    "title": "将线框优化为面（半透明）",
+    "description": "",
+    "status": "DONE",
+    "date": {
+      "date": {
+        "year": 2026,
+        "month": 8,
+        "day": 3
+      },
+      "time": {
+        "hour": 20,
+        "minute": 40,
+        "second": 15,
+        "nano": 494415000
+      }
+    },
+    "finishDate": {
+      "date": {
+        "year": 2026,
+        "month": 8,
+        "day": 4
+      },
+      "time": {
+        "hour": 18,
+        "minute": 30,
+        "second": 43,
+        "nano": 635266300
+      }
+    },
+    "isImported": false
+  },
+  {
+    "id": "TASK_50",
+    "priority": "LOW",
+    "tags": [],
+    "title": "镜头调度与状态 Track",
+    "description": "",
+    "status": "TODO",
+    "date": {
+      "date": {
+        "year": 2026,
+        "month": 8,
+        "day": 4
+      },
+      "time": {
+        "hour": 19,
+        "minute": 5,
+        "second": 35,
+        "nano": 10826700
       }
     },
     "isImported": false

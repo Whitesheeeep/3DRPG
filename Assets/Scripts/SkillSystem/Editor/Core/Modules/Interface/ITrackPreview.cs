@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using RPG.Markers;
 using UnityEngine;
 
@@ -83,6 +84,21 @@ namespace RPG.SkillSystem.Editor
         bool TryGetBindingWorldMatrix(SkillConfig config, PreviewActorInstance actor,
             MarkerKey markerKey, int frame, int restoreFrame, bool applyRootMotion,
             out Matrix4x4 matrix);
+
+        /// <summary>
+        /// 临时采样目标帧并批量读取预览副本中指定 Transform 的世界矩阵，随后恢复播放头当前帧。
+        /// </summary>
+        /// <param name="config">当前技能配置。</param>
+        /// <param name="actor">窗口私有预览角色。</param>
+        /// <param name="transforms">属于该预览角色副本的目标节点集合。</param>
+        /// <param name="frame">需要读取姿态的目标帧。</param>
+        /// <param name="restoreFrame">查询结束后恢复的播放头帧。</param>
+        /// <param name="applyRootMotion">是否应用动画累计 Root Motion。</param>
+        /// <param name="matrices">成功时按输入顺序返回世界矩阵。</param>
+        /// <returns>全部目标节点有效并完成读取时返回 true。</returns>
+        bool TryGetWorldMatrices(SkillConfig config, PreviewActorInstance actor,
+            IReadOnlyList<Transform> transforms, int frame, int restoreFrame,
+            bool applyRootMotion, out Matrix4x4[] matrices);
     }
 }
 #endif

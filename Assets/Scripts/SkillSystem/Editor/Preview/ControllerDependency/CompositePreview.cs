@@ -7,9 +7,9 @@ using UnityEngine;
 namespace RPG.SkillSystem.Editor
 {
     /// <summary>
-    /// 管理共享预览角色、按 Clip 解析的 Marker 上下文、轨道采样与 VFX 场景编辑服务。
+    /// 管理共享预览角色、轨道采样，以及 VFX 与攻击检测的场景编辑服务。
     /// </summary>
-    internal sealed class CompositePreview : IPreview, IVfxSceneEditService
+    internal sealed class CompositePreview : IPreview, IVfxSceneEditService, IAttackDetectionSceneEditService
     {
         #region 依赖与状态
         // 依赖
@@ -19,6 +19,7 @@ namespace RPG.SkillSystem.Editor
         private readonly IPreviewActorPoseProvider actorPoseProvider;
         private readonly IPreviewActorBindingPoseProvider bindingPoseProvider;
         private readonly IVfxSceneEditService vfxSceneEditService;
+        private readonly IAttackDetectionSceneEditService attackDetectionSceneEditService;
         private SkillConfig config;
 
         // 状态
@@ -46,6 +47,7 @@ namespace RPG.SkillSystem.Editor
             actorPoseProvider = ResolveActorPoseProvider(handlers);
             bindingPoseProvider = ResolveBindingPoseProvider(handlers);
             vfxSceneEditService = ResolveVfxSceneEditService(handlers);
+            attackDetectionSceneEditService = ResolveAttackDetectionSceneEditService(handlers);
         }
 
         /// <summary>
@@ -196,6 +198,25 @@ namespace RPG.SkillSystem.Editor
 
         #endregion
 
+        #region 攻击检测场景编辑
+
+        /// <summary>
+        /// 转发攻击检测 Scene Handle 完成后的独立数据快照。
+        /// </summary>
+        public event Action<AttackDetectionSceneEditCommit> EditCommitted
+        {
+            add => attackDetectionSceneEditService.EditCommitted += value;
+            remove => attackDetectionSceneEditService.EditCommitted -= value;
+        }
+
+        /// <summary>
+        /// 将当前攻击检测选择同步给唯一 AttackDetection Preview Handler。
+        /// </summary>
+        public void SetSelectedClip(string clipId) =>
+            attackDetectionSceneEditService.SetSelectedClip(clipId);
+
+        #endregion
+
         #region 角色与状态辅助
 
         // 从模块 Handler 中解析唯一角色姿态提供器，防止多个动画来源导致 VFX 绑定结果不确定。
@@ -246,6 +267,22 @@ namespace RPG.SkillSystem.Editor
             return result ?? throw new InvalidOperationException("VFX 模块没有注册场景编辑服务。");
         }
 
+        // 从模块 Handler 中解析唯一攻击检测场景编辑能力，避免 ViewModel 依赖具体 Handler 类型。
+        private static IAttackDetectionSceneEditService ResolveAttackDetectionSceneEditService(
+            IReadOnlyList<ITrackPreviewHandler> previewHandlers)
+        {
+            IAttackDetectionSceneEditService result = null;
+            foreach (ITrackPreviewHandler handler in previewHandlers)
+            {
+                if (handler is not IAttackDetectionSceneEditService candidate) continue;
+                if (result != null)
+                    throw new InvalidOperationException("预览中注册了多个攻击检测场景编辑服务。");
+                result = candidate;
+            }
+
+            return result ?? throw new InvalidOperationException("攻击检测模块没有注册场景编辑服务。");
+        }
+
         // 延迟创建预览角色，并保证创建失败不会阻止播放头继续工作。
         private bool EnsureActor()
         {
@@ -270,7 +307,7 @@ namespace RPG.SkillSystem.Editor
             actorInstance = null;
         }
 
-        // 按模块顺序读取首个局部预览错误，使单个 VFX Clip 失败不会阻断其他 Handler。
+        // 按模块顺序读取首个局部预览错误，使单个轨道 Clip 失败不会阻断其他 Handler。
         private string ResolveHandlerStatus()
         {
             foreach (ITrackPreviewHandler handler in handlers)

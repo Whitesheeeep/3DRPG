@@ -21,6 +21,7 @@ namespace RPG.SkillSystem.Editor
         private readonly PreviewSceneService previewSceneService;
         private readonly TrackModuleRegistry modules;
         private readonly IVfxSceneEditService vfxSceneEditService;
+        private readonly IAttackDetectionSceneEditService attackDetectionSceneEditService;
         private readonly List<GroupViewData> groups = new();
         private SelectionState selection = SelectionState.None;
         private bool disposed;
@@ -62,7 +63,8 @@ namespace RPG.SkillSystem.Editor
         /// </summary>
         public EditorViewModel(Document document, PlaybackController playback,
             PreviewSceneService previewSceneService, TrackModuleRegistry modules,
-            IVfxSceneEditService vfxSceneEditService)
+            IVfxSceneEditService vfxSceneEditService,
+            IAttackDetectionSceneEditService attackDetectionSceneEditService)
         {
             this.document = document ?? throw new ArgumentNullException(nameof(document));
             this.playback = playback ?? throw new ArgumentNullException(nameof(playback));
@@ -70,6 +72,9 @@ namespace RPG.SkillSystem.Editor
             this.modules = modules ?? throw new ArgumentNullException(nameof(modules));
             this.vfxSceneEditService = vfxSceneEditService ??
                                        throw new ArgumentNullException(nameof(vfxSceneEditService));
+            this.attackDetectionSceneEditService = attackDetectionSceneEditService ??
+                                                   throw new ArgumentNullException(nameof(attackDetectionSceneEditService));
+            attackDetectionSceneEditService.EditCommitted += OnAttackDetectionSceneEditCommitted;
             document.ContentChanged += OnDocumentContentChanged;
             document.ConfigChanged += OnConfigChanged;
             playback.FrameChanged += OnFrameChanged;
@@ -94,6 +99,7 @@ namespace RPG.SkillSystem.Editor
             playback.PlaybackChanged -= OnPlaybackChanged;
             playback.PreviewStatusChanged -= OnPreviewStatusChanged;
             previewSceneService.SettingsChanged -= OnSettingsChanged;
+            attackDetectionSceneEditService.EditCommitted -= OnAttackDetectionSceneEditCommitted;
             TimelineChanged = null;
             SelectionChanged = null;
             PlayheadChanged = null;
@@ -111,6 +117,7 @@ namespace RPG.SkillSystem.Editor
         private void OnConfigChanged()
         {
             selection = SelectionState.None;
+            SynchronizeAttackDetectionSelection();
             playback.SetSkillConfig(document.CurrentConfig);
             RebuildTimelineFromModel();
             TimelineChanged?.Invoke();
@@ -124,6 +131,7 @@ namespace RPG.SkillSystem.Editor
         {
             RebuildTimelineFromModel();
             RestoreSelectionAfterTimelineRebuild();
+            SynchronizeAttackDetectionSelection();
             playback.InvalidatePreviewContent();
             playback.ClampToDuration();
             TimelineChanged?.Invoke();
@@ -149,6 +157,26 @@ namespace RPG.SkillSystem.Editor
 
         // 将 Preview 初始化或采样状态写入窗口已有状态栏。
         private void OnPreviewStatusChanged(string message) => SetStatus(message);
+
+        // 把 Scene Handle 完成后的独立数据快照转换为现有类型化编辑请求和一条 Document Undo。
+        private void OnAttackDetectionSceneEditCommitted(AttackDetectionSceneEditCommit commit)
+        {
+            if (SelectedViewData is not AttackDetectionClipViewData item || item.Id != commit.ClipId)
+                return;
+            AttackDetectionSkillClipConfig clip = item.Config;
+            EditItem(item, new AttackDetectionEditRequest(
+                clip.StartFrame, clip.DurationFrames, clip.SampleIntervalFrames,
+                commit.DetectionData));
+        }
+
+        // 只向场景编辑服务发送稳定 Clip GUID，非攻击检测选择明确清空 Handle 目标。
+        private void SynchronizeAttackDetectionSelection()
+        {
+            string clipId = SelectedViewData is AttackDetectionClipViewData item
+                ? item.Id
+                : string.Empty;
+            attackDetectionSceneEditService.SetSelectedClip(clipId);
+        }
 
         // 每个模块只投影自身显式运行时列表，ViewModel 不判断具体轨道类型。
         private void RebuildTimelineFromModel()
@@ -223,6 +251,7 @@ namespace RPG.SkillSystem.Editor
             vfxSceneEditService.CancelEdit();
             if (restorePreview) playback.RefreshPreview();
             selection = next;
+            SynchronizeAttackDetectionSelection();
             SelectionChanged?.Invoke();
             InspectorChanged?.Invoke();
         }
@@ -540,6 +569,37 @@ namespace RPG.SkillSystem.Editor
             if (!result.Succeeded) InspectorChanged?.Invoke();
             return result;
         }
+
+        /// <summary>
+        /// 判断动画片段是否具有可恢复的素材原始持续帧，并且当前持续帧尚未匹配。
+        /// </summary>
+        /// <param name="item">需要检查的动画片段投影。</param>
+        /// <returns>按钮应允许执行时返回 true。</returns>
+        public bool CanMatchAnimationDuration(AnimationClipViewData item)
+        {
+            if (item?.Config?.AnimationClip == null || CurrentConfig == null) return false;
+            return item.Config.DurationFrames != CalculateAnimationDuration(item.Config.AnimationClip);
+        }
+
+        /// <summary>
+        /// 将动画片段持续帧恢复为素材原始长度对应的技能帧数，并沿用现有 Document 校验与 Undo。
+        /// </summary>
+        /// <param name="item">需要恢复持续帧的动画片段投影。</param>
+        /// <returns>Document 操作结果；同轨区间冲突时不会修改资产。</returns>
+        public EditResult MatchAnimationDuration(AnimationClipViewData item)
+        {
+            if (item?.Config?.AnimationClip == null || CurrentConfig == null)
+                return EditResult.Failure("当前动画片段没有可匹配的 AnimationClip。");
+
+            AnimationSkillClipConfig clip = item.Config;
+            return EditItem(item, new AnimationEditRequest(
+                clip.AnimationClip, clip.StartFrame, CalculateAnimationDuration(clip.AnimationClip),
+                clip.SourceStartFrame, clip.PlaybackSpeed));
+        }
+
+        // 使用当前技能 FPS 把素材原始秒数向上取整为至少一帧；不受源偏移和播放速度影响。
+        private int CalculateAnimationDuration(AnimationClip clip) =>
+            Mathf.Max(1, Mathf.CeilToInt(clip.length * CurrentConfig.FrameRate));
 
         /// <summary>
         /// 暂停播放、确保当前帧已采样，并为指定 VFX Clip 创建独立场景编辑代理。

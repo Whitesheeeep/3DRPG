@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using RPG.Markers;
 using UnityEngine;
 
@@ -103,6 +104,15 @@ namespace RPG.SkillSystem.Editor
             matrix = Matrix4x4.identity;
             return BindingPoseProvider.TryGetBindingWorldMatrix(
                 Config, Actor, markerKey, frame, Frame, ApplyRootMotion, out matrix);
+        }
+
+        // 批量读取预览副本节点在任意帧的世界矩阵，并由动画模块恢复当前帧以避免扰动后续 Handler。
+        internal bool TryResolveWorldMatrices(IReadOnlyList<Transform> transforms, int frame,
+            out Matrix4x4[] matrices)
+        {
+            matrices = Array.Empty<Matrix4x4>();
+            return BindingPoseProvider != null && BindingPoseProvider.TryGetWorldMatrices(
+                Config, Actor, transforms, frame, Frame, ApplyRootMotion, out matrices);
         }
     }
 }

@@ -305,6 +305,7 @@ namespace RPG.SkillSystem.Editor
 
         /// <summary>
         /// 校验并移动指定片段或事件标记到目标帧。
+        /// 目标帧与当前帧一致时视为成功，但不创建 Undo 或发送内容变化事件。
         /// </summary>
         /// <param name="trackId">目标轨道头中的稳定 GUID，不是轨道数组索引或显示名称。</param>
         /// <param name="itemId">目标 Clip 或 Marker 自身的稳定 GUID，不是内容数组索引。</param>
@@ -313,6 +314,8 @@ namespace RPG.SkillSystem.Editor
             if (!TryFindItem(handler, trackId, itemId, out SerializedProperty track, out SerializedProperty items,
                     out SerializedProperty item, out _)) return EditResult.Failure("时间轴内容不存在。");
             startFrame = Mathf.Max(0, startFrame);
+            if (startFrame == GetItemStart(handler, item)) return EditResult.Success();
+
             int duration = GetItemDuration(handler, item);
             if (!CanPlaceInterval(handler, track, itemId, startFrame, duration))
                 return EditResult.Failure("目标位置与同轨内容重叠。");
