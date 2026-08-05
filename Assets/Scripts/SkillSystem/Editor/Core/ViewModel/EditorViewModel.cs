@@ -416,6 +416,32 @@ namespace RPG.SkillSystem.Editor
         }
 
         /// <summary>
+        /// 设置指定轨道的静音状态，并保留名称与锁定状态。
+        /// </summary>
+        /// <param name="track">包含稳定轨道 GUID 与当前公共状态的只读投影。</param>
+        /// <param name="muted">需要写入的静音状态。</param>
+        public void SetTrackMuted(TrackViewData track, bool muted)
+        {
+            if (track == null) return;
+            TrackModule module = modules.Get(track);
+            Report(document.EditTrack(module.Document, track.Id,
+                track.DisplayName, muted, track.Locked));
+        }
+
+        /// <summary>
+        /// 设置指定轨道的编辑器锁定状态，并保留名称与静音状态。
+        /// </summary>
+        /// <param name="track">包含稳定轨道 GUID 与当前公共状态的只读投影。</param>
+        /// <param name="locked">需要写入的编辑器锁定状态。</param>
+        public void SetTrackLocked(TrackViewData track, bool locked)
+        {
+            if (track == null) return;
+            TrackModule module = modules.Get(track);
+            Report(document.EditTrack(module.Document, track.Id,
+                track.DisplayName, track.Muted, locked));
+        }
+
+        /// <summary>
         /// 在指定轨道末尾的可用帧创建默认内容项。
         /// </summary>
         public void AddItem(TrackViewData track)
@@ -646,7 +672,7 @@ namespace RPG.SkillSystem.Editor
             EditResult result = EditItem(item, new VfxEditRequest(
                 clip.Prefab, clip.MarkerKey, clip.StartFrame, clip.DurationFrames,
                 snapshot.LocalPosition, snapshot.LocalEulerAngles, snapshot.LocalScale,
-                clip.FollowMode, clip.StopMode));
+                clip.PlaybackSpeed, clip.FollowMode, clip.StopMode));
             if (result.Succeeded) vfxSceneEditService.CancelEdit();
         }
 

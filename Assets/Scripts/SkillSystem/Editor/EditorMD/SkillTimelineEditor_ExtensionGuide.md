@@ -171,6 +171,8 @@ Unity Undo/Redo
 
 Animation Module 同时实现 `IPreviewActorPoseProvider` 和 `IPreviewActorBindingPoseProvider`。前者提供绝对帧 Root Motion，后者按每个 `VfxSkillClipConfig.MarkerKey` 临时采样任意帧的完整动画姿势并读取 Marker 世界矩阵，随后恢复当前播放头帧。VFX 不依赖 Animancer 或 Animation Handler 的具体类型：`FollowBinding` 使用当前帧的 Clip Marker，`KeepWorldPosition` 冻结该 Clip 起始帧 Marker；空 Key 使用角色根节点。MarkerKey 的创建、角色收集、Inspector 配置与运行时查询方式见 [Marker 系统使用指南](../../../Markers/MarkerSystem.md)。
 
+VFX Clip 的 `PlaybackSpeed` 是本次释放相对 Prefab 原始粒子速度的倍率。Editor Preview 通过 `时间轴经过秒数 × PlaybackSpeed` 进行绝对采样，不修改 Prefab 的 `ParticleSystem.main.simulationSpeed`，因此 Scrub 顺序不会累积误差。未来运行时 Executor 应按实例缓存各 ParticleSystem 原始速度，并始终使用“原始速度 × Clip 倍率”赋值，避免对象池复用时重复相乘。
+
 Audio Preview 不接入运行时 `AudioManager`。每个窗口持有独立 `PlayableGraph`，通过 `AudioClipPlayable.SetSpeed()` 和 Mixer 输入权重表现 Pitch 与 Volume；Scrub 保持静音，开始播放或播放中重新定位时按当前帧源偏移重建 Voice。
 
 新增 Preview 能力时继续在对应 TrackModule 注册 Factory/Handler，不在 `CompositePreview` 中增加轨道类型判断。AttackDetection 和 Event 尚未注册 Preview Factory。

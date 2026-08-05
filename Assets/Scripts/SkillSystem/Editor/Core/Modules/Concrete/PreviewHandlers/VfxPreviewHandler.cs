@@ -407,15 +407,16 @@ namespace RPG.SkillSystem.Editor
         // 仅在缓存实例仍对应同一 Prefab 时允许复用。
         internal bool Matches(GameObject value) => !disposed && instance != null && prefab == value;
 
-        // 使用调用方已经解析的绑定矩阵，从 Clip 起点按绝对秒数重建粒子状态。
+        // 使用调用方已经解析的绑定矩阵，从 Clip 起点按独立播放倍率换算的绝对秒数重建粒子状态。
         internal void Sample(in PreviewFrameContext context, VfxSkillClipConfig clip,
             Transform bindingTransform, Matrix4x4 bindingMatrix, bool parentToCurrentBinding)
         {
             if (disposed || instance == null || clip == null) return;
             ApplyTransform(clip, bindingTransform, bindingMatrix, parentToCurrentBinding);
             float frameRate = Mathf.Max(1, context.Config.FrameRate);
-            float elapsed = Mathf.Max(0f, (context.Frame - clip.StartFrame) / frameRate);
-            float duration = Mathf.Max(0f, clip.DurationFrames / frameRate);
+            float playbackSpeed = Mathf.Max(0.01f, clip.PlaybackSpeed);
+            float elapsed = Mathf.Max(0f, (context.Frame - clip.StartFrame) / frameRate) * playbackSpeed;
+            float duration = Mathf.Max(0f, clip.DurationFrames / frameRate) * playbackSpeed;
 
             if (clip.StopMode == VfxStopMode.StopEmissionAtEnd && elapsed >= duration)
                 SimulateStoppedEmission(duration, elapsed - duration);

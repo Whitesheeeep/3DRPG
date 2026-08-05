@@ -452,7 +452,7 @@ namespace RPG.SkillSystem.Editor
         public bool CanDraw(IViewData viewData) => viewData is VfxClipViewData;
 
         /// <summary>
-        /// 绘制特效资源、语义挂点、帧区间和局部变换字段。
+        /// 绘制特效资源、语义挂点、帧区间、局部变换和独立播放倍率字段。
         /// </summary>
         public void Draw(VisualElement container, IViewData viewData, EditorViewModel viewModel)
         {
@@ -472,6 +472,7 @@ namespace RPG.SkillSystem.Editor
             Vector3Field position = AddField(container, new Vector3Field("局部位置") { value = clip.LocalPosition });
             Vector3Field rotation = AddField(container, new Vector3Field("局部旋转") { value = clip.LocalEulerAngles });
             Vector3Field scale = AddField(container, new Vector3Field("局部缩放") { value = clip.LocalScale });
+            FloatField playbackSpeed = AddField(container, new FloatField("播放速度") { value = clip.PlaybackSpeed });
             EnumField follow = AddField(container, new EnumField("跟随模式", clip.FollowMode));
             EnumField stop = AddField(container, new EnumField("结束模式", clip.StopMode));
             stop.tooltip = "ReturnToPoolAtEnd：到达结束帧时立即回收或销毁特效。\n"
@@ -480,7 +481,7 @@ namespace RPG.SkillSystem.Editor
 
             void Submit() => viewModel.EditItem(item, new VfxEditRequest(prefab.value as GameObject,
                 marker.value as MarkerKey, start.value, duration.value, position.value, rotation.value, scale.value,
-                (VfxFollowMode)follow.value, (VfxStopMode)stop.value));
+                playbackSpeed.value, (VfxFollowMode)follow.value, (VfxStopMode)stop.value));
 
             start.isDelayed = true;
             duration.isDelayed = true;
@@ -488,6 +489,7 @@ namespace RPG.SkillSystem.Editor
             rotation.SetIsDelayed(true);
             scale.SetIsDelayed(true);
 
+            playbackSpeed.isDelayed = true;
             prefab.RegisterValueChangedCallback(_ => Submit());
             marker.RegisterValueChangedCallback(_ => Submit());
             start.RegisterValueChangedCallback(_ => Submit());
@@ -496,6 +498,7 @@ namespace RPG.SkillSystem.Editor
             rotation.RegisterValueChangedCallback(_ => Submit());
             scale.RegisterValueChangedCallback(_ => Submit());
             follow.RegisterValueChangedCallback(_ => Submit());
+            playbackSpeed.RegisterValueChangedCallback(_ => Submit());
             stop.RegisterValueChangedCallback(_ => Submit());
 
             bool sceneEditing = viewModel.IsVfxSceneEditing(item);

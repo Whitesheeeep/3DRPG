@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 39c3f5d28af0499e9e43c31d17420f08, type: 3}
   m_Name: SkillTimelineEditorConfig
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   minimumWindowSize: {x: 860, y: 520}
   inspectorMinimumWidth: 240
   inspectorDefaultWidth: 300
@@ -30,6 +30,13 @@ MonoBehaviour:
   minimumTimelineFrameCount: 120
   minimumTimelineContentHeight: 800
   minimumScrollableOverflow: {x: 240, y: 240}
+  attackDetectionColor: {r: 1, g: 0.42, b: 0.16, a: 0.9}
+  attackDetectionSelectedColor: {r: 1, g: 0.85, b: 0.2, a: 1}
+  attackDetectionUnsampledAlpha: 0.25
+  attackDetectionFillAlpha: 0.15
+  attackDetectionSurfaceSegments: 24
+  previewWeaponTraceRootKey: {fileID: 11400000, guid: ff3da6c08d6213942bdb11d5850dee20, type: 2}
+  previewWeaponTraceTipKey: {fileID: 11400000, guid: 4913c7a9b75f0284a80b33d458f112ea, type: 2}
   defaultVfxClipDurationFrames: 30
   minorTickHeight: 5
   mediumTickHeight: 9

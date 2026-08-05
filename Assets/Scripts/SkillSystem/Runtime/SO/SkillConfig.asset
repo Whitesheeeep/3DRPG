@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: e926723cb93e479c881c301347beda4b
   frameRate: 30
-  durationFrames: 62
+  durationFrames: 35
   animationTracks:
   - header:
       id: 976cdc50707d4f4d9ada7c830639ab27
@@ -24,9 +24,9 @@ MonoBehaviour:
       editorColor: {r: 1, g: 1, b: 1, a: 1}
     clips:
     - id: 1c5da0ec848947989be2338f30b62949
-      animationClip: {fileID: 3094330708855449807, guid: 48fa84abc2c3a744e8561044d83beb93, type: 3}
+      animationClip: {fileID: 3094330708855449807, guid: 786865feb8624b243b38f3ab37c847a3, type: 3}
       startFrame: 0
-      durationFrames: 62
+      durationFrames: 35
       sourceStartFrame: 0
       playbackSpeed: 1
   attackDetectionTracks:
@@ -37,43 +37,31 @@ MonoBehaviour:
       editorLocked: 0
       editorColor: {r: 1, g: 1, b: 1, a: 1}
     clips:
-    - id: 94b0783a1efb493689429f010923d8d2
-      startFrame: 0
-      durationFrames: 6
-      sampleIntervalFrames: 1
-      detectionData:
-        rid: 3428733649235476483
     - id: 85ce1dd5ae964632bd83ef46955b44e6
       startFrame: 6
-      durationFrames: 31
-      sampleIntervalFrames: 5
+      durationFrames: 9
+      sampleIntervalFrames: 1
       detectionData:
-        rid: 3428733649235476497
-  - header:
-      id: b534c6de57354449a0fab6328997076e
-      muted: 0
-      displayName: "\u653B\u51FB"
-      editorLocked: 0
-      editorColor: {r: 1, g: 1, b: 1, a: 1}
-    clips: []
+        rid: 3428733649235476498
   vfxTracks:
   - header:
       id: d217d68a8d44409d9a33d7812e52b89a
-      muted: 1
+      muted: 0
       displayName: "\u7279\u6548"
       editorLocked: 0
       editorColor: {r: 1, g: 1, b: 1, a: 1}
     clips:
-    - id: 7edec75c167e4eba91ef1f22030b2987
-      prefab: {fileID: 3747062467708418687, guid: 6d48dfa43b2137f4a8ef06fd2e63238e, type: 3}
+    - id: 04accfa8e6c9401e9be9f93524ad3172
+      prefab: {fileID: 4214304940546854769, guid: 695ff324093e91743a8abf684fa028de, type: 3}
       markerKey: {fileID: 0}
-      startFrame: 0
-      durationFrames: 19
-      localPosition: {x: 1.8782309e-11, y: 1.46, z: 0.2732489}
-      localEulerAngles: {x: 1.710553e-16, y: 270.00003, z: 9.4713285e-17}
-      localScale: {x: 1, y: 1, z: 1}
-      followMode: 1
-      stopMode: 2
+      startFrame: 5
+      durationFrames: 18
+      localPosition: {x: 8.336221e-12, y: 0.648, z: 0.2841807}
+      localEulerAngles: {x: 3.1651034, y: 172.63564, z: 171.71306}
+      localScale: {x: 0.9999997, y: 1, z: 1.0000004}
+      playbackSpeed: 1
+      followMode: 0
+      stopMode: 0
   audioTracks:
   - header:
       id: c66d70027a1545b48a4d7d6d71024b6c
@@ -83,7 +71,7 @@ MonoBehaviour:
       editorColor: {r: 1, g: 1, b: 1, a: 1}
     clips:
     - id: 42c6282e0bcb4a999d18fd359c1969bc
-      audioClip: {fileID: 8300000, guid: b97ffed8c0171224f91bb0a6dd0e00f2, type: 3}
+      audioClip: {fileID: 8300000, guid: 9ed4573abd1465749b538474846f4995, type: 3}
       startFrame: 0
       durationFrames: 23
       volume: 0.135
@@ -97,32 +85,19 @@ MonoBehaviour:
       editorColor: {r: 1, g: 1, b: 1, a: 1}
     markers:
     - id: d9cc3d9610f147e38a6304a51ea6857e
-      frame: 13
+      frame: 7
       eventTypeName: 
       displayName: "\u4E8B\u4EF6"
       parameterText: 
     - id: b846ff60f60f41c6b81279fa25f7d126
-      frame: 20
+      frame: 16
       eventTypeName: 
       displayName: "\u4E8B\u4EF6"
       parameterText: 
-  - header:
-      id: 87ae0e179eac4c85991e3b1b146be7ba
-      muted: 0
-      displayName: "\u4E8B\u4EF6\u8F68\u9053 2"
-      editorLocked: 0
-      editorColor: {r: 1, g: 1, b: 1, a: 1}
-    markers: []
   references:
     version: 2
     RefIds:
-    - rid: 3428733649235476483
-      type: {class: BoxAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
-      data:
-        localPosition: {x: 8.155961e-12, y: 0.63398814, z: -0.0045732185}
-        localEulerAngles: {x: -1.8598637e-18, y: 355.35153, z: -2.1054238e-17}
-        size: {x: 1, y: 0.9861382, z: 2.027857}
-    - rid: 3428733649235476497
+    - rid: 3428733649235476498
       type: {class: WeaponTraceAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
         samplePointCount: 4

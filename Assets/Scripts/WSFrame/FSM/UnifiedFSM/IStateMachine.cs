@@ -32,6 +32,20 @@ namespace WS_Modules.FSM
         bool ChangeState(TStateId stateId);
 
         /// <summary>
+        /// 请求切换状态；当前层找不到目标时，会继续向父状态机查找。
+        /// </summary>
+        /// <param name="stateId">要请求进入的状态 ID。</param>
+        /// <returns>请求成功进入目标状态时返回 true。</returns>
+        bool RequestStateChange(TStateId stateId);
+
+        /// <summary>
+        /// 按从当前状态机到目标子状态的路径执行切换。
+        /// </summary>
+        /// <param name="statePath">从当前状态机开始、依次指向嵌套子状态的直接子状态 ID。</param>
+        /// <returns>路径完整有效并完成切换时返回 true。</returns>
+        bool ChangeStatePath(params TStateId[] statePath);
+
+        /// <summary>
         /// 添加从指定源状态出发的自动过渡。
         /// </summary>
         void AddTransition(Transition<TStateId, TOwner> transition);

@@ -135,6 +135,7 @@ namespace RPG.SkillSystem.Editor
         public Vector3 LocalPosition { get; }
         public Vector3 LocalEulerAngles { get; }
         public Vector3 LocalScale { get; }
+        public float PlaybackSpeed { get; }
         public VfxFollowMode FollowMode { get; }
         public VfxStopMode StopMode { get; }
 
@@ -143,7 +144,7 @@ namespace RPG.SkillSystem.Editor
         /// </summary>
         public VfxEditRequest(GameObject prefab, MarkerKey markerKey, int startFrame, int durationFrames,
             Vector3 localPosition, Vector3 localEulerAngles, Vector3 localScale,
-            VfxFollowMode followMode, VfxStopMode stopMode)
+            float playbackSpeed, VfxFollowMode followMode, VfxStopMode stopMode)
         {
             Prefab = prefab;
             MarkerKey = markerKey;
@@ -152,6 +153,7 @@ namespace RPG.SkillSystem.Editor
             LocalPosition = localPosition;
             LocalEulerAngles = localEulerAngles;
             LocalScale = localScale;
+            PlaybackSpeed = playbackSpeed;
             FollowMode = followMode;
             StopMode = stopMode;
         }

@@ -341,6 +341,24 @@ private StateMachine<PlayerState, PlayerController> BuildGroundedFSM()
 - 每帧更新时，先检查根状态机自己的跳转逻辑；根状态机没有切换时，才会执行当前子状态 `Grounded.OnUpdate()`，然后由 `Grounded` 检查 `Walk/Run` 之间的跳转。
 - 因此父状态机的跳转优先级天然高于当前子状态机的内部跳转，适合处理死亡、受击、打断、锁定等全局高优先级状态。
 
+## 层级状态切换
+
+`ChangeState` 只负责当前状态机的直接子状态切换，不会递归查找后代状态。
+
+当叶子状态需要切换到父状态机中的兄弟状态时，使用 `RequestStateChange`。它会先查找当前层，找不到后再向父状态机逐级请求：
+
+```csharp
+Machine.RequestStateChange(PlayerState.Attack);
+```
+
+当控制器需要从根状态机进入嵌套状态时，使用 `ChangeStatePath`。路径中的每一项必须是上一层状态机的直接子状态；路径验证失败时不会改变现有状态：
+
+```csharp
+root.ChangeStatePath(PlayerState.Grounded, PlayerState.Run);
+```
+
+推荐让状态只发起语义化的状态请求，不直接访问 `Machine.Machine`。父状态机仍然可以通过 `Transition` 或 `AnyTransition` 处理死亡、受击等全局打断。
+
 ## 自定义 CanEnter 示例
 
 `CanEnter()` 适合做目标状态进入守卫。

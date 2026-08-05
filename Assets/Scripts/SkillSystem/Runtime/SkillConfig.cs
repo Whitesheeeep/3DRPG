@@ -173,7 +173,7 @@ namespace RPG.SkillSystem
     }
 
     /// <summary>
-    /// 保存特效 Prefab、语义挂点、半开帧区间、局部变换和生命周期策略。
+    /// 保存特效 Prefab、语义挂点、半开帧区间、局部变换、独立播放倍率和生命周期策略。
     /// </summary>
     [Serializable]
     public sealed class VfxSkillClipConfig
@@ -186,6 +186,7 @@ namespace RPG.SkillSystem
         [SerializeField] private Vector3 localPosition;
         [SerializeField] private Vector3 localEulerAngles;
         [SerializeField] private Vector3 localScale = Vector3.one;
+        [SerializeField, Min(0.01f), LabelText("播放速度")] private float playbackSpeed = 1f;
         [SerializeField] private VfxFollowMode followMode;
         [SerializeField] private VfxStopMode stopMode;
 
@@ -198,6 +199,7 @@ namespace RPG.SkillSystem
         public Vector3 LocalPosition => localPosition;
         public Vector3 LocalEulerAngles => localEulerAngles;
         public Vector3 LocalScale => localScale;
+        public float PlaybackSpeed => playbackSpeed;
         public VfxFollowMode FollowMode => followMode;
         public VfxStopMode StopMode => stopMode;
     }

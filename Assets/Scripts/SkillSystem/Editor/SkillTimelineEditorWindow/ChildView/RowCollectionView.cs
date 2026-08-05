@@ -13,7 +13,6 @@ namespace RPG.SkillSystem.Editor
     internal sealed class RowCollectionView
     {
         #region 依赖、状态与事件
-
         private const string CollapseKeyPrefix = "RPG.SkillTimeline.GroupCollapsed.";
         private readonly VisualElement headerRows;
         private readonly VisualElement laneBackgroundRows;
@@ -24,6 +23,7 @@ namespace RPG.SkillSystem.Editor
         private readonly TrackModuleRegistry modules;
         private readonly ItemDragController dragController;
         private readonly ItemContextMenuController contextMenuController;
+        private readonly TrackContextMenuController trackContextMenuController;
         private readonly TrackDragController trackDragController;
 
         // 自己的数据
@@ -39,7 +39,6 @@ namespace RPG.SkillSystem.Editor
         /// 动态行数量、顺序或折叠投影完成重建时触发，供 CanvasController 重新计算内容高度。
         /// </summary>
         public event Action RowsChanged;
-
         #endregion
 
         #region 生命周期与刷新
@@ -54,11 +53,13 @@ namespace RPG.SkillSystem.Editor
         /// <param name="modules">按具体 ViewData 解析轨道模块能力的注册表。</param>
         /// <param name="dragController">管理 Item 本地拖拽草稿与最终提交的控制器。</param>
         /// <param name="contextMenuController">管理 Item 右键吸附与相邻轨道移动菜单的控制器。</param>
+        /// <param name="trackContextMenuController">管理 TrackHeader 静音与锁定菜单的控制器。</param>
         /// <param name="trackDragController">管理 Project 素材拖入轨道的控制器。</param>
         public RowCollectionView(VisualElement headerRows, VisualElement laneBackgroundRows,
             VisualElement laneItemRows, ElementFactory elementFactory, CoordinateMapper mapper,
             TrackModuleRegistry modules, ItemDragController dragController,
-            ItemContextMenuController contextMenuController, TrackDragController trackDragController)
+            ItemContextMenuController contextMenuController,
+            TrackContextMenuController trackContextMenuController, TrackDragController trackDragController)
         {
             this.headerRows = headerRows;
             this.laneBackgroundRows = laneBackgroundRows;
@@ -69,6 +70,8 @@ namespace RPG.SkillSystem.Editor
             this.dragController = dragController ?? throw new ArgumentNullException(nameof(dragController));
             this.contextMenuController = contextMenuController ??
                                          throw new ArgumentNullException(nameof(contextMenuController));
+            this.trackContextMenuController = trackContextMenuController ??
+                                              throw new ArgumentNullException(nameof(trackContextMenuController));
             this.trackDragController = trackDragController ??
                                        throw new ArgumentNullException(nameof(trackDragController));
         }
@@ -87,6 +90,7 @@ namespace RPG.SkillSystem.Editor
             dragController.Reset();
             contextMenuController.Reset();
             trackDragController.Reset();
+            trackContextMenuController.Reset();
             itemViews.Clear();
             rowSelections.Clear();
             headerRows.Clear();
@@ -101,6 +105,7 @@ namespace RPG.SkillSystem.Editor
                 for (int index = 0; index < group.Tracks.Count; index++)
                     AddTrackRow(group.Tracks[index], index, group.Tracks.Count);
             }
+
             RefreshSelection();
             RowsChanged?.Invoke();
         }
@@ -134,6 +139,7 @@ namespace RPG.SkillSystem.Editor
             dragController.Reset();
             contextMenuController.Reset();
             trackDragController.Reset();
+            trackContextMenuController.Reset();
             headerRows.Clear();
             laneBackgroundRows.Clear();
             laneItemRows.Clear();
@@ -141,11 +147,9 @@ namespace RPG.SkillSystem.Editor
             rowSelections.Clear();
             viewModel = null;
         }
-
         #endregion
 
         #region 行构建与交互
-
         // 为首次出现的具体分组类型恢复折叠 SessionState。
         private void EnsureCollapseState(GroupViewData group)
         {
@@ -201,6 +205,7 @@ namespace RPG.SkillSystem.Editor
             SelectionState selection = modules.Get(track).Projection.CreateTrackSelection(track.Id);
             header.RegisterCallback<PointerDownEvent>(_ => viewModel.Select(selection));
             rowSelections.Add(new RowSelectionBinding(header, selection));
+            trackContextMenuController.Register(track, header);
             headerRows.Add(header);
 
             // 背景
@@ -223,6 +228,7 @@ namespace RPG.SkillSystem.Editor
                 dragController.Register(itemView);
                 contextMenuController.Register(itemView);
             }
+
             laneItemRows.Add(itemRow);
         }
 
@@ -267,7 +273,6 @@ namespace RPG.SkillSystem.Editor
                 Selection = selection;
             }
         }
-
         #endregion
     }
 
@@ -277,7 +282,6 @@ namespace RPG.SkillSystem.Editor
     internal sealed class TrackHeaderNameView
     {
         #region 常量与字段
-
         private const string EditingClassName = "is-renaming";
 
         private readonly VisualElement root;
@@ -290,11 +294,9 @@ namespace RPG.SkillSystem.Editor
         private bool isEditing;
         private bool isCompleting;
         private bool isDetached;
-
         #endregion
 
         #region 生命周期
-
         // 绑定当前动态行中的名称控件；元素销毁后回调会随 VisualElement 子树一起释放。
         internal TrackHeaderNameView(VisualElement root, VisualElement scheduleHost, string displayName,
             Action beginEdit, Action<string> commit)
@@ -317,11 +319,9 @@ namespace RPG.SkillSystem.Editor
             nameEditor.RegisterCallback<FocusOutEvent>(OnEditorFocusOut);
             root.RegisterCallback<DetachFromPanelEvent>(OnDetachFromPanel);
         }
-
         #endregion
 
         #region 输入处理
-
         // 仅响应鼠标左键双击；第一次点击仍由标题行负责选中轨道。
         private void OnNamePointerDown(PointerDownEvent evt)
         {
@@ -376,11 +376,9 @@ namespace RPG.SkillSystem.Editor
             isEditing = false;
             isCompleting = true;
         }
-
         #endregion
 
         #region 编辑完成
-
         // 统一完成编辑；提交前先退出本地状态，避免同步 Timeline 重建触发重复 FocusOut。
         private void CompleteEditing(bool shouldCommit, bool deferCommit)
         {
@@ -411,7 +409,6 @@ namespace RPG.SkillSystem.Editor
                 commit(finalName);
             });
         }
-
         #endregion
     }
 }
