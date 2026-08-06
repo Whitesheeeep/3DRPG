@@ -10,7 +10,7 @@ Gameplay Tag 使用 `State.Ready.Combat` 形式的树状路径表达作者语义
 - Editor 作者数据与运行时代码保存在同一个 `GameplayTagDatabase.cs`，并整体放在 `#if UNITY_EDITOR` 区块中。
 - 作者节点以持久 Guid 标识；重命名、Path 修改或拖动不会改变已分配 ID，删除后的 ID 永不复用。
 
-动态 Inspector 配置通过 `GameplayTagPropertyDrawer` 的层级下拉框选择已烘焙 Tag，业务资产只写入 `TagId`，不写数据库引用或 Path。存在多个数据库时，优先使用 Tag 窗口通过 `SessionState` 记录的数据库；没有明确数据库时 Drawer 会提示用户选择。
+动态 Inspector 配置通过 `GameplayTagPropertyDrawer` 的层级下拉框选择已烘焙 Tag，业务资产只写入 `TagId`，不写数据库引用或 Path。叶子 Tag 可直接选择；中间 Tag 进入子菜单后通过首项 `Select This Tag (节点名)` 选择自身，因为 Unity `AdvancedDropdown` 的父项固定用于导航。未烘焙节点只可作为路径分组，不提供选择入口。存在多个数据库时，优先使用 Tag 窗口通过 `SessionState` 记录的数据库；没有明确数据库时 Drawer 会提示用户选择。
 
 ## 2. Editor 作者数据
 
@@ -26,22 +26,39 @@ Path 不持久化，由父链实时计算。Path 字段采用延迟提交：Ente
 
 ## 3. EditorWindow
 
-窗口资源和逻辑位于：
+GAS Editor 只保留一个真正的 `EditorWindow`，顶部选项卡切换同一内容区域中的模块页面：
 
 ```text
+GAS_SettingWindow : EditorWindow
+├─ TabBar   Tag | GE | GA | 扩展空白
+└─ ContentHost
+   ├─ GameplayTagWindow（嵌入式 Tag 子 MVC）
+   ├─ Gameplay Effects Placeholder
+   └─ Gameplay Abilities Placeholder
+```
+
+资源与逻辑位于：
+
+```text
+GAS_Light/Editor
+├─ Logic/Window   GAS_SettingWindow 与 IGASSettingWindow
+└─ Style          主窗口选项卡 UXML/USS
+
 TagSystem/Editor
-├─ Logic   Window、Controller、Service、Bake、Drawer、打开与会话逻辑
-└─ Style   主 UXML、Tree 行 UXML、USS
+├─ Logic   GameplayTagWindow、Controller、Service、Bake、Drawer、打开与会话逻辑
+└─ Style   Tag 页面 UXML、Tree 行 UXML、USS
 ```
 
 窗口使用 UI Toolkit UXML/USS 和接口化 MVC，不引入完整 MVVM：
 
-- Window 只负责加载布局和统一初始化数据库。
+- `GAS_SettingWindow` 实现 `IGASSettingWindow`，只负责选项卡、页面宿主和页面生命周期；当前 GE/GA 显示待实现页面。
+- `GameplayTagWindow` 实现 `IGameplayTagWindow` 与 `IDisposable`，不是 `EditorWindow`，只负责在宿主内容区组合和释放 Tag View/Controller。
+- 切换选项卡时释放旧页面；返回 Tag 时从 `SessionState` 恢复数据库、节点选择、搜索和展开状态。
 - `GameplayTagEditorView` 实现 `IGameplayTagEditorView`，封装控件、TreeView 行、拖放、快捷键、对话框和视觉刷新。
 - Controller 仅依赖 View 接口，管理选择、搜索、展开状态、Service 命令和只读 ViewData 投影，不持有 UI Toolkit 控件。
 - Service 是作者数据变更、Undo、校验和 Bake 的唯一入口。
 - 数据库 Asset GUID、选中节点 Guid、搜索文本和展开 Guid 存入 `SessionState`，脚本编译后自动恢复。
-- 双击 `GameplayTagDatabase` 会打开窗口并切换到对应数据库。
+- 菜单、数据库双击和 PropertyDrawer 缺库入口都会打开同一个 `GAS_SettingWindow`，切换到 Tag 页并恢复或选择数据库。
 
 ### 3.1 Tree 与快捷键
 
@@ -78,18 +95,43 @@ Editor Nodes
 
 调用方向固定为 `ActualTag.MatchesTag(QueryTag)`：更具体的实际标签能匹配自身和祖先查询，父标签不能反向匹配子标签。
 
-| ActualTag | QueryTag | MatchesTag |
-|---|---|---:|
-| `State.Ready.Combat` | `State.Ready.Combat` | true |
-| `State.Ready.Combat` | `State.Ready` | true |
-| `State.Ready.Combat` | `State` | true |
-| `State` | `State.Ready` | false |
+
+| ActualTag            | QueryTag             | MatchesTag |
+| -------------------- | -------------------- | ---------: |
+| `State.Ready.Combat` | `State.Ready.Combat` |       true |
+| `State.Ready.Combat` | `State.Ready`        |       true |
+| `State.Ready.Combat` | `State`              |       true |
+| `State`              | `State.Ready`        |      false |
 
 ## 6. GameplayTagContainer
 
 Container 是纯运行时内存对象：`Tags` 保存显式标签，`ParentTags` 保存由数据库关系展开的隐式祖先。删除显式标签后会从剩余 Tags 完整重建祖先缓存，以正确处理共享祖先。
 
-空查询遵循 UE 语义：`HasAny(empty)` 为 false，`HasAll(empty)` 为 true。
+`IReadOnlyGameplayTagContainer` 统一普通 Container、计数 Container 和 Query 的只读匹配入口；`IGameplayTagContainer` 只为可直接增删的集合增加修改操作。空查询遵循 UE 语义：`HasAny(empty)` 为 false，`HasAll(empty)` 为 true。
+
+### 6.1 GameplayTagCountContainer
+
+`GameplayTagCountContainer` 由后续 AbilitySystem 或 TagOwner 持有，记录同一标签被装备、Ability、GameplayEffect 等来源赋予的次数，但不保存来源对象或 Handle。
+
+- `GetExplicitTagCount` 只返回标签被直接添加的次数。
+- `GetTagCount` 返回标签自身和全部子标签共同贡献的层级次数。
+- 增减显式标签时同步更新全部祖先；任何下溢都会拒绝整个操作。
+- 批量更新先完整校验再提交，失败时不留下部分计数。
+- `TagCountChanged` 发送每次层级计数变化，`TagPresenceChanged` 只发送零边界变化。
+
+Tag Count 与 GE StackCount 分离：前者表示目标当前拥有 Tag 的来源数量，后者表示单个 Active GameplayEffect 的叠层数量。
+
+### 6.2 GameplayTagQuery
+
+当前 Query 使用可直接理解和序列化的三组数组，不使用 Token Stream 或递归表达式：
+
+```text
+AllTags   全部满足
+AnyTags   非空时至少满足一个
+BanedTags  一个都不能满足
+```
+
+三组条件均使用层级 `HasTag`。完全空 Query 表示没有限制，对任意非 null 容器返回 true；任意数组包含非法或未烘焙 Tag 时 Query 整体失效并返回 false。业务资产只序列化数组元素中的稳定 TagId。
 
 ## 7. 手动验证
 
@@ -99,4 +141,4 @@ Container 是纯运行时内存对象：`Tags` 保存显式标签，`ParentTags`
 4. Tree 聚焦测试 F2/Delete，并确认 TextField 编辑时不被拦截。
 5. Bake 后在 Inspector 的 GameplayTag 字段选择层级项，确认业务资产只保存 ID。
 6. 触发脚本编译，确认数据库、选中节点、搜索和展开状态恢复。
-7. 使用 `GameplayTagOdinTester` 验证 UE 方向匹配与 Container 行为。
+7. 使用 `GameplayTagOdinTester` 验证 UE 方向匹配、普通 Container、CountContainer 与简化 Query。

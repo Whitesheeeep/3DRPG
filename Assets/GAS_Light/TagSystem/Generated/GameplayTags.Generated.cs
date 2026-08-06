@@ -10,9 +10,21 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_MyTag = new GameplayTag(0);
         /// <summary>MyTag.的</summary>
         public static readonly GameplayTag Tag_MyTag_的 = new GameplayTag(1);
-        /// <summary>NewTag1</summary>
-        public static readonly GameplayTag Tag_NewTag1 = new GameplayTag(3);
-        /// <summary>NewTag1.NewTag</summary>
-        public static readonly GameplayTag Tag_NewTag1_NewTag = new GameplayTag(2);
+        /// <summary>NewTag</summary>
+        public static readonly GameplayTag Tag_NewTag = new GameplayTag(2);
+        /// <summary>NewTag.NewTag1</summary>
+        public static readonly GameplayTag Tag_NewTag_NewTag1 = new GameplayTag(3);
+        /// <summary>NewTag.NewTag1.NewTag6</summary>
+        public static readonly GameplayTag Tag_NewTag_NewTag1_NewTag6 = new GameplayTag(4);
+        /// <summary>Test</summary>
+        public static readonly GameplayTag Tag_Test = new GameplayTag(5);
+        /// <summary>Test.GE</summary>
+        public static readonly GameplayTag Tag_Test_GE = new GameplayTag(7);
+        /// <summary>Test.GE.Granted</summary>
+        public static readonly GameplayTag Tag_Test_GE_Granted = new GameplayTag(8);
+        /// <summary>Test.GE.Required</summary>
+        public static readonly GameplayTag Tag_Test_GE_Required = new GameplayTag(9);
+        /// <summary>Test.Test_SetByCaller</summary>
+        public static readonly GameplayTag Tag_Test_Test_SetByCaller = new GameplayTag(6);
     }
 }

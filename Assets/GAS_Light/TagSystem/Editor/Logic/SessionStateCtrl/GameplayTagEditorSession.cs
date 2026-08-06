@@ -2,7 +2,7 @@
 using UnityEditor;
 using WS_Modules.GAS.TAG;
 
-namespace WSFrame.GAS.Editor
+namespace WS_Modules.GAS.Editor
 {
     /// <summary>集中保存 Gameplay Tag Editor 跨域重载的会话状态。</summary>
     internal static class GameplayTagEditorSession

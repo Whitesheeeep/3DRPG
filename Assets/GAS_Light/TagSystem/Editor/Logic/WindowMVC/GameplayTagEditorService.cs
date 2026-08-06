@@ -8,7 +8,7 @@ using UnityEditor;
 using UnityEngine;
 using WS_Modules.GAS.TAG;
 
-namespace WSFrame.GAS.Editor
+namespace WS_Modules.GAS.Editor
 {
     /// <summary>表示 Gameplay Tag 作者数据的校验严重程度。</summary>
     public enum GameplayTagValidationSeverity

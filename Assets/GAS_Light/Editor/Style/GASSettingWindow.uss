@@ -1,0 +1,63 @@
+.gas-setting-window {
+    flex-grow: 1;
+    min-width: 700px;
+    min-height: 460px;
+}
+
+.gas-setting-tab-bar {
+    height: 52px;
+    flex-shrink: 0;
+    flex-direction: row;
+    align-items: flex-end;
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-bottom: 6px;
+    border-bottom-width: 1px;
+    border-bottom-color: #3f3f3f;
+}
+
+.gas-setting-tab {
+    width: 110px;
+    height: 40px;
+    flex-shrink: 0;
+    margin-right: 8px;
+    font-size: 13px;
+    -unity-font-style: bold;
+}
+
+.gas-setting-tab--active {
+    background-color: #426d91;
+    border-bottom-width: 3px;
+    border-bottom-color: #72b9f2;
+    color: #ffffff;
+}
+
+.gas-setting-tab-spacer {
+    flex-grow: 1;
+    height: 40px;
+}
+
+.gas-setting-content-host {
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.gas-setting-module-page {
+    flex-grow: 1;
+}
+
+.gas-setting-placeholder {
+    flex-grow: 1;
+    align-items: center;
+    justify-content: center;
+}
+
+.gas-setting-placeholder-title {
+    font-size: 20px;
+    -unity-font-style: bold;
+    margin-bottom: 8px;
+}
+
+.gas-setting-placeholder-message {
+    color: #a9a9a9;
+}

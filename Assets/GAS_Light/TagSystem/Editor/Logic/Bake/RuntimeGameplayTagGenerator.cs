@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using WS_Modules.GAS.TAG;
 
-namespace WSFrame.GAS.Editor
+namespace WS_Modules.GAS.Editor
 {
     /// <summary>生成可由业务代码直接引用的 Gameplay Tag 常量。</summary>
     public static class RuntimeGameplayTagGenerator

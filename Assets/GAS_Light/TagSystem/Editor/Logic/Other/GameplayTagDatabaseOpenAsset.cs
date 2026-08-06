@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEditor.Callbacks;
 using WS_Modules.GAS.TAG;
 
-namespace WSFrame.GAS.Editor
+namespace WS_Modules.GAS.Editor
 {
     /// <summary>把 GameplayTagDatabase 的双击行为路由到专用编辑窗口。</summary>
     internal static class GameplayTagDatabaseOpenAsset
@@ -14,7 +14,7 @@ namespace WSFrame.GAS.Editor
         {
             GameplayTagDatabase database = EditorUtility.InstanceIDToObject(instanceId) as GameplayTagDatabase;
             if (database == null) return false;
-            GAS_SettingWindow.ShowWindow(database);
+            GAS_SettingWindow.ShowGameplayTags(database);
             return true;
         }
     }

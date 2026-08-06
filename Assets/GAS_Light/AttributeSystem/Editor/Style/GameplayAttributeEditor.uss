@@ -1,0 +1,120 @@
+.attribute-page {
+    flex-grow: 1;
+    min-width: 680px;
+    min-height: 420px;
+}
+
+.attribute-sub-tabs {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 6px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(63, 63, 63);
+}
+
+.attribute-toolbar {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 6px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(63, 63, 63);
+}
+
+.attribute-sub-tabs {
+    height: 42px;
+}
+
+.attribute-toolbar {
+    height: 40px;
+}
+
+.attribute-sub-tab {
+    width: 130px;
+    height: 30px;
+    margin-right: 6px;
+    -unity-font-style: bold;
+}
+
+.attribute-sub-tab--active {
+    background-color: rgb(66, 109, 145);
+    color: white;
+}
+
+.attribute-grow {
+    flex-grow: 1;
+}
+
+.attribute-search {
+    width: 230px;
+}
+
+.attribute-object-field {
+    flex-grow: 1;
+    min-width: 260px;
+    margin-right: 8px;
+    flex-direction: row;
+    width: auto;
+    align-items: stretch;
+    flex-shrink: initial;
+}
+
+.attribute-content-page {
+    flex-grow: 1;
+}
+
+.attribute-main-split {
+    flex-grow: 1;
+}
+
+.attribute-list-panel {
+    min-width: 260px;
+    border-right-width: 1px;
+    border-right-color: rgb(63, 63, 63);
+}
+
+.attribute-list {
+    flex-grow: 1;
+}
+
+.attribute-details {
+    flex-grow: 1;
+    padding: 12px;
+}
+
+.attribute-details > * {
+    margin-bottom: 6px;
+}
+
+.attribute-section-title {
+    font-size: 16px;
+    -unity-font-style: bold;
+    margin-bottom: 12px;
+}
+
+.attribute-primary-button {
+    background-color: rgb(66, 109, 145);
+    color: white;
+}
+
+.attribute-status {
+    flex-shrink: 0;
+    margin: 6px;
+}
+
+.attribute-row {
+    flex-grow: 1;
+    flex-direction: row;
+    align-items: center;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+.attribute-row-name {
+    flex-grow: 1;
+}
+
+.attribute-row-id {
+    color: rgb(153, 153, 153);
+}

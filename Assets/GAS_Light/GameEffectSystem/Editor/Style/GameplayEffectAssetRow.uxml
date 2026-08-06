@@ -1,0 +1,10 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
+    <ui:VisualElement class="ge-row ge-effect-row">
+        <ui:VisualElement class="ge-effect-row-header">
+            <ui:Label name="NameLabel" class="ge-row-name" />
+            <ui:TextField name="RenameField" class="ge-row-rename is-hidden" />
+            <ui:Button name="PingButton" text="Ping" tooltip="Locate this GameplayEffectData in the Project window." class="ge-effect-ping" />
+        </ui:VisualElement>
+        <ui:Label name="PathLabel" class="ge-row-path" />
+    </ui:VisualElement>
+</ui:UXML>

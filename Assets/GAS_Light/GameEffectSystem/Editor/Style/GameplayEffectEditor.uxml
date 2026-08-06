@@ -1,0 +1,19 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/GAS_Light/GameEffectSystem/Editor/Style/GameplayEffectEditor.uss" />
+    <ui:VisualElement class="ge-page">
+        <ui:VisualElement class="ge-toolbar">
+            <ui:Button name="CreateEffectButton" text="Create GE" />
+            <ui:Button name="DuplicateEffectButton" text="Duplicate" />
+            <ui:Button name="DeleteEffectButton" text="Delete" />
+            <ui:VisualElement class="ge-grow" />
+            <uie:ToolbarSearchField name="SearchField" class="ge-search" />
+        </ui:VisualElement>
+        <ui:TwoPaneSplitView fixed-pane-index="0" fixed-pane-initial-dimension="235" orientation="Horizontal" class="ge-main-split">
+            <ui:VisualElement class="ge-assets-panel">
+                <ui:Label text="Gameplay Effects" class="ge-section-title" />
+                <ui:ListView name="EffectList" class="ge-asset-list" />
+            </ui:VisualElement>
+            <ui:VisualElement name="DetailsHost" class="ge-details-host" />
+        </ui:TwoPaneSplitView>
+    </ui:VisualElement>
+</ui:UXML>

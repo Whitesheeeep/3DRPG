@@ -1,0 +1,7 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
+    <ui:VisualElement class="ge-row ge-modifier-row">
+        <ui:Label name="IndexLabel" class="ge-modifier-index" />
+        <ui:Label name="NameLabel" class="ge-row-name" />
+        <ui:Label name="AttributeLabel" class="ge-modifier-attribute" />
+    </ui:VisualElement>
+</ui:UXML>

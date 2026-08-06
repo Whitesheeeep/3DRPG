@@ -7,12 +7,14 @@ using UnityEditor.IMGUI.Controls;
 using UnityEngine;
 using WS_Modules.GAS.TAG;
 
-namespace WSFrame.GAS.Editor
+namespace WS_Modules.GAS.Editor
 {
     /// <summary>在 Inspector 中以层级下拉树选择已烘焙 Gameplay Tag，并仅序列化 TagId。</summary>
     [CustomPropertyDrawer(typeof(GameplayTag))]
     public sealed class GameplayTagPropertyDrawer : PropertyDrawer
     {
+        #region Inspector 绘制
+
         /// <summary>绘制 Tag 选择按钮和数据库歧义提示。</summary>
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -29,7 +31,7 @@ namespace WSFrame.GAS.Editor
             if (!EditorGUI.DropdownButton(valueRect, new GUIContent(display), FocusType.Keyboard)) return;
             if (database == null)
             {
-                GAS_SettingWindow.ShowWindow();
+                GAS_SettingWindow.ShowGameplayTags(null);
                 return;
             }
 
@@ -70,13 +72,23 @@ namespace WSFrame.GAS.Editor
             return database.TryGetBakedPath(tag, out string path) ? path : $"Invalid TagId ({tag.Id})";
         }
 
+        #endregion
+
+        #region 层级下拉框
+
         /// <summary>构建支持任意深度路径的 AdvancedDropdown。</summary>
         private sealed class GameplayTagAdvancedDropdown : AdvancedDropdown
         {
+            #region 字段
+
             private readonly GameplayTagDatabase database;
             private readonly Action<int> onSelected;
             private readonly Dictionary<int, int> dropdownIdToTagId = new();
             private int nextDropdownId = 1;
+
+            #endregion
+
+            #region 生命周期
 
             /// <summary>创建标签层级下拉框。</summary>
             public GameplayTagAdvancedDropdown(AdvancedDropdownState state, GameplayTagDatabase database,
@@ -88,43 +100,95 @@ namespace WSFrame.GAS.Editor
                 minimumSize = new Vector2(280f, 320f);
             }
 
-            // 从已烘焙作者节点构造树；新建但未 Bake 的节点不会进入列表。
+            #endregion
+
+            #region 下拉树构建
+
+            // 先构造临时层级，再生成下拉项，以便区分可直接选择的叶子和负责导航的中间节点。
             protected override AdvancedDropdownItem BuildRoot()
             {
+                dropdownIdToTagId.Clear();
+                nextDropdownId = 1;
+
                 var root = new AdvancedDropdownItem("Gameplay Tags");
-                var itemByPath = new Dictionary<string, AdvancedDropdownItem>(StringComparer.Ordinal);
-                foreach (GameplayTagEditorNode node in database.EditorNodes.OrderBy(node => GetPath(node),
-                             StringComparer.Ordinal))
+
+                // 构建临时层级节点，按路径分段组织；中间节点不直接绑定 TagId。
+                var modelRoot = new DropdownNode(string.Empty);
+                foreach (GameplayTagEditorNode node in database.EditorNodes)
                 {
-                    if (!database.TryGetBakedTag(node.Guid, out GameplayTag tag)) continue;
+                    if (node == null || !database.TryGetBakedTag(node.Guid, out GameplayTag tag)) continue;
+
                     string path = GetPath(node);
+                    if (string.IsNullOrEmpty(path)) continue;
+
                     string[] segments = path.Split('.');
-                    string currentPath = string.Empty;
-                    AdvancedDropdownItem parent = root;
+                    DropdownNode current = modelRoot;
                     for (int i = 0; i < segments.Length; i++)
                     {
-                        currentPath = i == 0 ? segments[i] : currentPath + "." + segments[i];
-                        if (!itemByPath.TryGetValue(currentPath, out AdvancedDropdownItem item))
+                        if (!current.Children.TryGetValue(segments[i], out DropdownNode child))
                         {
-                            item = new AdvancedDropdownItem(segments[i]) { id = nextDropdownId++ };
-                            itemByPath.Add(currentPath, item);
-                            parent.AddChild(item);
+                            child = new DropdownNode(segments[i]);
+                            current.Children.Add(segments[i], child);
                         }
 
-                        parent = item;
+                        current = child;
                     }
 
-                    dropdownIdToTagId[parent.id] = tag.Id;
+                    current.TagId = tag.Id;
                 }
+
+                foreach (DropdownNode child in modelRoot.Children.Values)
+                    root.AddChild(BuildDropdownItem(child));
 
                 return root;
             }
+
+            // 构建下拉项，使用 前序遍历
+            // 递归生成 Dropdown；中间 Tag 使用额外叶子项选择自身，避免父项点击只执行导航。
+            private AdvancedDropdownItem BuildDropdownItem(DropdownNode node)
+            {
+                var item = new AdvancedDropdownItem(node.Name) { id = NextDropdownId() };
+                bool hasChildren = node.Children.Count > 0;
+
+                // 叶子节点
+                if (node.TagId.HasValue && !hasChildren)
+                {
+                    dropdownIdToTagId[item.id] = node.TagId.Value;
+                    return item;
+                }
+
+                if (node.TagId.HasValue)
+                {
+                    var selectSelf = new AdvancedDropdownItem($"Select This Tag ({node.Name})")
+                    {
+                        id = NextDropdownId()
+                    };
+                    dropdownIdToTagId[selectSelf.id] = node.TagId.Value;
+                    item.AddChild(selectSelf);
+                }
+
+                foreach (DropdownNode child in node.Children.Values)
+                    item.AddChild(BuildDropdownItem(child));
+
+                return item;
+            }
+
+            // 为本次 BuildRoot 分配唯一的下拉项 ID。
+            private int NextDropdownId() => nextDropdownId++;
+
+            #endregion
+
+            #region 选择处理
 
             /// <summary>把下拉项映射回稳定 TagId。</summary>
             protected override void ItemSelected(AdvancedDropdownItem item)
             {
                 if (dropdownIdToTagId.TryGetValue(item.id, out int tagId)) onSelected(tagId);
             }
+
+            #endregion
+
+            #region 路径查询与内部模型
 
             // 仅在 Editor 中按父链计算显示路径，不写入运行时数据。
             private string GetPath(GameplayTagEditorNode node)
@@ -143,7 +207,32 @@ namespace WSFrame.GAS.Editor
 
                 return string.Join(".", segments);
             }
+
+            /// <summary>表示生成 AdvancedDropdown 前使用的临时标签层级节点。</summary>
+            private sealed class DropdownNode
+            {
+                /// <summary>创建临时层级节点。</summary>
+                /// <param name="name">当前层级的局部名称。</param>
+                public DropdownNode(string name)
+                {
+                    Name = name;
+                }
+
+                /// <summary>获取当前层级的局部名称。</summary>
+                public string Name { get; }
+
+                /// <summary>获取按名称稳定排序的子节点。</summary>
+                public SortedDictionary<string, DropdownNode> Children { get; } =
+                    new(StringComparer.Ordinal);
+
+                /// <summary>获取或设置当前作者节点已烘焙的稳定 TagId；路径占位节点没有该值。</summary>
+                public int? TagId { get; set; }
+            }
+
+            #endregion
         }
+
+        #endregion
     }
 }
 #endif

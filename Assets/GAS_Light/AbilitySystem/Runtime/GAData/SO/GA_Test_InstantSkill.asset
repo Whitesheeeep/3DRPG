@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 71cd00c1b82da5646a3bb449ed8bf70c, type: 3}
+  m_Name: GA_Test_InstantSkill
+  m_EditorClassIdentifier: 
+  description: Editor validation fixture for an Instant Gameplay Ability.
+  activationTagQuery:
+    allTags: []
+    anyTags: []
+    noneTags: []
+  costEffect: {fileID: 11400000, guid: c4005860abd1f1a47be545ea558a6a3c, type: 2}
+  cooldownEffect: {fileID: 0}
+  effects:
+  - {fileID: 11400000, guid: 6861f23c72baf27428de65bec7d0d062, type: 2}

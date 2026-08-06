@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea401299909b4bb199d79ae4b9da5407, type: 3}
+  m_Name: GE_Test_StackBySourceRefresh
+  m_EditorClassIdentifier: 
+  description: "\u6D4B\u8BD5\u53E0\u5C42\u7684"
+  durationType: 1
+  duration: 10
+  period: 0
+  executePeriodicOnApplication: 0
+  targetTagQuery:
+    allTags: []
+    anyTags: []
+    noneTags: []
+  grantedTags: []
+  modifiers:
+  - rid: 7552782473606201372
+  validationSets: []
+  stackingType: 1
+  maxStackCount: 3
+  denyOverflowApplication: 1
+  stackingDurationPolicy: 0
+  stackingPeriodPolicy: 0
+  stackingExpirationPolicy: 0
+  references:
+    version: 2
+    RefIds:
+    - rid: 7552782473606201372
+      type: {class: FixedGameplayEffectModifier, ns: WS_Modules.GAS.GameplayEffect, asm: Assembly-CSharp}
+      data:
+        attribute:
+          id: 2
+        type: 0
+        priority: 0
+        magnitude: 5

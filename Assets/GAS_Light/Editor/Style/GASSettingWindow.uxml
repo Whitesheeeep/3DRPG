@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/GAS_Light/Editor/Style/GASSettingWindow.uss" />
+    <ui:VisualElement class="gas-setting-window">
+        <ui:VisualElement class="gas-setting-tab-bar">
+            <ui:Button name="GameplayTagsTab" text="Tag" class="gas-setting-tab" />
+            <ui:Button name="GameplayAttributesTab" text="Attribute" class="gas-setting-tab" />
+            <ui:Button name="GameplayEffectsTab" text="GE" class="gas-setting-tab" />
+            <ui:Button name="GameplayAbilitiesTab" text="GA" class="gas-setting-tab" />
+            <ui:VisualElement class="gas-setting-tab-spacer" />
+        </ui:VisualElement>
+        <ui:VisualElement name="ContentHost" class="gas-setting-content-host" />
+    </ui:VisualElement>
+</ui:UXML>

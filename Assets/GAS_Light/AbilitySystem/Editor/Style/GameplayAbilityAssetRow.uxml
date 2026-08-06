@@ -1,0 +1,10 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement class="ga-asset-row">
+        <ui:VisualElement class="ga-asset-row-top">
+            <ui:Label name="NameLabel" class="ga-asset-name" />
+            <ui:TextField name="RenameField" class="ga-asset-rename is-hidden" />
+            <ui:Button name="PingButton" text="Ping" class="ga-ping-button" />
+        </ui:VisualElement>
+        <ui:Label name="PathLabel" class="ga-asset-path" />
+    </ui:VisualElement>
+</ui:UXML>
