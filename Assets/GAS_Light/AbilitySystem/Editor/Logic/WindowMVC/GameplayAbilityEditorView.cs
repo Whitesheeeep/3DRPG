@@ -9,7 +9,7 @@ using WS_Modules.GAS.GameplayAbilitySystem;
 
 namespace WS_Modules.GAS.Editor
 {
-    /// <summary>使用 UI Toolkit 渲染 GA 资产列表、原生 SerializedObject 详情和 Validation。</summary>
+    /// <summary>使用 UI Toolkit 渲染 GA 资产列表、原生序列化详情和 Validation。</summary>
     public sealed class GameplayAbilityEditorView : IGameplayAbilityEditorView
     {
         #region 常量与字段
@@ -17,6 +17,7 @@ namespace WS_Modules.GAS.Editor
             "Assets/GAS_Light/AbilitySystem/Editor/Style/GameplayAbilityAssetRow.uxml";
         private const string HiddenClass = "is-hidden";
         private const string ValidationErrorClass = "has-validation-error";
+
         private readonly VisualElement root;
         private readonly Button createButton;
         private readonly Button duplicateButton;
@@ -24,10 +25,12 @@ namespace WS_Modules.GAS.Editor
         private readonly ToolbarSearchField searchField;
         private readonly ListView abilityList;
         private readonly VisualElement detailsRoot;
+        private readonly VisualElement subclassFieldsContainer;
         private readonly Label abilityTitle;
         private readonly VisualElement validationContainer;
         private readonly VisualTreeAsset rowTemplate;
         private readonly List<GameplayAbilityData> displayedAbilities = new();
+        private readonly List<Type> creatableAbilityTypes = new();
         private IReadOnlyDictionary<GameplayAbilityData, GameplayAbilityValidationSeverity>
             validationStates = new Dictionary<GameplayAbilityData, GameplayAbilityValidationSeverity>();
         private GameplayAbilityData boundAbility;
@@ -43,7 +46,7 @@ namespace WS_Modules.GAS.Editor
         /// <inheritdoc />
         public event Action<GameplayAbilityData> AbilitySelected;
         /// <inheritdoc />
-        public event Action CreateRequested;
+        public event Action<Type> CreateRequested;
         /// <inheritdoc />
         public event Action DuplicateRequested;
         /// <inheritdoc />
@@ -57,7 +60,7 @@ namespace WS_Modules.GAS.Editor
         #endregion
 
         #region 生命周期
-        /// <summary>查询并配置已由 GameplayAbilityWindow 实例化的全部控件。</summary>
+        /// <summary>查询并配置 GameplayAbilityWindow 已实例化的全部控件。</summary>
         public GameplayAbilityEditorView(VisualElement root)
         {
             this.root = root ?? throw new ArgumentNullException(nameof(root));
@@ -67,6 +70,7 @@ namespace WS_Modules.GAS.Editor
             searchField = Require<ToolbarSearchField>("SearchField");
             abilityList = Require<ListView>("AbilityList");
             detailsRoot = Require<VisualElement>("AbilityDetailsRoot");
+            subclassFieldsContainer = Require<VisualElement>("SubclassFieldsContainer");
             abilityTitle = Require<Label>("AbilityTitle");
             validationContainer = Require<VisualElement>("ValidationContainer");
             rowTemplate = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(RowUxmlPath);
@@ -95,6 +99,7 @@ namespace WS_Modules.GAS.Editor
             abilityList.selectionChanged -= OnSelectionChanged;
             detailsRoot.UnregisterCallback<SerializedPropertyChangeEvent>(OnSerializedPropertyChanged);
             detailsRoot.Unbind();
+            subclassFieldsContainer.Clear();
             abilityList.itemsSource = null;
             displayedAbilities.Clear();
             boundAbility = null;
@@ -103,7 +108,16 @@ namespace WS_Modules.GAS.Editor
 
         #region 显示操作
         /// <inheritdoc />
-        public void SetSearch(string search) => searchField.SetValueWithoutNotify(search ?? string.Empty);
+        public void SetCreatableAbilityTypes(IReadOnlyList<Type> types)
+        {
+            creatableAbilityTypes.Clear();
+            for (int i = 0; i < types.Count; i++) creatableAbilityTypes.Add(types[i]);
+            createButton.SetEnabled(creatableAbilityTypes.Count > 0);
+        }
+
+        /// <inheritdoc />
+        public void SetSearch(string search) =>
+            searchField.SetValueWithoutNotify(search ?? string.Empty);
 
         /// <inheritdoc />
         public void RenderAbilities(
@@ -124,6 +138,7 @@ namespace WS_Modules.GAS.Editor
         public void BindAbility(GameplayAbilityData ability)
         {
             detailsRoot.Unbind();
+            subclassFieldsContainer.Clear();
             boundAbility = ability;
             bool hasAbility = ability != null;
             detailsRoot.EnableInClassList(HiddenClass, !hasAbility);
@@ -131,7 +146,10 @@ namespace WS_Modules.GAS.Editor
             duplicateButton.SetEnabled(hasAbility);
             deleteButton.SetEnabled(hasAbility);
             if (!hasAbility) return;
-            detailsRoot.Bind(new SerializedObject(ability));
+
+            var serializedObject = new SerializedObject(ability);
+            BuildSubclassFields(serializedObject);
+            detailsRoot.Bind(serializedObject);
             detailsRoot.schedule.Execute(ConfigureDelayedInputs);
         }
 
@@ -187,16 +205,33 @@ namespace WS_Modules.GAS.Editor
         #endregion
 
         #region 事件处理
-        // 将工具栏按钮转换为不携带 UI 控件的用户意图。
-        private void OnCreateClicked() => CreateRequested?.Invoke();
+        // 创建菜单只包含 Service 发现的具体 Data 类型。
+        private void OnCreateClicked()
+        {
+            var menu = new GenericMenu();
+            for (int i = 0; i < creatableAbilityTypes.Count; i++)
+            {
+                Type abilityType = creatableAbilityTypes[i];
+                string label = ObjectNames.NicifyVariableName(
+                    abilityType.Name.Replace("GameplayAbilityData", string.Empty));
+                menu.AddItem(
+                    new GUIContent(label),
+                    false,
+                    () => CreateRequested?.Invoke(abilityType));
+            }
+            menu.ShowAsContext();
+        }
+
         // 转发复制当前资产意图。
         private void OnDuplicateClicked() => DuplicateRequested?.Invoke();
+
         // 转发删除当前资产意图。
         private void OnDeleteClicked() => DeleteRequested?.Invoke();
-        // 搜索字段只发送最新字符串，不自行扫描资产。
+
+        // 搜索字段仅发送最新文本。
         private void OnSearchChanged(ChangeEvent<string> evt) => SearchChanged?.Invoke(evt.newValue);
 
-        // ListView 选择变化只发送当前 Model 引用；刷新选择期间不重复通知 Controller。
+        // ListView 选择变化只发送真实 Model 引用。
         private void OnSelectionChanged(IEnumerable<object> selection)
         {
             if (suppressSelection) return;
@@ -208,7 +243,7 @@ namespace WS_Modules.GAS.Editor
             AbilitySelected?.Invoke(null);
         }
 
-        // 原生绑定写回后通知 Controller 重新校验，不重复修改 SerializedProperty。
+        // 原生序列化写回后通知 Controller 重新校验。
         private void OnSerializedPropertyChanged(SerializedPropertyChangeEvent evt)
         {
             if (boundAbility != null) AbilityChanged?.Invoke();
@@ -216,7 +251,7 @@ namespace WS_Modules.GAS.Editor
         #endregion
 
         #region ListView 行
-        // ListView 使用稳定 Model 列表，makeItem 仅构造并注册一次动态行回调。
+        // ListView 使用稳定 Model 列表，makeItem 只注册一次动态行回调。
         private void ConfigureList()
         {
             abilityList.itemsSource = displayedAbilities;
@@ -227,7 +262,7 @@ namespace WS_Modules.GAS.Editor
             abilityList.unbindItem = UnbindRow;
         }
 
-        // 克隆独立行 UXML 并把回调生命周期封装到 RowState。
+        // 克隆独立行 UXML 并封装回调生命周期。
         private VisualElement MakeRow()
         {
             TemplateContainer row = rowTemplate.CloneTree();
@@ -235,17 +270,16 @@ namespace WS_Modules.GAS.Editor
             return row;
         }
 
-        // 虚拟化绑定只替换当前 Ability 引用和显示文本。
+        // 虚拟化绑定只替换当前 Ability 引用和显示状态。
         private void BindRow(VisualElement element, int index)
         {
             var state = (AbilityRowState)element.userData;
             GameplayAbilityData ability = displayedAbilities[index];
-            bool hasValidationError =
-                validationStates.TryGetValue(
-                    ability,
-                    out GameplayAbilityValidationSeverity severity) &&
+            bool hasError = validationStates.TryGetValue(
+                ability,
+                out GameplayAbilityValidationSeverity severity) &&
                 severity == GameplayAbilityValidationSeverity.Error;
-            state.Bind(ability, hasValidationError);
+            state.Bind(ability, hasError);
             if (!ReferenceEquals(pendingRenameAbility, ability)) return;
             string text = pendingRenameText;
             pendingRenameAbility = null;
@@ -253,11 +287,11 @@ namespace WS_Modules.GAS.Editor
             state.BeginRename(text);
         }
 
-        // 行回收时取消输入状态，避免旧资产在新行上提交。
+        // 行回收时取消输入状态，避免向新绑定资产提交旧值。
         private static void UnbindRow(VisualElement element, int index) =>
             ((AbilityRowState)element.userData).Unbind();
 
-        // 行双击时同步选择并进入行内重命名。
+        // 双击名称时同步选择并进入行内重命名。
         private void BeginRowRename(GameplayAbilityData ability, AbilityRowState state)
         {
             int index = displayedAbilities.IndexOf(ability);
@@ -265,15 +299,37 @@ namespace WS_Modules.GAS.Editor
             state.BeginRename(ability.name);
         }
 
-        // 行提交使用明确资产引用，避免虚拟化或排序后重命名错误目标。
+        // 提交请求携带明确资产引用。
         private void SubmitRename(GameplayAbilityData ability, string value) =>
             RenameSubmitted?.Invoke(new GameplayAbilityRenameRequest(ability, value));
-        // Ping 只发送目标资产，不修改 ListView 选择。
+
+        // Ping 不改变 ListView 选择。
         private void Ping(GameplayAbilityData ability) => PingRequested?.Invoke(ability);
         #endregion
 
-        #region 内部辅助
-        // 所有可编辑文本与数值字段采用延迟提交，避免每次按键触发资产刷新和校验。
+        #region 详情绑定
+        // 动态渲染具体子类新增字段；公共字段由固定 UXML 负责。
+        private void BuildSubclassFields(SerializedObject serializedObject)
+        {
+            SerializedProperty iterator = serializedObject.GetIterator();
+            bool enterChildren = true;
+            while (iterator.NextVisible(enterChildren))
+            {
+                enterChildren = false;
+                if (IsCommonProperty(iterator.propertyPath)) continue;
+                subclassFieldsContainer.Add(new PropertyField(iterator.Copy()));
+            }
+        }
+
+        // 排除脚本引用和 GameplayAbilityData 的固定公共字段。
+        private static bool IsCommonProperty(string propertyPath) =>
+            propertyPath == "m_Script" ||
+            propertyPath == "description" ||
+            propertyPath == "activationTagQuery" ||
+            propertyPath == "costEffect" ||
+            propertyPath == "cooldownEffect";
+
+        // 文本和数值字段使用延迟提交，减少输入过程中的重复校验。
         private void ConfigureDelayedInputs()
         {
             detailsRoot.Query<TextField>().ForEach(field => field.isDelayed = true);
@@ -281,7 +337,7 @@ namespace WS_Modules.GAS.Editor
             detailsRoot.Query<IntegerField>().ForEach(field => field.isDelayed = true);
         }
 
-        // 查询必需 UXML 元素；缺失时立即暴露布局和代码契约不一致。
+        // 必需 UXML 元素缺失时立即暴露布局契约错误。
         private T Require<T>(string name) where T : VisualElement
         {
             T element = root.Q<T>(name);
@@ -293,7 +349,7 @@ namespace WS_Modules.GAS.Editor
         #endregion
 
         #region 嵌套类型
-        /// <summary>封装单个虚拟化 GA 资产行的控件、绑定身份和行内重命名状态。</summary>
+        /// <summary>封装单个虚拟化 GA 行的控件、绑定身份和行内重命名状态。</summary>
         private sealed class AbilityRowState
         {
             private readonly GameplayAbilityEditorView owner;
@@ -306,13 +362,13 @@ namespace WS_Modules.GAS.Editor
             private bool renaming;
             private bool suppressFocusOut;
 
-            // 行构造时注册一次回调，后续 bindItem 只更换 Model 引用。
+            // 构造时注册一次回调，bindItem 只更换 Model 引用。
             internal AbilityRowState(VisualElement root, GameplayAbilityEditorView owner)
             {
                 this.owner = owner;
                 visualRoot = root.Q<VisualElement>(className: "ga-asset-row") ??
                     throw new InvalidOperationException(
-                        "Gameplay Ability asset row UXML is missing the 'ga-asset-row' root class.");
+                        "Gameplay Ability row UXML is missing the 'ga-asset-row' root class.");
                 nameLabel = root.Q<Label>("NameLabel");
                 renameField = root.Q<TextField>("RenameField");
                 pathLabel = root.Q<Label>("PathLabel");
@@ -324,7 +380,7 @@ namespace WS_Modules.GAS.Editor
                 pingButton.RegisterCallback<PointerDownEvent>(StopPingPointer);
             }
 
-            // 把当前虚拟化行绑定到真实 GA 资产，不复制业务字段。
+            // 绑定真实 GA 资产并重置虚拟化残留样式。
             internal void Bind(GameplayAbilityData value, bool hasValidationError)
             {
                 ability = value;
@@ -334,7 +390,7 @@ namespace WS_Modules.GAS.Editor
                 if (!renaming) SetRenameVisible(false);
             }
 
-            // 行回收时取消重命名，防止 FocusOut 提交已经切换的资产。
+            // 回收时取消编辑和错误背景。
             internal void Unbind()
             {
                 suppressFocusOut = true;
@@ -344,7 +400,7 @@ namespace WS_Modules.GAS.Editor
                 ability = null;
             }
 
-            // 显示延迟输入框，并在下一次 Panel 更新后聚焦和全选。
+            // 下一次 Panel 更新聚焦并全选行内输入。
             internal void BeginRename(string value)
             {
                 if (ability == null) return;
@@ -358,7 +414,7 @@ namespace WS_Modules.GAS.Editor
                 });
             }
 
-            // 仅名称 Label 的双击进入重命名，路径和 Ping 保持原行为。
+            // 仅名称 Label 双击进入重命名。
             private void OnNamePointerDown(PointerDownEvent evt)
             {
                 if (evt.button != 0 || evt.clickCount != 2 || ability == null) return;
@@ -366,7 +422,7 @@ namespace WS_Modules.GAS.Editor
                 evt.StopImmediatePropagation();
             }
 
-            // Enter 提交，Escape 取消；两者都抑制随后的 FocusOut 重复提交。
+            // Enter 提交，Escape 取消，并抑制随后 FocusOut 重复提交。
             private void OnRenameKeyDown(KeyDownEvent evt)
             {
                 if (!renaming) return;
@@ -382,13 +438,13 @@ namespace WS_Modules.GAS.Editor
                 }
             }
 
-            // 正常失焦提交一次；显式 Enter/Escape 和虚拟化回收会抑制该回调。
+            // 正常失焦提交一次。
             private void OnRenameFocusOut(FocusOutEvent evt)
             {
                 if (renaming && !suppressFocusOut) CommitRename();
             }
 
-            // 先退出编辑显示再发送请求，避免资产刷新时旧 TextField 仍持有焦点。
+            // 先退出编辑显示，再通知 Controller 刷新资产。
             private void CommitRename()
             {
                 GameplayAbilityData target = ability;
@@ -399,7 +455,7 @@ namespace WS_Modules.GAS.Editor
                 if (target != null) owner.SubmitRename(target, value);
             }
 
-            // 取消时恢复 Label，不向 Controller 写入任何资产状态。
+            // 取消只恢复 Label，不写入资产。
             private void CancelRename()
             {
                 suppressFocusOut = true;
@@ -407,7 +463,7 @@ namespace WS_Modules.GAS.Editor
                 suppressFocusOut = false;
             }
 
-            // 切换名称 Label 与输入框的 USS 显隐状态。
+            // 切换名称 Label 与输入框显示。
             private void SetRenameVisible(bool visible)
             {
                 renaming = visible;
@@ -415,13 +471,13 @@ namespace WS_Modules.GAS.Editor
                 renameField.EnableInClassList(HiddenClass, !visible);
             }
 
-            // Ping 按钮直接发送当前绑定资产。
+            // Ping 当前绑定资产。
             private void OnPingClicked()
             {
                 if (ability != null) owner.Ping(ability);
             }
 
-            // 阻止 Ping PointerDown 冒泡到 ListView 行选择逻辑。
+            // 阻止 Ping PointerDown 冒泡到列表选择。
             private static void StopPingPointer(PointerDownEvent evt) => evt.StopPropagation();
         }
         #endregion

@@ -9,17 +9,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5ff5e423f9444cef9054d5317345dca6, type: 3}
-  m_Name: GA_Test
+  m_Script: {fileID: 11500000, guid: 71cd00c1b82da5646a3bb449ed8bf70c, type: 3}
+  m_Name: GA_Test_InstantSkill
   m_EditorClassIdentifier: 
-  description: "\u6D4B\u8BD5\u7528 GA"
+  description: Editor validation fixture for an Instant Gameplay Ability.
   activationTagQuery:
     allTags: []
     anyTags: []
     noneTags: []
   costEffect: {fileID: 11400000, guid: c4005860abd1f1a47be545ea558a6a3c, type: 2}
-  cooldownEffect: {fileID: 11400000, guid: f42153ccd11d0b64d95d878f0ce9053d, type: 2}
-  selfEffects:
-  - {fileID: 11400000, guid: 504f792f671132a47b66379cd5d0e9c7, type: 2}
-  targetEffects:
+  cooldownEffect: {fileID: 0}
+  effects:
   - {fileID: 11400000, guid: 6861f23c72baf27428de65bec7d0d062, type: 2}

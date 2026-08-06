@@ -1,22 +1,31 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using WS_Modules.CustomEventSystem;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.GameplayEffect;
 using WS_Modules.GAS.TAG;
 
 namespace WS_Modules.GAS.GameplayAbilitySystem
 {
-    /// <summary>为单个 ASC 管理 Ability Spec、激活 Runtime 与一次性基础 GE 执行。</summary>
+    /// <summary>为单个 ASC 管理 Ability Spec、激活 Runtime 及终态事件。</summary>
     public sealed class GameplayAbilityCtrl : IGameplayAbilityCtrl
     {
         #region 字段
-        // 记录玩家拥有的技能
         private readonly List<GameplayAbilitySpec> grantedAbilities = new();
-        // 记录当前激活的技能运行时
+        // 运行时激活的技能
         private readonly List<GameplayAbilityRuntime> activeRuntimes = new();
-        // Handle 与 ActivationId 仅在当前 Controller 内唯一，溢出时立即抛出异常。
+        private readonly List<Action<float>> tickCallbacks = new();
         private int nextHandleId = 1;
         private int nextActivationId = 1;
+        #endregion
+
+        #region 事件
+        /// <inheritdoc />
+        public event Action<GameplayAbilityRuntime> AbilityActivated;
+        /// <inheritdoc />
+        public event Action<GameplayAbilityRuntime> AbilityEnded;
+        /// <inheritdoc />
+        public event Action<GameplayAbilityRuntime> AbilityCancelled;
         #endregion
 
         #region 属性与构造
@@ -28,7 +37,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         public IReadOnlyList<GameplayAbilityRuntime> ActiveRuntimes => activeRuntimes;
 
         /// <summary>创建只服务指定 Source ASC 的 Ability Controller。</summary>
-        /// <param name="owner">拥有全部 Spec 与 Runtime 的 ASC。</param>
+        /// <param name="owner">拥有全部 Spec、Runtime 与 Tick 回调的 ASC。</param>
         /// <exception cref="ArgumentNullException">owner 为 null。</exception>
         public GameplayAbilityCtrl(AbilitySystemComponentBase owner)
         {
@@ -78,7 +87,36 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         }
         #endregion
 
-        #region 激活与执行
+        #region Tick 推进
+        /// <summary>推进当前 Controller 注册的 Ability Tick 回调。</summary>
+        /// <param name="deltaTime">本次推进的秒数。</param>
+        public void Tick(float deltaTime)
+        {
+            if (float.IsNaN(deltaTime) || float.IsInfinity(deltaTime) || deltaTime < 0f)
+                return;
+
+            // 在 Tick 回调中可能会移除自身或其他回调，因此使用倒序遍历。
+            for (int i = tickCallbacks.Count - 1; i >= 0; i--)
+            {
+                tickCallbacks[i](deltaTime);
+            }
+        }
+
+        /// <summary>获取当前仍注册在 Controller 中的 Tick 回调数量，仅供测试和诊断使用。</summary>
+        internal int TickRegistrationCount => tickCallbacks.Count;
+
+        // TickTask 启动时注册回调；返回的句柄负责在 Task 终止时移除回调。
+        internal IUnRegister RegisterTick(Action<float> callback)
+        {
+            if (callback == null) throw new ArgumentNullException(nameof(callback));
+            tickCallbacks.Add(callback);
+            return new CustomUnRegister(() => UnRegisterTick(callback));
+        }
+
+        private void UnRegisterTick(Action<float> callback) => tickCallbacks.Remove(callback);
+        #endregion
+
+        #region 激活
         /// <inheritdoc />
         public bool TryActivate(
             GameplayAbilityHandle handle,
@@ -89,79 +127,77 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             if (!TryGetAbilitySpec(handle, out GameplayAbilitySpec spec) ||
                 spec.Level < 1 ||
                 !spec.Data.ActivationTagQuery.Matches(Owner.Tags) ||
-                !HasValidActivationPolicies(spec.Data))
+                !HasValidActivationPolicies(spec.Data) ||
+                !spec.Data.IsRuntimeConfigurationValid)
                 return false;
 
             GameplayEffectData cooldown = spec.Data.CooldownEffect;
             if (cooldown != null && Owner.GameEffectCtrl.HasActiveEffect(cooldown)) return false;
 
+            GameplayAbilityRuntime candidate = spec.Data.CreateRuntimeInstance(
+                AllocateActivationId(), spec, Owner, setByCaller);
+            if (candidate == null)
+                throw new InvalidOperationException("GameplayAbilityData 不能返回空 Runtime。");
+
             GameEffectRuntime cooldownRuntime = null;
             if (cooldown != null &&
                 !Owner.GameEffectCtrl.TryApply(
-                    cooldown,
-                    Owner,
-                    spec.Level,
-                    setByCaller,
-                    out cooldownRuntime))
+                    cooldown, Owner, spec.Level, setByCaller, out cooldownRuntime))
                 return false;
 
             GameplayEffectData cost = spec.Data.CostEffect;
             if (cost != null &&
                 !Owner.GameEffectCtrl.TryApply(cost, Owner, spec.Level, setByCaller, out _))
             {
-                Owner.GameEffectCtrl.TryRemove(cooldownRuntime);
+                if (cooldownRuntime != null)
+                    Owner.GameEffectCtrl.TryRemove(cooldownRuntime);
                 return false;
             }
 
-            runtime = new GameplayAbilityRuntime(
-                AllocateActivationId(),
-                spec,
-                Owner,
-                setByCaller);
+            runtime = candidate;
+            runtime.Finished += OnRuntimeFinished;
             activeRuntimes.Add(runtime);
-            return true;
-        }
-
-        /// <inheritdoc />
-        public bool TryExecuteEffects(
-            GameplayAbilityRuntime runtime,
-            IReadOnlyList<AbilitySystemComponentBase> targets,
-            out IReadOnlyList<GameEffectRuntime> activeEffects)
-        {
-            activeEffects = Array.Empty<GameEffectRuntime>();
-            if (!CanExecute(runtime, targets)) return false;
-
-            GameplayAbilityData data = runtime.Spec.Data;
-            var results = new List<GameEffectRuntime>();
-            ApplyEffectsToTarget(data.SelfEffects, runtime, Owner, results);
-            for (int targetIndex = 0; targetIndex < targets.Count; targetIndex++)
-                ApplyEffectsToTarget(data.TargetEffects, runtime, targets[targetIndex], results);
-
-            runtime.MarkExecuted();
-            activeEffects = results;
+            runtime.Activate();
+            AbilityActivated?.Invoke(runtime);
+            if (runtime.State == GameplayAbilityRuntimeState.Active)
+                runtime.Start();
             return true;
         }
         #endregion
 
         #region 生命周期
         /// <inheritdoc />
-        public bool TryEnd(GameplayAbilityRuntime runtime) => TryFinish(runtime, false);
+        public bool TryEnd(GameplayAbilityRuntime runtime) =>
+            OwnsActiveRuntime(runtime) && runtime.End();
 
         /// <inheritdoc />
-        public bool TryCancel(GameplayAbilityRuntime runtime) => TryFinish(runtime, true);
+        public bool TryCancel(GameplayAbilityRuntime runtime) =>
+            OwnsActiveRuntime(runtime) && runtime.Cancel();
 
         /// <inheritdoc />
         public void Clear()
         {
-            for (int i = activeRuntimes.Count - 1; i >= 0; i--)
-                activeRuntimes[i].MarkCancelled();
-            activeRuntimes.Clear();
+            while (activeRuntimes.Count > 0)
+                activeRuntimes[activeRuntimes.Count - 1].Cancel();
+            tickCallbacks.Clear();
             grantedAbilities.Clear();
+        }
+
+        // Runtime 已先进入终态；Controller 先移除，再发送唯一公开终态事件。
+        private void OnRuntimeFinished(GameplayAbilityRuntime runtime)
+        {
+            runtime.Finished -= OnRuntimeFinished;
+            if (!activeRuntimes.Remove(runtime)) return;
+
+            if (runtime.State == GameplayAbilityRuntimeState.Ended)
+                AbilityEnded?.Invoke(runtime);
+            else if (runtime.State == GameplayAbilityRuntimeState.Cancelled)
+                AbilityCancelled?.Invoke(runtime);
         }
         #endregion
 
         #region 校验与内部辅助
-        // Cost/Cooldown 是序列化边界输入，运行时仍验证其 Duration Policy。
+        // Cost/Cooldown 是序列化边界输入，运行时仍验证 Duration Policy。
         private static bool HasValidActivationPolicies(GameplayAbilityData data) =>
             (data.CostEffect == null ||
              data.CostEffect.DurationType == E_GameEffectDurationType.Instant) &&
@@ -169,71 +205,14 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
              data.CooldownEffect.DurationType == E_GameEffectDurationType.Duration ||
              data.CooldownEffect.DurationType == E_GameEffectDurationType.Infinite);
 
-        // 只允许所属 Controller 的 Active 且未执行 Runtime；目标引用在任何 GE 提交前统一验证。
-        private bool CanExecute(
-            GameplayAbilityRuntime runtime,
-            IReadOnlyList<AbilitySystemComponentBase> targets)
-        {
-            if (runtime == null || targets == null ||
-                runtime.State != GameplayAbilityRuntimeState.Active ||
-                runtime.HasExecuted || !activeRuntimes.Contains(runtime) ||
-                !ReferenceEquals(runtime.Source, Owner) ||
-                !HasValidEffectReferences(runtime.Spec.Data))
-                return false;
+        // Runtime 必须仍在当前 Controller 的 Active 集合且 Source 相同。
+        private bool OwnsActiveRuntime(GameplayAbilityRuntime runtime) =>
+            runtime != null &&
+            runtime.State == GameplayAbilityRuntimeState.Active &&
+            ReferenceEquals(runtime.Source, Owner) &&
+            activeRuntimes.Contains(runtime);
 
-            for (int i = 0; i < targets.Count; i++)
-                if (targets[i] == null)
-                    return false;
-            return true;
-        }
-
-        // 作者列表为空合法，但任何空元素都会使本轮在提交前失败，避免配置错误造成半执行。
-        private static bool HasValidEffectReferences(GameplayAbilityData data) =>
-            HasNoNullItems(data.SelfEffects) && HasNoNullItems(data.TargetEffects);
-
-        // 检查只读 GE 列表中不存在空资产引用。
-        private static bool HasNoNullItems(IReadOnlyList<GameplayEffectData> effects)
-        {
-            for (int i = 0; i < effects.Count; i++)
-                if (effects[i] == null)
-                    return false;
-            return true;
-        }
-
-        // 单项 GE 拒绝只影响该目标；持续 GE 成功时把现有 Runtime 交还外部管理。
-        private static void ApplyEffectsToTarget(
-            IReadOnlyList<GameplayEffectData> effects,
-            GameplayAbilityRuntime runtime,
-            AbilitySystemComponentBase target,
-            ICollection<GameEffectRuntime> activeEffects)
-        {
-            for (int i = 0; i < effects.Count; i++)
-                if (target.GameEffectCtrl.TryApply(
-                        effects[i],
-                        runtime.Source,
-                        runtime.Level,
-                        runtime.SetByCaller,
-                        out GameEffectRuntime activeEffect) &&
-                    activeEffect != null)
-                    activeEffects.Add(activeEffect);
-        }
-
-        // End 与 Cancel 共用所有权检查和集合移除，仅最终状态不同。
-        private bool TryFinish(GameplayAbilityRuntime runtime, bool cancelled)
-        {
-            int index = activeRuntimes.IndexOf(runtime);
-            if (index < 0 || runtime == null ||
-                runtime.State != GameplayAbilityRuntimeState.Active ||
-                !ReferenceEquals(runtime.Source, Owner))
-                return false;
-
-            activeRuntimes.RemoveAt(index);
-            if (cancelled) runtime.MarkCancelled();
-            else runtime.MarkEnded();
-            return true;
-        }
-
-        // 查找指定 Spec 是否仍有尚未结束或取消的激活实例。
+        // 查找指定 Spec 是否仍有激活实例。
         private bool HasActiveRuntime(GameplayAbilitySpec spec)
         {
             for (int i = 0; i < activeRuntimes.Count; i++)
@@ -242,7 +221,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             return false;
         }
 
-        // 单调分配当前 Controller 内 Spec Handle；溢出时立即暴露生命周期异常。
+        // 单调分配当前 Controller 内 Spec Handle。
         private int AllocateHandleId()
         {
             int id = nextHandleId;
@@ -250,7 +229,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             return id;
         }
 
-        // 单调分配当前 Controller 内 ActivationId；溢出时立即暴露生命周期异常。
+        // 单调分配当前 Controller 内 ActivationId。
         private int AllocateActivationId()
         {
             int id = nextActivationId;

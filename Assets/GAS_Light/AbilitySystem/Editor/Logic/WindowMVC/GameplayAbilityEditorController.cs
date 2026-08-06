@@ -6,7 +6,7 @@ using WS_Modules.GAS.GameplayAbilitySystem;
 
 namespace WS_Modules.GAS.Editor
 {
-    /// <summary>协调 GA 资产查询、SessionState、原生详情绑定与 Editor 资产命令。</summary>
+    /// <summary>协调 GA 资产查询、Session、详情绑定、校验与 Editor 资产命令。</summary>
     public sealed class GameplayAbilityEditorController : IDisposable
     {
         #region 字段
@@ -22,13 +22,14 @@ namespace WS_Modules.GAS.Editor
         #endregion
 
         #region 生命周期
-        /// <summary>连接 GA View 与 Service，并恢复 SessionState 中的资产和搜索状态。</summary>
+        /// <summary>连接 View 与 Service，并恢复 Session 中的资产和搜索状态。</summary>
         public GameplayAbilityEditorController(IGameplayAbilityEditorView view)
         {
             this.view = view ?? throw new ArgumentNullException(nameof(view));
             service = new GameplayAbilityEditorService();
             search = GameplayAbilityEditorSession.Search;
             Subscribe();
+            view.SetCreatableAbilityTypes(service.FindCreatableAbilityTypes());
             view.SetSearch(search);
             RefreshAssets(GameplayAbilityEditorSession.GetAbility());
         }
@@ -43,19 +44,21 @@ namespace WS_Modules.GAS.Editor
         #endregion
 
         #region 公开操作
-        /// <summary>切换当前 GA，并按需恢复 SessionState 中的资产。</summary>
+        /// <summary>切换当前 GA，并按需恢复 Session 资产。</summary>
         public void SetAbility(GameplayAbilityData ability, bool restoreSelection)
         {
             GameplayAbilityData target = ability;
-            if (target == null && restoreSelection) target = GameplayAbilityEditorSession.GetAbility();
-            if (target != null && !allAbilities.Contains(target)) RefreshAssetCache();
+            if (target == null && restoreSelection)
+                target = GameplayAbilityEditorSession.GetAbility();
+            if (target != null && !allAbilities.Contains(target))
+                RefreshAssetCache();
             SelectAbility(target);
             RenderList();
         }
         #endregion
 
         #region 事件订阅
-        // View、Undo 和 Project 回调必须在同一生命周期内对称连接。
+        // View、Undo 与 Project 回调在同一生命周期内对称连接。
         private void Subscribe()
         {
             view.SearchChanged += OnSearchChanged;
@@ -70,7 +73,7 @@ namespace WS_Modules.GAS.Editor
             EditorApplication.projectChanged += OnProjectChanged;
         }
 
-        // 释放页面前先解除所有外部事件，防止模块切换后旧 Controller 继续刷新。
+        // 页面释放前解除外部事件，防止旧 Controller 继续刷新。
         private void Unsubscribe()
         {
             view.SearchChanged -= OnSearchChanged;
@@ -87,7 +90,7 @@ namespace WS_Modules.GAS.Editor
         #endregion
 
         #region 事件处理
-        // 搜索即时更新稳定过滤列表，并持久化到 SessionState。
+        // 搜索即时更新过滤列表并持久化到 SessionState。
         private void OnSearchChanged(string value)
         {
             search = value ?? string.Empty;
@@ -95,24 +98,24 @@ namespace WS_Modules.GAS.Editor
             RenderList();
         }
 
-        // 选择变化统一更新 Session、详情绑定和 Validation。
+        // 选择变化统一更新 Session、详情绑定与校验。
         private void OnAbilitySelected(GameplayAbilityData ability) => SelectAbility(ability);
 
-        // 创建成功后刷新项目列表并选中新资产。
-        private void OnCreateRequested()
+        // 创建成功后刷新项目列表并选择新资产。
+        private void OnCreateRequested(Type abilityType)
         {
-            GameplayAbilityData created = service.CreateAbility();
+            GameplayAbilityData created = service.CreateAbility(abilityType);
             if (created != null) RefreshAssets(created);
         }
 
-        // 复制成功后刷新排序并选中新资产。
+        // 复制成功后刷新排序并选择新资产。
         private void OnDuplicateRequested()
         {
             GameplayAbilityData duplicate = service.DuplicateAbility(currentAbility);
             if (duplicate != null) RefreshAssets(duplicate);
         }
 
-        // 删除前由 View 负责确认；成功后选择过滤列表中的邻近资产。
+        // 删除成功后选择过滤列表中的邻近资产。
         private void OnDeleteRequested()
         {
             if (currentAbility == null || !view.ConfirmDelete(currentAbility)) return;
@@ -132,7 +135,7 @@ namespace WS_Modules.GAS.Editor
             view.RenderAbilities(filteredAbilities, currentAbility);
         }
 
-        // 重命名失败时恢复行内输入；成功后保持对象身份并重新排序。
+        // 重命名失败时恢复输入；成功时保持对象身份并重新排序。
         private void OnRenameSubmitted(GameplayAbilityRenameRequest request)
         {
             if (!service.TryRenameAbility(request.Ability, request.Name, out string error))
@@ -145,18 +148,22 @@ namespace WS_Modules.GAS.Editor
             RefreshAssets(request.Ability);
         }
 
-        // 原生 SerializedObject 写回后仅重跑跨字段校验。
+        // 原生 SerializedObject 写回后重新校验当前资产。
         private void OnAbilityChanged() => RenderValidation();
 
-        // Undo/Redo 后重新取得当前资产并重绑，避免继续使用失效 SerializedProperty。
+        // Undo/Redo 后重新绑定，避免继续使用旧 SerializedProperty。
         private void OnUndoRedo() => RefreshAssets(currentAbility);
 
-        // 项目新增、删除或移动资产后重建引用列表，当前对象存在时保持选择。
-        private void OnProjectChanged() => RefreshAssets(currentAbility);
+        // 项目资产变化后重建列表和具体可创建类型。
+        private void OnProjectChanged()
+        {
+            view.SetCreatableAbilityTypes(service.FindCreatableAbilityTypes());
+            RefreshAssets(currentAbility);
+        }
         #endregion
 
         #region 状态刷新
-        // 扫描资产、过滤、恢复目标选择并刷新全部可见区域。
+        // 扫描、过滤、恢复目标选择并刷新全部可见区域。
         private void RefreshAssets(GameplayAbilityData preferred)
         {
             RefreshAssetCache();
@@ -169,7 +176,7 @@ namespace WS_Modules.GAS.Editor
             view.RenderAbilities(filteredAbilities, currentAbility);
         }
 
-        // Service 返回真实 Model 引用，Controller 不创建资产 ViewData 副本。
+        // Service 返回真实 Model 引用，Controller 不创建资产 ViewData。
         private void RefreshAssetCache()
         {
             allAbilities.Clear();
@@ -177,7 +184,7 @@ namespace WS_Modules.GAS.Editor
             RefreshAllValidationStates();
         }
 
-        // 搜索只匹配资产名和路径，保持 Service 已建立的排序。
+        // 搜索只匹配资产名与路径，并保持 Service 排序。
         private void ApplyFilter()
         {
             filteredAbilities.Clear();
@@ -188,8 +195,7 @@ namespace WS_Modules.GAS.Editor
                 if (string.IsNullOrEmpty(query) ||
                     ability.name.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ||
                     AssetDatabase.GetAssetPath(ability).IndexOf(
-                        query,
-                        StringComparison.OrdinalIgnoreCase) >= 0)
+                        query, StringComparison.OrdinalIgnoreCase) >= 0)
                     filteredAbilities.Add(ability);
             }
         }
@@ -201,7 +207,7 @@ namespace WS_Modules.GAS.Editor
             view.RenderAbilities(filteredAbilities, currentAbility);
         }
 
-        // 当前对象是唯一选择来源，View 直接绑定其 SerializedObject。
+        // 当前对象是唯一详情绑定来源。
         private void SelectAbility(GameplayAbilityData ability)
         {
             currentAbility = ability;
@@ -210,7 +216,7 @@ namespace WS_Modules.GAS.Editor
             RenderValidation();
         }
 
-        // Validation 始终读取当前 Model；Controller 只缓存列表着色所需的最高级别。
+        // 当前校验同时更新详情与列表背景缓存。
         private void RenderValidation()
         {
             List<GameplayAbilityValidationIssue> issues = service.Validate(currentAbility);
@@ -226,7 +232,7 @@ namespace WS_Modules.GAS.Editor
             view.RenderAbilityValidationStates(validationStates);
         }
 
-        // 全量扫描发生在资产刷新边界，ListView.bindItem 只读取结果而不运行 Validator。
+        // 全量资产刷新时重建列表着色缓存。
         private void RefreshAllValidationStates()
         {
             validationStates.Clear();
@@ -238,7 +244,7 @@ namespace WS_Modules.GAS.Editor
             }
         }
 
-        // GA 当前只有 Info 与 Error；Info 不改变列表背景。
+        // Info 不改变列表背景，仅 Error 进入缓存。
         private static bool ContainsError(IReadOnlyList<GameplayAbilityValidationIssue> issues)
         {
             for (int i = 0; i < issues.Count; i++)

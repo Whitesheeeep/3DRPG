@@ -8,21 +8,21 @@ namespace WS_Modules.GAS.Editor
     /// <summary>标识 GA Editor 校验问题的显示级别。</summary>
     public enum GameplayAbilityValidationSeverity
     {
-        /// <summary>不会阻止运行，但用于解释合法的特殊配置。</summary>
+        /// <summary>用于解释合法但特殊的配置。</summary>
         Info,
-        /// <summary>配置违反第一阶段运行时契约。</summary>
+        /// <summary>配置违反运行时契约。</summary>
         Error
     }
 
-    /// <summary>保存一条可直接由 GA View 渲染的校验结果。</summary>
+    /// <summary>保存一条可由 GA View 直接渲染的校验结果。</summary>
     public readonly struct GameplayAbilityValidationIssue
     {
         /// <summary>获取问题级别。</summary>
         public GameplayAbilityValidationSeverity Severity { get; }
-        /// <summary>获取包含具体字段或索引的说明。</summary>
+        /// <summary>获取问题说明。</summary>
         public string Message { get; }
 
-        /// <summary>创建一条不可变校验结果。</summary>
+        /// <summary>创建不可变校验结果。</summary>
         public GameplayAbilityValidationIssue(
             GameplayAbilityValidationSeverity severity,
             string message)
@@ -55,8 +55,8 @@ namespace WS_Modules.GAS.Editor
         event Action<string> SearchChanged;
         /// <summary>用户选择 GA 资产时触发。</summary>
         event Action<GameplayAbilityData> AbilitySelected;
-        /// <summary>用户请求创建 GA 时触发。</summary>
-        event Action CreateRequested;
+        /// <summary>用户请求创建指定具体 GA 类型时触发。</summary>
+        event Action<Type> CreateRequested;
         /// <summary>用户请求复制当前 GA 时触发。</summary>
         event Action DuplicateRequested;
         /// <summary>用户请求删除当前 GA 时触发。</summary>
@@ -68,18 +68,20 @@ namespace WS_Modules.GAS.Editor
         /// <summary>当前 GA 的序列化字段发生变化时触发。</summary>
         event Action AbilityChanged;
 
-        /// <summary>设置搜索文本而不产生新的用户意图。</summary>
+        /// <summary>设置可创建的具体 Ability Data 类型。</summary>
+        void SetCreatableAbilityTypes(IReadOnlyList<Type> types);
+        /// <summary>设置搜索文本而不产生用户意图。</summary>
         void SetSearch(string search);
         /// <summary>渲染稳定的 GA 资产引用列表并恢复选择。</summary>
         void RenderAbilities(IReadOnlyList<GameplayAbilityData> abilities, GameplayAbilityData selected);
-        /// <summary>绑定当前 GA 的 SerializedObject 详情。</summary>
+        /// <summary>绑定当前 GA 的公共字段和具体子类字段。</summary>
         void BindAbility(GameplayAbilityData ability);
         /// <summary>渲染当前 GA 的 Validation。</summary>
         void RenderValidation(IReadOnlyList<GameplayAbilityValidationIssue> issues);
         /// <summary>渲染各 GA 资产在列表中的最高校验级别。</summary>
         void RenderAbilityValidationStates(
             IReadOnlyDictionary<GameplayAbilityData, GameplayAbilityValidationSeverity> states);
-        /// <summary>显示不可恢复的 Editor 操作错误。</summary>
+        /// <summary>显示 Editor 操作错误。</summary>
         void ShowError(string message);
         /// <summary>请求用户确认删除当前 GA。</summary>
         bool ConfirmDelete(GameplayAbilityData ability);
