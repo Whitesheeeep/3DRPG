@@ -308,7 +308,7 @@ namespace WS_Modules.GAS.Editor
         #endregion
 
         #region 详情绑定
-        // 动态渲染具体子类新增字段；公共字段由固定 UXML 负责。
+        // 动态渲染具体 Ability 字段；managed reference 交给 Unity 原生 IMGUI 绘制，以保留类型选择器。
         private void BuildSubclassFields(SerializedObject serializedObject)
         {
             SerializedProperty iterator = serializedObject.GetIterator();
@@ -317,17 +317,61 @@ namespace WS_Modules.GAS.Editor
             {
                 enterChildren = false;
                 if (IsCommonProperty(iterator.propertyPath)) continue;
-                subclassFieldsContainer.Add(new PropertyField(iterator.Copy()));
+
+                SerializedProperty property = iterator.Copy();
+                if (property.propertyType == SerializedPropertyType.ManagedReference)
+                    subclassFieldsContainer.Add(CreateManagedReferenceField(serializedObject, property));
+                else
+                    subclassFieldsContainer.Add(new PropertyField(property));
             }
         }
 
+        // 创建独立 IMGUI 容器；每次绘制按路径重新取得属性，避免 managed reference 换型后保留失效句柄。
+        private IMGUIContainer CreateManagedReferenceField(
+            SerializedObject serializedObject,
+            SerializedProperty property)
+        {
+            string propertyPath = property.propertyPath;
+            var container = new IMGUIContainer
+            {
+                style = { flexShrink = 0f }
+            };
+            container.onGUIHandler = () =>
+                DrawManagedReferenceField(container, serializedObject, propertyPath);
+            return container;
+        }
+
+        // 使用 Unity 原生 EditorGUI.PropertyField 绘制 SerializeReference，类型菜单、Undo 和子字段由 Unity 处理。
+        private void DrawManagedReferenceField(
+            IMGUIContainer container,
+            SerializedObject serializedObject,
+            string propertyPath)
+        {
+            if (disposed || boundAbility == null || serializedObject == null ||
+                serializedObject.targetObject == null || container.panel == null)
+                return;
+
+            serializedObject.UpdateIfRequiredOrScript();
+            SerializedProperty property = serializedObject.FindProperty(propertyPath);
+            if (property == null) return;
+
+            float height = EditorGUI.GetPropertyHeight(property, true);
+            Rect rect = EditorGUILayout.GetControlRect(false, height);
+            EditorGUI.BeginChangeCheck();
+            EditorGUI.PropertyField(rect, property, true);
+            if (!EditorGUI.EndChangeCheck()) return;
+
+            serializedObject.ApplyModifiedProperties();
+            AbilityChanged?.Invoke();
+        }
         // 排除脚本引用和 GameplayAbilityData 的固定公共字段。
         private static bool IsCommonProperty(string propertyPath) =>
             propertyPath == "m_Script" ||
             propertyPath == "description" ||
             propertyPath == "activationTagQuery" ||
             propertyPath == "costEffect" ||
-            propertyPath == "cooldownEffect";
+            propertyPath == "cooldownEffect" ||
+            propertyPath == "effects";
 
         // 文本和数值字段使用延迟提交，减少输入过程中的重复校验。
         private void ConfigureDelayedInputs()

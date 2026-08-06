@@ -36,8 +36,8 @@ namespace WS_Modules.GAS.GameplayEffect
         // 使用计算状态 Runtime 求出 Magnitude，但把最终 Source 绑定到真实 Active Runtime。
         internal AttributeModifier CreateModifier(
             IModifierSource modifierSource,
-            AbilitySystemComponentBase source,
-            AbilitySystemComponentBase target,
+            GameplayAbilitySystemComponent source,
+            GameplayAbilitySystemComponent target,
             GameEffectRuntime runtime)
         {
             float magnitude = CalculateMagnitude(source, target, runtime);
@@ -46,8 +46,8 @@ namespace WS_Modules.GAS.GameplayEffect
 
         // 子类只负责计算本次 Magnitude；合法性由最终 AttributeContainer 边界统一检查。
         protected abstract float CalculateMagnitude(
-            AbilitySystemComponentBase source,
-            AbilitySystemComponentBase target,
+            GameplayAbilitySystemComponent source,
+            GameplayAbilitySystemComponent target,
             GameEffectRuntime runtime);
 
         // 只有依赖调用方动态值的 Modifier 才登记 Key；Controller 在计算前统一检查。

@@ -71,7 +71,7 @@ Duration 到期策略只保留两种：`ClearEntireStack` 清除整个 Active Ru
 ## 依赖方向
 
 ```text
-AbilitySystemComponentBase
+GameplayAbilitySystemComponent
 ├─ GameplayTagCountContainer
 ├─ GameplayAttributeContainer
 └─ GameEffectCtrl
@@ -106,10 +106,23 @@ Modifier Add 菜单使用 `TypeCache` 发现可序列化的非抽象派生类型
 左侧 GE 资产列表缓存每个资产的最高校验严重程度：Error 使用红色背景，Warning 使用黄色背景，只有 Info 或没有问题时保持普通背景。校验由 Controller 在窗口首次打开、项目变化和 Undo/Redo 后延迟批量执行；普通字段和 Modifier 变化只延迟校验当前 GE。`ListView.bindItem` 只读取缓存并切换 USS class，不执行 Validator，虚拟化行复用前会清除旧严重程度样式。
 ## GE 固定资产验收
 
-`GameplayEffectOdinTester` 同时保留通用 Apply/Tick/Remove 操作和固定场景套件。固定套件使用 GameplayAttributeTestSet、烘焙 Tag Database 与 `Runtime/DataConfig/SO` 下的 GE 资产，每个场景重新创建 Source A、Source B 和 Target ASC，只通过公开 Runtime API 验证最终 CurrentValue、Active Runtime、StackCount、Duration、Period 与 GrantedTag。
+`GameplayEffectOdinTester` 同时保留通用 Apply/Tick/Remove 操作和固定场景套件。固定套件使用 GameplayAttributeTestSet、烘焙 Tag Database 与 `Runtime/DataConfig/SO` 下的 GE 资产，每个场景通过临时 GameObject 挂载 Source A、Source B 和 Target ASC，只通过公开 Runtime API 验证最终 CurrentValue、Active Runtime、StackCount、Duration、Period 与 GrantedTag。
 
 固定场景覆盖 Instant Fixed/Curve/Level/SetByCaller、Duration/Infinite、周期首跳与大 delta、TagQuery、GrantedTag、AggregateBySource、AggregateByTarget、三种 Duration 刷新、两种 Period 刷新、溢出拒绝/允许和逐层到期。Fixed Modifier 不自动乘 StackCount；叠层场景只验证 Runtime 身份、层数和计时，数值需要层数参与时由自定义 Modifier 显式读取 `Runtime.StackCount`。
 
 Curve 测试固定为 `BaseMagnitude 10 × Curve(Level)`，Level 1/2/3 输出 10/20/30。离散 Level 固定为 `1→10、3→30、5→60`，用于验证精确等级、向下选择最近等级和超过最高等级。`GE_Test_StackPeriodPreserveTiming` 与 `GE_Test_StackPeriodResetTiming` 作为 NeverReset/Reset 的对照资产。
 
 失败原子性必须保证：缺少 SetByCaller、TargetTagQuery 不满足、目标未初始化 AttributeSet 或叠层溢出拒绝时，不新增 Active Runtime、不提交 Modifier、不添加 GrantedTag，也不修改已有 Runtime 的层数和计时。
+## ASC 初始化与 GE 生命周期
+
+GE 的 Target 与 Source 都是挂载在 Owner 上的 `GameplayAbilitySystemComponent`。Owner 负责为 ASC 传入多个 `GameplayAttributeSet`，并在自身 `Update` 中主动调用 `ASC.Tick(deltaTime)`。ASC 本身不实现 `Update`，Tick 顺序固定为先推进 GE，再推进 Ability Task。
+
+`GameEffectCtrl` 由 ASC 创建并持有，不自行判断 ASC 初始化状态。ASC `Clear()` 时先清理 Ability，再移除 Active GE、Modifier 与 GrantedTag，最后清空 Tag 和 Attribute。
+
+## ASC GE 快捷门面
+
+业务层可以使用 Target ASC 的 `TryApplyEffect`、`TryRemoveEffect`、`HasActiveEffect` 和 `ActiveEffects` 进行高频 GE 操作与查询。快捷接口只是 `GameEffectCtrl` 的委托：Target 仍是调用方法的 ASC，Source 通过参数传入；Level、SetByCaller、叠层、计时、GrantedTag 和原子提交规则全部由原 Controller 处理。
+
+无参数简化入口使用 Level 1 和空 SetByCaller。`ActiveEffects` 是 Controller 内部列表的只读别名，不创建副本；需要订阅或执行复杂流程时继续使用 `GameEffectCtrl`。
+
+ASC 不提供 Tag、Attribute 或 Modifier 的直接写入快捷方法，避免绕过 Container 的 Pre/Post、Aggregator 和事务约束。

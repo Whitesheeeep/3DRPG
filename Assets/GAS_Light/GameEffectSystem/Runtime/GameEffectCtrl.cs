@@ -20,13 +20,13 @@ namespace WS_Modules.GAS.GameplayEffect
         #region 属性与构造
 
         /// <inheritdoc />
-        public AbilitySystemComponentBase Owner { get; }
+        public GameplayAbilitySystemComponent Owner { get; }
         /// <inheritdoc />
         public IReadOnlyList<GameEffectRuntime> ActiveEffects => activeEffects;
 
         /// <summary>创建只服务指定目标 ASC 的 GE Controller。</summary>
         /// <param name="owner">作为所有应用隐式 Target 的 ASC。</param>
-        public GameEffectCtrl(AbilitySystemComponentBase owner)
+        public GameEffectCtrl(GameplayAbilitySystemComponent owner)
         {
             Owner = owner;
         }
@@ -36,7 +36,7 @@ namespace WS_Modules.GAS.GameplayEffect
         #region 公开操作
 
         /// <inheritdoc />
-        public bool CanApply(GameplayEffectData data, AbilitySystemComponentBase source) =>
+        public bool CanApply(GameplayEffectData data, GameplayAbilitySystemComponent source) =>
             Owner != null && source != null && data != null &&
             data.TargetTagQuery.Matches(Owner.Tags) &&
             data.GrantedTags.All(tag => GameplayTagManager.Instance.IsValidTag(tag));
@@ -44,7 +44,7 @@ namespace WS_Modules.GAS.GameplayEffect
         /// <inheritdoc />
         public bool TryApply(
             GameplayEffectData data,
-            AbilitySystemComponentBase source,
+            GameplayAbilitySystemComponent source,
             int level,
             IReadOnlyDictionary<GameplayTag, float> setByCaller,
             out GameEffectRuntime activeEffect)
@@ -80,7 +80,7 @@ namespace WS_Modules.GAS.GameplayEffect
             if (index < 0 || activeEffect == null || !ReferenceEquals(activeEffect.Target, Owner)) return false;
 
             RemoveGrantedTags(activeEffect.Data);
-            Owner.Attributes.TryRemoveModifiers(activeEffect, out _);
+            Owner.MutableAttributes.TryRemoveModifiers(activeEffect, out _);
             activeEffects.RemoveAt(index);
             activeEffect.SetActive(false);
             return true;
@@ -112,19 +112,19 @@ namespace WS_Modules.GAS.GameplayEffect
         // Instant 使用临时 Runtime 提供 Level、StackCount 与 SetByCaller，但不进入 Active 列表。
         private bool ApplyInstant(
             GameplayEffectData data,
-            AbilitySystemComponentBase source,
+            GameplayAbilitySystemComponent source,
             int level,
             IReadOnlyDictionary<GameplayTag, float> setByCaller)
         {
             var runtime = new GameEffectRuntime(data, source, Owner, level, setByCaller);
             List<AttributeModifier> results = runtime.CalculateModifiers(runtime);
-            return Owner.Attributes.TryApplyInstantModifiers(results);
+            return Owner.MutableAttributes.TryApplyInstantModifiers(results);
         }
 
         // 创建新 Active 前完成当前应执行的 Modifier 计算与 Tag 校验；延迟周期不会提前消费随机计算。
         private bool CreateActiveEffect(
             GameplayEffectData data,
-            AbilitySystemComponentBase source,
+            GameplayAbilitySystemComponent source,
             int level,
             IReadOnlyDictionary<GameplayTag, float> setByCaller,
             out GameEffectRuntime activeEffect)
@@ -138,8 +138,8 @@ namespace WS_Modules.GAS.GameplayEffect
 
             // 不为 Periodic GE 时，即为 Infinite GE，那就应该替换其
             bool numericApplied = data.IsPeriodic
-                ? !data.ExecutePeriodicOnApplication || Owner.Attributes.TryApplyInstantModifiers(results)
-                : Owner.Attributes.TryReplaceModifiers(runtime, results);
+                ? !data.ExecutePeriodicOnApplication || Owner.MutableAttributes.TryApplyInstantModifiers(results)
+                : Owner.MutableAttributes.TryReplaceModifiers(runtime, results);
             if (!numericApplied) return false;
 
             AddGrantedTags(data);
@@ -152,7 +152,7 @@ namespace WS_Modules.GAS.GameplayEffect
         // 使用候选 Runtime 计算新层数和最新来源；需要立即结算时失败则保留原 Runtime。
         private bool ApplyStack(
             GameEffectRuntime existing,
-            AbilitySystemComponentBase source,
+            GameplayAbilitySystemComponent source,
             int level,
             IReadOnlyDictionary<GameplayTag, float> setByCaller,
             out GameEffectRuntime activeEffect)
@@ -179,8 +179,8 @@ namespace WS_Modules.GAS.GameplayEffect
                 ? candidate.CalculateModifiers(existing)
                 : null;
             bool numericApplied = data.IsPeriodic
-                ? !data.ExecutePeriodicOnApplication || Owner.Attributes.TryApplyInstantModifiers(results)
-                : Owner.Attributes.TryReplaceModifiers(existing, results);
+                ? !data.ExecutePeriodicOnApplication || Owner.MutableAttributes.TryApplyInstantModifiers(results)
+                : Owner.MutableAttributes.TryReplaceModifiers(existing, results);
             if (!numericApplied) return false;
 
             existing.CommitCandidate(candidate);
@@ -215,7 +215,7 @@ namespace WS_Modules.GAS.GameplayEffect
             while (remaining <= 0f)
             {
                 List<AttributeModifier> results = runtime.CalculateModifiers(runtime);
-                Owner.Attributes.TryApplyInstantModifiers(results);
+                Owner.MutableAttributes.TryApplyInstantModifiers(results);
                 remaining += runtime.Data.Period;
             }
 
@@ -283,7 +283,7 @@ namespace WS_Modules.GAS.GameplayEffect
             if (!runtime.Data.IsPeriodic)
             {
                 List<AttributeModifier> results = candidate.CalculateModifiers(runtime);
-                if (!Owner.Attributes.TryReplaceModifiers(runtime, results))
+                if (!Owner.MutableAttributes.TryReplaceModifiers(runtime, results))
                     return false;
             }
 
@@ -300,7 +300,7 @@ namespace WS_Modules.GAS.GameplayEffect
         /// </summary>
         private GameEffectRuntime FindStackableRuntime(
             GameplayEffectData data,
-            AbilitySystemComponentBase source)
+            GameplayAbilitySystemComponent source)
         {
             if (data.StackingType == E_GameEffectStackingType.None) return null;
             foreach (var runtime in activeEffects)
@@ -320,7 +320,7 @@ namespace WS_Modules.GAS.GameplayEffect
         {
             IReadOnlyList<GameplayTag> tags = data.GrantedTags;
             for (int i = 0; i < tags.Count; i++)
-                if (!Owner.Tags.UpdateTagCount(tags[i], 1))
+                if (!Owner.MutableTags.UpdateTagCount(tags[i], 1))
                     throw new InvalidOperationException("GrantedTag 已通过入口校验，但运行时计数提交失败。");
         }
 
@@ -328,7 +328,7 @@ namespace WS_Modules.GAS.GameplayEffect
         private void RemoveGrantedTags(GameplayEffectData data)
         {
             IReadOnlyList<GameplayTag> tags = data.GrantedTags;
-            for (int i = 0; i < tags.Count; i++) Owner.Tags.UpdateTagCount(tags[i], -1);
+            for (int i = 0; i < tags.Count; i++) Owner.MutableTags.UpdateTagCount(tags[i], -1);
         }
 
         // 只检查当前 Modifier 真正需要的动态 Key，未使用的调用方数据不参与 GE 校验。

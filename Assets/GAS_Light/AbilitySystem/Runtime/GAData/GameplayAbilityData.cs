@@ -18,6 +18,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private GameplayEffectData costEffect;
         [SerializeField, Tooltip("激活时应用到 Source 的 Duration 或 Infinite Cooldown GE；可为空。")]
         private GameplayEffectData cooldownEffect;
+        [SerializeField, Tooltip("Ability 的统一结果 GE 列表，由具体 Data 或 Task 决定应用时机。")]
+        private List<GameplayEffectData> effects = new();
         #endregion
 
         #region 属性
@@ -29,6 +31,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         public GameplayEffectData CostEffect => costEffect;
         /// <summary>获取激活时应用到 Source 的 Cooldown GE。</summary>
         public GameplayEffectData CooldownEffect => cooldownEffect;
+        /// <summary>获取该 Ability 配置的统一结果 GE 列表。</summary>
+        public IReadOnlyList<GameplayEffectData> Effects => effects;
 
         // 让 Controller 在提交 Cost/Cooldown 前检查具体 Data 的运行时契约。
         internal virtual bool IsRuntimeConfigurationValid => true;
@@ -39,7 +43,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         internal GameplayAbilityRuntime CreateRuntimeInstance(
             int activationId,
             GameplayAbilitySpec spec,
-            AbilitySystemComponentBase source,
+            GameplayAbilitySystemComponent source,
             IReadOnlyDictionary<GameplayTag, float> setByCaller) =>
             CreateRuntime(activationId, spec, source, setByCaller);
 
@@ -47,8 +51,40 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         protected abstract GameplayAbilityRuntime CreateRuntime(
             int activationId,
             GameplayAbilitySpec spec,
-            AbilitySystemComponentBase source,
+            GameplayAbilitySystemComponent source,
             IReadOnlyDictionary<GameplayTag, float> setByCaller);
+        #endregion
+
+        #region Effect application
+        // 应用统一结果 GE 列表，但不决定本次调用属于激活、命中还是其他业务时机。
+        internal int ApplyConfiguredEffects(
+            GameplayAbilitySystemComponent source,
+            GameplayAbilitySystemComponent target,
+            int level,
+            IReadOnlyDictionary<GameplayTag, float> setByCaller,
+            ICollection<GameEffectRuntime> retainedEffects = null)
+        {
+            if (source == null || target == null || level < 1 || effects == null)
+                return 0;
+
+            int appliedCount = 0;
+            for (int i = 0; i < effects.Count; i++)
+            {
+                GameplayEffectData effect = effects[i];
+                if (effect == null || !target.GameEffectCtrl.TryApply(
+                        effect,
+                        source,
+                        level,
+                        setByCaller,
+                        out GameEffectRuntime activeEffect))
+                    continue;
+
+                appliedCount++;
+                if (activeEffect != null) retainedEffects?.Add(activeEffect);
+            }
+
+            return appliedCount;
+        }
         #endregion
     }
 }

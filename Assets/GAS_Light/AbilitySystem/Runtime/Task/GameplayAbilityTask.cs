@@ -62,18 +62,26 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             Completed?.Invoke(this);
             return true;
         }
+        #endregion
 
+        #region 子类业务逻辑
         // 具体 Task 在这里启动同步逻辑或注册外部更新。
         protected abstract void OnStart();
 
         // 具体 Task 在正常提前结束时释放注册。
-        protected virtual void OnStop() { }
+        protected virtual void OnStop()
+        {
+        }
 
         // 具体 Task 在中断时释放注册。
-        protected virtual void OnCancel() { }
+        protected virtual void OnCancel()
+        {
+        }
 
         // 需要外部资源的 Task 在完成通知前释放资源。
-        protected virtual void OnComplete() { }
+        protected virtual void OnComplete()
+        {
+        }
         #endregion
     }
 }

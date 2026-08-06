@@ -28,11 +28,6 @@ namespace WS_Modules.GAS.GameplayEffect
             public float Value => value;
         }
 
-        /// <summary>为测试提供可实例化的最小 ASC，不复制任何生产逻辑。</summary>
-        private sealed class TestAbilitySystemComponent : AbilitySystemComponentBase
-        {
-        }
-
         #endregion
 
         #region 通用测试输入
@@ -77,14 +72,20 @@ namespace WS_Modules.GAS.GameplayEffect
 
         #region 运行状态
 
-        private TestAbilitySystemComponent source;
-        private TestAbilitySystemComponent sourceB;
-        private TestAbilitySystemComponent target;
+        private GameObject sourceObject;
+        private GameObject sourceBObject;
+        private GameObject targetObject;
+        private GameplayAbilitySystemComponent source;
+        private GameplayAbilitySystemComponent sourceB;
+        private GameplayAbilitySystemComponent target;
         private GameEffectRuntime lastRuntime;
         private int passedAssertions;
         private int failedAssertions;
 
         #endregion
+
+        // 测试组件销毁时清理通用操作或场景套件留下的临时 ASC。
+        private void OnDestroy() => CleanupAscObjects();
 
         #region 通用 Odin 操作
 
@@ -93,14 +94,15 @@ namespace WS_Modules.GAS.GameplayEffect
         public void InitializeTest()
         {
             if (tagDatabase != null) GameplayTagManager.Instance.Initialize(tagDatabase);
-            source = new TestAbilitySystemComponent();
-            sourceB = new TestAbilitySystemComponent();
-            target = new TestAbilitySystemComponent();
-            bool sourceReady = source.Attributes.TryInitialize(sourceSets, out string sourceError);
-            bool targetReady = target.Attributes.TryInitialize(targetSets, out string targetError);
+            CleanupAscObjects();
+            source = CreateAsc("GE Test Source", out sourceObject);
+            sourceB = CreateAsc("GE Test Source B", out sourceBObject);
+            target = CreateAsc("GE Test Target", out targetObject);
+            source.Initialize(sourceSets);
+            sourceB.Initialize(sourceSets);
+            target.Initialize(targetSets);
             lastRuntime = null;
-            Debug.Log($"[GETest][Initialize] Source={sourceReady} ({sourceError}), " +
-                      $"Target={targetReady} ({targetError})");
+            Debug.Log($"[GETest][Initialize] Source={source.IsInitialized}, SourceB={sourceB.IsInitialized}, Target={target.IsInitialized}");
         }
 
         /// <summary>使用真实 Controller API 应用一次当前 GE，并输出 Active 状态。</summary>
@@ -109,10 +111,14 @@ namespace WS_Modules.GAS.GameplayEffect
         {
             if (!EnsureInitialized()) return;
             Dictionary<GameplayTag, float> values = BuildSetByCaller();
-            bool success = target.GameEffectCtrl.TryApply(
-                effect, source, level, values, out GameEffectRuntime runtime);
+            bool success;
+            GameEffectRuntime runtime;
+            if (level == 1 && values.Count == 0)
+                success = target.TryApplyEffect(effect, source, out runtime);
+            else
+                success = target.TryApplyEffect(effect, source, level, values, out runtime);
             if (runtime != null) lastRuntime = runtime;
-            Debug.Log($"[GETest][Apply] Success={success}, Active={target.GameEffectCtrl.ActiveEffects.Count}, " +
+            Debug.Log($"[GETest][Apply] Success={success}, Active={target.ActiveEffects.Count}, " +
                       $"Stack={lastRuntime?.StackCount ?? 0}");
             LogTargetAttributes();
         }
@@ -123,7 +129,7 @@ namespace WS_Modules.GAS.GameplayEffect
         {
             if (!EnsureInitialized()) return;
             target.GameEffectCtrl.Tick(tickDelta);
-            Debug.Log($"[GETest][Tick] Delta={tickDelta}, Active={target.GameEffectCtrl.ActiveEffects.Count}, " +
+            Debug.Log($"[GETest][Tick] Delta={tickDelta}, Active={target.ActiveEffects.Count}, " +
                       $"Duration={lastRuntime?.RemainingDuration ?? 0f}, Period={lastRuntime?.RemainingPeriod ?? 0f}");
             LogTargetAttributes();
         }
@@ -133,8 +139,8 @@ namespace WS_Modules.GAS.GameplayEffect
         public void RemoveLastEffect()
         {
             if (!EnsureInitialized()) return;
-            bool success = lastRuntime != null && target.GameEffectCtrl.TryRemove(lastRuntime);
-            Debug.Log($"[GETest][Remove] Success={success}, Active={target.GameEffectCtrl.ActiveEffects.Count}");
+            bool success = lastRuntime != null && target.TryRemoveEffect(lastRuntime);
+            Debug.Log($"[GETest][Remove] Success={success}, Active={target.ActiveEffects.Count}");
             if (success) lastRuntime = null;
             LogTargetAttributes();
         }
@@ -214,8 +220,8 @@ namespace WS_Modules.GAS.GameplayEffect
                 bool success = Apply(instantFixed, source, 1, null, out _);
                 Expect("Instant Fixed 应用", success, success, true);
                 ExpectValue("Instant Fixed Health", GameplayAttributes.Attribute_Health, 70f);
-                Expect("Instant 不进入 Active", target.GameEffectCtrl.ActiveEffects.Count == 0,
-                    target.GameEffectCtrl.ActiveEffects.Count, 0);
+                Expect("Instant 不进入 Active", target.ActiveEffects.Count == 0,
+                    target.ActiveEffects.Count, 0);
             }
 
             int[] curveLevels = { 1, 2, 3 };
@@ -262,8 +268,8 @@ namespace WS_Modules.GAS.GameplayEffect
                 bool success = Apply(instantSetByCaller, source, 1, null, out _);
                 Expect("缺少 SetByCaller 被拒绝", !success, success, false);
                 ExpectValue("缺少 SetByCaller Health 不变", GameplayAttributes.Attribute_Health, 100f);
-                Expect("缺少 SetByCaller 无 Active", target.GameEffectCtrl.ActiveEffects.Count == 0,
-                    target.GameEffectCtrl.ActiveEffects.Count, 0);
+                Expect("缺少 SetByCaller 无 Active", target.ActiveEffects.Count == 0,
+                    target.ActiveEffects.Count, 0);
             }
         }
 
@@ -285,8 +291,8 @@ namespace WS_Modules.GAS.GameplayEffect
                 ExpectValue("Duration Period 1s", GameplayAttributes.Attribute_Health, 90f);
                 target.GameEffectCtrl.Tick(5f);
                 ExpectValue("Duration Period 到期共三跳", GameplayAttributes.Attribute_Health, 70f);
-                Expect("Duration Period 到期移除", target.GameEffectCtrl.ActiveEffects.Count == 0,
-                    target.GameEffectCtrl.ActiveEffects.Count, 0);
+                Expect("Duration Period 到期移除", target.ActiveEffects.Count == 0,
+                    target.ActiveEffects.Count, 0);
                 Expect("Duration Period Runtime 失活", runtime != null && !runtime.IsActive,
                     runtime?.IsActive, false);
             }
@@ -298,7 +304,7 @@ namespace WS_Modules.GAS.GameplayEffect
                 ExpectValue("Infinite Period 立即结算", GameplayAttributes.Attribute_MP, 45f);
                 target.GameEffectCtrl.Tick(2f);
                 ExpectValue("Infinite Period 两次 Tick", GameplayAttributes.Attribute_MP, 35f);
-                bool removed = target.GameEffectCtrl.TryRemove(runtime);
+                bool removed = target.TryRemoveEffect(runtime);
                 Expect("Infinite Period 主动移除", removed, removed, true);
                 ExpectValue("已结算 MP 不回滚", GameplayAttributes.Attribute_MP, 35f);
             }
@@ -312,8 +318,8 @@ namespace WS_Modules.GAS.GameplayEffect
                 target.GameEffectCtrl.Tick(2f);
                 ExpectValue("Duration Stat 到期恢复 MaxHealth", GameplayAttributes.Attribute_MaxHealth, 100f);
                 ExpectValue("Duration Stat 到期不恢复已结算 Health", GameplayAttributes.Attribute_Health, 60f);
-                Expect("Duration Stat 到期移除", target.GameEffectCtrl.ActiveEffects.Count == 0,
-                    target.GameEffectCtrl.ActiveEffects.Count, 0);
+                Expect("Duration Stat 到期移除", target.ActiveEffects.Count == 0,
+                    target.ActiveEffects.Count, 0);
             }
         }
 
@@ -329,10 +335,10 @@ namespace WS_Modules.GAS.GameplayEffect
 
             bool rejected = Apply(infiniteStatAndTag, source, 1, null, out _);
             Expect("缺少 Required Tag 被拒绝", !rejected, rejected, false);
-            Expect("查询失败无 Active", target.GameEffectCtrl.ActiveEffects.Count == 0,
-                target.GameEffectCtrl.ActiveEffects.Count, 0);
+            Expect("查询失败无 Active", target.ActiveEffects.Count == 0,
+                target.ActiveEffects.Count, 0);
 
-            bool requiredAdded = target.Tags.UpdateTagCount(GameplayTags.Tag_Test_GE_Required, 1);
+            bool requiredAdded = target.MutableTags.UpdateTagCount(GameplayTags.Tag_Test_GE_Required, 1);
             Expect("添加 Required Tag", requiredAdded, requiredAdded, true);
             bool success = Apply(infiniteStatAndTag, source, 1, null, out GameEffectRuntime runtime);
             Expect("满足 TagQuery 后应用", success, success, true);
@@ -341,7 +347,7 @@ namespace WS_Modules.GAS.GameplayEffect
                 target.Tags.HasTagExact(GameplayTags.Tag_Test_GE_Granted),
                 target.Tags.HasTagExact(GameplayTags.Tag_Test_GE_Granted), true);
 
-            bool removed = target.GameEffectCtrl.TryRemove(runtime);
+            bool removed = target.TryRemoveEffect(runtime);
             Expect("移除 Tag GE", removed, removed, true);
             ExpectValue("移除后 Armor 恢复", GameplayAttributes.Attribute_Armor, 10f);
             Expect("Granted Tag 清除",
@@ -387,8 +393,8 @@ namespace WS_Modules.GAS.GameplayEffect
             Expect("BySource 不同来源应用", otherSource, otherSource, true);
             Expect("BySource 不同来源新建 Runtime", !ReferenceEquals(runtimeA, runtimeB),
                 ReferenceEquals(runtimeA, runtimeB), false);
-            Expect("BySource Active 为 2", target.GameEffectCtrl.ActiveEffects.Count == 2,
-                target.GameEffectCtrl.ActiveEffects.Count, 2);
+            Expect("BySource Active 为 2", target.ActiveEffects.Count == 2,
+                target.ActiveEffects.Count, 2);
             ExpectValue("BySource 两个 Runtime Armor", GameplayAttributes.Attribute_Armor, 20f);
 
             Apply(stackBySourceRefresh, source, 1, null, out _);
@@ -430,8 +436,8 @@ namespace WS_Modules.GAS.GameplayEffect
             target.GameEffectCtrl.Tick(10f);
             Expect("ByTarget 第二次到期减为 1 层", runtime.StackCount == 1, runtime.StackCount, 1);
             target.GameEffectCtrl.Tick(10f);
-            Expect("ByTarget 最后一层移除", target.GameEffectCtrl.ActiveEffects.Count == 0,
-                target.GameEffectCtrl.ActiveEffects.Count, 0);
+            Expect("ByTarget 最后一层移除", target.ActiveEffects.Count == 0,
+                target.ActiveEffects.Count, 0);
             ExpectValue("ByTarget 最终 Armor 恢复", GameplayAttributes.Attribute_Armor, 10f);
         }
 
@@ -488,8 +494,8 @@ namespace WS_Modules.GAS.GameplayEffect
                 bool success = Apply(instantSetByCaller, source, 1, null, out _);
                 Expect("失败后 Health 不变", !success, success, false);
                 ExpectValue("SetByCaller 失败原子值", GameplayAttributes.Attribute_Health, 100f);
-                Expect("SetByCaller 失败无 Active", target.GameEffectCtrl.ActiveEffects.Count == 0,
-                    target.GameEffectCtrl.ActiveEffects.Count, 0);
+                Expect("SetByCaller 失败无 Active", target.ActiveEffects.Count == 0,
+                    target.ActiveEffects.Count, 0);
             }
 
             if (PrepareScenario("失败：TagQuery") &&
@@ -506,11 +512,11 @@ namespace WS_Modules.GAS.GameplayEffect
             if (PrepareScenario("失败：目标无 AttributeSet", false) &&
                 RequireEffect(infiniteStatAndTag, nameof(infiniteStatAndTag)))
             {
-                target.Tags.UpdateTagCount(GameplayTags.Tag_Test_GE_Required, 1);
+                target.MutableTags.UpdateTagCount(GameplayTags.Tag_Test_GE_Required, 1);
                 bool success = Apply(infiniteStatAndTag, source, 1, null, out _);
                 Expect("缺少 AttributeSet 提交失败", !success, success, false);
-                Expect("缺少 AttributeSet 无 Active", target.GameEffectCtrl.ActiveEffects.Count == 0,
-                    target.GameEffectCtrl.ActiveEffects.Count, 0);
+                Expect("缺少 AttributeSet 无 Active", target.ActiveEffects.Count == 0,
+                    target.ActiveEffects.Count, 0);
                 Expect("缺少 AttributeSet 无 GrantedTag",
                     !target.Tags.HasTagExact(GameplayTags.Tag_Test_GE_Granted),
                     target.Tags.HasTagExact(GameplayTags.Tag_Test_GE_Granted), false);
@@ -524,14 +530,14 @@ namespace WS_Modules.GAS.GameplayEffect
                 Apply(stackBySourceRefresh, source, 1, null, out _);
                 target.GameEffectCtrl.Tick(2f);
                 float durationBefore = runtime.RemainingDuration;
-                int activeBefore = target.GameEffectCtrl.ActiveEffects.Count;
+                int activeBefore = target.ActiveEffects.Count;
                 bool success = Apply(stackBySourceRefresh, source, 1, null, out _);
                 Expect("溢出拒绝返回 false", !success, success, false);
                 Expect("溢出拒绝层数不变", runtime.StackCount == 3, runtime.StackCount, 3);
                 ExpectFloat("溢出拒绝计时不变", runtime.RemainingDuration, durationBefore);
                 Expect("溢出拒绝 Active 不变",
-                    target.GameEffectCtrl.ActiveEffects.Count == activeBefore,
-                    target.GameEffectCtrl.ActiveEffects.Count, activeBefore);
+                    target.ActiveEffects.Count == activeBefore,
+                    target.ActiveEffects.Count, activeBefore);
                 ExpectValue("溢出拒绝 Modifier 不变", GameplayAttributes.Attribute_Armor, 15f);
             }
         }
@@ -551,23 +557,46 @@ namespace WS_Modules.GAS.GameplayEffect
             }
 
             GameplayTagManager.Instance.Initialize(tagDatabase);
-            source = new TestAbilitySystemComponent();
-            sourceB = new TestAbilitySystemComponent();
-            target = new TestAbilitySystemComponent();
+            CleanupAscObjects();
+            source = CreateAsc("GE Test Source", out sourceObject);
+            sourceB = CreateAsc("GE Test Source B", out sourceBObject);
+            target = CreateAsc("GE Test Target", out targetObject);
             lastRuntime = null;
             var sets = new[] { testAttributeSet };
-            bool sourceReady = source.Attributes.TryInitialize(sets, out string sourceError);
-            bool sourceBReady = sourceB.Attributes.TryInitialize(sets, out string sourceBError);
-            string targetError = string.Empty;
-            bool targetReady = !initializeTarget ||
-                               target.Attributes.TryInitialize(sets, out targetError);
-            bool ready = sourceReady && sourceBReady && targetReady;
+            source.Initialize(sets);
+            sourceB.Initialize(sets);
+            if (initializeTarget) target.Initialize(sets);
+            bool ready = source.IsInitialized && sourceB.IsInitialized &&
+                         (!initializeTarget || target.IsInitialized);
             Expect($"{scenarioName} 初始化", ready,
-                $"A={sourceReady}:{sourceError}, B={sourceBReady}:{sourceBError}, " +
-                $"Target={targetReady}:{targetError}", "全部成功");
+                $"A={source.IsInitialized}, B={sourceB.IsInitialized}, " +
+                $"Target={(!initializeTarget || target.IsInitialized)}", "全部成功");
             return ready;
         }
 
+        // 创建挂载真实 ASC 组件的临时对象，避免直接构造 MonoBehaviour。
+        private static GameplayAbilitySystemComponent CreateAsc(string objectName, out GameObject owner)
+        {
+            owner = new GameObject(objectName)
+            {
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            return owner.AddComponent<GameplayAbilitySystemComponent>();
+        }
+
+        // 销毁当前场景创建的全部临时 ASC 对象，避免手动测试污染场景。
+        private void CleanupAscObjects()
+        {
+            if (sourceObject != null) DestroyImmediate(sourceObject);
+            if (sourceBObject != null) DestroyImmediate(sourceBObject);
+            if (targetObject != null) DestroyImmediate(targetObject);
+            sourceObject = null;
+            sourceBObject = null;
+            targetObject = null;
+            source = null;
+            sourceB = null;
+            target = null;
+        }
         // 序列化测试资产是外部输入；缺失时记录明确失败并跳过依赖场景。
         private bool RequireEffect(GameplayEffectData value, string fieldName)
         {
@@ -579,11 +608,11 @@ namespace WS_Modules.GAS.GameplayEffect
         // 调用目标 Controller 的唯一应用入口，Target 始终隐式为当前场景 Target。
         private bool Apply(
             GameplayEffectData data,
-            AbilitySystemComponentBase effectSource,
+            GameplayAbilitySystemComponent effectSource,
             int effectLevel,
             IReadOnlyDictionary<GameplayTag, float> values,
             out GameEffectRuntime runtime) =>
-            target.GameEffectCtrl.TryApply(data, effectSource, effectLevel, values, out runtime);
+            target.TryApplyEffect(data, effectSource, effectLevel, values, out runtime);
 
         // 套件同步执行期间临时使用测试 Tag Database，并在结束或异常时恢复原单例状态。
         private void ExecuteSuite(string name, Action scenarios)
@@ -599,6 +628,7 @@ namespace WS_Modules.GAS.GameplayEffect
                 if (previousDatabase != null) GameplayTagManager.Instance.Initialize(previousDatabase);
                 else GameplayTagManager.Instance.Reset();
                 CompleteRun(name);
+                CleanupAscObjects();
             }
         }
         // 开始一组独立统计，单项按钮与完整套件共享相同断言实现。

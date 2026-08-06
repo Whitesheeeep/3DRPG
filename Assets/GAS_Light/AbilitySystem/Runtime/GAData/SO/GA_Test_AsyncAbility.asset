@@ -19,6 +19,7 @@ MonoBehaviour:
     noneTags: []
   costEffect: {fileID: 0}
   cooldownEffect: {fileID: 0}
+  effects: []
   rootTask:
     rid: 3428733655084433420
   references:

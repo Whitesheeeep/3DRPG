@@ -8,7 +8,7 @@ namespace WS_Modules.GAS.GameplayEffect
     public interface IGameEffectCtrl
     {
         /// <summary>获取该 Controller 服务的目标 ASC。</summary>
-        AbilitySystemComponentBase Owner { get; }
+        GameplayAbilitySystemComponent Owner { get; }
         /// <summary>获取当前 Duration 与 Infinite Runtime 的只读视图。</summary>
         IReadOnlyList<GameEffectRuntime> ActiveEffects { get; }
 
@@ -16,7 +16,7 @@ namespace WS_Modules.GAS.GameplayEffect
         /// <param name="data">待应用的 GE 配置。</param>
         /// <param name="source">效果来源 ASC。</param>
         /// <returns>基础配置与目标条件合法时返回 true。</returns>
-        bool CanApply(GameplayEffectData data, AbilitySystemComponentBase source);
+        bool CanApply(GameplayEffectData data, GameplayAbilitySystemComponent source);
 
         /// <summary>向 Owner 应用一次 GE；Target 隐式为 Owner。</summary>
         /// <param name="data">待应用的 GE 配置资产。</param>
@@ -27,7 +27,7 @@ namespace WS_Modules.GAS.GameplayEffect
         /// <returns>全部计算与提交成功时返回 true。</returns>
         bool TryApply(
             GameplayEffectData data,
-            AbilitySystemComponentBase source,
+            GameplayAbilitySystemComponent source,
             int level,
             IReadOnlyDictionary<GameplayTag, float> setByCaller,
             out GameEffectRuntime activeEffect);

@@ -25,7 +25,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         internal PassiveGameplayAbilityRuntime(
             int activationId,
             GameplayAbilitySpec spec,
-            AbilitySystemComponentBase source,
+            GameplayAbilitySystemComponent source,
             IReadOnlyDictionary<GameplayTag, float> setByCaller,
             PassiveGameplayAbilityData data)
             : base(activationId, spec, source, setByCaller, data)
@@ -38,18 +38,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         protected override void OnStart()
         {
             PassiveGameplayAbilityData data = (PassiveGameplayAbilityData)Data;
-            for (int i = 0; i < data.Effects.Count; i++)
-            {
-                GameplayEffectData effect = data.Effects[i];
-                if (effect != null && Source.GameEffectCtrl.TryApply(
-                    effect,
-                    Source,
-                    Level,
-                    SetByCaller,
-                    out GameEffectRuntime activeEffect) && activeEffect != null)
-                    appliedEffects.Add(activeEffect);
-            }
-
+            data.ApplyConfiguredEffects(Source, Source, Level, SetByCaller, appliedEffects);
             base.OnStart();
         }
 

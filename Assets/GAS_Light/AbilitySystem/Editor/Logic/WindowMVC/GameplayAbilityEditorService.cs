@@ -137,6 +137,8 @@ namespace WS_Modules.GAS.Editor
                 issues.Add(Error(
                     $"Cooldown GE '{GetAssetLabel(ability.CooldownEffect)}' 必须是 Duration 或 Infinite。"));
 
+            ValidateEffectReferences(ability.Effects, issues);
+
             if (ability is AsynchronousGameplayAbilityData asynchronous)
             {
                 if (asynchronous.RootTask == null)
@@ -168,21 +170,29 @@ namespace WS_Modules.GAS.Editor
                 return;
             }
 
-            if (ability is ProjectileGameplayAbilityData projectile)
-                ValidateProjectileEffects(projectile.ImpactEffects, issues);
         }
 
-        // Instant Skill 的专属 GE 必须在当前调用内完成。
+        // Every Ability shares the same result list; concrete types add only timing-specific rules.
+        private static void ValidateEffectReferences(
+            IReadOnlyList<GameplayEffectData> effects,
+            ICollection<GameplayAbilityValidationIssue> issues)
+        {
+            if (effects == null) return;
+            for (int i = 0; i < effects.Count; i++)
+                if (effects[i] == null)
+                    issues.Add(Error($"Effects[{i}] cannot be null."));
+        }
+
         private static void ValidateInstantEffects(
             IReadOnlyList<GameplayEffectData> effects,
             ICollection<GameplayAbilityValidationIssue> issues)
         {
+            if (effects == null) return;
             for (int i = 0; i < effects.Count; i++)
             {
                 GameplayEffectData effect = effects[i];
-                if (effect == null)
-                    issues.Add(Error($"Instant Skill Effects[{i}] 不能为空。"));
-                else if (effect.DurationType != E_GameEffectDurationType.Instant)
+                if (effect == null) continue;
+                if (effect.DurationType != E_GameEffectDurationType.Instant)
                     issues.Add(Error($"Instant Skill Effects[{i}] 必须引用 Instant GE：{GetAssetLabel(effect)}。"));
             }
         }
@@ -192,14 +202,11 @@ namespace WS_Modules.GAS.Editor
             IReadOnlyList<GameplayEffectData> effects,
             ICollection<GameplayAbilityValidationIssue> issues)
         {
+            if (effects == null) return;
             for (int i = 0; i < effects.Count; i++)
             {
                 GameplayEffectData effect = effects[i];
-                if (effect == null)
-                {
-                    issues.Add(Error($"Passive Skill Effects[{i}] 不能为空。"));
-                    continue;
-                }
+                if (effect == null) continue;
 
                 if (effect.DurationType != E_GameEffectDurationType.Infinite)
                     issues.Add(Error($"Passive Skill Effects[{i}] 必须是 Infinite GE：{GetAssetLabel(effect)}。"));
@@ -208,17 +215,6 @@ namespace WS_Modules.GAS.Editor
             }
         }
 
-        // 投射物阶段只校验预留的命中效果引用，命中时机由具体投射物实现。
-        private static void ValidateProjectileEffects(
-            IReadOnlyList<GameplayEffectData> effects,
-            ICollection<GameplayAbilityValidationIssue> issues)
-        {
-            for (int i = 0; i < effects.Count; i++)
-                if (effects[i] == null)
-                    issues.Add(Error($"Projectile ImpactEffects[{i}] 不能为空。"));
-        }
-
-        // 递归定位 Sequence 子项与 WaitDuration 的具体非法路径。
         private static void ValidateTask(
             GameplayAbilityTaskConfig config,
             string path,

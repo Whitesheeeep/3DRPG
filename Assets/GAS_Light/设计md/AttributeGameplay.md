@@ -144,3 +144,15 @@ GAS 主窗口新增 `Attribute` 选项卡，内部包含两个子页面：
 - `Attribute Sets`：选择或创建 Set，按 Stat/Resource 虚拟分组编辑 Definition。
 
 Editor 继续采用轻量 MVC：View 封装 UI Toolkit，Controller 负责投影和 SessionState，Service 负责校验、Undo 和资产修改。双击 Registry 或 Set 都进入 GAS 主窗口对应 Attribute 子页面。域重载通过 Asset GUID 恢复 Registry、Set、页面、搜索与选择。
+
+## 多 Set 导入
+
+运行时 ASC 可以一次导入多个 `GameplayAttributeSet`。Container 会将各 Set 的 Definition 合并到同一运行时列表，要求所有 AttributeId 唯一；重复 Id 表示配置冲突，不进行默认值或 Pre/Post 规则覆盖。
+
+Unity MonoBehaviour 只负责序列化 `List<GameplayAttributeSet>` 并在运行时传入 ASC，GameplayAttributeContainer 继续负责实际校验与运行时 Definition 创建。
+
+## ASC 与 Attribute 查询边界
+
+ASC 的快捷门面只提供 `TryGetCurrentValue`、`HasTag` 和 `HasTagExact` 等只读查询。Attribute 的 BaseValue、CurrentValue、Pre/Post、Aggregator 和 Modifier 仍由 `GameplayAttributeContainer` 管理，ASC 不增加直接修改 Attribute 或 Modifier 的快捷入口。
+
+GE 快捷应用最终仍通过 Target ASC 的 `GameEffectCtrl` 进入 Attribute Container，因此所有原子结算、CurrentValue 读取和 Post FIFO 约束保持不变。

@@ -18,7 +18,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         protected virtual SynchronousGameplayAbilityRuntime CreateSynchronousRuntime(
             int activationId,
             GameplayAbilitySpec spec,
-            AbilitySystemComponentBase source,
+            GameplayAbilitySystemComponent source,
             IReadOnlyDictionary<GameplayTag, float> setByCaller) =>
             new SynchronousGameplayAbilityRuntime(
                 activationId, spec, source, setByCaller, this);
@@ -27,7 +27,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         protected sealed override GameplayAbilityRuntime CreateRuntime(
             int activationId,
             GameplayAbilitySpec spec,
-            AbilitySystemComponentBase source,
+            GameplayAbilitySystemComponent source,
             IReadOnlyDictionary<GameplayTag, float> setByCaller) =>
             CreateSynchronousRuntime(activationId, spec, source, setByCaller);
         #endregion

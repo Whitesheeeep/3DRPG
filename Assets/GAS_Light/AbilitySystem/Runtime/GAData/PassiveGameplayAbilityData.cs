@@ -10,13 +10,6 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
     [CreateAssetMenu(fileName = "PassiveGameplayAbility", menuName = "WSFrame/GAS/Gameplay Ability/Passive")]
     public sealed class PassiveGameplayAbilityData : AsynchronousGameplayAbilityData
     {
-        #region 字段与属性
-        [SerializeField, Tooltip("激活期间应用到 Source 自身的 Infinite GE；每项独立提交。")]
-        private List<GameplayEffectData> effects = new();
-
-        /// <summary>获取该 Passive Ability 的持续 GE 列表。</summary>
-        public IReadOnlyList<GameplayEffectData> Effects => effects;
-        #endregion
 
         #region 构造
         /// <summary>创建默认使用 Passive 保持 Task 的 Ability 数据。</summary>
@@ -32,12 +25,12 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         {
             get
             {
-                if (!base.IsRuntimeConfigurationValid || RootTask is not PassiveGameplayAbilityTaskConfig)
+                if (!base.IsRuntimeConfigurationValid || RootTask is not PassiveGameplayAbilityTaskConfig || Effects == null)
                     return false;
 
-                for (int i = 0; i < effects.Count; i++)
+                for (int i = 0; i < Effects.Count; i++)
                 {
-                    GameplayEffectData effect = effects[i];
+                    GameplayEffectData effect = Effects[i];
                     if (effect == null ||
                         effect.DurationType != E_GameEffectDurationType.Infinite ||
                         effect.StackingType != E_GameEffectStackingType.None)
@@ -54,7 +47,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         protected override AsynchronousGameplayAbilityRuntime CreateAsynchronousRuntime(
             int activationId,
             GameplayAbilitySpec spec,
-            AbilitySystemComponentBase source,
+            GameplayAbilitySystemComponent source,
             IReadOnlyDictionary<GameplayTag, float> setByCaller) =>
             new PassiveGameplayAbilityRuntime(
                 activationId,

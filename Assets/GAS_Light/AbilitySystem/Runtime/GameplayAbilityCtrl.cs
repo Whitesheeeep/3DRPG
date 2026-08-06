@@ -30,7 +30,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
 
         #region 属性与构造
         /// <inheritdoc />
-        public AbilitySystemComponentBase Owner { get; }
+        public GameplayAbilitySystemComponent Owner { get; }
         /// <inheritdoc />
         public IReadOnlyList<GameplayAbilitySpec> GrantedAbilities => grantedAbilities;
         /// <inheritdoc />
@@ -39,7 +39,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <summary>创建只服务指定 Source ASC 的 Ability Controller。</summary>
         /// <param name="owner">拥有全部 Spec、Runtime 与 Tick 回调的 ASC。</param>
         /// <exception cref="ArgumentNullException">owner 为 null。</exception>
-        public GameplayAbilityCtrl(AbilitySystemComponentBase owner)
+        public GameplayAbilityCtrl(GameplayAbilitySystemComponent owner)
         {
             Owner = owner ?? throw new ArgumentNullException(nameof(owner));
         }

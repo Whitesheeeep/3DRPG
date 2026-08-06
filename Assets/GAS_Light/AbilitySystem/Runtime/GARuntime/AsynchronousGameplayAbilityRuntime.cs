@@ -18,7 +18,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         protected internal AsynchronousGameplayAbilityRuntime(
             int activationId,
             GameplayAbilitySpec spec,
-            AbilitySystemComponentBase source,
+            GameplayAbilitySystemComponent source,
             IReadOnlyDictionary<GameplayTag, float> setByCaller,
             AsynchronousGameplayAbilityData data)
             : base(activationId, spec, source, setByCaller)

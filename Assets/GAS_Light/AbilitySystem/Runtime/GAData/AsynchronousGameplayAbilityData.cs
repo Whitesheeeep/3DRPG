@@ -25,16 +25,16 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         protected virtual AsynchronousGameplayAbilityRuntime CreateAsynchronousRuntime(
             int activationId,
             GameplayAbilitySpec spec,
-            AbilitySystemComponentBase source,
+            GameplayAbilitySystemComponent source,
             IReadOnlyDictionary<GameplayTag, float> setByCaller) =>
-            new AsynchronousGameplayAbilityRuntime(
+            new(
                 activationId, spec, source, setByCaller, this);
 
         // 将公共多态工厂固定转发到异步 Runtime 工厂。
         protected sealed override GameplayAbilityRuntime CreateRuntime(
             int activationId,
             GameplayAbilitySpec spec,
-            AbilitySystemComponentBase source,
+            GameplayAbilitySystemComponent source,
             IReadOnlyDictionary<GameplayTag, float> setByCaller) =>
             CreateAsynchronousRuntime(activationId, spec, source, setByCaller);
 

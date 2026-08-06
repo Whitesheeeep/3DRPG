@@ -12,8 +12,8 @@ namespace WS_Modules.GAS.GameplayEffect
 
         // 固定计算直接返回作者值，合法性由 AttributeContainer 最终边界保障。
         protected override float CalculateMagnitude(
-            AbilitySystemComponentBase source,
-            AbilitySystemComponentBase target,
+            GameplayAbilitySystemComponent source,
+            GameplayAbilitySystemComponent target,
             GameEffectRuntime runtime) => magnitude;
     }
 }

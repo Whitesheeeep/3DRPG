@@ -16,7 +16,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         event Action<GameplayAbilityRuntime> AbilityCancelled;
 
         /// <summary>获取该 Controller 服务的 Source ASC。</summary>
-        AbilitySystemComponentBase Owner { get; }
+        GameplayAbilitySystemComponent Owner { get; }
         /// <summary>获取当前被授予的 Ability Specs。</summary>
         IReadOnlyList<GameplayAbilitySpec> GrantedAbilities { get; }
         /// <summary>获取尚未 End 或 Cancel 的激活 Runtime。</summary>

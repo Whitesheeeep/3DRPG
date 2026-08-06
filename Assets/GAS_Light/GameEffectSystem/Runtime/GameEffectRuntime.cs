@@ -19,9 +19,9 @@ namespace WS_Modules.GAS.GameplayEffect
         /// <summary>获取产生该 Runtime 的不可变配置资产。</summary>
         public GameplayEffectData Data { get; }
         /// <summary>获取当前用于 Modifier Magnitude 计算的来源 ASC。</summary>
-        public AbilitySystemComponentBase Source { get; private set; }
+        public GameplayAbilitySystemComponent Source { get; private set; }
         /// <summary>获取拥有并处理该 Runtime 的目标 ASC。</summary>
-        public AbilitySystemComponentBase Target { get; }
+        public GameplayAbilitySystemComponent Target { get; }
         /// <summary>获取本次应用等级。</summary>
         public int Level { get; private set; }
         /// <summary>获取当前合并层数。</summary>
@@ -42,8 +42,8 @@ namespace WS_Modules.GAS.GameplayEffect
         // Runtime 只能由 GameEffectCtrl 创建，确保 Target、层数与计时器初始状态一致。
         internal GameEffectRuntime(
             GameplayEffectData data,
-            AbilitySystemComponentBase source,
-            AbilitySystemComponentBase target,
+            GameplayAbilitySystemComponent source,
+            GameplayAbilitySystemComponent target,
             int level,
             IReadOnlyDictionary<GameplayTag, float> values)
         {
@@ -61,7 +61,7 @@ namespace WS_Modules.GAS.GameplayEffect
         /// 为重复应用创建未提交候选，使 Modifier 结果提交失败时原 Active Runtime 不发生变化。
         /// </summary>
         internal GameEffectRuntime CreateCandidate(
-            AbilitySystemComponentBase source,
+            GameplayAbilitySystemComponent source,
             int level,
             int stackCount,
             IReadOnlyDictionary<GameplayTag, float> values)

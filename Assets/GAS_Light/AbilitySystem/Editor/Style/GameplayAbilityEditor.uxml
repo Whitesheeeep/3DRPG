@@ -22,6 +22,7 @@
                     <ui:Label text="Commit" class="ga-section-title ga-section-gap" />
                     <uie:PropertyField binding-path="costEffect" label="Cost Effect" />
                     <uie:PropertyField binding-path="cooldownEffect" label="Cooldown Effect" />
+                    <uie:PropertyField binding-path="effects" label="Effects" />
                     <ui:Label text="Specific Ability" class="ga-section-title ga-section-gap" />
                     <ui:VisualElement name="SubclassFieldsContainer" />
                     <ui:Label text="Validation" class="ga-section-title ga-section-gap" />

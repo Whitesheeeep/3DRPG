@@ -16,7 +16,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         protected internal SynchronousGameplayAbilityRuntime(
             int activationId,
             GameplayAbilitySpec spec,
-            AbilitySystemComponentBase source,
+            GameplayAbilitySystemComponent source,
             IReadOnlyDictionary<GameplayTag, float> setByCaller,
             SynchronousGameplayAbilityData data)
             : base(activationId, spec, source, setByCaller)

@@ -13,15 +13,6 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
     public sealed class GameplayAbilityOdinTester : MonoBehaviour
     {
         #region 测试类型
-        /// <summary>提供可由测试代码推进的最小 ASC。</summary>
-        private sealed class TestAbilitySystemComponent : AbilitySystemComponentBase
-        {
-            // 使用 ASC 自身 AbilityCtrl 管理 Tick 注册。
-            internal TestAbilitySystemComponent() : base()
-            {
-            }
-        }
-
         /// <summary>记录同步 Execute 次数的测试 Ability Data。</summary>
         private sealed class TestSynchronousAbilityData : SynchronousGameplayAbilityData
         {
@@ -85,7 +76,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         #endregion
 
         #region 运行状态
-        private TestAbilitySystemComponent source;
+        private GameObject sourceObject;
+        private GameplayAbilitySystemComponent source;
         private GameplayAbilityRuntime runtime;
         private int passed;
         private int failed;
@@ -106,8 +98,6 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private PassiveGameplayAbilityData passiveSkill;
         [SerializeField, AssetsOnly, Tooltip("可直接在 GA Editor 中编辑的 Sphere Projectile Skill SO。")]
         private SphereProjectileGameplayAbilityData sphereProjectileSkill;
-        [SerializeField, Tooltip("Sphere Projectile 的出生点；为空时使用测试组件自身 Transform。")]
-        private Transform sphereSpawnPoint;
         #endregion
 
         #region Odin 测试
@@ -128,13 +118,13 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 LogSummary();
                 return;
             }
-            GameplayAbilityHandle handle = source.Abilities.GiveAbility(data, 1);
-            bool activated = source.Abilities.TryActivate(handle, null, out runtime);
+            GameplayAbilityHandle handle = source.GiveAbility(data, 1);
+            bool activated = source.TryActivateAbility(handle, out runtime);
             if (!activated) LogActivationFailure(data);
             Expect("Instant Skill 激活成功", activated);
             Expect("Instant Skill 返回时已 Ended", runtime != null &&
                 runtime.State == GameplayAbilityRuntimeState.Ended);
-            Expect("Instant Skill 不残留 Active Runtime", source.Abilities.ActiveRuntimes.Count == 0);
+            Expect("Instant Skill 不残留 Active Runtime", source.ActiveAbilities.Count == 0);
             Debug.Log($"[GATest][Instant] SO={data.name}, GECount={data.Effects.Count}");
 
             LogSummary();
@@ -157,8 +147,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 LogSummary();
                 return;
             }
-            GameplayAbilityHandle handle = source.Abilities.GiveAbility(data, 1);
-            bool activated = source.Abilities.TryActivate(handle, null, out runtime);
+            GameplayAbilityHandle handle = source.GiveAbility(data, 1);
+            bool activated = source.TryActivateAbility(handle, null, out runtime);
             if (!activated) LogActivationFailure(data);
             var passive = runtime as PassiveGameplayAbilityRuntime;
             Expect("Passive Skill 激活成功", activated);
@@ -169,7 +159,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 : new List<GameEffectRuntime>(passive.AppliedEffects);
             Expect("Passive 精确保存成功 GE 句柄", passive != null &&
                 applied.Count <= data.Effects.Count);
-            bool ended = source.Abilities.TryEnd(runtime);
+            bool ended = source.TryEndAbility(runtime);
             Expect("Passive End 成功", ended);
             bool allRemoved = true;
             for (int i = 0; i < applied.Count; i++)
@@ -180,7 +170,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             LogSummary();
         }
 
-        /// <summary>验证同步 Sphere Projectile 创建后 GA 结束且投射物独立存活。</summary>
+        /// <summary>验证同步 Sphere Projectile 创建对象后立即结束 GA Runtime。</summary>
         [Button("测试 Sphere Projectile Skill")]
         public void TestSphereProjectileSkill()
         {
@@ -192,39 +182,46 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 LogSummary();
                 return;
             }
-            data.Initialize(sphereSpawnPoint != null ? sphereSpawnPoint : transform);
-            GameplayAbilityHandle handle = source.Abilities.GiveAbility(data, 1);
-            bool activated = source.Abilities.TryActivate(handle, null, out runtime);
+
+            GameplayAbilityHandle handle = source.GiveAbility(data, 1);
+            bool activated = source.TryActivateAbility(handle, null, out runtime);
             if (!activated) LogActivationFailure(data);
             Expect("Sphere Projectile 激活成功", activated);
             Expect("创建后 GA Runtime 已 Ended", runtime != null &&
                 runtime.State == GameplayAbilityRuntimeState.Ended);
-            Expect("球体对象已创建", data.SpawnedObject != null);
-            Debug.Log("[GATest][Sphere] 投射物由测试 Transform 生成，未进行碰撞或 Target 筛选。");
-            if (data.SpawnedObject != null) DestroyImmediate(data.SpawnedObject);
+
+            GameObject projectile = GameObject.Find("GA Sphere Projectile (Test)");
+            Expect("球体对象已创建", projectile != null);
+            if (projectile != null) DestroyImmediate(projectile);
 
             LogSummary();
         }
-
         /// <summary>验证同步 Ability 在激活调用内执行并按 Activated→Ended 顺序结束。</summary>
         [Button("测试同步 Ability")]
         public void TestSynchronousAbility()
         {
             ResetTest();
             var data = ScriptableObject.CreateInstance<TestSynchronousAbilityData>();
-            GameplayAbilityHandle handle = source.Abilities.GiveAbility(data, 2);
+            GameplayAbilityHandle handle = source.GiveAbility(data, 2);
+            bool specFound = source.TryGetAbilitySpec(handle, out GameplayAbilitySpec spec);
+            Expect("ASC Spec query", specFound && ReferenceEquals(spec.Data, data));
+            bool levelChanged = source.TrySetAbilityLevel(handle, 3);
+            Expect("ASC Ability level", levelChanged && spec.Level == 3);
             var events = new List<string>();
             source.Abilities.AbilityActivated += _ => events.Add("Activated");
             source.Abilities.AbilityEnded += _ => events.Add("Ended");
 
-            bool activated = source.Abilities.TryActivate(handle, null, out runtime);
+            bool activated = source.TryActivateAbility(handle, null, out runtime);
             Expect("同步激活成功", activated);
             Expect("Execute 执行一次", data.ExecuteCount == 1);
             Expect("返回时已经 Ended", runtime != null &&
                 runtime.State == GameplayAbilityRuntimeState.Ended);
-            Expect("同步 Runtime 已移出 Active", source.Abilities.ActiveRuntimes.Count == 0);
+            Expect("同步 Runtime 已移出 Active", source.ActiveAbilities.Count == 0);
             Expect("事件顺序 Activated→Ended",
                 events.Count == 2 && events[0] == "Activated" && events[1] == "Ended");
+
+            bool removed = source.TryRemoveAbility(handle);
+            Expect("ASC remove ended spec", removed && source.GrantedAbilities.Count == 0);
 
             DestroyImmediate(data);
             LogSummary();
@@ -243,8 +240,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                     new WaitDurationGameplayAbilityTaskConfig(1f)
                 }));
 
-            GameplayAbilityHandle handle = source.Abilities.GiveAbility(data, 1);
-            bool activated = source.Abilities.TryActivate(handle, null, out runtime);
+            GameplayAbilityHandle handle = source.GiveAbility(data, 1);
+            bool activated = source.TryActivateAbility(handle, null, out runtime);
             Expect("异步激活成功", activated);
             Expect("等待期间保持 Active", runtime != null &&
                 runtime.State == GameplayAbilityRuntimeState.Active);
@@ -252,7 +249,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             Expect("未达到时长仍 Active", runtime.State == GameplayAbilityRuntimeState.Active);
             source.Tick(0.6f);
             Expect("Root 完成后 Ended", runtime.State == GameplayAbilityRuntimeState.Ended);
-            Expect("完成后移出 Active", source.Abilities.ActiveRuntimes.Count == 0);
+            Expect("完成后移出 Active", source.ActiveAbilities.Count == 0);
 
             DestroyImmediate(data);
             LogSummary();
@@ -265,9 +262,9 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             ResetTest();
             var data = ScriptableObject.CreateInstance<TestAsynchronousAbilityData>();
             data.Initialize(new TickProbeGameplayAbilityTaskConfig(3));
-            GameplayAbilityHandle handle = source.Abilities.GiveAbility(data, 1);
+            GameplayAbilityHandle handle = source.GiveAbility(data, 1);
 
-            bool activated = source.Abilities.TryActivate(handle, null, out runtime);
+            bool activated = source.TryActivateAbility(handle, null, out runtime);
             Expect("Tick Ability 激活成功", activated);
             Expect("激活后 ASC Tick 注册一次", source.TickRegistrationCount == 1);
             if (!activated)
@@ -292,7 +289,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 runtime.State == GameplayAbilityRuntimeState.Ended);
             Expect("完成后 ASC Tick 注册归零", source.TickRegistrationCount == 0);
             Expect("完成后 Runtime 移出 Active",
-                source.Abilities.ActiveRuntimes.Count == 0);
+                source.ActiveAbilities.Count == 0);
 
             int finalTickCount = probe.TickCount;
             source.Tick(0.1f);
@@ -309,27 +306,27 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             ResetTest();
             var data = ScriptableObject.CreateInstance<TestAsynchronousAbilityData>();
             data.Initialize(new WaitDurationGameplayAbilityTaskConfig(10f));
-            GameplayAbilityHandle handle = source.Abilities.GiveAbility(data, 1);
+            GameplayAbilityHandle handle = source.GiveAbility(data, 1);
 
-            source.Abilities.TryActivate(handle, null, out GameplayAbilityRuntime ended);
-            Expect("外部 End 成功", source.Abilities.TryEnd(ended));
+            source.TryActivateAbility(handle, null, out GameplayAbilityRuntime ended);
+            Expect("外部 End 成功", source.TryEndAbility(ended));
             Expect("End 后 Root 为 Stopped",
                 ((AsynchronousGameplayAbilityRuntime)ended).RootTask.State ==
                 GameplayAbilityTaskState.Stopped);
 
-            source.Abilities.TryActivate(handle, null, out GameplayAbilityRuntime cancelled);
-            Expect("外部 Cancel 成功", source.Abilities.TryCancel(cancelled));
+            source.TryActivateAbility(handle, null, out GameplayAbilityRuntime cancelled);
+            Expect("外部 Cancel 成功", source.TryCancelAbility(cancelled));
             Expect("Cancel 后 Root 为 Cancelled",
                 ((AsynchronousGameplayAbilityRuntime)cancelled).RootTask.State ==
                 GameplayAbilityTaskState.Cancelled);
 
-            source.Abilities.TryActivate(handle, null, out GameplayAbilityRuntime cleared);
+            source.TryActivateAbility(handle, null, out GameplayAbilityRuntime cleared);
             source.Abilities.Clear();
             Expect("Clear 将 Runtime Cancelled",
                 cleared.State == GameplayAbilityRuntimeState.Cancelled);
             Expect("Clear 清空 Spec 和 Active",
-                source.Abilities.GrantedAbilities.Count == 0 &&
-                source.Abilities.ActiveRuntimes.Count == 0);
+                source.GrantedAbilities.Count == 0 &&
+                source.ActiveAbilities.Count == 0);
 
             DestroyImmediate(data);
             LogSummary();
@@ -349,11 +346,19 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         }
         #endregion
 
+        // 测试组件销毁时清理尚未结束按钮留下的临时 ASC。
+        private void OnDestroy() => CleanupSource();
+
         #region 内部辅助
         // 每个场景创建独立 ASC，避免注册和 Runtime 相互污染。
         private void ResetTest()
         {
-            source = new TestAbilitySystemComponent();
+            CleanupSource();
+            sourceObject = new GameObject("GA Odin Test ASC")
+            {
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            source = sourceObject.AddComponent<GameplayAbilitySystemComponent>();
             runtime = null;
             passed = 0;
             failed = 0;
@@ -363,16 +368,18 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             if (testAttributeSet == null)
             {
                 attributeInitializationError = "请先指定 GameplayAttributeTestSet。";
+                Debug.LogError($"[GATest][Initialize] {attributeInitializationError}");
             }
             else
             {
-                attributesReady = source.Attributes.TryInitialize(
-                    new[] { testAttributeSet },
-                    out attributeInitializationError);
+                source.Initialize(new[] { testAttributeSet });
+                attributesReady = source.IsInitialized;
+                if (!attributesReady)
+                {
+                    attributeInitializationError = "ASC AttributeSet 初始化失败，请查看前置日志。";
+                    Debug.LogError($"[GATest][Initialize] {attributeInitializationError}");
+                }
             }
-
-            if (!attributesReady)
-                Debug.LogError($"[GATest][Initialize] AttributeSet 初始化失败：{attributeInitializationError}");
         }
 
         // Attribute 相关场景在提交 Cost 前必须完成测试 Set 导入；缺失时跳过后续激活断言。
@@ -388,7 +395,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         {
             bool cooldownActive = data != null &&
                                   data.CooldownEffect != null &&
-                                  source.GameEffectCtrl.HasActiveEffect(data.CooldownEffect);
+                                  source.HasActiveEffect(data.CooldownEffect);
             Debug.LogError(
                 $"[GATest][Activate] 失败：Data={data?.name ?? "null"}, " +
                 $"RuntimeConfig={data?.IsRuntimeConfigurationValid.ToString() ?? "null"}, " +
@@ -412,9 +419,20 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             }
         }
 
-        // 输出当前按钮场景的汇总。
-        private void LogSummary() =>
+        // 输出当前按钮场景的汇总，并释放本场景创建的临时 ASC。
+        private void LogSummary()
+        {
             Debug.Log($"[GATest][Summary] PASS={passed}, FAIL={failed}");
+            CleanupSource();
+        }
+
+        // 销毁隔离测试创建的临时 GameObject，避免手动按钮污染当前场景。
+        private void CleanupSource()
+        {
+            if (sourceObject != null) DestroyImmediate(sourceObject);
+            sourceObject = null;
+            source = null;
+        }
         #endregion
     }
 }

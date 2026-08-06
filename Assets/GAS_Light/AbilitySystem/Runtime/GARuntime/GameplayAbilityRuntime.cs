@@ -21,7 +21,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <summary>获取创建该 Runtime 的长期 Ability Spec。</summary>
         public GameplayAbilitySpec Spec { get; }
         /// <summary>获取释放本次 Ability 的 ASC。</summary>
-        public AbilitySystemComponentBase Source { get; }
+        public GameplayAbilitySystemComponent Source { get; }
         /// <summary>获取激活时从 Spec 复制的等级快照。</summary>
         public int Level { get; }
         /// <summary>获取当前生命周期状态。</summary>
@@ -36,7 +36,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         protected GameplayAbilityRuntime(
             int activationId,
             GameplayAbilitySpec spec,
-            AbilitySystemComponentBase source,
+            GameplayAbilitySystemComponent source,
             IReadOnlyDictionary<GameplayTag, float> values)
         {
             ActivationId = activationId;

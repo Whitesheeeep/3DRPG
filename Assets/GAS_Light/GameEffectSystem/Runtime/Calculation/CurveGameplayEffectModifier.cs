@@ -13,8 +13,8 @@ namespace WS_Modules.GAS.GameplayEffect
 
         // 使用 Runtime.Level 采样倍率；未配置曲线时保持基础值。
         protected override float CalculateMagnitude(
-            AbilitySystemComponentBase source,
-            AbilitySystemComponentBase target,
+            GameplayAbilitySystemComponent source,
+            GameplayAbilitySystemComponent target,
             GameEffectRuntime runtime)
         {
             float multiplier = levelCurve == null ? 1f : levelCurve.Evaluate(runtime.Level);

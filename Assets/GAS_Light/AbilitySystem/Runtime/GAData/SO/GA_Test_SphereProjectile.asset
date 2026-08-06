@@ -19,7 +19,8 @@ MonoBehaviour:
     noneTags: []
   costEffect: {fileID: 11400000, guid: c4005860abd1f1a47be545ea558a6a3c, type: 2}
   cooldownEffect: {fileID: 11400000, guid: f42153ccd11d0b64d95d878f0ce9053d, type: 2}
-  impactEffects: []
+  effects:
+  - {fileID: 11400000, guid: 6861f23c72baf27428de65bec7d0d062, type: 2}
   radius: 0.25
   speed: 5
   lifetime: 2

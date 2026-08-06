@@ -1,71 +1,141 @@
-using System;
+using System.Collections.Generic;
 using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
+using WS_Modules.GAS.GameplayEffect;
+using WS_Modules.GAS.TAG;
 
 namespace WS_Modules.GAS.GameplayAbilitySystem
 {
-    /// <summary>基础球体投射物 Ability 示例；创建对象后由投射物自身继续运行。</summary>
+    /// <summary>
+    /// 创建可独立移动并在首次物理命中时应用 Ability Effects 的球体投射物示例。
+    /// </summary>
     [CreateAssetMenu(fileName = "SphereProjectileGameplayAbility", menuName = "WSFrame/GAS/Gameplay Ability/Projectile/Sphere Test")]
     public sealed class SphereProjectileGameplayAbilityData : ProjectileGameplayAbilityData
     {
-        #region 字段与属性
+        #region 字段
+
         [SerializeField, Min(0.01f), Tooltip("生成球体的半径。")]
         private float radius = 0.25f;
-        [SerializeField, Min(0f), Tooltip("球体前进速度；仅用于编辑器测试。")]
+
+        [SerializeField, Min(0f), Tooltip("球体沿 Source 前方移动的速度。")]
         private float speed = 5f;
-        [SerializeField, Min(0f), Tooltip("球体独立存活时间；仅用于编辑器测试。")]
+
+        [SerializeField, Min(0f), Tooltip("球体未命中目标时的最长存活时间。")]
         private float lifetime = 2f;
-        [NonSerialized] private Transform spawnTransform;
-        [NonSerialized] private GameObject spawnedObject;
 
-        /// <summary>获取本次测试创建的球体对象。</summary>
-        internal GameObject SpawnedObject => spawnedObject;
-        #endregion
-
-        #region 测试入口
-        // 测试组件提供场景出生点，Transform 不写入 Ability SO。
-        internal void Initialize(Transform value) => spawnTransform = value;
         #endregion
 
         #region 同步执行
-        // 创建对象后立即返回；投射物的移动与销毁不延长 GA Runtime。
+
+        // 使用本次 Runtime 的 Source Transform 创建投射物；投射物后续生命周期不延长 GA Runtime。
         protected override void SpawnProjectile(SynchronousGameplayAbilityRuntime runtime)
         {
-            Vector3 position = spawnTransform != null ? spawnTransform.position : Vector3.zero;
-            Vector3 direction = spawnTransform != null ? spawnTransform.forward : Vector3.forward;
-            spawnedObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            spawnedObject.name = "GA Sphere Projectile (Test)";
-            spawnedObject.transform.SetPositionAndRotation(position, Quaternion.LookRotation(direction));
-            spawnedObject.transform.localScale = Vector3.one * (radius * 2f);
-            SphereProjectileProbe probe = spawnedObject.AddComponent<SphereProjectileProbe>();
-            probe.Initialize(direction, speed, lifetime);
+            Transform sourceTransform = runtime.Source.transform;
+            Vector3 direction = sourceTransform.forward.sqrMagnitude > 0f
+                ? sourceTransform.forward.normalized
+                : Vector3.forward;
+
+            GameObject projectile = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            projectile.name = "GA Sphere Projectile (Test)";
+            projectile.transform.SetPositionAndRotation(
+                sourceTransform.position,
+                Quaternion.LookRotation(direction));
+            projectile.transform.localScale = Vector3.one * (radius * 2f);
+
+            SphereCollider collider = projectile.GetComponent<SphereCollider>();
+            collider.isTrigger = true;
+
+            Rigidbody body = projectile.AddComponent<Rigidbody>();
+            body.useGravity = false;
+            body.isKinematic = true;
+            body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+
+            SphereProjectileProbe probe = projectile.AddComponent<SphereProjectileProbe>();
+            probe.Initialize(
+                body,
+                direction,
+                speed,
+                lifetime,
+                runtime.Source,
+                runtime.Level,
+                runtime.SetByCaller,
+                Effects);
         }
+
         #endregion
 
-        #region 测试投射物
-        // 仅模拟投射物持续更新，不处理碰撞、范围、阵营或目标选择。
+        #region 投射物实例
+
+        /// <summary>
+        /// 保存单次投射物的激活快照，并通过真实 Trigger 碰撞向目标 ASC 应用 Effects。
+        /// </summary>
         private sealed class SphereProjectileProbe : MonoBehaviour
         {
+            private Rigidbody body;
             private Vector3 direction;
             private float speed;
             private float remainingLife;
+            private GameplayAbilitySystemComponent source;
+            private int level;
+            private IReadOnlyDictionary<GameplayTag, float> setByCaller;
+            private GameplayEffectData[] effects;
+            private bool hit;
 
-            // 初始化独立投射物的移动参数。
-            internal void Initialize(Vector3 value, float moveSpeed, float life)
+            // 复制本次激活所需数据，避免投射物继续依赖可被其他激活覆盖的 SO 运行时字段。
+            internal void Initialize(
+                Rigidbody projectileBody,
+                Vector3 moveDirection,
+                float moveSpeed,
+                float life,
+                GameplayAbilitySystemComponent sourceAsc,
+                int abilityLevel,
+                IReadOnlyDictionary<GameplayTag, float> callerValues,
+                IReadOnlyList<GameplayEffectData> configuredEffects)
             {
-                direction = value.sqrMagnitude > 0f ? value.normalized : Vector3.forward;
+                body = projectileBody;
+                direction = moveDirection;
                 speed = moveSpeed;
                 remainingLife = life;
+                source = sourceAsc;
+                level = abilityLevel;
+                setByCaller = callerValues;
+
+                effects = new GameplayEffectData[configuredEffects.Count];
+                for (int i = 0; i < configuredEffects.Count; i++)
+                    effects[i] = configuredEffects[i];
             }
 
-            // 投射物在自身生命周期内移动，到期后自行销毁。
-            private void Update()
+            // 在物理步中移动并累计存活时间，确保 Trigger 检测与位置更新使用相同节奏。
+            private void FixedUpdate()
             {
-                transform.position += direction * (speed * Time.deltaTime);
-                remainingLife -= Time.deltaTime;
+                if (hit) return;
+
+                body.MovePosition(body.position + direction * (speed * Time.fixedDeltaTime));
+                remainingLife -= Time.fixedDeltaTime;
                 if (remainingLife <= 0f) Destroy(gameObject);
             }
+
+            // 首次命中其他 ASC 时逐项应用快照 Effects，并终止投射物生命周期。
+            private void OnTriggerEnter(Collider other)
+            {
+                if (hit) return;
+
+                GameplayAbilitySystemComponent target =
+                    other.GetComponentInParent<GameplayAbilitySystemComponent>();
+                if (target == null || ReferenceEquals(target, source)) return;
+
+                hit = true;
+                for (int i = 0; i < effects.Length; i++)
+                {
+                    GameplayEffectData effect = effects[i];
+                    if (effect != null)
+                        target.TryApplyEffect(effect, source, level, setByCaller, out _);
+                }
+
+                Destroy(gameObject);
+            }
         }
+
         #endregion
     }
 }

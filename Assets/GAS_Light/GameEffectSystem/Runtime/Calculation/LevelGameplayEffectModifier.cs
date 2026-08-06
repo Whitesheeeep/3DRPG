@@ -28,8 +28,8 @@ namespace WS_Modules.GAS.GameplayEffect
 
         // 线性查找不高于 Runtime.Level 的最高配置等级，列表作者顺序不影响结果。
         protected override float CalculateMagnitude(
-            AbilitySystemComponentBase source,
-            AbilitySystemComponentBase target,
+            GameplayAbilitySystemComponent source,
+            GameplayAbilitySystemComponent target,
             GameEffectRuntime runtime)
         {
             int selectedLevel = 0;
