@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using UnityEngine;
@@ -135,9 +136,9 @@ namespace RPG.SkillSystem.Editor
         // 枚举未静音轨道；重建时启动全部当前有效 Clip，推进时只启动跨过起始帧的新 Clip。
         private void StartAudibleClips(in PreviewFrameContext context, bool onlyCrossedStarts)
         {
-            foreach (AudioTrackConfig track in context.Config.AudioTracks)
+            foreach (AudioTrackConfig track in context.Config.Tracks.OfType<AudioTrackConfig>())
             {
-                if (track?.Header == null || track.Header.Muted) continue;
+                if (track == null || track.Muted) continue;
                 foreach (AudioSkillClipConfig clip in track.Clips)
                 {
                     if (!IsAudibleAt(clip, context.Frame, context.Config.FrameRate)) continue;

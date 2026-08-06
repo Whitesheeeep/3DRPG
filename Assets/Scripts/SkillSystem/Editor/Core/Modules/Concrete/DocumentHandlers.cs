@@ -10,7 +10,7 @@ namespace RPG.SkillSystem.Editor
     /// </summary>
     internal abstract class TrackDocumentHandler : ITrackDocumentHandler
     {
-        public string TracksPropertyName { get; }
+        public Type TrackType { get; }
         public string ItemsPropertyName { get; }
         public string StartFramePropertyName { get; }
         public string DurationPropertyName { get; }
@@ -18,11 +18,11 @@ namespace RPG.SkillSystem.Editor
         public bool SupportsResize => !string.IsNullOrEmpty(DurationPropertyName);
 
         // 保存不可变序列化结构，不缓存会在 Undo 或 Apply 后失效的 SerializedProperty。
-        protected TrackDocumentHandler(string tracksPropertyName, string itemsPropertyName,
+        protected TrackDocumentHandler(Type trackType, string itemsPropertyName,
             string startFramePropertyName, string durationPropertyName,
             string defaultTrackNamePrefix)
         {
-            TracksPropertyName = tracksPropertyName;
+            TrackType = trackType;
             ItemsPropertyName = itemsPropertyName;
             StartFramePropertyName = startFramePropertyName;
             DurationPropertyName = durationPropertyName ?? string.Empty;
@@ -90,7 +90,7 @@ namespace RPG.SkillSystem.Editor
         /// 创建动画轨道数据处理器。
         /// </summary>
         public AnimationDocumentHandler()
-            : base(DocumentFieldNames.AnimationTracks, DocumentFieldNames.Clips, DocumentFieldNames.StartFrame,
+            : base(typeof(AnimationTrackConfig), DocumentFieldNames.Clips, DocumentFieldNames.StartFrame,
                 DocumentFieldNames.DurationFrames, "动画轨道")
         {
         }
@@ -105,7 +105,7 @@ namespace RPG.SkillSystem.Editor
         {
             if (request is not AnimationCreateRequest animation)
                 return ItemsCreateResult.Failure("动画轨道收到不匹配的创建请求。");
-            if (!document.TryFindTrack(this, trackId, out _, out SerializedProperty track, out _))
+            if (!document.TryFindTrack(this, trackId, out TrackConfigBase track, out SerializedObject trackObject, out SerializedProperty items))
                 return ItemsCreateResult.Failure("动画轨道不存在。");
             if (Document.IsTrackLocked(track)) return ItemsCreateResult.Failure("目标轨道已锁定。");
             if (animation.Clips == null || animation.Clips.Count == 0)
@@ -126,13 +126,12 @@ namespace RPG.SkillSystem.Editor
             int startFrame = Mathf.Max(0, animation.StartFrame);
             if (total > int.MaxValue - (long)startFrame)
                 return ItemsCreateResult.Failure("拖入动画的总持续帧超出范围。");
-            if (!document.CanPlaceInterval(this, track, string.Empty, startFrame, (int)total))
+            if (!document.CanPlaceInterval(this, items, string.Empty, startFrame, (int)total))
                 return ItemsCreateResult.Failure("拖入位置与同轨动画片段重叠。");
 
             string[] itemIds = Document.CreateItemIds(animation.Clips.Count);
-            document.Mutate("拖入动画素材", () =>
+            document.MutateTrack("拖入动画素材", track, trackObject, () =>
             {
-                SerializedProperty items = Document.GetItemsProperty(this, track);
                 int nextFrame = startFrame;
                 for (int index = 0; index < animation.Clips.Count; index++)
                 {
@@ -201,7 +200,7 @@ namespace RPG.SkillSystem.Editor
         /// 创建攻击检测轨道数据处理器。
         /// </summary>
         public AttackDetectionDocumentHandler()
-            : base(DocumentFieldNames.AttackDetectionTracks, DocumentFieldNames.Clips,
+            : base(typeof(AttackDetectionTrackConfig), DocumentFieldNames.Clips,
                 DocumentFieldNames.StartFrame, DocumentFieldNames.DurationFrames, "攻击检测轨道")
         {
         }
@@ -287,7 +286,7 @@ namespace RPG.SkillSystem.Editor
         /// 创建特效轨道数据处理器。
         /// </summary>
         public VfxDocumentHandler()
-            : base(DocumentFieldNames.VfxTracks, DocumentFieldNames.Clips, DocumentFieldNames.StartFrame,
+            : base(typeof(VfxTrackConfig), DocumentFieldNames.Clips, DocumentFieldNames.StartFrame,
                 DocumentFieldNames.DurationFrames, "特效轨道")
         {
         }
@@ -302,7 +301,7 @@ namespace RPG.SkillSystem.Editor
         {
             if (request is not VfxCreateRequest vfx)
                 return ItemsCreateResult.Failure("特效轨道收到不匹配的创建请求。");
-            if (!document.TryFindTrack(this, trackId, out _, out SerializedProperty track, out _))
+            if (!document.TryFindTrack(this, trackId, out TrackConfigBase track, out SerializedObject trackObject, out SerializedProperty items))
                 return ItemsCreateResult.Failure("特效轨道不存在。");
             if (Document.IsTrackLocked(track)) return ItemsCreateResult.Failure("目标轨道已锁定。");
             if (vfx.Prefabs == null || vfx.Prefabs.Count == 0)
@@ -321,13 +320,12 @@ namespace RPG.SkillSystem.Editor
             long total = (long)durationFrames * vfx.Prefabs.Count;
             if (total > int.MaxValue - (long)startFrame)
                 return ItemsCreateResult.Failure("拖入特效的总持续帧超出范围。");
-            if (!document.CanPlaceInterval(this, track, string.Empty, startFrame, (int)total))
+            if (!document.CanPlaceInterval(this, items, string.Empty, startFrame, (int)total))
                 return ItemsCreateResult.Failure("拖入位置与同轨特效片段重叠。");
 
             string[] itemIds = Document.CreateItemIds(vfx.Prefabs.Count);
-            document.Mutate("拖入特效素材", () =>
+            document.MutateTrack("拖入特效素材", track, trackObject, () =>
             {
-                SerializedProperty items = Document.GetItemsProperty(this, track);
                 int nextFrame = startFrame;
                 for (int index = 0; index < vfx.Prefabs.Count; index++)
                 {
@@ -417,7 +415,7 @@ namespace RPG.SkillSystem.Editor
         /// 创建音频轨道数据处理器。
         /// </summary>
         public AudioDocumentHandler()
-            : base(DocumentFieldNames.AudioTracks, DocumentFieldNames.Clips, DocumentFieldNames.StartFrame,
+            : base(typeof(AudioTrackConfig), DocumentFieldNames.Clips, DocumentFieldNames.StartFrame,
                 DocumentFieldNames.DurationFrames, "音频轨道")
         {
         }
@@ -432,7 +430,7 @@ namespace RPG.SkillSystem.Editor
         {
             if (request is not AudioCreateRequest audio)
                 return ItemsCreateResult.Failure("音频轨道收到不匹配的创建请求。");
-            if (!document.TryFindTrack(this, trackId, out _, out SerializedProperty track, out _))
+            if (!document.TryFindTrack(this, trackId, out TrackConfigBase track, out SerializedObject trackObject, out SerializedProperty items))
                 return ItemsCreateResult.Failure("音频轨道不存在。");
             if (Document.IsTrackLocked(track)) return ItemsCreateResult.Failure("目标轨道已锁定。");
             if (audio.AudioClips == null || audio.AudioClips.Count == 0)
@@ -461,13 +459,12 @@ namespace RPG.SkillSystem.Editor
             int startFrame = Mathf.Max(0, audio.StartFrame);
             if (total > int.MaxValue - (long)startFrame)
                 return ItemsCreateResult.Failure("拖入音频的总持续帧超出范围。");
-            if (!document.CanPlaceInterval(this, track, string.Empty, startFrame, (int)total))
+            if (!document.CanPlaceInterval(this, items, string.Empty, startFrame, (int)total))
                 return ItemsCreateResult.Failure("拖入位置与同轨音频片段重叠。");
 
             string[] itemIds = Document.CreateItemIds(audio.AudioClips.Count);
-            document.Mutate("拖入音频素材", () =>
+            document.MutateTrack("拖入音频素材", track, trackObject, () =>
             {
-                SerializedProperty items = Document.GetItemsProperty(this, track);
                 int nextFrame = startFrame;
                 for (int index = 0; index < audio.AudioClips.Count; index++)
                 {
@@ -545,7 +542,7 @@ namespace RPG.SkillSystem.Editor
         /// 创建事件轨道数据处理器。
         /// </summary>
         public EventDocumentHandler()
-            : base(DocumentFieldNames.EventTracks, DocumentFieldNames.Markers, DocumentFieldNames.Frame,
+            : base(typeof(EventTrackConfig), DocumentFieldNames.Markers, DocumentFieldNames.Frame,
                 string.Empty, "事件轨道")
         {
         }
@@ -571,14 +568,15 @@ namespace RPG.SkillSystem.Editor
         {
             if (request is not EventEditRequest marker)
                 return EditResult.Failure("事件轨道收到不匹配的编辑请求。");
-            if (!document.TryFindItem(this, trackId, itemId, out SerializedProperty track,
-                    out SerializedProperty items,
+            if (!document.TryFindItem(this, trackId, itemId, out TrackConfigBase track,
+                    out SerializedObject trackObject, out SerializedProperty items,
                     out SerializedProperty item, out _))
                 return EditResult.Failure("事件 Marker 不存在。");
+            if (track.EditorLocked) return EditResult.Failure("轨道已锁定。");
             int targetFrame = Mathf.Max(0, marker.Frame);
-            if (!document.CanPlaceInterval(this, track, itemId, targetFrame, 1))
+            if (!document.CanPlaceInterval(this, items, itemId, targetFrame, 1))
                 return EditResult.Failure("目标帧已有其他 Event Marker。");
-            document.Mutate("修改事件 Marker", () =>
+            document.MutateTrack("修改事件 Marker", track, trackObject, () =>
             {
                 Document.SetItemFrame(this, item, targetFrame, 1);
                 item.FindPropertyRelative(DocumentFieldNames.EventTypeName).stringValue = marker.EventTypeName ?? string.Empty;
@@ -588,7 +586,7 @@ namespace RPG.SkillSystem.Editor
                 item.FindPropertyRelative(DocumentFieldNames.ParameterText).stringValue = marker.ParameterText ?? string.Empty;
                 document.ExpandDurationForItem(this, item);
                 Document.SortItems(this, items);
-            }, itemId, false);
+            });
             return EditResult.Success();
         }
 

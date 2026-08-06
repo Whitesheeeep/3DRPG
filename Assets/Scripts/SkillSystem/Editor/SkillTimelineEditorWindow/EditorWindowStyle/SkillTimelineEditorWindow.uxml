@@ -43,11 +43,10 @@
                 <ui:Slider name="ZoomSlider" label="缩放" low-value="4" high-value="48" class="zoom-slider unity-base-field__aligned" />
             </ui:VisualElement>
         </ui:VisualElement>
-        <WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView name="MainSplitView" fixed-pane-index="1" fixed-pane-initial-dimension="300" orientation="Horizontal" class="main-content">
-            <ui:VisualElement name="TimelinePanel" class="timeline-panel">
+        <ui:VisualElement name="TimelinePanel" class="timeline-panel">
                 <WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView name="HeaderTimelineSplit" fixed-pane-index="0" fixed-pane-initial-dimension="240" orientation="Horizontal" class="timeline-inner-split">
                     <ui:VisualElement name="TimelineHeaderPane" class="timeline-header-pane">
-                        <ui:Label text="轨道 / 分组" class="timeline-header-title" />
+                        <ui:Label text="轨道" class="timeline-header-title" />
                         <ui:VisualElement name="TrackRoot" class="track-header-column">
                             <ui:ScrollView name="TrackHeaderScroll" mode="Vertical" class="track-header-scroll">
                                 <ui:VisualElement name="TrackHeaderContent" class="track-header-content">
@@ -69,17 +68,11 @@
                                 <ui:VisualElement name="TimelineLaneRows" class="timeline-lane-item-rows" />
                             </ui:VisualElement>
                         </ui:ScrollView>
+                        <ui:VisualElement name="ItemDragOverlay" picking-mode="Ignore" class="item-drag-overlay" />
                         <ui:VisualElement name="PlayheadOverlay" picking-mode="Ignore" class="playhead-overlay" />
                     </ui:VisualElement>
                 </WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView>
             </ui:VisualElement>
-            <ui:VisualElement name="InspectorPanel" class="inspector-panel">
-                <ui:Label text="Inspector" class="panel-title" />
-                <ui:ScrollView name="InspectorScroll" class="inspector-scroll">
-                    <ui:VisualElement name="InspectorContainer" class="inspector-container" />
-                </ui:ScrollView>
-            </ui:VisualElement>
-        </WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView>
         <ui:Label name="StatusLabel" text="请选择或新建 SkillConfig。" class="status-label" />
     </ui:VisualElement>
 </ui:UXML>

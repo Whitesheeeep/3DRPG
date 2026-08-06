@@ -16,3 +16,35 @@
 .timeline-resize-right {
     right: 0;
 }
+
+.timeline-item.is-drag-source {
+    opacity: 0.3;
+}
+
+.timeline-item.is-drag-ghost {
+    translate: 0 0;
+    opacity: 0.82;
+}
+
+.timeline-item.is-drag-placeholder {
+    opacity: 0.62;
+}
+
+.timeline-item.is-drag-ghost .timeline-resize-handle,
+.timeline-item.is-drag-placeholder .timeline-resize-handle {
+    display: none;
+}
+
+.timeline-item.is-drag-valid {
+    border-top-color: rgb(90, 215, 255);
+    border-bottom-color: rgb(90, 215, 255);
+    border-left-color: rgb(90, 215, 255);
+    border-right-color: rgb(90, 215, 255);
+}
+
+.timeline-item.is-drag-invalid {
+    border-top-color: rgb(235, 80, 80);
+    border-bottom-color: rgb(235, 80, 80);
+    border-left-color: rgb(235, 80, 80);
+    border-right-color: rgb(235, 80, 80);
+}

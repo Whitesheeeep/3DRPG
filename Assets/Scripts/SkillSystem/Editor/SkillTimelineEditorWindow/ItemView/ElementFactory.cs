@@ -22,12 +22,6 @@ namespace RPG.SkillSystem.Editor
         #region 公共行元素
 
         /// <summary>
-        /// 创建轨道分组左侧标题行。
-        /// </summary>
-        public VisualElement CreateGroupHeader() =>
-            Instantiate("TimelineRow/SkillTimelineGroupHeaderRow.uxml", "GroupHeaderRoot");
-
-        /// <summary>
         /// 创建普通轨道左侧标题行。
         /// </summary>
         public VisualElement CreateTrackHeader() =>

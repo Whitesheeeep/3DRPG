@@ -1,14 +1,20 @@
-<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
     <ui:VisualElement name="TrackHeaderRoot" class="timeline-header-row">
-        <ui:VisualElement name="NameContainer" class="timeline-row-main timeline-track-name-container">
-            <ui:Label name="NameLabel" class="timeline-row-name" />
-            <ui:TextField name="NameEditor" class="timeline-row-name-editor" />
+        <ui:VisualElement class="timeline-track-primary-row">
+            <ui:Label name="TrackDragHandle" text="≡" tooltip="拖动以调整轨道顺序" class="timeline-track-drag-handle" />
+            <ui:VisualElement name="NameContainer" class="timeline-row-main timeline-track-name-container">
+                <ui:Label name="NameLabel" class="timeline-row-name" />
+                <ui:TextField name="NameEditor" class="timeline-row-name-editor" />
+            </ui:VisualElement>
         </ui:VisualElement>
-        <ui:VisualElement class="timeline-row-actions">
-            <ui:Button name="AddButton" text="+" class="timeline-header-button" />
-            <ui:Button name="MoveUpButton" text="↑" class="timeline-header-button" />
-            <ui:Button name="MoveDownButton" text="↓" class="timeline-header-button" />
-            <ui:Button name="RemoveButton" text="×" class="timeline-header-button" />
+        <ui:VisualElement class="timeline-track-secondary-row">
+            <uie:ObjectField name="TrackAssetField" label="" type="UnityEngine.Object, UnityEngine.CoreModule" allow-scene-objects="false" class="timeline-track-asset-field" />
+            <ui:VisualElement class="timeline-row-actions">
+                <ui:Button name="AddButton" text="+" tooltip="添加内容" class="timeline-header-button" />
+                <ui:Button name="MoveUpButton" text="↑" tooltip="上移轨道" class="timeline-header-button" />
+                <ui:Button name="MoveDownButton" text="↓" tooltip="下移轨道" class="timeline-header-button" />
+                <ui:Button name="RemoveButton" text="×" tooltip="删除轨道及其子资产" class="timeline-header-button" />
+            </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

@@ -6,25 +6,15 @@ namespace RPG.SkillSystem.Editor
     /// </summary>
     internal static class DocumentFieldNames
     {
-        /// <summary>技能配置、轨道头和内容共用的稳定 GUID 字段。</summary>
+        /// <summary>技能配置、Track 子资产和内容共用的稳定 GUID 字段。</summary>
         internal const string Id = "id";
         /// <summary>技能配置的每秒帧数。</summary>
         internal const string FrameRate = "frameRate";
         /// <summary>技能配置或区间内容的持续帧数。</summary>
         internal const string DurationFrames = "durationFrames";
-        /// <summary>技能配置中的动画轨道列表。</summary>
-        internal const string AnimationTracks = "animationTracks";
-        /// <summary>技能配置中的攻击检测轨道列表。</summary>
-        internal const string AttackDetectionTracks = "attackDetectionTracks";
-        /// <summary>技能配置中的特效轨道列表。</summary>
-        internal const string VfxTracks = "vfxTracks";
-        /// <summary>技能配置中的音频轨道列表。</summary>
-        internal const string AudioTracks = "audioTracks";
-        /// <summary>技能配置中的事件轨道列表。</summary>
-        internal const string EventTracks = "eventTracks";
-        /// <summary>每条轨道保存公共名称、静音和编辑器状态的轨道头。</summary>
-        internal const string Header = "header";
-        /// <summary>轨道头或事件标记的显示名称。</summary>
+        /// <summary>技能配置中按物理行排序的 Track 子资产引用列表。</summary>
+        internal const string Tracks = "tracks";
+        /// <summary>Track 子资产或事件标记的显示名称。</summary>
         internal const string DisplayName = "displayName";
         /// <summary>轨道运行时静音状态。</summary>
         internal const string Muted = "muted";

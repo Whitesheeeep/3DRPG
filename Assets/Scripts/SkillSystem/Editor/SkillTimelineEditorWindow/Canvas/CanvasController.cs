@@ -26,7 +26,9 @@ namespace RPG.SkillSystem.Editor
         private ItemDragController dragController;
         private ItemContextMenuController contextMenuController;
         private TrackContextMenuController trackContextMenuController;
+        private TrackPanelContextMenuController trackPanelContextMenuController;
         private TrackDragController trackDragController;
+        private TrackReorderDragController trackReorderDragController;
         private ScrubController scrubController;
         private ViewportInputController viewportInputController;
 
@@ -86,8 +88,10 @@ namespace RPG.SkillSystem.Editor
                 rowCollectionView.RowsChanged -= OnRowsChanged;
                 rowCollectionView.Unbind();
             }
+            trackReorderDragController?.Dispose();
             trackDragController?.Dispose();
             contextMenuController?.Dispose();
+            trackPanelContextMenuController?.Dispose();
             trackContextMenuController?.Dispose();
             dragController?.Dispose();
             gridView?.Dispose();
@@ -96,8 +100,10 @@ namespace RPG.SkillSystem.Editor
             scrubController = null;
             viewportInputController = null;
             rowCollectionView = null;
+            trackReorderDragController = null;
             trackDragController = null;
             contextMenuController = null;
+            trackPanelContextMenuController = null;
             trackContextMenuController = null;
             dragController = null;
             gridView = null;
@@ -113,17 +119,24 @@ namespace RPG.SkillSystem.Editor
         // 按依赖顺序创建动态元素工厂、Pointer 控制器、行集合和三个 IMGUI 绘制 View。
         private void CreateComponents()
         {
-            dragController = new ItemDragController(canvasModel);
+            ElementFactory factory = new();
+            ItemDragPreviewView dragPreviewView = new(
+                view.ItemDragOverlay, modules, factory, mapper);
+            dragController = new ItemDragController(canvasModel, dragPreviewView);
             dragController.Bind(viewModel);
             contextMenuController = new ItemContextMenuController(viewModel);
             trackContextMenuController = new TrackContextMenuController(viewModel);
+            trackPanelContextMenuController = new TrackPanelContextMenuController(
+                view.TrackHeaderContent, modules, viewModel);
             trackDragController = new TrackDragController(mapper, modules, viewModel);
+            trackReorderDragController = new TrackReorderDragController(
+                view.TrackHeaderScroll, view.TrackHeaderRows, view.LaneItemRows,
+                canvasModel, viewModel);
 
-            ElementFactory factory = new();
             rowCollectionView = new RowCollectionView(
                 view.TrackHeaderRows, view.LaneBackgroundRows, view.LaneItemRows,
                 factory, mapper, modules, dragController, contextMenuController,
-                trackContextMenuController, trackDragController);
+                trackContextMenuController, trackDragController, trackReorderDragController);
             rowCollectionView.Bind(viewModel);
             rowCollectionView.RowsChanged += OnRowsChanged;
 
@@ -196,7 +209,7 @@ namespace RPG.SkillSystem.Editor
         private void RefreshTimelineView()
         {
             if (!isBound) return;
-            rowCollectionView.Rebuild(viewModel.Groups);
+            rowCollectionView.Rebuild(viewModel.Tracks);
             RecalculateCanvasGeometry(false);
             RefreshFixedDrawing();
         }
@@ -336,6 +349,7 @@ namespace RPG.SkillSystem.Editor
         {
             if (evt.keyCode != KeyCode.Escape) return;
             dragController?.Cancel();
+            trackReorderDragController?.Cancel();
             scrubController?.Cancel();
             evt.StopPropagation();
         }

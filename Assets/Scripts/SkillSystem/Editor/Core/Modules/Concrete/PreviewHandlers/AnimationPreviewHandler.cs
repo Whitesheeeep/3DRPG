@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using RPG.Markers;
 using UnityEngine;
@@ -50,9 +51,9 @@ namespace RPG.SkillSystem.Editor
         {
             sample = default;
             if (config == null) return false;
-            foreach (AnimationTrackConfig track in config.AnimationTracks)
+            foreach (AnimationTrackConfig track in config.Tracks.OfType<AnimationTrackConfig>())
             {
-                if (track?.Header == null || track.Header.Muted) continue;
+                if (track == null || track.Muted) continue;
                 foreach (AnimationSkillClipConfig clipConfig in track.Clips)
                 {
                     if (clipConfig == null || frame < clipConfig.StartFrame || frame >= clipConfig.EndFrame)

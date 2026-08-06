@@ -7,13 +7,11 @@ using WS_Modules.UIToolkitExtensions.Editor;
 namespace RPG.SkillSystem.Editor
 {
     /// <summary>
-    /// 组合工具栏、时间轴 Canvas 与 Inspector 三个主视图区域。
+    /// 组合工具栏与时间轴 Canvas；属性编辑交给 Unity 原生 Inspector。
     /// </summary>
     internal sealed class EditorView : IView<EditorViewModel>
     {
         #region 依赖与子视图
-
-        private const string InspectorWidthSessionKey = "RPG.SkillTimeline.InspectorWidth";
         private const string TrackHeaderWidthSessionKey = "RPG.SkillTimeline.TrackHeaderWidth";
         private readonly VisualElement root;
         private readonly EditorConfig config;
@@ -23,8 +21,6 @@ namespace RPG.SkillSystem.Editor
         private readonly CanvasModel canvasModel;
         // 上侧的 Toolbar 视图
         private ToolbarView toolbarView;
-        // 下侧的 Inspector 视图
-        private InspectorView inspectorView;
         // Canvas MVC 的 View、Controller 与坐标映射器由主视图作为同级对象统一持有。
         private CanvasView canvasView;
         private CanvasController canvasController;
@@ -62,10 +58,8 @@ namespace RPG.SkillSystem.Editor
             canvasMapper = new CoordinateMapper(canvasModel);
             canvasController = new CanvasController(
                 canvasView, canvasModel, canvasMapper, config, modules);
-            inspectorView = new InspectorView(root, modules);
             toolbarView.Bind(model);
             canvasController.Bind(model);
-            inspectorView.Bind(model);
             model.StatusChanged += RefreshStatus;
             RefreshStatus();
         }
@@ -79,12 +73,10 @@ namespace RPG.SkillSystem.Editor
             toolbarView?.Unbind();
             canvasController?.Dispose();
             canvasView?.Dispose();
-            inspectorView?.Unbind();
             toolbarView = null;
             canvasController = null;
             canvasView = null;
             canvasMapper = null;
-            inspectorView = null;
             viewModel = null;
         }
 
@@ -92,17 +84,9 @@ namespace RPG.SkillSystem.Editor
 
         #region 状态刷新
 
-        // 将 Inspector 与轨道标题宽度范围注入通用 SplitView，不接管其 Pointer 交互。
+        // 将轨道标题宽度范围注入内层 SplitView，不接管其 Pointer 交互。
         private void ConfigureSplitViews()
         {
-            CustomTwoPanelSplitView mainSplitView = root.Q<CustomTwoPanelSplitView>("MainSplitView") ??
-                                                    throw new InvalidOperationException("主 UXML 缺少 MainSplitView。");
-            mainSplitView.ConfigureFixedPane(
-                config.InspectorMinimumWidth,
-                config.InspectorDefaultWidth,
-                config.InspectorMaximumWidth,
-                InspectorWidthSessionKey);
-
             CustomTwoPanelSplitView headerSplitView = root.Q<CustomTwoPanelSplitView>("HeaderTimelineSplit") ??
                                                       throw new InvalidOperationException("主 UXML 缺少 HeaderTimelineSplit。");
             headerSplitView.ConfigureFixedPane(

@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -25,6 +26,13 @@ namespace RPG.SkillSystem.Editor
 
         // 对 UI 层的通信
         private EditorView view;
+        #endregion
+
+        #region 原生 Inspector 桥接
+        internal EditorViewModel ViewModel => viewModel;
+        internal TrackModuleRegistry Modules => modules;
+        internal object SelectedData => viewModel?.SelectedData;
+        internal event Action NativeInspectorChanged;
         #endregion
 
         #region Window 生命周期
@@ -69,14 +77,27 @@ namespace RPG.SkillSystem.Editor
                 document, playback, previewSceneService, modules, preview, preview);
             view = new EditorView(rootVisualElement, editorConfig, modules);
             view.Bind(viewModel);
+            viewModel.SelectionActivated += OnTimelineSelectionActivated;
+            viewModel.InspectorChanged += OnInspectorChanged;
         }
 
         // 窗口禁用时释放全部 Editor 事件和序列化文档引用。
         private void OnDisable() => DisposeComposition();
 
+        // 窗口销毁时移除原生 Inspector 对该 EditorWindow 的活动选择。
+        private void OnDestroy()
+        {
+            if (Selection.activeObject == this) Selection.activeObject = null;
+        }
+
         // 按 View、ViewModel、控制器和 Document 的逆序释放组合对象。
         private void DisposeComposition()
         {
+            if (viewModel != null)
+            {
+                viewModel.SelectionActivated -= OnTimelineSelectionActivated;
+                viewModel.InspectorChanged -= OnInspectorChanged;
+            }
             view?.Unbind();
             view = null;
             viewModel?.Dispose();
@@ -89,7 +110,17 @@ namespace RPG.SkillSystem.Editor
             document = null;
             modules = null;
             editorConfig = null;
+            NativeInspectorChanged = null;
         }
+
+        // 用户点击时间轴选择时才激活窗口 Inspector，普通刷新不会抢占 Project 或 Scene 选择。
+        private void OnTimelineSelectionActivated()
+        {
+            if (SelectedData != null) Selection.activeObject = this;
+        }
+
+        // 将 ViewModel 的稳定 Inspector 刷新事件转发给 Unity 原生 Inspector。
+        private void OnInspectorChanged() => NativeInspectorChanged?.Invoke();
         #endregion
     }
 }

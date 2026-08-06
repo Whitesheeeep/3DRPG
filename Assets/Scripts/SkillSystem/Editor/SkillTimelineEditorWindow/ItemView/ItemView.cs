@@ -12,13 +12,13 @@ namespace RPG.SkillSystem.Editor
     {
         protected readonly CoordinateMapper Mapper;
         public VisualElement Element { get; }
-        public TrackViewData Track { get; }
-        public ItemViewData Item { get; }
+        public TrackConfigBase Track { get; }
+        public TimelineItemConfigBase Item { get; }
         public VisualElement ResizeLeft { get; protected set; }
         public VisualElement ResizeRight { get; protected set; }
 
         // 关联权威 ViewData 与元素引用，不修改任何技能资产。
-        protected ItemView(TrackViewData track, ItemViewData item,
+        protected ItemView(TrackConfigBase track, TimelineItemConfigBase item,
             VisualElement element, CoordinateMapper mapper)
         {
             Track = track ?? throw new ArgumentNullException(nameof(track));
@@ -37,6 +37,18 @@ namespace RPG.SkillSystem.Editor
         /// 切换元素选中状态 USS class。
         /// </summary>
         public void SetSelected(bool selected) => Element.EnableInClassList("is-selected", selected);
+
+        // 直接从实际内容配置生成短标题，避免维护与 Config 重复的 ViewData。
+        protected static string GetDisplayName(TimelineItemConfigBase item) => item switch
+        {
+            AnimationSkillClipConfig animation => animation.AnimationClip != null
+                ? animation.AnimationClip.name : "Animation Clip",
+            AttackDetectionSkillClipConfig attack => $"{attack.DetectionType} Detection",
+            VfxSkillClipConfig vfx => vfx.Prefab != null ? vfx.Prefab.name : "VFX Clip",
+            AudioSkillClipConfig audio => audio.AudioClip != null ? audio.AudioClip.name : "Audio Clip",
+            SkillEventMarkerConfig marker => marker.DisplayName,
+            _ => item.GetType().Name
+        };
     }
 
     /// <summary>
@@ -45,11 +57,11 @@ namespace RPG.SkillSystem.Editor
     internal abstract class ClipItemView : ItemView
     {
         // 创建 Clip 元素并绑定左右裁剪手柄。
-        protected ClipItemView(TrackViewData track, ItemViewData item,
+        protected ClipItemView(TrackConfigBase track, TimelineItemConfigBase item,
             VisualElement element, CoordinateMapper mapper) : base(track, item, element, mapper)
         {
             Label label = Element as Label ?? Element.Q<Label>();
-            if (label != null) label.text = item.DisplayName;
+            if (label != null) label.text = GetDisplayName(item);
             ResizeLeft = Element.Q<VisualElement>("ResizeLeft");
             ResizeRight = Element.Q<VisualElement>("ResizeRight");
             RefreshGeometry(item.StartFrame, item.DurationFrames);
@@ -73,8 +85,8 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 创建动画 Clip 视图。
         /// </summary>
-        public AnimationClipView(TrackViewData track,
-            AnimationClipViewData item, VisualElement element,
+        public AnimationClipView(TrackConfigBase track,
+            AnimationSkillClipConfig item, VisualElement element,
             CoordinateMapper mapper) : base(track, item, element, mapper)
         {
         }
@@ -88,8 +100,8 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 创建攻击检测 Clip 视图。
         /// </summary>
-        public AttackDetectionClipView(TrackViewData track,
-            AttackDetectionClipViewData item, VisualElement element,
+        public AttackDetectionClipView(TrackConfigBase track,
+            AttackDetectionSkillClipConfig item, VisualElement element,
             CoordinateMapper mapper) : base(track, item, element, mapper)
         {
         }
@@ -103,8 +115,8 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 创建特效 Clip 视图。
         /// </summary>
-        public VfxClipView(TrackViewData track,
-            VfxClipViewData item, VisualElement element,
+        public VfxClipView(TrackConfigBase track,
+            VfxSkillClipConfig item, VisualElement element,
             CoordinateMapper mapper) : base(track, item, element, mapper)
         {
         }
@@ -118,8 +130,8 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 创建音频 Clip 视图。
         /// </summary>
-        public AudioClipView(TrackViewData track,
-            AudioClipViewData item, VisualElement element,
+        public AudioClipView(TrackConfigBase track,
+            AudioSkillClipConfig item, VisualElement element,
             CoordinateMapper mapper) : base(track, item, element, mapper)
         {
         }
@@ -132,11 +144,11 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 创建事件 Marker 视图，尺寸与居中表现完全由类型 USS 控制。
         /// </summary>
-        public EventMarkerView(TrackViewData track,
-            EventMarkerViewData item, VisualElement element,
+        public EventMarkerView(TrackConfigBase track,
+            SkillEventMarkerConfig item, VisualElement element,
             CoordinateMapper mapper) : base(track, item, element, mapper)
         {
-            Element.tooltip = item.DisplayName;
+            Element.tooltip = GetDisplayName(item);
             RefreshGeometry(item.StartFrame, item.DurationFrames);
         }
 

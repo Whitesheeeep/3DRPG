@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -108,9 +109,9 @@ namespace RPG.SkillSystem.Editor
             statusMessage = string.Empty;
             if (context.Config == null || context.Actor?.RootTransform == null) return;
 
-            foreach (AttackDetectionTrackConfig track in context.Config.AttackDetectionTracks)
+            foreach (AttackDetectionTrackConfig track in context.Config.Tracks.OfType<AttackDetectionTrackConfig>())
             {
-                if (track.Header.Muted) continue;
+                if (track.Muted) continue;
                 foreach (AttackDetectionSkillClipConfig clip in track.Clips)
                 {
                     if (context.Frame < clip.StartFrame || context.Frame >= clip.EndFrame ||

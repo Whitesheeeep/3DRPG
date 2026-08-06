@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using UnityEditor;
@@ -76,9 +77,9 @@ namespace RPG.SkillSystem.Editor
             hasContext = true;
             StatusMessage = string.Empty;
             visibleIds.Clear();
-            foreach (VfxTrackConfig track in context.Config.VfxTracks)
+            foreach (VfxTrackConfig track in context.Config.Tracks.OfType<VfxTrackConfig>())
             {
-                if (track?.Header == null || track.Header.Muted) continue;
+                if (track == null || track.Muted) continue;
                 foreach (VfxSkillClipConfig clip in track.Clips)
                 {
                     if (!ShouldExist(clip, context.Frame) ||

@@ -16,7 +16,7 @@ namespace RPG.SkillSystem.Editor
         private const string ValidDropClass = "is-asset-drop-valid";
         private const string InvalidDropClass = "is-asset-drop-invalid";
 
-        private readonly Dictionary<VisualElement, TrackViewData> dragDataMap = new();
+        private readonly Dictionary<VisualElement, TrackConfigBase> dragDataMap = new();
         private readonly CoordinateMapper mapper;
         private readonly TrackModuleRegistry modules;
         private readonly EditorViewModel viewModel;
@@ -70,7 +70,7 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 将具体轨道投影与其 Item Lane 绑定，供 Project 拖拽事件恢复语义目标。
         /// </summary>
-        public void RegisterTrackEvent(TrackViewData track, VisualElement lane)
+        public void RegisterTrackEvent(TrackConfigBase track, VisualElement lane)
         {
             if (disposed) throw new ObjectDisposedException(nameof(TrackDragController));
             if (track == null) throw new ArgumentNullException(nameof(track));
@@ -90,7 +90,7 @@ namespace RPG.SkillSystem.Editor
         // 拖动阶段只校验资源类型与更新 USS 状态，不创建 Item 或修改 SkillConfig。
         private void OnDragUpdated(DragUpdatedEvent evt)
         {
-            if (!TryGetLaneAndTrack(evt.currentTarget, out VisualElement lane, out TrackViewData track)) return;
+            if (!TryGetLaneAndTrack(evt.currentTarget, out VisualElement lane, out TrackConfigBase track)) return;
             bool accepted = TryGetDropHandler(track, DragAndDrop.objectReferences, out _);
             DragAndDrop.visualMode = accepted ? DragAndDropVisualMode.Copy : DragAndDropVisualMode.Rejected;
             SetDropStyle(lane, accepted);
@@ -100,7 +100,7 @@ namespace RPG.SkillSystem.Editor
         // 松手时把 Lane 内容坐标吸附到整数帧，并只提交一次批量创建语义操作。
         private void OnDragPerform(DragPerformEvent evt)
         {
-            if (!TryGetLaneAndTrack(evt.currentTarget, out VisualElement lane, out TrackViewData track)) return;
+            if (!TryGetLaneAndTrack(evt.currentTarget, out VisualElement lane, out TrackConfigBase track)) return;
             if (!TryGetDropHandler(track, DragAndDrop.objectReferences,
                     out ITrackDropHandler handler))
             {
@@ -112,7 +112,7 @@ namespace RPG.SkillSystem.Editor
 
             int startFrame = mapper.ContentXToFrame(evt.localMousePosition.x);
             IItemCreateRequest request = handler.CreateRequest(DragAndDrop.objectReferences, startFrame);
-            EditResult result = viewModel.CreateItems(track, request);
+            ItemsCreateResult result = viewModel.CreateItems(track, request);
             if (result.Succeeded) DragAndDrop.AcceptDrag();
             else DragAndDrop.visualMode = DragAndDropVisualMode.Rejected;
             ClearDropStyle(lane);
@@ -135,8 +135,8 @@ namespace RPG.SkillSystem.Editor
 
         #region 资源校验与语义提交
 
-        // 通过事件 currentTarget 恢复注册时的具体 Lane 与 TrackViewData。
-        private bool TryGetLaneAndTrack(IEventHandler target, out VisualElement lane, out TrackViewData track)
+        // 通过事件 currentTarget 恢复注册时的具体 Lane 与 TrackConfigBase。
+        private bool TryGetLaneAndTrack(IEventHandler target, out VisualElement lane, out TrackConfigBase track)
         {
             lane = target as VisualElement;
             track = null;
@@ -144,11 +144,11 @@ namespace RPG.SkillSystem.Editor
         }
 
         // 锁定轨道、空批次、未注册轨道和处理器校验失败都会整批拒绝，避免产生部分导入结果。
-        private bool TryGetDropHandler(TrackViewData track, IReadOnlyList<UnityEngine.Object> assets,
+        private bool TryGetDropHandler(TrackConfigBase track, IReadOnlyList<UnityEngine.Object> assets,
             out ITrackDropHandler handler)
         {
             handler = null;
-            if (track == null || track.Locked || assets == null || assets.Count == 0) return false;
+            if (track == null || track.EditorLocked || assets == null || assets.Count == 0) return false;
             return modules.TryGetDrop(track, out handler) && handler.CanAccept(assets);
         }
 

@@ -1,5 +1,73 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-8322679809515797647
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977a117e6397476dafe68fee63f8f607, type: 3}
+  m_Name: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 702a725655ac47b3af7b3fcf45eae9b8
+  muted: 0
+  displayName: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  editorLocked: 0
+  editorColor: {r: 1, g: 1, b: 1, a: 1}
+  clips: []
+  references:
+    version: 2
+    RefIds: []
+--- !u!114 &-6094935103478630086
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c66f40aed7845318090c664ad121de9, type: 3}
+  m_Name: "\u4E8B\u4EF6\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 1b556019fe654d8dbdca09db56933f71
+  muted: 0
+  displayName: "\u4E8B\u4EF6\u8F68\u9053"
+  editorLocked: 0
+  editorColor: {r: 1, g: 1, b: 1, a: 1}
+  markers:
+  - id: d8c8df4a43244a639f3de94b676d17fc
+    frame: 9
+    eventTypeName: 
+    displayName: "\u4E8B\u4EF6"
+    parameterText: 
+--- !u!114 &-1994680328166295026
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70c14c030bc1459e93e059a6774ab2a6, type: 3}
+  m_Name: "\u97F3\u9891\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 6201d4de0a674f4588e19b80f0bf0daa
+  muted: 0
+  displayName: "\u97F3\u9891\u8F68\u9053"
+  editorLocked: 0
+  editorColor: {r: 1, g: 1, b: 1, a: 1}
+  clips:
+  - id: 40cfe4b40ca54f3da679324623786f20
+    audioClip: {fileID: 8300000, guid: 9ed4573abd1465749b538474846f4995, type: 3}
+    startFrame: 6
+    durationFrames: 7
+    volume: 1
+    pitch: 1
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -12,92 +80,115 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bf2d0fbc1a23bf1499d50e84ac66304b, type: 3}
   m_Name: SkillConfig
   m_EditorClassIdentifier: 
-  id: e926723cb93e479c881c301347beda4b
+  id: 7974b444431948668922d9f44910e9dc
   frameRate: 30
   durationFrames: 35
-  animationTracks:
-  - header:
-      id: 976cdc50707d4f4d9ada7c830639ab27
-      muted: 0
-      displayName: "\u52A8\u753B\u8F68\u9053 2"
-      editorLocked: 0
-      editorColor: {r: 1, g: 1, b: 1, a: 1}
-    clips:
-    - id: 1c5da0ec848947989be2338f30b62949
-      animationClip: {fileID: 3094330708855449807, guid: 786865feb8624b243b38f3ab37c847a3, type: 3}
-      startFrame: 0
-      durationFrames: 35
-      sourceStartFrame: 0
-      playbackSpeed: 1
-  attackDetectionTracks:
-  - header:
-      id: e71a5b89a45f4c3dad252bb5624d8a4c
-      muted: 0
-      displayName: "\u653B\u51FB"
-      editorLocked: 0
-      editorColor: {r: 1, g: 1, b: 1, a: 1}
-    clips:
-    - id: 85ce1dd5ae964632bd83ef46955b44e6
-      startFrame: 6
-      durationFrames: 9
-      sampleIntervalFrames: 1
-      detectionData:
-        rid: 3428733649235476498
-  vfxTracks:
-  - header:
-      id: d217d68a8d44409d9a33d7812e52b89a
-      muted: 0
-      displayName: "\u7279\u6548"
-      editorLocked: 0
-      editorColor: {r: 1, g: 1, b: 1, a: 1}
-    clips:
-    - id: 04accfa8e6c9401e9be9f93524ad3172
-      prefab: {fileID: 4214304940546854769, guid: 695ff324093e91743a8abf684fa028de, type: 3}
-      markerKey: {fileID: 0}
-      startFrame: 5
-      durationFrames: 18
-      localPosition: {x: 8.336221e-12, y: 0.648, z: 0.2841807}
-      localEulerAngles: {x: 3.1651034, y: 172.63564, z: 171.71306}
-      localScale: {x: 0.9999997, y: 1, z: 1.0000004}
-      playbackSpeed: 1
-      followMode: 0
-      stopMode: 0
-  audioTracks:
-  - header:
-      id: c66d70027a1545b48a4d7d6d71024b6c
-      muted: 0
-      displayName: "\u97F3\u9891\u8F68\u9053 1"
-      editorLocked: 0
-      editorColor: {r: 1, g: 1, b: 1, a: 1}
-    clips:
-    - id: 42c6282e0bcb4a999d18fd359c1969bc
-      audioClip: {fileID: 8300000, guid: 9ed4573abd1465749b538474846f4995, type: 3}
-      startFrame: 0
-      durationFrames: 23
-      volume: 0.135
-      pitch: 1
-  eventTracks:
-  - header:
-      id: 7e500a0c029c4997b06b9d20655ab6cb
-      muted: 0
-      displayName: "\u4E8B\u4EF61"
-      editorLocked: 0
-      editorColor: {r: 1, g: 1, b: 1, a: 1}
-    markers:
-    - id: d9cc3d9610f147e38a6304a51ea6857e
-      frame: 7
-      eventTypeName: 
-      displayName: "\u4E8B\u4EF6"
-      parameterText: 
-    - id: b846ff60f60f41c6b81279fa25f7d126
-      frame: 16
-      eventTypeName: 
-      displayName: "\u4E8B\u4EF6"
-      parameterText: 
+  tracks:
+  - {fileID: 2445572420126570095}
+  - {fileID: 1577898779245526341}
+  - {fileID: -8322679809515797647}
+  - {fileID: 8092662235759112968}
+  - {fileID: -1994680328166295026}
+  - {fileID: -6094935103478630086}
+--- !u!114 &1577898779245526341
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977a117e6397476dafe68fee63f8f607, type: 3}
+  m_Name: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 46f620f9fb124ab19adf3a5085d2cf23
+  muted: 0
+  displayName: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  editorLocked: 0
+  editorColor: {r: 1, g: 1, b: 1, a: 1}
+  clips:
+  - id: 39888a3231e74bc683383442823b0c2b
+    startFrame: 6
+    durationFrames: 6
+    sampleIntervalFrames: 1
+    detectionData:
+      rid: 3428733677177143315
   references:
     version: 2
     RefIds:
-    - rid: 3428733649235476498
+    - rid: 3428733677177143315
       type: {class: WeaponTraceAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
         samplePointCount: 4
+--- !u!114 &2445572420126570095
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e7d25faf1df4c8a8d184c88fdcb89d8, type: 3}
+  m_Name: "\u52A8\u753B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 06dbcc4af8354515bec86b20c63b9082
+  muted: 0
+  displayName: "\u52A8\u753B\u8F68\u9053"
+  editorLocked: 0
+  editorColor: {r: 1, g: 1, b: 1, a: 1}
+  clips:
+  - id: 863bafd6ee0b4a5f8e88906e8696a865
+    animationClip: {fileID: 3094330708855449807, guid: 51abf42ce9b0fb14095cec752ae7f176, type: 3}
+    startFrame: 0
+    durationFrames: 35
+    sourceStartFrame: 0
+    playbackSpeed: 1
+--- !u!114 &7860235216540199354
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: "\u52A8\u753B\u8F68\u9053"
+  m_EditorClassIdentifier: Assembly-CSharp:RPG.SkillSystem:AnimationTrackConfig
+  id: 380300e758d74b9898265e81b3aa460a
+  muted: 0
+  displayName: "\u52A8\u753B\u8F68\u9053"
+  editorLocked: 0
+  editorColor: {r: 1, g: 1, b: 1, a: 1}
+  clips: []
+--- !u!114 &8092662235759112968
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 166f8d5d2c664f2799bda1e1c4d8a430, type: 3}
+  m_Name: "\u7279\u6548\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: d6528196f15b4be58bbd7b1052a4e06a
+  muted: 0
+  displayName: "\u7279\u6548\u8F68\u9053"
+  editorLocked: 0
+  editorColor: {r: 1, g: 1, b: 1, a: 1}
+  clips:
+  - id: d80c230ac8fc4b2d91461ed4ed9b3a30
+    prefab: {fileID: 4214304940546854769, guid: 695ff324093e91743a8abf684fa028de, type: 3}
+    markerKey: {fileID: 0}
+    startFrame: 6
+    durationFrames: 23
+    localPosition: {x: 9.24949e-12, y: 0.719, z: 0.23418072}
+    localEulerAngles: {x: 0.119004205, y: 170, z: 180}
+    localScale: {x: 1.0000001, y: 1, z: 1}
+    playbackSpeed: 1
+    followMode: 0
+    stopMode: 0

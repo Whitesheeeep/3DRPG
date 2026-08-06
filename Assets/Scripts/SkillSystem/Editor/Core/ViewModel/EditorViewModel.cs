@@ -10,39 +10,35 @@ using WS_Modules.MVVM;
 namespace RPG.SkillSystem.Editor
 {
     /// <summary>
-    /// 将技能配置投影为只读时间轴状态，并把 View 的语义意图交给 Document。
+    /// 保存窗口选择与播放状态，并把直接 Config 引用上的语义意图交给 Document。
     /// </summary>
     internal sealed class EditorViewModel : IViewModel
     {
         #region 字段
-
         private readonly Document document;
         private readonly PlaybackController playback;
         private readonly PreviewSceneService previewSceneService;
         private readonly TrackModuleRegistry modules;
         private readonly IVfxSceneEditService vfxSceneEditService;
         private readonly IAttackDetectionSceneEditService attackDetectionSceneEditService;
-        private readonly List<GroupViewData> groups = new();
         private SelectionState selection = SelectionState.None;
         private bool disposed;
-
         #endregion
 
         #region 事件
-
         public event Action TimelineChanged;
         public event Action SelectionChanged;
+        public event Action SelectionActivated;
         public event Action PlayheadChanged;
         public event Action PlaybackChanged;
         public event Action InspectorChanged;
         public event Action SettingsChanged;
         public event Action StatusChanged;
-
         #endregion
 
         #region 属性
-
-        public IReadOnlyList<GroupViewData> Groups => groups;
+        public IReadOnlyList<TrackConfigBase> Tracks =>
+            document.CurrentConfig?.Tracks ?? Array.Empty<TrackConfigBase>();
         public SelectionState Selection => selection;
         public SkillConfig CurrentConfig => document.CurrentConfig;
         public int CurrentFrame => playback.CurrentFrame;
@@ -52,14 +48,15 @@ namespace RPG.SkillSystem.Editor
         public GameObject PreviewActor => previewSceneService.PreviewActor;
         public bool PreviewApplyRootMotion => previewSceneService.ApplyRootMotion;
         public string StatusMessage { get; private set; } = "请选择或新建 SkillConfig。";
-        public IViewData SelectedViewData => FindSelectedViewData();
-
+        public TrackConfigBase SelectedTrack => ResolveSelectedTrack();
+        public TimelineItemConfigBase SelectedItem => ResolveSelectedItem();
+        public object SelectedData => (object)SelectedItem ?? SelectedTrack;
+        public TrackModuleRegistry Modules => modules;
         #endregion
 
         #region 生命周期
-
         /// <summary>
-        /// 创建窗口私有 ViewModel，并订阅 Document、播放控制器和编辑器设置事件。
+        /// 创建窗口私有 ViewModel，并订阅文档、播放和 Preview 事件。
         /// </summary>
         public EditorViewModel(Document document, PlaybackController playback,
             PreviewSceneService previewSceneService, TrackModuleRegistry modules,
@@ -70,8 +67,7 @@ namespace RPG.SkillSystem.Editor
             this.playback = playback ?? throw new ArgumentNullException(nameof(playback));
             this.previewSceneService = previewSceneService ?? throw new ArgumentNullException(nameof(previewSceneService));
             this.modules = modules ?? throw new ArgumentNullException(nameof(modules));
-            this.vfxSceneEditService = vfxSceneEditService ??
-                                       throw new ArgumentNullException(nameof(vfxSceneEditService));
+            this.vfxSceneEditService = vfxSceneEditService ?? throw new ArgumentNullException(nameof(vfxSceneEditService));
             this.attackDetectionSceneEditService = attackDetectionSceneEditService ??
                                                    throw new ArgumentNullException(nameof(attackDetectionSceneEditService));
             attackDetectionSceneEditService.EditCommitted += OnAttackDetectionSceneEditCommitted;
@@ -83,54 +79,50 @@ namespace RPG.SkillSystem.Editor
             previewSceneService.SettingsChanged += OnSettingsChanged;
             playback.SetPreviewActor(previewSceneService.PreviewActor);
             playback.SetApplyRootMotion(previewSceneService.ApplyRootMotion);
-            RebuildTimelineFromModel();
         }
 
         /// <summary>
-        /// 释放 ViewModel 持有的全部事件订阅。
+        /// 释放全部外部事件订阅。
         /// </summary>
         public void Dispose()
         {
             if (disposed) return;
             disposed = true;
+            attackDetectionSceneEditService.EditCommitted -= OnAttackDetectionSceneEditCommitted;
             document.ContentChanged -= OnDocumentContentChanged;
             document.ConfigChanged -= OnConfigChanged;
             playback.FrameChanged -= OnFrameChanged;
             playback.PlaybackChanged -= OnPlaybackChanged;
             playback.PreviewStatusChanged -= OnPreviewStatusChanged;
             previewSceneService.SettingsChanged -= OnSettingsChanged;
-            attackDetectionSceneEditService.EditCommitted -= OnAttackDetectionSceneEditCommitted;
             TimelineChanged = null;
             SelectionChanged = null;
+            SelectionActivated = null;
             PlayheadChanged = null;
             PlaybackChanged = null;
             InspectorChanged = null;
             SettingsChanged = null;
             StatusChanged = null;
         }
-
         #endregion
 
-        #region Model 同步
-
-        // 配置切换后重置选择和播放头，并按模块注册顺序重建全部投影。
+        #region 模型同步
+        // Config 切换时清空稳定选择并重置播放上下文。
         private void OnConfigChanged()
         {
             selection = SelectionState.None;
             SynchronizeAttackDetectionSelection();
             playback.SetSkillConfig(document.CurrentConfig);
-            RebuildTimelineFromModel();
             TimelineChanged?.Invoke();
             SelectionChanged?.Invoke();
             InspectorChanged?.Invoke();
             PlayheadChanged?.Invoke();
         }
 
-        // Document 内容变化后重建投影，并通过具体模块恢复稳定 GUID 选择。
+        // 内容变化后按 GUID 恢复直接引用选择并刷新 Preview。
         private void OnDocumentContentChanged()
         {
-            RebuildTimelineFromModel();
-            RestoreSelectionAfterTimelineRebuild();
+            RestoreSelection();
             SynchronizeAttackDetectionSelection();
             playback.InvalidatePreviewContent();
             playback.ClampToDuration();
@@ -139,13 +131,13 @@ namespace RPG.SkillSystem.Editor
             InspectorChanged?.Invoke();
         }
 
-        // 将播放头变化转换为 ViewModel 的细粒度通知。
+        // 转发权威播放头变化。
         private void OnFrameChanged(int _) => PlayheadChanged?.Invoke();
 
-        // 将播放状态变化转换为 ViewModel 的细粒度通知。
+        // 转发播放状态变化。
         private void OnPlaybackChanged() => PlaybackChanged?.Invoke();
 
-        // 设置变化后释放旧预览上下文，并使用当前播放头重建角色与轨道状态。
+        // EditorSettings 变化后重建 Preview 上下文。
         private void OnSettingsChanged()
         {
             playback.ClearPreview();
@@ -155,552 +147,366 @@ namespace RPG.SkillSystem.Editor
             SettingsChanged?.Invoke();
         }
 
-        // 将 Preview 初始化或采样状态写入窗口已有状态栏。
+        // 将 Preview 状态写入窗口状态栏。
         private void OnPreviewStatusChanged(string message) => SetStatus(message);
 
-        // 把 Scene Handle 完成后的独立数据快照转换为现有类型化编辑请求和一条 Document Undo。
+        // 将 Scene Handle 完成后的攻击检测快照提交为一条 Item 编辑事务。
         private void OnAttackDetectionSceneEditCommitted(AttackDetectionSceneEditCommit commit)
         {
-            if (SelectedViewData is not AttackDetectionClipViewData item || item.Id != commit.ClipId)
-                return;
-            AttackDetectionSkillClipConfig clip = item.Config;
-            EditItem(item, new AttackDetectionEditRequest(
-                clip.StartFrame, clip.DurationFrames, clip.SampleIntervalFrames,
-                commit.DetectionData));
+            if (SelectedItem is not AttackDetectionSkillClipConfig clip || clip.Id != commit.ClipId) return;
+            EditItem(SelectedTrack, clip, new AttackDetectionEditRequest(
+                clip.StartFrame, clip.DurationFrames, clip.SampleIntervalFrames, commit.DetectionData));
         }
 
-        // 只向场景编辑服务发送稳定 Clip GUID，非攻击检测选择明确清空 Handle 目标。
-        private void SynchronizeAttackDetectionSelection()
-        {
-            string clipId = SelectedViewData is AttackDetectionClipViewData item
-                ? item.Id
-                : string.Empty;
-            attackDetectionSceneEditService.SetSelectedClip(clipId);
-        }
+        // Scene Handle 只接收当前攻击检测 Item 的稳定 GUID。
+        private void SynchronizeAttackDetectionSelection() =>
+            attackDetectionSceneEditService.SetSelectedClip(
+                SelectedItem is AttackDetectionSkillClipConfig clip ? clip.Id : string.Empty);
 
-        // 每个模块只投影自身显式运行时列表，ViewModel 不判断具体轨道类型。
-        private void RebuildTimelineFromModel()
+        // Undo 跨轨移动时先按 Item GUID 在统一列表中恢复实际所属 Track；数据已删除才清空选择。
+        private void RestoreSelection()
         {
-            groups.Clear();
-            foreach (TrackModule module in modules.Modules)
-                groups.Add(module.Projection.CreateGroup(document.CurrentConfig));
-        }
-
-        // 通过选择具体类型定位模块，再在对应分组中按稳定 GUID 查找显示对象。
-        private IViewData FindSelectedViewData()
-        {
-            if (selection is NoneSelection) return null;
-            TrackModule module = modules.Get(selection);
-            GroupViewData group = groups.FirstOrDefault(candidate =>
-                candidate.GetType() == module.Projection.GroupType);
-            return module.Projection.FindSelection(group, selection);
-        }
-
-        // Undo、重排或投影重建后，仅当模块仍能找到目标时保留选择。
-        private bool SelectionStillExists() =>
-            selection is NoneSelection || FindSelectedViewData() != null;
-
-        // 跨轨道移动或其 Undo/Redo 会改变 TrackId；ItemId 全局唯一时可在同一模块内恢复实际归属轨道。
-        private void RestoreSelectionAfterTimelineRebuild()
-        {
-            if (SelectionStillExists()) return;
-            if (selection is not ItemSelection itemSelection)
+            if (selection is NoneSelection) return;
+            TrackConfigBase track = ResolveSelectedTrack();
+            if (selection is not ItemSelection)
             {
-                selection = SelectionState.None;
+                if (track == null) selection = SelectionState.None;
                 return;
             }
-
-            TrackModule module = modules.Get(selection);
-            GroupViewData group = groups.FirstOrDefault(candidate =>
-                candidate.GetType() == module.Projection.GroupType);
-            TrackViewData actualTrack = group?.Tracks.FirstOrDefault(track =>
-                track.Items.Any(item => item.Id == itemSelection.ItemId));
-            selection = actualTrack == null
-                ? SelectionState.None
-                : module.Projection.CreateItemSelection(actualTrack.Id, itemSelection.ItemId);
+            if (track != null && track.Items.Any(item => item.Id == selection.ItemId)) return;
+            TrackConfigBase actualTrack = Tracks.FirstOrDefault(candidate => candidate != null &&
+                candidate.Items.Any(item => item.Id == selection.ItemId));
+            selection = actualTrack != null
+                ? new ItemSelection(actualTrack.Id, selection.ItemId)
+                : SelectionState.None;
         }
 
+        // 按统一列表查找选择轨道。
+        private TrackConfigBase ResolveSelectedTrack() =>
+            Tracks.FirstOrDefault(track => track != null && track.Id == selection.TrackId);
+
+        // 在已选轨道实际 Item 列表中查找选择内容。
+        private TimelineItemConfigBase ResolveSelectedItem() =>
+            ResolveSelectedTrack()?.Items.FirstOrDefault(item => item.Id == selection.ItemId);
         #endregion
 
-        #region View 意图
-
+        #region 配置与选择
         /// <summary>
-        /// 停止当前播放并切换到指定技能配置。
+        /// 打开指定 SkillConfig。
         /// </summary>
         public void OpenConfig(SkillConfig config) => document.Open(config);
 
         /// <summary>
-        /// 创建 SkillConfig 资产并将其设为当前编辑文档。
+        /// 创建并打开 SkillConfig。
         /// </summary>
         public SkillConfig CreateConfig(string path)
         {
             SkillConfig config = document.CreateConfig(path);
-            SetStatus($"已创建 {config.name}。");
+            SetStatus("已创建 SkillConfig。");
             return config;
         }
 
         /// <summary>
-        /// 更新当前选择，并通知时间轴与 Inspector 刷新。
+        /// 设置稳定选择并同步 Scene Handle。
         /// </summary>
         public void Select(SelectionState next)
         {
             next ??= SelectionState.None;
-            if (selection.Equals(next)) return;
-            bool restorePreview = SelectedViewData is VfxClipViewData currentVfx &&
-                                  vfxSceneEditService.IsEditing(currentVfx.Id);
-            vfxSceneEditService.CancelEdit();
-            if (restorePreview) playback.RefreshPreview();
+            if (selection.Equals(next))
+            {
+                SelectionActivated?.Invoke();
+                return;
+            }
             selection = next;
+            SelectionActivated?.Invoke();
             SynchronizeAttackDetectionSelection();
             SelectionChanged?.Invoke();
             InspectorChanged?.Invoke();
         }
 
         /// <summary>
-        /// 选择具体轨道分组。
+        /// 选择实际 Track 子资产。
         /// </summary>
-        public void SelectGroup(GroupViewData group) => Select(modules.Get(group).Projection.CreateGroupSelection());
+        public void SelectTrack(TrackConfigBase track) =>
+            Select(track == null ? SelectionState.None : new TrackSelection(track.Id));
 
         /// <summary>
-        /// 选择具体轨道。
+        /// 选择 Track 内的实际 Item Config。
         /// </summary>
-        public void SelectTrack(TrackViewData track) =>
-            Select(modules.Get(track).Projection.CreateTrackSelection(track.Id));
+        public void SelectItem(TrackConfigBase track, TimelineItemConfigBase item) =>
+            Select(track == null || item == null
+                ? SelectionState.None : new ItemSelection(track.Id, item.Id));
 
         /// <summary>
-        /// 选择具体轨道中的内容项。
+        /// 判断实际 Track 是否被选中。
         /// </summary>
-        public void SelectItem(TrackViewData track, ItemViewData item) =>
-            Select(modules.Get(item).Projection.CreateItemSelection(track.Id, item.Id));
+        public bool IsSelected(TrackConfigBase track) =>
+            track != null && selection is TrackSelection && selection.TrackId == track.Id;
 
         /// <summary>
-        /// 判断当前选择是否指向指定分组。
+        /// 判断实际 Item 是否被选中。
         /// </summary>
-        public bool IsSelected(GroupViewData group) =>
-            modules.Get(group).Projection.CreateGroupSelection().Equals(selection);
+        public bool IsSelected(TrackConfigBase track, TimelineItemConfigBase item) =>
+            track != null && item != null && selection is ItemSelection &&
+            selection.TrackId == track.Id && selection.ItemId == item.Id;
+        #endregion
 
-        /// <summary>
-        /// 判断当前选择是否指向指定轨道。
-        /// </summary>
-        public bool IsSelected(TrackViewData track) =>
-            modules.Get(track).Projection.CreateTrackSelection(track.Id).Equals(selection);
-
-        /// <summary>
-        /// 判断当前选择是否指向指定内容项。
-        /// </summary>
-        public bool IsSelected(TrackViewData track, ItemViewData item) =>
-            modules.Get(item).Projection.CreateItemSelection(track.Id, item.Id).Equals(selection);
-
-        /// <summary>
-        /// 将用户指定帧交给播放控制器定位。
-        /// </summary>
+        #region 播放与预览
+        /// <summary>跳转到整数帧。</summary>
         public void SetCurrentFrame(int frame) => playback.Seek(frame);
-
-        /// <summary>
-        /// 从当前帧开始播放时间轴。
-        /// </summary>
+        /// <summary>开始播放。</summary>
         public void Play() => playback.Play();
-
-        /// <summary>
-        /// 暂停时间轴并保留当前帧。
-        /// </summary>
+        /// <summary>暂停播放。</summary>
         public void Pause() => playback.Pause();
-
-        /// <summary>
-        /// 停止播放并将播放头复位到第 0 帧。
-        /// </summary>
+        /// <summary>停止并回到第零帧。</summary>
         public void Stop() => playback.Stop();
-
-        /// <summary>
-        /// 设置是否循环播放整个技能时间范围。
-        /// </summary>
-        /// <param name="value">是否开启循环播放。</param>
+        /// <summary>设置全技能循环播放。</summary>
         public void SetLooping(bool value) => playback.SetLooping(value);
-
-        /// <summary>
-        /// 将播放头移动到上一帧。
-        /// </summary>
+        /// <summary>后退一帧。</summary>
         public void StepPreviousFrame() => playback.StepPreviousFrame();
-
-        /// <summary>
-        /// 将播放头移动到下一帧。
-        /// </summary>
+        /// <summary>前进一帧。</summary>
         public void StepNextFrame() => playback.StepNextFrame();
-
-        /// <summary>
-        /// 保存固定预览场景的资产 GUID。
-        /// </summary>
+        /// <summary>设置预览场景。</summary>
         public void SetPreviewScene(SceneAsset scene) => previewSceneService.SetPreviewScene(scene);
-
-        /// <summary>
-        /// 保存固定演示角色的 GlobalObjectId。
-        /// </summary>
+        /// <summary>设置预览角色。</summary>
         public void SetPreviewActor(GameObject actor) => previewSceneService.SetPreviewActor(actor);
-
-        /// <summary>
-        /// 保存并立即应用动画预览的 Root Motion 开关。
-        /// </summary>
+        /// <summary>设置预览 Root Motion。</summary>
         public void SetPreviewApplyRootMotion(bool value) => previewSceneService.SetApplyRootMotion(value);
-
-        /// <summary>
-        /// 询问保存当前场景后打开固定预览场景。
-        /// </summary>
+        /// <summary>打开预览场景。</summary>
         public void OpenPreviewScene() => previewSceneService.OpenPreviewScene();
+        #endregion
 
-        /// <summary>
-        /// 修改配置帧率，并在保持实际时间的前提下重采样全部内容。
-        /// </summary>
+        #region 时间轴与 Track 操作
+        /// <summary>修改 FPS。</summary>
         public void ChangeFrameRate(int value) => Report(document.ChangeFrameRate(value));
-
-        /// <summary>
-        /// 修改时间轴总帧数，并拒绝截断现有内容。
-        /// </summary>
+        /// <summary>修改总帧。</summary>
         public void SetDurationFrames(int value) => Report(document.SetDurationFrames(value));
-
-        /// <summary>
-        /// 把时间轴总帧数裁剪到容纳现有内容所需的长度。
-        /// </summary>
+        /// <summary>裁剪到内容。</summary>
         public void TrimToContent() => document.TrimToContent();
 
         /// <summary>
-        /// 在指定分组中创建轨道并选中新轨道。
+        /// 追加一个模块声明的 Track 子资产。
         /// </summary>
-        public void AddTrack(GroupViewData group)
+        public void AddTrack(TrackModule module)
         {
-            TrackModule module = modules.Get(group);
-            string id = document.AddTrack(module.Document);
-            if (!string.IsNullOrEmpty(id)) Select(module.Projection.CreateTrackSelection(id));
+            string id = document.AddTrack(module);
+            if (!string.IsNullOrEmpty(id)) Select(new TrackSelection(id));
         }
 
         /// <summary>
-        /// 删除当前选择的轨道。
+        /// 按类型声明顺序稳定重排全部轨道。
         /// </summary>
+        public void SortTracksByType() => Report(document.SortTracksByType(modules));
+
+        /// <summary>删除所选 Track。</summary>
         public void RemoveSelectedTrack()
         {
-            if (selection is not TrackSelection) return;
-            TrackModule module = modules.Get(selection);
-            Report(document.RemoveTrack(module.Document, selection.TrackId));
+            TrackConfigBase track = SelectedTrack;
+            if (track == null) return;
+            EditResult result = document.RemoveTrack(track.Id);
+            if (result.Succeeded) Select(SelectionState.None);
+            Report(result);
         }
 
-        /// <summary>
-        /// 将当前所选轨道向前或向后重排。
-        /// </summary>
+        /// <summary>将所选 Track 移动一个物理行。</summary>
         public void MoveSelectedTrack(int offset)
         {
-            if (selection is not TrackSelection) return;
-            TrackModule module = modules.Get(selection);
-            Report(document.MoveTrack(module.Document, selection.TrackId, offset));
+            if (SelectedTrack != null) Report(document.MoveTrack(SelectedTrack.Id, offset));
         }
 
-        /// <summary>
-        /// 提交当前所选轨道的名称、静音和锁定设置。
-        /// </summary>
+        /// <summary>将指定 Track 移动到统一列表插入边界。</summary>
+        public EditResult MoveTrack(TrackConfigBase track, int insertionIndex)
+        {
+            EditResult result = track != null
+                ? document.MoveTrackToIndex(track.Id, insertionIndex)
+                : EditResult.Failure("轨道不存在。");
+            Report(result);
+            return result;
+        }
+
+        /// <summary>修改所选 Track 公共字段。</summary>
         public void EditSelectedTrack(string displayName, bool muted, bool locked)
         {
-            if (selection is not TrackSelection) return;
-            TrackModule module = modules.Get(selection);
-            Report(document.EditTrack(module.Document, selection.TrackId, displayName, muted, locked));
+            if (SelectedTrack != null)
+                Report(document.EditTrack(SelectedTrack.Id, displayName, muted, locked));
         }
 
-        /// <summary>
-        /// 提交指定轨道的最终显示名称，供标题栏内联编辑在选择变化时仍按稳定 GUID 定位目标。
-        /// </summary>
-        /// <param name="track">包含稳定轨道 GUID 和当前公共状态的只读投影。</param>
-        /// <param name="displayName">回车或失焦后提交的最终名称。</param>
-        public void RenameTrack(TrackViewData track, string displayName)
+        /// <summary>提交 Track 内联重命名。</summary>
+        public void RenameTrack(TrackConfigBase track, string displayName)
+        {
+            if (track != null) Report(document.EditTrack(track.Id, displayName, track.Muted, track.EditorLocked));
+        }
+
+        /// <summary>切换 Track 静音。</summary>
+        public void SetTrackMuted(TrackConfigBase track, bool muted)
+        {
+            if (track != null) Report(document.EditTrack(track.Id, track.DisplayName, muted, track.EditorLocked));
+        }
+
+        /// <summary>切换 Track 锁定。</summary>
+        public void SetTrackLocked(TrackConfigBase track, bool locked)
+        {
+            if (track != null) Report(document.EditTrack(track.Id, track.DisplayName, track.Muted, locked));
+        }
+        #endregion
+
+        #region Item 操作
+        /// <summary>在 Track 中添加默认 Item。</summary>
+        public void AddItem(TrackConfigBase track)
         {
             if (track == null) return;
-            TrackModule module = modules.Get(track);
-            Report(document.EditTrack(module.Document, track.Id,
-                displayName, track.Muted, track.Locked));
+            string id = document.AddItem(modules.Get(track).Document, track.Id);
+            if (!string.IsNullOrEmpty(id)) Select(new ItemSelection(track.Id, id));
         }
 
-        /// <summary>
-        /// 设置指定轨道的静音状态，并保留名称与锁定状态。
-        /// </summary>
-        /// <param name="track">包含稳定轨道 GUID 与当前公共状态的只读投影。</param>
-        /// <param name="muted">需要写入的静音状态。</param>
-        public void SetTrackMuted(TrackViewData track, bool muted)
+        /// <summary>通过类型化请求批量创建 Item。</summary>
+        public ItemsCreateResult CreateItems(TrackConfigBase track, IItemCreateRequest request)
         {
-            if (track == null) return;
-            TrackModule module = modules.Get(track);
-            Report(document.EditTrack(module.Document, track.Id,
-                track.DisplayName, muted, track.Locked));
-        }
-
-        /// <summary>
-        /// 设置指定轨道的编辑器锁定状态，并保留名称与静音状态。
-        /// </summary>
-        /// <param name="track">包含稳定轨道 GUID 与当前公共状态的只读投影。</param>
-        /// <param name="locked">需要写入的编辑器锁定状态。</param>
-        public void SetTrackLocked(TrackViewData track, bool locked)
-        {
-            if (track == null) return;
-            TrackModule module = modules.Get(track);
-            Report(document.EditTrack(module.Document, track.Id,
-                track.DisplayName, track.Muted, locked));
-        }
-
-        /// <summary>
-        /// 在指定轨道末尾的可用帧创建默认内容项。
-        /// </summary>
-        public void AddItem(TrackViewData track)
-        {
-            TrackModule module = modules.Get(track);
-            string id = document.AddItem(module.Document, track.Id);
-            if (!string.IsNullOrEmpty(id)) Select(module.Projection.CreateItemSelection(track.Id, id));
-        }
-
-        /// <summary>
-        /// 按轨道模块处理类型化批量创建请求，并在成功后选择第一个新内容项。
-        /// </summary>
-        public EditResult CreateItems(TrackViewData track, IItemCreateRequest request)
-        {
-            if (track == null) return EditResult.Failure("目标轨道不存在。");
-            TrackModule module = modules.Get(track);
-            ItemsCreateResult result = document.CreateItems(module.Document, track.Id, request);
-            Report(result.EditResult);
+            ItemsCreateResult result = document.CreateItems(modules.Get(track).Document, track.Id, request);
             if (result.Succeeded && result.ItemIds.Count > 0)
-                Select(module.Projection.CreateItemSelection(track.Id, result.ItemIds[0]));
-            return result.EditResult;
+                Select(new ItemSelection(track.Id, result.ItemIds[result.ItemIds.Count - 1]));
+            Report(result.EditResult);
+            return result;
         }
 
-        /// <summary>
-        /// 删除当前选择的片段或事件标记。
-        /// </summary>
+        /// <summary>删除所选 Item。</summary>
         public void RemoveSelectedItem()
         {
-            if (selection is not ItemSelection) return;
-            TrackModule module = modules.Get(selection);
-            Report(document.RemoveItem(module.Document, selection.TrackId, selection.ItemId));
+            if (SelectedTrack == null || SelectedItem == null) return;
+            TrackConfigBase track = SelectedTrack;
+            TimelineItemConfigBase item = SelectedItem;
+            EditResult result = document.RemoveItem(modules.Get(track).Document, track.Id, item.Id);
+            if (result.Succeeded) Select(new TrackSelection(track.Id));
+            Report(result);
         }
 
-        /// <summary>
-        /// 复制当前选择的片段或事件标记并选择副本。
-        /// </summary>
+        /// <summary>复制所选 Item。</summary>
         public void DuplicateSelectedItem()
         {
-            if (selection is not ItemSelection) return;
-            TrackModule module = modules.Get(selection);
-            string id = document.DuplicateItem(module.Document, selection.TrackId, selection.ItemId);
-            if (!string.IsNullOrEmpty(id)) Select(module.Projection.CloneItemSelection(selection, id));
+            if (SelectedTrack == null || SelectedItem == null) return;
+            string id = document.DuplicateItem(modules.Get(SelectedTrack).Document,
+                SelectedTrack.Id, SelectedItem.Id);
+            if (!string.IsNullOrEmpty(id)) Select(new ItemSelection(SelectedTrack.Id, id));
         }
 
-        /// <summary>
-        /// 校验并移动指定内容项到目标帧。
-        /// </summary>
-        public EditResult MoveItem(TrackViewData track, ItemViewData item, int startFrame)
+        /// <summary>只读校验 Item 在当前 Track 的目标帧。</summary>
+        public EditResult CanMoveItem(TrackConfigBase track, TimelineItemConfigBase item, int startFrame) =>
+            document.CanMoveItem(modules.Get(track).Document, track.Id, item.Id, startFrame);
+
+        /// <summary>移动 Item 起始帧。</summary>
+        public EditResult MoveItem(TrackConfigBase track, TimelineItemConfigBase item, int startFrame)
         {
-            TrackModule module = modules.Get(track);
-            EditResult result = document.MoveItem(module.Document, track.Id, item.Id, startFrame);
+            EditResult result = document.MoveItem(modules.Get(track).Document, track.Id, item.Id, startFrame);
             Report(result);
             return result;
         }
 
-        /// <summary>
-        /// 获取当前分组中紧邻指定轨道的上一条或下一条同类轨道。
-        /// </summary>
-        /// <param name="sourceTrack">作为相邻查询起点的轨道投影。</param>
-        /// <param name="offset">仅接受 -1 表示上方，或 1 表示下方。</param>
-        /// <returns>存在相邻轨道时返回其投影，否则返回空。</returns>
-        public TrackViewData GetAdjacentTrack(TrackViewData sourceTrack, int offset)
+        /// <summary>校验 Item 的同类型跨轨移动。</summary>
+        public EditResult CanMoveItemToTrack(TrackConfigBase sourceTrack,
+            TimelineItemConfigBase item, TrackConfigBase targetTrack, int startFrame) =>
+            document.CanMoveItemToTrack(modules.Get(sourceTrack).Document,
+                sourceTrack.Id, targetTrack.Id, item.Id, startFrame);
+
+        /// <summary>提交 Item 的同类型跨轨移动。</summary>
+        public EditResult MoveItemToTrack(TrackConfigBase sourceTrack,
+            TimelineItemConfigBase item, TrackConfigBase targetTrack, int startFrame)
         {
-            if (sourceTrack == null || (offset != -1 && offset != 1)) return null;
-            TrackModule module = modules.Get(sourceTrack);
-            GroupViewData group = groups.FirstOrDefault(candidate =>
-                candidate.GetType() == module.Projection.GroupType);
-            if (group == null) return null;
-            int sourceIndex = -1;
-            for (int index = 0; index < group.Tracks.Count; index++)
-            {
-                TrackViewData candidate = group.Tracks[index];
-                if (candidate.GetType() != sourceTrack.GetType() || candidate.Id != sourceTrack.Id) continue;
-                sourceIndex = index;
-                break;
-            }
-
-            int targetIndex = sourceIndex + offset;
-            return sourceIndex >= 0 && targetIndex >= 0 && targetIndex < group.Tracks.Count
-                ? group.Tracks[targetIndex]
-                : null;
-        }
-
-        /// <summary>
-        /// 只读检查 Item 能否保持原帧区间移动到指定同模块轨道。
-        /// </summary>
-        /// <param name="sourceTrack">当前持有 Item 的源轨道。</param>
-        /// <param name="item">需要移动的 Item。</param>
-        /// <param name="targetTrack">相邻的目标轨道。</param>
-        /// <returns>可移动时返回成功，否则携带具体禁用原因。</returns>
-        public EditResult CanMoveItemToTrack(TrackViewData sourceTrack, ItemViewData item,
-            TrackViewData targetTrack)
-        {
-            if (sourceTrack == null || item == null || targetTrack == null)
-                return EditResult.Failure("不存在可用的相邻轨道。");
-            TrackModule sourceModule = modules.Get(sourceTrack);
-            if (!ReferenceEquals(sourceModule, modules.Get(item)) ||
-                !ReferenceEquals(sourceModule, modules.Get(targetTrack)))
-                return EditResult.Failure("只能在相同类型的轨道之间移动内容。");
-            return document.CanMoveItemToTrack(
-                sourceModule.Document, sourceTrack.Id, targetTrack.Id, item.Id);
-        }
-
-        /// <summary>
-        /// 把 Item 保持原帧区间移动到指定同模块轨道，并报告事务结果。
-        /// </summary>
-        /// <param name="sourceTrack">当前持有 Item 的源轨道。</param>
-        /// <param name="item">需要移动的 Item。</param>
-        /// <param name="targetTrack">相邻的目标轨道。</param>
-        /// <returns>跨轨道事务的成功状态或失败原因。</returns>
-        public EditResult MoveItemToTrack(TrackViewData sourceTrack, ItemViewData item,
-            TrackViewData targetTrack)
-        {
-            EditResult availability = CanMoveItemToTrack(sourceTrack, item, targetTrack);
-            if (!availability.Succeeded)
-            {
-                Report(availability);
-                return availability;
-            }
-
-            TrackModule module = modules.Get(sourceTrack);
-            EditResult result = document.MoveItemToTrack(
-                module.Document, sourceTrack.Id, targetTrack.Id, item.Id);
+            EditResult result = document.MoveItemToTrack(modules.Get(sourceTrack).Document,
+                sourceTrack.Id, targetTrack.Id, item.Id, startFrame);
+            if (result.Succeeded) Select(new ItemSelection(targetTrack.Id, item.Id));
             Report(result);
             return result;
         }
 
-        /// <summary>
-        /// 校验并提交指定片段的新半开帧区间。
-        /// </summary>
-        public EditResult ResizeItem(TrackViewData track, ItemViewData item,
-            int startFrame, int duration)
+        /// <summary>裁剪 Item 区间。</summary>
+        public EditResult ResizeItem(TrackConfigBase track, TimelineItemConfigBase item,
+            int startFrame, int durationFrames)
         {
-            TrackModule module = modules.Get(track);
-            EditResult result = document.ResizeItem(
-                module.Document, track.Id, item.Id, startFrame, duration);
+            EditResult result = document.ResizeItem(modules.Get(track).Document,
+                track.Id, item.Id, startFrame, durationFrames);
             Report(result);
             return result;
         }
 
-        /// <summary>
-        /// 把类型化字段请求交给当前内容所属模块处理。
-        /// </summary>
-        public EditResult EditItem(ItemViewData item, IItemEditRequest request)
+        /// <summary>提交类型化 Item 编辑请求。</summary>
+        public EditResult EditItem(TrackConfigBase track, TimelineItemConfigBase item,
+            IItemEditRequest request)
         {
-            if (item == null || selection is not ItemSelection || selection.ItemId != item.Id)
-                return EditResult.Failure("当前选择与待编辑内容不一致。");
-            TrackModule module = modules.Get(item);
-            EditResult result = document.EditItem(module.Document, selection.TrackId, item.Id, request);
+            EditResult result = document.EditItem(modules.Get(track).Document, track.Id, item.Id, request);
             Report(result);
             if (!result.Succeeded) InspectorChanged?.Invoke();
             return result;
         }
 
-        /// <summary>
-        /// 判断动画片段是否具有可恢复的素材原始持续帧，并且当前持续帧尚未匹配。
-        /// </summary>
-        /// <param name="item">需要检查的动画片段投影。</param>
-        /// <returns>按钮应允许执行时返回 true。</returns>
-        public bool CanMatchAnimationDuration(AnimationClipViewData item)
+        /// <summary>判断动画持续帧是否可匹配素材原始长度。</summary>
+        public bool CanMatchAnimationDuration(AnimationSkillClipConfig item)
         {
-            if (item?.Config?.AnimationClip == null || CurrentConfig == null) return false;
-            return item.Config.DurationFrames != CalculateAnimationDuration(item.Config.AnimationClip);
+            if (item?.AnimationClip == null || CurrentConfig == null) return false;
+            return item.DurationFrames != Mathf.Max(1,
+                Mathf.CeilToInt(item.AnimationClip.length * CurrentConfig.FrameRate));
         }
 
-        /// <summary>
-        /// 将动画片段持续帧恢复为素材原始长度对应的技能帧数，并沿用现有 Document 校验与 Undo。
-        /// </summary>
-        /// <param name="item">需要恢复持续帧的动画片段投影。</param>
-        /// <returns>Document 操作结果；同轨区间冲突时不会修改资产。</returns>
-        public EditResult MatchAnimationDuration(AnimationClipViewData item)
+        /// <summary>将动画持续帧匹配到素材原始长度。</summary>
+        public EditResult MatchAnimationDuration(AnimationSkillClipConfig item)
         {
-            if (item?.Config?.AnimationClip == null || CurrentConfig == null)
-                return EditResult.Failure("当前动画片段没有可匹配的 AnimationClip。");
+            if (item?.AnimationClip == null || SelectedTrack == null)
+                return EditResult.Failure("动画素材为空。");
+            int duration = Mathf.Max(1,
+                Mathf.CeilToInt(item.AnimationClip.length * CurrentConfig.FrameRate));
+            return EditItem(SelectedTrack, item, new AnimationEditRequest(
+                item.AnimationClip, item.StartFrame, duration, item.SourceStartFrame, item.PlaybackSpeed));
+        }
+        #endregion
 
-            AnimationSkillClipConfig clip = item.Config;
-            return EditItem(item, new AnimationEditRequest(
-                clip.AnimationClip, clip.StartFrame, CalculateAnimationDuration(clip.AnimationClip),
-                clip.SourceStartFrame, clip.PlaybackSpeed));
+        #region VFX 场景代理
+        /// <summary>开始 VFX 场景代理编辑。</summary>
+        public void BeginVfxSceneEdit(VfxSkillClipConfig item)
+        {
+            if (item != null) Report(vfxSceneEditService.BeginEdit(item));
         }
 
-        // 使用当前技能 FPS 把素材原始秒数向上取整为至少一帧；不受源偏移和播放速度影响。
-        private int CalculateAnimationDuration(AnimationClip clip) =>
-            Mathf.Max(1, Mathf.CeilToInt(clip.length * CurrentConfig.FrameRate));
-
-        /// <summary>
-        /// 暂停播放、确保当前帧已采样，并为指定 VFX Clip 创建独立场景编辑代理。
-        /// </summary>
-        public void BeginVfxSceneEdit(VfxClipViewData item)
-        {
-            if (item == null) return;
-            playback.Pause();
-            playback.RefreshPreview();
-            Report(vfxSceneEditService.BeginEdit(item.Config));
-            InspectorChanged?.Invoke();
-        }
-
-        /// <summary>
-        /// 判断指定 VFX Clip 是否拥有未提交的场景 Transform 草稿。
-        /// </summary>
-        public bool IsVfxSceneEditing(VfxClipViewData item) =>
+        /// <summary>判断 VFX Item 是否正在编辑代理。</summary>
+        public bool IsVfxSceneEditing(VfxSkillClipConfig item) =>
             item != null && vfxSceneEditService.IsEditing(item.Id);
 
-        /// <summary>
-        /// 重新选择并在 Scene View 中定位指定 VFX Clip 的场景编辑代理。
-        /// </summary>
-        public void SelectVfxSceneEditProxy(VfxClipViewData item)
+        /// <summary>重新选择 VFX 编辑代理。</summary>
+        public void SelectVfxSceneEditProxy(VfxSkillClipConfig item)
         {
-            if (item == null) return;
-            Report(vfxSceneEditService.SelectProxy(item.Id));
+            if (item != null) Report(vfxSceneEditService.SelectProxy(item.Id));
         }
 
-        /// <summary>
-        /// 读取代理 Transform 并通过现有 VfxEditRequest 提交一条 Document Undo。
-        /// </summary>
-        public void ApplyVfxSceneEdit(VfxClipViewData item)
+        /// <summary>捕获 VFX 代理 Transform 并提交 Item 编辑。</summary>
+        public void ApplyVfxSceneEdit(VfxSkillClipConfig item)
         {
-            if (item == null) return;
+            if (item == null || SelectedTrack == null) return;
             EditResult capture = vfxSceneEditService.Capture(item.Id, out VfxTransformSnapshot snapshot);
             if (!capture.Succeeded)
             {
                 Report(capture);
-                InspectorChanged?.Invoke();
                 return;
             }
-
-            VfxSkillClipConfig clip = item.Config;
-            EditResult result = EditItem(item, new VfxEditRequest(
-                clip.Prefab, clip.MarkerKey, clip.StartFrame, clip.DurationFrames,
+            EditResult result = EditItem(SelectedTrack, item, new VfxEditRequest(
+                item.Prefab, item.MarkerKey, item.StartFrame, item.DurationFrames,
                 snapshot.LocalPosition, snapshot.LocalEulerAngles, snapshot.LocalScale,
-                clip.PlaybackSpeed, clip.FollowMode, clip.StopMode));
+                item.PlaybackSpeed, item.FollowMode, item.StopMode));
             if (result.Succeeded) vfxSceneEditService.CancelEdit();
         }
 
-        /// <summary>
-        /// 取消当前窗口的 VFX 场景编辑并丢弃未提交 Transform 草稿。
-        /// </summary>
-        public void CancelVfxSceneEdit()
-        {
-            vfxSceneEditService.CancelEdit();
-            playback.RefreshPreview();
-            InspectorChanged?.Invoke();
-        }
-
+        /// <summary>取消 VFX 场景代理编辑。</summary>
+        public void CancelVfxSceneEdit() => vfxSceneEditService.CancelEdit();
         #endregion
 
-        #region 状态提示
-
-        // 把编辑结果转换为窗口底部状态提示。
+        #region 状态
+        // 把语义操作结果写入状态栏。
         private void Report(EditResult result) =>
             SetStatus(result.Succeeded ? "操作完成。" : result.Message);
 
-        // 更新状态提示并发送细粒度状态通知。
+        // 更新状态文本并通知 View。
         private void SetStatus(string message)
         {
             StatusMessage = message ?? string.Empty;
             StatusChanged?.Invoke();
         }
-
         #endregion
     }
 }

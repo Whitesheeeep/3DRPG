@@ -80,21 +80,12 @@
     flex-shrink: 1;
 }
 .zoom-slider { flex-grow: 1; min-width: 180px; max-width: 320px; margin-left: 8px; }
-.main-content {
-    flex-grow: 1;
-    flex-shrink: 1;
-    min-width: 644px;
-    min-height: 0;
-    overflow: hidden;
-}
 .timeline-panel {
     position: relative;
     flex-grow: 1;
     min-width: 400px;
     min-height: 0;
     overflow: hidden;
-    border-right-width: 1px;
-    border-right-color: rgb(70, 70, 70);
 }
 .timeline-inner-split {
     flex-grow: 1;
@@ -258,13 +249,6 @@
     top: 0;
     bottom: 0;
 }
-.inspector-panel {
-    min-width: 240px;
-    min-height: 0;
-    overflow: hidden;
-    border-left-width: 1px;
-    border-left-color: rgb(88, 88, 88);
-}
 .panel-title {
     height: 36px;
     padding-left: 10px;
@@ -288,4 +272,103 @@
     border-top-width: 1px;
     border-top-color: rgb(67, 67, 67);
     color: rgb(176, 176, 176);
+}
+.timeline-lane-item-row.is-drop-target {
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-color: rgb(90, 190, 255);
+}
+
+/* Track Header 双行布局与轨道重排状态。 */
+.timeline-header-row {
+    flex-direction: column;
+    align-items: stretch;
+    padding-left: 4px;
+    padding-right: 4px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+.timeline-track-primary-row,
+.timeline-track-secondary-row {
+    flex-direction: row;
+    align-items: center;
+    flex-grow: 0;
+    flex-shrink: 0;
+    min-width: 0;
+    height: 24px;
+}
+.timeline-track-drag-handle {
+    width: 22px;
+    height: 21px;
+    flex-grow: 0;
+    flex-shrink: 0;
+    margin-left: 0;
+    margin-right: 3px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(76, 76, 76);
+    border-right-color: rgb(76, 76, 76);
+    border-top-color: rgb(76, 76, 76);
+    border-bottom-color: rgb(76, 76, 76);
+    border-top-left-radius: 2px;
+    border-top-right-radius: 2px;
+    border-bottom-left-radius: 2px;
+    border-bottom-right-radius: 2px;
+    background-color: rgb(74, 74, 74);
+    color: rgb(190, 190, 190);
+    -unity-text-align: middle-center;
+}
+.timeline-track-drag-handle:hover {
+    background-color: rgb(91, 91, 91);
+    color: rgb(225, 225, 225);
+}
+.timeline-track-asset-field {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    height: 20px;
+    margin-left: 0;
+    margin-right: 3px;
+}
+.timeline-track-asset-field:disabled,
+.timeline-track-asset-field:disabled .unity-object-field__input,
+.timeline-track-asset-field:disabled .unity-object-field-display {
+    opacity: 1;
+    color: rgb(190, 190, 190);
+}
+.timeline-header-row.is-track-reorder-source,
+.timeline-lane-background-row.is-track-reorder-source,
+.timeline-lane-item-row.is-track-reorder-source {
+    opacity: 0.35;
+}
+.track-reorder-insertion-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: rgb(82, 190, 255);
+}
+.timeline-lane-item-row.is-item-drop-valid {
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-top-color: rgb(82, 190, 255);
+    border-bottom-color: rgb(82, 190, 255);
+    background-color: rgba(56, 156, 178, 0.14);
+}
+.timeline-lane-item-row.is-item-drop-invalid {
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-top-color: rgb(215, 74, 74);
+    border-bottom-color: rgb(215, 74, 74);
+    background-color: rgba(190, 68, 68, 0.12);
+}
+.item-drag-overlay {
+    position: absolute;
+    left: 0;
+    right: 16px;
+    top: 0;
+    bottom: 16px;
+    overflow: hidden;
 }

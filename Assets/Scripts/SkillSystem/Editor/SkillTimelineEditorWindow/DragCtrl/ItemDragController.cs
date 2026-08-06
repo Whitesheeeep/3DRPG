@@ -1,36 +1,38 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using RPG.SkillSystem;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace RPG.SkillSystem.Editor
 {
-
-
     /// <summary>
-    /// 管理 Clip 与 Marker 的 Pointer Capture、UI 草稿位置、取消和单次语义提交。
+    /// 管理 Item 水平帧草稿、同类型 Lane 目标、三层移动预览和单次移动或 Resize 提交。
     /// </summary>
     internal sealed class ItemDragController : IDisposable
     {
         #region 拖拽状态类型
 
         /// <summary>
-        /// 保存一次 Clip 或 Marker 拖拽期间的 UI 草稿状态。
+        /// 保存一次拖拽的原始 Config 引用、帧草稿、目标 Lane 与校验结果。
         /// </summary>
         internal sealed class DragState
         {
             public DragMode Mode;
-            public TrackViewData Track;
-            public ItemViewData Item;
+            public TrackConfigBase SourceTrack;
+            public TrackConfigBase TargetTrack;
+            public TimelineItemConfigBase Item;
             public int OriginalStartFrame;
             public int OriginalDurationFrames;
             public int DraftStartFrame;
             public int DraftDurationFrames;
             public float PointerStartX;
+            public bool IsDropValid;
         }
+
         /// <summary>
-        /// 标识时间轴内容拖拽时采用的移动或裁剪方式。
+        /// 标识移动或双侧 Resize 交互。
         /// </summary>
         internal enum DragMode
         {
@@ -39,15 +41,39 @@ namespace RPG.SkillSystem.Editor
             ResizeRight
         }
 
+        /// <summary>
+        /// 保存实际 Track 与其 Lane 元素的绑定。
+        /// </summary>
+        private sealed class LaneBinding
+        {
+            public TrackConfigBase Track { get; }
+            public VisualElement Lane { get; }
+
+            /// <summary>
+            /// 保存动态 Lane 引用；该映射只存在于本次 Canvas 行生命周期。
+            /// </summary>
+            public LaneBinding(TrackConfigBase track, VisualElement lane)
+            {
+                Track = track;
+                Lane = lane;
+            }
+        }
+
         #endregion
 
-        #region 依赖与运行状态
+        #region 依赖与状态
+
+        private const string ValidLaneClass = "is-item-drop-valid";
+        private const string InvalidLaneClass = "is-item-drop-invalid";
 
         private readonly CanvasModel canvasModel;
+        private readonly ItemDragPreviewView previewView;
         private readonly List<VisualElement> registeredElements = new();
+        private readonly List<LaneBinding> lanes = new();
         private EditorViewModel viewModel;
         private DragState state;
         private ItemView activeView;
+        private VisualElement highlightedLane;
         private int pointerId = -1;
 
         #endregion
@@ -55,18 +81,27 @@ namespace RPG.SkillSystem.Editor
         #region 生命周期与注册
 
         /// <summary>
-        /// 创建使用指定 Canvas 缩放状态的拖拽控制器。
+        /// 创建使用 Canvas 缩放状态和独立三层预览的拖拽控制器。
         /// </summary>
-        public ItemDragController(CanvasModel canvasModel) =>
+        public ItemDragController(CanvasModel canvasModel, ItemDragPreviewView previewView)
+        {
             this.canvasModel = canvasModel ?? throw new ArgumentNullException(nameof(canvasModel));
+            this.previewView = previewView ?? throw new ArgumentNullException(nameof(previewView));
+        }
 
         /// <summary>
-        /// 绑定最终移动、裁剪和选择意图的接收方。
+        /// 绑定语义操作接收方。
         /// </summary>
         public void Bind(EditorViewModel model) => viewModel = model;
 
         /// <summary>
-        /// 为一个动态 Item View 注册拖拽事件。
+        /// 注册一个可作为垂直移动目标的实际 Track Lane。
+        /// </summary>
+        public void RegisterLane(TrackConfigBase track, VisualElement lane) =>
+            lanes.Add(new LaneBinding(track, lane));
+
+        /// <summary>
+        /// 注册一个动态 Item View 的 Pointer 事件。
         /// </summary>
         public void Register(ItemView itemView)
         {
@@ -79,7 +114,7 @@ namespace RPG.SkillSystem.Editor
         }
 
         /// <summary>
-        /// 取消当前草稿并解除全部动态元素事件，供时间轴重建使用。
+        /// 取消草稿并解除全部动态注册。
         /// </summary>
         public void Reset()
         {
@@ -91,15 +126,17 @@ namespace RPG.SkillSystem.Editor
                 element.UnregisterCallback<PointerUpEvent>(OnPointerUp);
                 element.UnregisterCallback<PointerCaptureOutEvent>(OnPointerCaptureOut);
             }
-
             registeredElements.Clear();
+            lanes.Clear();
         }
 
         /// <summary>
-        /// 放弃当前拖拽草稿并恢复权威帧位置。
+        /// 丢弃草稿、移除全部预览、恢复权威几何并释放 Pointer Capture。
         /// </summary>
         public void Cancel()
         {
+            ClearLaneHighlight();
+            previewView.End();
             ItemView itemView = activeView;
             DragState dragState = state;
             VisualElement capture = itemView?.Element;
@@ -114,11 +151,12 @@ namespace RPG.SkillSystem.Editor
         }
 
         /// <summary>
-        /// 释放拖拽状态和全部动态回调。
+        /// 释放全部拖拽回调、临时 View 和 ViewModel 引用。
         /// </summary>
         public void Dispose()
         {
             Reset();
+            previewView.Dispose();
             viewModel = null;
         }
 
@@ -126,23 +164,24 @@ namespace RPG.SkillSystem.Editor
 
         #region Pointer 交互
 
-        // 捕获左键并根据命中的手柄确定移动或裁剪模式。
+        // 左键开始时选择实际 Item，并区分移动与 Resize 手柄；移动模式才创建三层预览。
         private void OnPointerDown(PointerDownEvent evt)
         {
             if (evt.button != 0 || evt.currentTarget is not VisualElement element ||
-                element.userData is not ItemView itemView || itemView.Track.Locked) return;
+                element.userData is not ItemView itemView || itemView.Track.EditorLocked) return;
 
             DragMode mode = DragMode.Move;
             if (evt.target == itemView.ResizeLeft) mode = DragMode.ResizeLeft;
             else if (evt.target == itemView.ResizeRight) mode = DragMode.ResizeRight;
-            if (!itemView.Item.IsResizable) mode = DragMode.Move;
+            if (itemView.Item is SkillEventMarkerConfig) mode = DragMode.Move;
 
             activeView = itemView;
             pointerId = evt.pointerId;
             state = new DragState
             {
                 Mode = mode,
-                Track = itemView.Track,
+                SourceTrack = itemView.Track,
+                TargetTrack = itemView.Track,
                 Item = itemView.Item,
                 OriginalStartFrame = itemView.Item.StartFrame,
                 OriginalDurationFrames = itemView.Item.DurationFrames,
@@ -151,36 +190,42 @@ namespace RPG.SkillSystem.Editor
                 PointerStartX = evt.position.x
             };
             viewModel.SelectItem(itemView.Track, itemView.Item);
+            if (mode == DragMode.Move)
+            {
+                previewView.Begin(itemView, evt.position);
+                UpdateTargetLane(evt.position);
+            }
             element.CapturePointer(evt.pointerId);
             evt.StopPropagation();
         }
 
-        // 把像素位移吸附为整数帧，并只更新 Item View 的草稿几何。
+        // PointerMove 只刷新整数帧草稿与临时视觉；移动模式绝不改变源 Item 的权威位置。
         private void OnPointerMove(PointerMoveEvent evt)
         {
             if (state == null || activeView == null || pointerId != evt.pointerId) return;
-            int delta = Mathf.RoundToInt(
-                (evt.position.x - state.PointerStartX) / canvasModel.PixelsPerFrame);
+            int delta = Mathf.RoundToInt((evt.position.x - state.PointerStartX) / canvasModel.PixelsPerFrame);
             int originalEnd = state.OriginalStartFrame + state.OriginalDurationFrames;
             switch (state.Mode)
             {
                 case DragMode.Move:
                     state.DraftStartFrame = Mathf.Max(0, state.OriginalStartFrame + delta);
+                    previewView.UpdatePointer(evt.position);
+                    UpdateTargetLane(evt.position);
                     break;
                 case DragMode.ResizeLeft:
                     state.DraftStartFrame = Mathf.Clamp(state.OriginalStartFrame + delta, 0, originalEnd - 1);
                     state.DraftDurationFrames = originalEnd - state.DraftStartFrame;
+                    activeView.RefreshGeometry(state.DraftStartFrame, state.DraftDurationFrames);
                     break;
                 case DragMode.ResizeRight:
                     state.DraftDurationFrames = Mathf.Max(1, state.OriginalDurationFrames + delta);
+                    activeView.RefreshGeometry(state.DraftStartFrame, state.DraftDurationFrames);
                     break;
             }
-
-            activeView.RefreshGeometry(state.DraftStartFrame, state.DraftDurationFrames);
             evt.StopPropagation();
         }
 
-        // 清理 Pointer Capture 后，仅在帧草稿实际变化时提交一次语义操作，普通点击只保留选择行为。
+        // PointerUp 只在有效落点提交一次；无效位置、取消和无变化点击均不创建 Undo。
         private void OnPointerUp(PointerUpEvent evt)
         {
             if (state == null || activeView == null || pointerId != evt.pointerId) return;
@@ -190,123 +235,103 @@ namespace RPG.SkillSystem.Editor
             state = null;
             activeView = null;
             pointerId = -1;
+            ClearLaneHighlight();
+            previewView.End();
             if (capture.HasPointerCapture(evt.pointerId)) capture.ReleasePointer(evt.pointerId);
 
-            if (!HasDraftChanged(completed))
+            EditResult result;
+            if (completed.Mode == DragMode.Move)
+            {
+                if (!completed.IsDropValid)
+                {
+                    itemView.RefreshGeometry(completed.OriginalStartFrame, completed.OriginalDurationFrames);
+                    evt.StopPropagation();
+                    return;
+                }
+
+                if (completed.TargetTrack != completed.SourceTrack)
+                    result = viewModel.MoveItemToTrack(completed.SourceTrack, completed.Item,
+                        completed.TargetTrack, completed.DraftStartFrame);
+                else if (!HasDraftChanged(completed))
+                {
+                    evt.StopPropagation();
+                    return;
+                }
+                else
+                    result = viewModel.MoveItem(completed.SourceTrack, completed.Item,
+                        completed.DraftStartFrame);
+            }
+            // Resize 模式只在草稿变化时提交；零位移或零 Resize 不创建 Undo。
+            else if (!HasDraftChanged(completed))
             {
                 evt.StopPropagation();
                 return;
             }
-
-            EditResult result = completed.Mode == DragMode.Move
-                ? viewModel.MoveItem(completed.Track, completed.Item, completed.DraftStartFrame)
-                : viewModel.ResizeItem(completed.Track, completed.Item,
+            else
+            {
+                result = viewModel.ResizeItem(completed.SourceTrack, completed.Item,
                     completed.DraftStartFrame, completed.DraftDurationFrames);
+            }
+
             if (!result.Succeeded)
                 itemView.RefreshGeometry(completed.OriginalStartFrame, completed.OriginalDurationFrames);
             evt.StopPropagation();
         }
 
-        // 同时比较开始帧与持续帧，避免点击、零像素拖动或吸附回原位触发无意义的资产事务。
-        private static bool HasDraftChanged(DragState dragState) =>
-            dragState.DraftStartFrame != dragState.OriginalStartFrame ||
-            dragState.DraftDurationFrames != dragState.OriginalDurationFrames;
-
-        // Pointer Capture 意外丢失时恢复权威位置，避免草稿残留。
+        // Pointer Capture 意外丢失时恢复权威位置，并清除 Ghost 与 Placeholder。
         private void OnPointerCaptureOut(PointerCaptureOutEvent _)
         {
             if (state != null) Cancel();
         }
 
         #endregion
-    }
 
-    /// <summary>
-    /// 管理时间轴 Item 的右键菜单，并把播放头吸附及相邻轨道移动转换为 ViewModel 语义命令。
-    /// </summary>
-    internal sealed class ItemContextMenuController : IDisposable
-    {
-        #region 依赖与注册状态
+        #region 目标 Lane 与校验
 
-        private readonly EditorViewModel viewModel;
-        private readonly Dictionary<VisualElement, ContextualMenuManipulator> manipulators = new();
-
-        #endregion
-
-        #region 生命周期与注册
-
-        /// <summary>
-        /// 创建只负责 Item 右键交互的控制器，不持有或修改任何技能配置数据。
-        /// </summary>
-        /// <param name="viewModel">接收选择与移动语义命令的编辑器 ViewModel。</param>
-        public ItemContextMenuController(EditorViewModel viewModel) =>
-            this.viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
-
-        /// <summary>
-        /// 为一个动态 Item View 注册播放头吸附与相邻轨道移动菜单。
-        /// </summary>
-        /// <param name="itemView">需要响应右键菜单的动态 Item View。</param>
-        public void Register(ItemView itemView)
+        // 命中任意 Lane 后展示占位；具体类型、锁定和区间校验共同决定有效状态。
+        private void UpdateTargetLane(Vector3 worldPosition)
         {
-            if (itemView == null) throw new ArgumentNullException(nameof(itemView));
-            VisualElement element = itemView.Element;
-            if (manipulators.ContainsKey(element)) return;
-            ContextualMenuManipulator manipulator = new(evt => PopulateMenu(evt, itemView));
-            manipulators.Add(element, manipulator);
-            element.AddManipulator(manipulator);
+            ClearLaneHighlight();
+            state.TargetTrack = null;
+            state.IsDropValid = false;
+            foreach (LaneBinding binding in lanes)
+            {
+                if (!binding.Lane.worldBound.Contains(new Vector2(worldPosition.x, worldPosition.y))) continue;
+
+                state.TargetTrack = binding.Track;
+                bool compatible = binding.Track.GetType() == state.SourceTrack.GetType() &&
+                                  !binding.Track.EditorLocked;
+                if (compatible)
+                {
+                    EditResult validation = binding.Track == state.SourceTrack
+                        ? viewModel.CanMoveItem(state.SourceTrack, state.Item, state.DraftStartFrame)
+                        : viewModel.CanMoveItemToTrack(state.SourceTrack, state.Item,
+                            binding.Track, state.DraftStartFrame);
+                    state.IsDropValid = validation.Succeeded;
+                }
+
+                highlightedLane = binding.Lane;
+                highlightedLane.AddToClassList(state.IsDropValid ? ValidLaneClass : InvalidLaneClass);
+                previewView.ShowPlacement(binding.Lane, state.DraftStartFrame,
+                    state.DraftDurationFrames, state.IsDropValid);
+                return;
+            }
+
+            previewView.ClearPlacement();
         }
 
-        /// <summary>
-        /// 解除全部动态 Item 的菜单操纵器，供时间轴重建时安全复用控制器。
-        /// </summary>
-        public void Reset()
+        // 清除上一目标 Lane 的有效或无效 USS 状态。
+        private void ClearLaneHighlight()
         {
-            foreach (KeyValuePair<VisualElement, ContextualMenuManipulator> pair in manipulators)
-                pair.Key.RemoveManipulator(pair.Value);
-            manipulators.Clear();
+            highlightedLane?.RemoveFromClassList(ValidLaneClass);
+            highlightedLane?.RemoveFromClassList(InvalidLaneClass);
+            highlightedLane = null;
         }
 
-        /// <summary>
-        /// 释放全部上下文菜单注册。
-        /// </summary>
-        public void Dispose() => Reset();
-
-        #endregion
-
-        #region 菜单构建
-
-        // 右键打开时冻结播放头帧并选中目标 Item，避免播放期间菜单落点继续变化。
-        private void PopulateMenu(ContextualMenuPopulateEvent evt, ItemView itemView)
-        {
-            int targetFrame = viewModel.CurrentFrame;
-            viewModel.SelectItem(itemView.Track, itemView.Item);
-            DropdownMenuAction.Status status = itemView.Track.Locked || itemView.Item.StartFrame == targetFrame
-                ? DropdownMenuAction.Status.Disabled
-                : DropdownMenuAction.Status.Normal;
-            evt.menu.AppendAction($"吸附到播放头（帧 {targetFrame}）",
-                _ => viewModel.MoveItem(itemView.Track, itemView.Item, targetFrame), status);
-            evt.menu.AppendSeparator();
-            AppendTrackMoveAction(evt, itemView, -1, "上方");
-            AppendTrackMoveAction(evt, itemView, 1, "下方");
-        }
-
-        // 菜单打开时冻结相邻目标轨道；禁用状态使用 Document 的只读校验，执行时仍会再次权威校验。
-        private void AppendTrackMoveAction(ContextualMenuPopulateEvent evt, ItemView itemView,
-            int offset, string direction)
-        {
-            TrackViewData targetTrack = viewModel.GetAdjacentTrack(itemView.Track, offset);
-            string label = targetTrack == null
-                ? $"移动到{direction}轨道"
-                : $"移动到{direction}轨道（{targetTrack.DisplayName}）";
-            EditResult availability = targetTrack == null
-                ? EditResult.Failure("不存在可用的相邻轨道。")
-                : viewModel.CanMoveItemToTrack(itemView.Track, itemView.Item, targetTrack);
-            DropdownMenuAction.Status status = availability.Succeeded
-                ? DropdownMenuAction.Status.Normal
-                : DropdownMenuAction.Status.Disabled;
-            evt.menu.AppendAction(label,
-                _ => viewModel.MoveItemToTrack(itemView.Track, itemView.Item, targetTrack), status);
-        }
+        /// 比较帧草稿，避免零位移或零 Resize 产生 Undo。
+        private static bool HasDraftChanged(DragState dragState) =>
+            dragState.DraftStartFrame != dragState.OriginalStartFrame ||
+            dragState.DraftDurationFrames != dragState.OriginalDurationFrames;
 
         #endregion
     }

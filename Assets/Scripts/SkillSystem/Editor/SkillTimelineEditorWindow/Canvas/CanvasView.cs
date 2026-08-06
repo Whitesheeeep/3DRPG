@@ -27,6 +27,7 @@ namespace RPG.SkillSystem.Editor
         internal VisualElement LaneBackgroundRows { get; private set; }
         internal VisualElement LaneItemRows { get; private set; }
         internal VisualElement GridHost { get; private set; }
+        internal VisualElement ItemDragOverlay { get; private set; }
         internal VisualElement PlayheadOverlay { get; private set; }
 
         #endregion
@@ -76,6 +77,7 @@ namespace RPG.SkillSystem.Editor
             LaneBackgroundRows = RequireElement<VisualElement>("TimelineLaneBackgroundRows");
             LaneItemRows = RequireElement<VisualElement>("TimelineLaneRows");
             GridHost = RequireElement<VisualElement>("TimelineGridHost");
+            ItemDragOverlay = RequireElement<VisualElement>("ItemDragOverlay");
             PlayheadOverlay = RequireElement<VisualElement>("PlayheadOverlay");
         }
 
@@ -99,6 +101,7 @@ namespace RPG.SkillSystem.Editor
             LaneBackgroundRows = null;
             LaneItemRows = null;
             GridHost = null;
+            ItemDragOverlay = null;
             PlayheadOverlay = null;
         }
 

@@ -53,43 +53,17 @@ namespace RPG.SkillSystem.Editor
 
     #region Concrete drawers
     /// <summary>
-    /// 绘制所有具体轨道分组的只读信息与新增轨道操作。
-    /// </summary>
-    internal sealed class GroupInspectorDrawer : InspectorDrawer, IInspectorDrawer
-    {
-        /// <summary>
-        /// 判断 ViewData 是否为轨道分组。
-        /// </summary>
-        public bool CanDraw(IViewData viewData) => viewData is GroupViewData;
-
-        /// <summary>
-        /// 绘制分组标题、轨道数量和新增轨道按钮。
-        /// </summary>
-        public void Draw(VisualElement container, IViewData viewData, EditorViewModel viewModel)
-        {
-            if (viewData is not GroupViewData group) return;
-            AddTitle(container, group.DisplayName);
-            container.Add(new Label($"轨道数量：{group.Tracks.Count}"));
-            AddActionRow(container).Add(new Button(() => viewModel.AddTrack(group)) { text = "添加轨道" });
-        }
-    }
-
-    /// <summary>
     /// 绘制所有具体轨道共用的名称、静音、锁定和排序操作。
     /// </summary>
     internal sealed class TrackInspectorDrawer : InspectorDrawer, IInspectorDrawer
     {
-        /// <summary>
-        /// 判断 ViewData 是否为具体轨道。
-        /// </summary>
-        public bool CanDraw(IViewData viewData) => viewData is TrackViewData;
 
         /// <summary>
         /// 绘制并提交轨道公共字段。
         /// </summary>
-        public void Draw(VisualElement container, IViewData viewData, EditorViewModel viewModel)
+        public void Draw(VisualElement container, object data, EditorViewModel viewModel)
         {
-            if (viewData is not TrackViewData track) return;
+            if (data is not TrackConfigBase track) return;
             AddTitle(container, track.DisplayName);
             TextField name = AddField(container, new TextField("名称")
             {
@@ -97,7 +71,7 @@ namespace RPG.SkillSystem.Editor
                 isDelayed = true
             });
             Toggle muted = AddField(container, new Toggle("静音") { value = track.Muted });
-            Toggle locked = AddField(container, new Toggle("锁定") { value = track.Locked });
+            Toggle locked = AddField(container, new Toggle("锁定") { value = track.EditorLocked });
             void Submit() => viewModel.EditSelectedTrack(name.value, muted.value, locked.value);
             name.RegisterValueChangedCallback(_ => Submit());
             muted.RegisterValueChangedCallback(_ => Submit());
@@ -114,19 +88,14 @@ namespace RPG.SkillSystem.Editor
     /// </summary>
     internal sealed class AnimationInspectorDrawer : InspectorDrawer, IInspectorDrawer
     {
-        /// <summary>
-        /// 判断 ViewData 是否为动画片段。
-        /// </summary>
-        public bool CanDraw(IViewData viewData) => viewData is AnimationClipViewData;
 
         /// <summary>
         /// 绘制动画资源、帧区间、源偏移和速度字段。
         /// </summary>
-        public void Draw(VisualElement container, IViewData viewData, EditorViewModel viewModel)
+        public void Draw(VisualElement container, object data, EditorViewModel viewModel)
         {
-            if (viewData is not AnimationClipViewData item) return;
-            AnimationSkillClipConfig clip = item.Config;
-            AddTitle(container, item.DisplayName);
+            if (data is not AnimationSkillClipConfig clip) return;
+            AddTitle(container, clip.AnimationClip != null ? clip.AnimationClip.name : "Animation Clip");
             ObjectField animation = AddField(container, new ObjectField("AnimationClip")
             {
                 objectType = typeof(AnimationClip), allowSceneObjects = false, value = clip.AnimationClip
@@ -136,17 +105,17 @@ namespace RPG.SkillSystem.Editor
             IntegerField duration = new("持续帧") { value = clip.DurationFrames };
             duration.AddToClassList("inspector-field");
             durationRow.Add(duration);
-            Button matchDuration = new(() => viewModel.MatchAnimationDuration(item))
+            Button matchDuration = new(() => viewModel.MatchAnimationDuration(clip))
             {
                 text = "匹配动画长度",
                 tooltip = "按 AnimationClip 原始时长和当前技能 FPS 恢复持续帧。"
             };
-            matchDuration.SetEnabled(viewModel.CanMatchAnimationDuration(item));
+            matchDuration.SetEnabled(viewModel.CanMatchAnimationDuration(clip));
             durationRow.Add(matchDuration);
             IntegerField sourceStart = AddField(container, new IntegerField("源动画偏移") { value = clip.SourceStartFrame });
             FloatField speed = AddField(container, new FloatField("播放速度") { value = clip.PlaybackSpeed });
 
-            void Submit() => viewModel.EditItem(item, new AnimationEditRequest(
+            void Submit() => viewModel.EditItem(viewModel.SelectedTrack, clip, new AnimationEditRequest(
                 animation.value as AnimationClip, start.value, duration.value, sourceStart.value, speed.value));
 
             // 避免一改就提交，导致动画片段在拖动滑块时频繁刷新。
@@ -187,19 +156,14 @@ namespace RPG.SkillSystem.Editor
         #endregion
 
         #region 绘制
-        /// <summary>
-        /// 判断 ViewData 是否为攻击检测片段。
-        /// </summary>
-        public bool CanDraw(IViewData viewData) => viewData is AttackDetectionClipViewData;
 
         /// <summary>
         /// 绘制公共区间、采样间隔、Type 和当前具体检测参数。
         /// </summary>
-        public void Draw(VisualElement container, IViewData viewData, EditorViewModel viewModel)
+        public void Draw(VisualElement container, object data, EditorViewModel viewModel)
         {
-            if (viewData is not AttackDetectionClipViewData item) return;
-            AttackDetectionSkillClipConfig clip = item.Config;
-            AddTitle(container, item.DisplayName);
+            if (data is not AttackDetectionSkillClipConfig clip) return;
+            AddTitle(container, $"{clip.DetectionType} Detection");
             IntegerField start = AddField(container,
                 new IntegerField("起始帧") { value = clip.StartFrame });
             IntegerField duration = AddField(container,
@@ -210,7 +174,7 @@ namespace RPG.SkillSystem.Editor
                 new EnumField("检测类型", clip.DetectionType));
 
             // 每次提交都携带完整独立快照，Document 只负责事务写入。
-            void Submit(AttackDetectionDataBase data) => viewModel.EditItem(item,
+            void Submit(AttackDetectionDataBase data) => viewModel.EditItem(viewModel.SelectedTrack, clip,
                 new AttackDetectionEditRequest(start.value, duration.value, interval.value, data));
 
             start.isDelayed = true;
@@ -446,19 +410,14 @@ namespace RPG.SkillSystem.Editor
     /// </summary>
     internal sealed class VfxInspectorDrawer : InspectorDrawer, IInspectorDrawer
     {
-        /// <summary>
-        /// 判断 ViewData 是否为特效片段。
-        /// </summary>
-        public bool CanDraw(IViewData viewData) => viewData is VfxClipViewData;
 
         /// <summary>
         /// 绘制特效资源、语义挂点、帧区间、局部变换和独立播放倍率字段。
         /// </summary>
-        public void Draw(VisualElement container, IViewData viewData, EditorViewModel viewModel)
+        public void Draw(VisualElement container, object data, EditorViewModel viewModel)
         {
-            if (viewData is not VfxClipViewData item) return;
-            VfxSkillClipConfig clip = item.Config;
-            AddTitle(container, item.DisplayName);
+            if (data is not VfxSkillClipConfig clip) return;
+            AddTitle(container, clip.Prefab != null ? clip.Prefab.name : "VFX Clip");
             ObjectField prefab = AddField(container, new ObjectField("Prefab")
             {
                 objectType = typeof(GameObject), allowSceneObjects = false, value = clip.Prefab
@@ -479,7 +438,7 @@ namespace RPG.SkillSystem.Editor
                            + "StopEmissionAtEnd：到达结束帧时停止发射，已生成粒子继续播放至自然消失。\n"
                            + "KeepAlive：到达结束帧后不停止发射或回收，特效继续运行。";
 
-            void Submit() => viewModel.EditItem(item, new VfxEditRequest(prefab.value as GameObject,
+            void Submit() => viewModel.EditItem(viewModel.SelectedTrack, clip, new VfxEditRequest(prefab.value as GameObject,
                 marker.value as MarkerKey, start.value, duration.value, position.value, rotation.value, scale.value,
                 playbackSpeed.value, (VfxFollowMode)follow.value, (VfxStopMode)stop.value));
 
@@ -501,12 +460,12 @@ namespace RPG.SkillSystem.Editor
             playbackSpeed.RegisterValueChangedCallback(_ => Submit());
             stop.RegisterValueChangedCallback(_ => Submit());
 
-            bool sceneEditing = viewModel.IsVfxSceneEditing(item);
+            bool sceneEditing = viewModel.IsVfxSceneEditing(clip);
             VisualElement editRow = AddActionRow(container);
             Button beginEdit = sceneEditing
-                ? new Button(() => viewModel.SelectVfxSceneEditProxy(item)) { text = "选择编辑代理" }
-                : new Button(() => viewModel.BeginVfxSceneEdit(item)) { text = "在场景中编辑" };
-            Button applyEdit = new(() => viewModel.ApplyVfxSceneEdit(item)) { text = "应用预览 Transform" };
+                ? new Button(() => viewModel.SelectVfxSceneEditProxy(clip)) { text = "选择编辑代理" }
+                : new Button(() => viewModel.BeginVfxSceneEdit(clip)) { text = "在场景中编辑" };
+            Button applyEdit = new(() => viewModel.ApplyVfxSceneEdit(clip)) { text = "应用预览 Transform" };
             Button cancelEdit = new(viewModel.CancelVfxSceneEdit) { text = "取消场景编辑" };
             applyEdit.SetEnabled(sceneEditing);
             cancelEdit.SetEnabled(sceneEditing);
@@ -522,19 +481,14 @@ namespace RPG.SkillSystem.Editor
     /// </summary>
     internal sealed class AudioInspectorDrawer : InspectorDrawer, IInspectorDrawer
     {
-        /// <summary>
-        /// 判断 ViewData 是否为音频片段。
-        /// </summary>
-        public bool CanDraw(IViewData viewData) => viewData is AudioClipViewData;
 
         /// <summary>
         /// 绘制音频素材、半开帧区间、音量和 Pitch 字段。
         /// </summary>
-        public void Draw(VisualElement container, IViewData viewData, EditorViewModel viewModel)
+        public void Draw(VisualElement container, object data, EditorViewModel viewModel)
         {
-            if (viewData is not AudioClipViewData item) return;
-            AudioSkillClipConfig clip = item.Config;
-            AddTitle(container, item.DisplayName);
+            if (data is not AudioSkillClipConfig clip) return;
+            AddTitle(container, clip.AudioClip != null ? clip.AudioClip.name : "Audio Clip");
             ObjectField audio = AddField(container, new ObjectField("AudioClip")
             {
                 objectType = typeof(AudioClip), allowSceneObjects = false, value = clip.AudioClip
@@ -544,14 +498,10 @@ namespace RPG.SkillSystem.Editor
             Slider volume = AddField(container, new Slider("音量", 0f, 1f) { value = clip.Volume });
             FloatField pitch = AddField(container, new FloatField("Pitch") { value = clip.Pitch });
 
-            void Submit() => viewModel.EditItem(item, new AudioEditRequest(
+            void Submit() => viewModel.EditItem(viewModel.SelectedTrack, clip, new AudioEditRequest(
                 audio.value as AudioClip, start.value, duration.value, volume.value, pitch.value));
 
             bool volumeChanged = false;
-            void SliderSubmit()
-            {
-                container.schedule.Execute(Submit).StartingIn(100); // 延迟 100ms 提交，避免频繁刷新
-            }
 
             start.isDelayed = true;
             duration.isDelayed = true;
@@ -583,19 +533,14 @@ namespace RPG.SkillSystem.Editor
     /// </summary>
     internal sealed class EventInspectorDrawer : InspectorDrawer, IInspectorDrawer
     {
-        /// <summary>
-        /// 判断 ViewData 是否为事件标记。
-        /// </summary>
-        public bool CanDraw(IViewData viewData) => viewData is EventMarkerViewData;
 
         /// <summary>
         /// 绘制事件帧、类型、名称和参数文本字段。
         /// </summary>
-        public void Draw(VisualElement container, IViewData viewData, EditorViewModel viewModel)
+        public void Draw(VisualElement container, object data, EditorViewModel viewModel)
         {
-            if (viewData is not EventMarkerViewData item) return;
-            SkillEventMarkerConfig marker = item.Config;
-            AddTitle(container, item.DisplayName);
+            if (data is not SkillEventMarkerConfig marker) return;
+            AddTitle(container, marker.DisplayName);
             IntegerField frame = AddField(container, new IntegerField("触发帧")
             {
                 value = marker.Frame,
@@ -618,7 +563,7 @@ namespace RPG.SkillSystem.Editor
                 isDelayed = true
             });
 
-            void Submit() => viewModel.EditItem(item, new EventEditRequest(
+            void Submit() => viewModel.EditItem(viewModel.SelectedTrack, marker, new EventEditRequest(
                 frame.value, eventType.value, displayName.value, parameters.value));
 
             frame.RegisterValueChangedCallback(_ => Submit());

@@ -1,334 +1,195 @@
 # 技能时间轴编辑器扩展指南
 
-## 1. 文档目的
+## 1. 当前架构
 
-本文记录技能时间轴新增轨道类型时需要扩展的位置，以及数据从运行时配置、Editor View、ViewModel 到 Document 的完整流转。角色挂点的配置、收集、运行时查询和 VFX 场景编辑方式见 [Marker 系统使用指南](../../../Markers/MarkerSystem.md)。
-
-当前已经注册的模块顺序为：
+技能资产采用“根资产 + 有序 Track 子资产”结构：
 
 ```text
-Animation → AttackDetection → VFX → Audio → Event
+SkillConfig
+└── List<TrackConfigBase> Tracks
+    ├── AnimationTrackConfig
+    ├── AttackDetectionTrackConfig
+    ├── VfxTrackConfig
+    ├── AudioTrackConfig
+    └── EventTrackConfig
 ```
 
-后续计划增加：
+`SkillConfig.Tracks` 的顺序就是时间轴物理行顺序，不再存在 Group、Projection 或 ViewData。`TrackConfigBase` 直接保存稳定 ID、静音状态以及 Editor 下的名称、锁定和颜色；具体 Track 保存自己的 Item 列表。Item 继承 `TimelineItemConfigBase`，统一提供 ID 和半开帧区间 `[StartFrame, EndFrame)`。
+
+轨道是 `SkillConfig` 的隐藏 `ScriptableObject` 子资产。删除轨道时必须同时移除根列表引用并销毁子资产；Undo 必须同时记录根资产和相关 Track 子资产。
+
+角色挂点、武器 Socket 和 VFX Marker 的使用方式见 [Marker 系统使用指南](../../../Markers/MarkerSystem.md)。
+
+## 2. TrackModule 能力
+
+每个可扫描轨道由 `[TimelineTrack]` 和一个 `TrackModuleDefinition` 组成：
 
 ```text
-State：技能状态标记
-Custom Item Window：复杂 Item 的独立编辑窗口
+[TimelineTrack("动画轨道", order: 0)]
+AnimationTrackConfig
+        │
+        └── AnimationTrackModuleDefinition
+            └── TrackModule
+                ├── ITrackDocumentHandler
+                ├── ITrackDropHandler（可选）
+                ├── IItemViewFactory
+                ├── IInspectorDrawer
+                └── ITrackPreviewFactory（可选）
 ```
 
-扩展必须继续遵守以下边界：
+`TrackModuleRegistry` 使用 `TypeCache` 扫描具体 `TrackConfigBase` 和 `TrackModuleDefinition`，要求二者按 Track 类型一对一匹配。Attribute 的 `order` 只决定右键菜单顺序和“按轨道类型重排”的顺序；新建 Track 默认追加到列表末尾。
 
-- `SkillConfig` 保存运行时真正需要的数据，不保存窗口宽度、选择、折叠、滚动等编辑器状态。
-- Canvas、Inspector 和 Custom Window 不直接修改 `SkillConfig`。
-- 所有资产写入必须经过 `EditorViewModel → Document → ITrackDocumentHandler`，统一处理校验、Undo 和 Dirty。
-- `TrackId` 与 `ItemId` 是稳定 GUID；不得用列表索引、显示名称或长期持有的 `SerializedProperty` 定位数据。
-- 新轨道由 `TrackModuleRegistry` 注册，不在 Canvas、ViewModel 或 Inspector 中增加类型枚举和 `switch`。
-
-## 2. 当前 TrackModule 架构
-
-每种轨道由一个 `TrackModule` 聚合以下能力：
-
-```text
-TrackModule
-├── ITrackProjection         Config → Group/Track/Item ViewData 与 Selection
-├── ITrackDocumentHandler    SerializedObject 路由、创建、编辑和帧规则
-├── ITrackDropHandler        可选；Project 素材 → IItemCreateRequest
-├── IItemViewFactory         Item ViewData → 具体 UXML/View
-├── IInspectorDrawer         Item ViewData → Inspector 与 IItemEditRequest
-└── ITrackPreviewFactory     可选；创建窗口私有的轨道预览处理器
-```
-
-Module 的物理目录按契约与实现分离：
-
-```text
-Core/Modules/
-├── Interface/    六类 Module 能力接口
-└── Concrete/     Registry、Projection、Document、Drop、Item View、Inspector 与 Preview 实现
-```
-
-新增轨道时先在 `Interface` 中确认所需能力契约，再在 `Concrete` 的对应能力文件中增加实现；宿主 View、Document、CompositePreview 和输入 Controller 不放入 Module 目录。
-
-`TrackModuleRegistry` 是编辑器内唯一的轨道能力注册表：
-
-- 注册顺序决定分组显示顺序。
-- 按具体 Group、Track、Item ViewData 和 Selection 类型查找模块。
-- 未注册 `ITrackDropHandler` 的轨道自然拒绝 Project 素材拖入。
-- `ElementFactory` 只实例化公共或指定路径的 UXML，不判断轨道类型。
-- `Document` 只执行公共事务；具体序列化字段和业务规则由对应 Handler 提供。
+接口位于 `Core/Modules/Interface`，实现位于 `Core/Modules/Concrete`。Canvas、ViewModel、Document 和原生 Inspector 不包含具体轨道类型的 `switch`。
 
 ## 3. 数据流转
 
-### 3.1 打开 SkillConfig 与刷新显示
+### 3.1 打开与显示
 
 ```text
 Toolbar 选择 SkillConfig
-→ EditorViewModel.OpenConfig(config)
-→ Playback 停止并归零
-→ Document.Open(config)
-→ EditorViewModel 遍历 TrackModuleRegistry.Modules
-→ 每个 ITrackProjection.CreateGroup(config)
-→ 生成 GroupViewData / TrackViewData / ItemViewData
-→ TimelineChanged、SelectionChanged、InspectorChanged
-→ RowCollectionView 重建轨道行与 Item View
-→ InspectorView 按具体 ViewData 从 Registry 获取 Drawer
+→ EditorViewModel.OpenConfig
+→ Document.Open
+→ CanvasController 读取 Config.Tracks
+→ RowCollectionView 为每个 TrackConfigBase 创建 Header 与 Lane
+→ IItemViewFactory 使用实际 Item Config 创建 ItemView
 ```
 
-ViewData 是只读显示投影。轨道只保存公共显示字段和 Item 列表；具体 Item ViewData 可保存对应 Config 的只读引用供 Inspector 展示，但不能直接改写它。
+Track Header、Lane 和 ItemView 只保留实际 Config 引用，不保存显示字段副本。布局草稿、Pointer Capture、缩放和滚动仍只属于 Canvas 表现层。
 
-### 3.2 新增轨道和默认 Item
+### 3.2 面板右键新增与重排
 
 ```text
-Group Header “+”
-→ EditorViewModel.AddTrack(group)
-→ Registry.Get(group).Document
-→ Document.AddTrack(handler)
-→ Handler 提供轨道列表字段名与默认名称
-→ Document 记录一条 Undo、写入 GUID、Apply、SetDirty
-→ ContentChanged
-→ ViewModel 重建投影并选择新 TrackId
+轨道面板空白处右键
+→ TrackPanelContextMenuController
+→ Registry.Modules 按 TimelineTrack.order 生成“添加轨道”菜单
+→ EditorViewModel.AddTrack(module)
+→ Document.AddTrack
+→ 创建 TrackConfigBase 子资产并追加 Config.Tracks
+→ 一条 Undo + TimelineChanged
 ```
 
-```text
-Track Header “+”
-→ EditorViewModel.AddItem(track)
-→ Registry.Get(track).Document
-→ Document.AddItem(handler, track.Id)
-→ Handler.InitializeItem(...)
-→ Document 校验、排序并提交一次 Undo
-→ ViewModel 重建投影并选择新 ItemId
-```
+“按轨道类型重排”会按 Attribute 顺序稳定排序，同类型 Track 保持原相对顺序。Header 的上移/下移按钮只移动一条物理行，可以跨越不同 Track 类型。
 
-因此 AttackDetection、State 等没有 Project 素材可拖入的轨道，仍可直接使用通用 `AddItem` 流程；Handler 负责给新 Item 填充类型专用默认值。
-
-### 3.3 Project 素材拖入
+### 3.3 Item 创建、编辑和跨轨拖动
 
 ```text
-Project 素材拖到 Lane
-→ TrackDragController 通过 Registry.TryGetDrop(track)
-→ ITrackDropHandler.CanAccept(assets)
-→ CoordinateMapper 将落点换算为整数帧
-→ ITrackDropHandler.CreateRequest(assets, frame)
-→ EditorViewModel.CreateItems(track, request)
-→ 对应 ITrackDocumentHandler.CreateItems(...)
-→ Document 在一次事务内校验并批量写入
-→ 一条 Undo + 一次投影刷新
-```
-
-Drop Handler 只校验素材并创建请求，不持有 ViewModel，也不修改 Config。
-
-### 3.4 Inspector 与 Canvas 编辑
-
-```text
-Inspector 字段变化
-→ 具体 IInspectorDrawer 创建 IItemEditRequest
-→ EditorViewModel.EditItem(item, request)
-→ Registry 根据具体 ItemViewData 找到 TrackModule
-→ Document.EditItem(handler, TrackId, ItemId, request)
-→ Handler 校验请求类型并写入具体字段
-→ Document 校验、Undo、Dirty、ContentChanged
-→ ViewModel 重建投影
-→ Canvas 与 Inspector 刷新权威数据
-```
-
-```text
-Canvas 拖动或 Resize Item
-→ ItemDragController 只维护视觉草稿
-→ PointerUp 得到最终整数帧区间
-→ EditorViewModel.MoveItem / ResizeItem
-→ Document 使用模块 Handler 校验区间与同轨重叠
-→ 成功：提交一条 Undo 并刷新
-→ 失败或取消：恢复权威投影位置
-```
-
-### 3.5 Undo、重建和 Selection 恢复
-
-```text
-Unity Undo/Redo
-→ Document 重新绑定 SerializedObject
-→ ContentChanged
-→ ViewModel 遍历 Module 重建全部投影
-→ Registry 根据具体 Selection 类型找到 Projection
-→ Projection 使用 TrackId / ItemId 重新定位 ViewData
-→ Selection 仍存在则恢复，否则回到 None
-→ Canvas 与 Inspector 刷新
-```
-
-### 3.6 Scene View 预览
-
-```text
-播放、跳帧或 Config 内容变化
-→ EditorViewModel 通知 PlaybackController
-→ PlaybackController 标记 Scrub / PlaybackStart / PlaybackAdvance
-→ CompositePreview 准备不可保存的隔离角色副本
-→ 按 Module 注册顺序调用 ITrackPreviewHandler.SampleFrame(context)
-├── AnimationPreviewHandler：Animancer 姿势与绝对 Root Motion
-├── VfxPreviewHandler：ParticleSystem 绝对时间模拟
-└── AudioPreviewHandler：窗口私有 PlayableGraph 连续播放
-```
-
-`ITrackPreviewFactory` 是 Module 的无状态可选能力，负责为每个时间轴窗口创建独立 Handler。Handler 可以持有 VFX 实例、音频 Graph 或帧缓存，但不能访问 View、Selection、Document 或修改 SkillConfig。未注册 Preview Factory 的轨道会被自然跳过。
-
-Animation Module 同时实现 `IPreviewActorPoseProvider` 和 `IPreviewActorBindingPoseProvider`。前者提供绝对帧 Root Motion，后者按每个 `VfxSkillClipConfig.MarkerKey` 临时采样任意帧的完整动画姿势并读取 Marker 世界矩阵，随后恢复当前播放头帧。VFX 不依赖 Animancer 或 Animation Handler 的具体类型：`FollowBinding` 使用当前帧的 Clip Marker，`KeepWorldPosition` 冻结该 Clip 起始帧 Marker；空 Key 使用角色根节点。MarkerKey 的创建、角色收集、Inspector 配置与运行时查询方式见 [Marker 系统使用指南](../../../Markers/MarkerSystem.md)。
-
-VFX Clip 的 `PlaybackSpeed` 是本次释放相对 Prefab 原始粒子速度的倍率。Editor Preview 通过 `时间轴经过秒数 × PlaybackSpeed` 进行绝对采样，不修改 Prefab 的 `ParticleSystem.main.simulationSpeed`，因此 Scrub 顺序不会累积误差。未来运行时 Executor 应按实例缓存各 ParticleSystem 原始速度，并始终使用“原始速度 × Clip 倍率”赋值，避免对象池复用时重复相乘。
-
-Audio Preview 不接入运行时 `AudioManager`。每个窗口持有独立 `PlayableGraph`，通过 `AudioClipPlayable.SetSpeed()` 和 Mixer 输入权重表现 Pitch 与 Volume；Scrub 保持静音，开始播放或播放中重新定位时按当前帧源偏移重建 Voice。
-
-新增 Preview 能力时继续在对应 TrackModule 注册 Factory/Handler，不在 `CompositePreview` 中增加轨道类型判断。AttackDetection 和 Event 尚未注册 Preview Factory。
-## 4. 新增一种轨道时的扩展清单
-
-新增轨道应按下面顺序完成，避免 Editor 层先引用尚未稳定的运行时数据。
-
-### 4.1 运行时数据
-
-1. 在 `SkillConfig` 增加显式强类型轨道列表及只读属性。
-2. 定义 TrackConfig、ItemConfig 和必要枚举。
-3. Track 继续使用 `SkillTrackHeader`；Item 保存独立 `id`。
-4. 区间 Item 使用 `[StartFrame, EndFrame)`；Marker 使用单一 `frame`。
-5. 仅编辑器字段使用 `#if UNITY_EDITOR`，运行时消费的状态不得包裹。
-
-### 4.2 Document 与请求
-
-1. 在 `DocumentFieldNames` 增加轨道列表、Item 列表和专用字段名。
-2. 增加类型化 `CreateRequest`（仅素材批量创建需要）和 `EditRequest`。
-3. 增加 `ITrackDocumentHandler` 实现，声明：
-   - 轨道列表、Item 列表、起始帧和持续帧字段。
-   - 是否支持 Resize。
-   - 默认 Item 初始化、类型化创建、类型化编辑和全部专用字段复制规则。
-4. 所有同轨 Item 均按半开区间执行互斥；Handler 必须在类型化创建或编辑写入前完成范围与专用字段校验，失败时返回 `EditResult`，不得部分写入。
-5. `CopySpecificFields()` 必须复制该类型全部专用字段，并对 `SerializeReference` 等可变引用执行深复制，以支持复制和同模块跨轨道移动。
-6. GUID 初始化与修复继续由 `EnsureStableIds()` 负责，不在内容变化后执行全量合法性扫描。
-7. Handler 不缓存 `SerializedProperty`，每次操作都通过 TrackId/ItemId 重新查找。
-
-### 4.3 投影、选择和 UI
-
-1. 增加具体 GroupViewData、TrackViewData、ItemViewData。
-2. 增加具体 GroupSelection、TrackSelection、ItemSelection。
-3. 增加 `ITrackProjection` 实现，负责 Config 投影及 GUID 选择恢复。
-4. 增加独立 Item UXML、USS、ItemView 和 `IItemViewFactory`。
-5. 增加具体 `IInspectorDrawer`，字段变化只生成编辑请求。
-6. 如可接收 Project 素材，增加 `ITrackDropHandler`；否则注册为 `null`。
-7. 在 `TrackModuleRegistry.CreateDefault()` 注册一次完整 Module。
-8. 后续 Preview/Runtime Player 按该轨道运行时语义增加消费者，不反向依赖 Editor 类型。
-
-## 5. AttackDetection 轨道
-
-AttackDetection 已实现为可 Resize 的区间 Clip，表达攻击检测在半开区间 `[StartFrame, EndFrame)` 内生效。
-
-建议的最小运行时结构：
-
-```text
-SkillConfig.attackDetectionTracks
-AttackDetectionTrackConfig
-├── SkillTrackHeader header
-└── List<AttackDetectionSkillClipConfig> clips
-
-AttackDetectionSkillClipConfig
-├── id
-├── startFrame / durationFrames
-├── sampleIntervalFrames
-└── [SerializeReference] AttackDetectionDataBase detectionData
-```
-
-`detectionData` 当前支持 Box、Sphere、Capsule、Sector 和 WeaponTrace。普通体积 Config 只保存相对角色根的局部形状参数；WeaponTrace Config 只保存采样点数量，运行时由当前武器 MarkerProvider 解析标准刀根/刀尖 Socket 后把 Transform 传入技能上下文。两者都不保存绑定路径。
-
-AttackDetection Module 已包含：
-
-- `AttackDetectionProjection`、三层 ViewData 和三层 Selection。
-- `AttackDetectionDocumentHandler`；支持 Resize，同轨区间不可重叠。
-- `AttackDetectionEditRequest` 和 `AttackDetectionInspectorDrawer`。
-- `AttackDetectionItemFactory`、独立 UXML/USS 和区间 Clip View。
-- 默认不注册 Drop Handler，通过 Track Header “+”创建默认碰撞 Clip。
-- Inspector 的 `IAttackDetectionDataDrawer` 注册表按具体配置类型绘制字段，主 Drawer 不判断具体形状。
-- Type 切换通过 `AttackDetectionDataBase.Create(type)` 创建全新默认配置。
-- 复制 Clip 时深拷贝 managed reference，修改 FPS 时同步重采样采样间隔。
-- `AttackDetectionPreviewFactory / Handler` 在 Animation 采样之后收集当前有效 Clip，并通过 `SceneView.duringSceneGui` 绘制。
-- `IAttackDetectionSceneDrawer` 按具体 DetectionData 类型注册 Box、Sphere、Capsule、Sector 和 WeaponTrace 的绘制策略；Handler 不判断 Type。
-- 暂停或手动 Scrub 时，只有当前选中且仍有效的体积 Clip 显示 Handles；拖动期间使用本地草稿，MouseUp 后才提交一次 `AttackDetectionEditRequest`。
-- 实际采样帧使用实色，间隔内的非采样帧使用弱化透明度；颜色由 `EditorConfig` 统一配置。
-- WeaponTrace 当前只支持单刃；刀根和刀尖不进入 SkillConfig，由装备系统从当前武器 MarkerProvider 解析后传入运行时上下文。
-
-AttackDetection 数据写入流转：
-
-```text
-Track “+”或 Inspector 修改
+Header “+”或 Project 素材拖入
 → EditorViewModel
-→ AttackDetectionDocumentHandler
-→ Document 事务
-→ SkillConfig.attackDetectionTracks
-→ AttackDetectionProjection 重建
-→ Canvas / Inspector / SceneView 预览刷新
-
-Scene Handle Drag
-→ AttackDetectionPreviewHandler 本地 DetectionData 草稿
-→ MouseUp
-→ IAttackDetectionSceneEditService.EditCommitted
-→ EditorViewModel.EditItem
-→ AttackDetectionEditRequest
-→ Document / 一条 Undo
-
-WeaponTrace Preview
-→ EditorConfig 提供固定刀根 / 刀尖 MarkerKey
-→ PreviewActorInstance 查找唯一匹配的激活 MarkerProvider
-→ AnimationPreviewHandler 临时采样上一采样帧 Transform
-→ 恢复当前帧
-→ WeaponTraceSceneDrawer 绘制单刃前后姿态与插值扫掠线
+→ 对应 ITrackDocumentHandler
+→ Track 子资产的 SerializedObject
+→ 区间校验、Undo、Dirty
+→ ContentChanged
 ```
-
-## 6. State 轨道与 Custom Item Window
-
-状态数据应使用强类型 State Module，不复用通用 Event 的字符串参数作为最终结构。
-
-若状态表示霸体、无敌、输入锁定、移动锁定等持续效果，建议使用区间 `StateSkillClipConfig`；若状态只表示某帧发送进入、退出或切换命令，则使用单帧 Marker。最终形态需要在状态运行时接口确定后选择，也可以拆成两个独立 Module。
-
-简单字段仍在右侧 Inspector 编辑；只有状态参数结构较复杂时才打开独立 Custom Item Window。该窗口属于 View 层扩展，不是新的数据写入入口。
-
-建议为 `TrackModule` 增加可选的 Custom Editor 能力：
 
 ```text
-TrackModule
-└── IItemEditorLauncher（可选）
+Item 水平或垂直拖动
+→ ItemDragController 维护视觉草稿
+→ PointerUp
+→ 同 Lane：Document.MoveItem
+→ 同类型其他 Lane：Document.MoveItemToTrack
+→ 目标类型、锁定和区间再次校验
+→ 一条跨 Track Undo
 ```
 
-Custom Window 必须使用稳定 GUID，并跟随宿主时间轴生命周期：
+Resize 不允许跨 Lane。跨轨移动保留 Item GUID、帧区间和全部类型专用字段；`SerializeReference` 数据必须由 Handler 深复制。
+
+### 3.4 Selection 与 Unity 原生 Inspector
+
+Selection 只保存稳定 `TrackId` 和可选 `ItemId`：
 
 ```text
-双击 State Item / Inspector 点击“详细编辑”
-→ Registry 查询该 Module 的 IItemEditorLauncher
-→ 使用 TrackId + ItemId 打开 StateItemEditorWindow
-→ Window 从最新 ViewData 构建编辑草稿
-→ 用户确认
-→ 生成 StateEditRequest
-→ 宿主 EditorViewModel 按 TrackId + ItemId 提交
-→ StateDocumentHandler
-→ Document 校验、Undo、Dirty、ContentChanged
-→ 主窗口重建投影
-→ Custom Window 重新读取权威数据
+点击 Track 或 Item
+→ EditorViewModel.Select...
+→ TimelineWindow 成为 Selection.activeObject
+→ TimelineWindowInspector
+→ window.SelectedData（实际 Track/Item Config）
+→ Registry.GetInspector(data)
+→ Drawer 创建类型化 EditRequest
+→ ViewModel → Document → Undo
 ```
 
-Custom Window 的约束：
+原生 Inspector 不复制字段，也不直接写 Config。用户选择其他 Project/Scene 对象后，时间轴不会抢回 Inspector；再次点击时间轴内容时才重新选择窗口。Inspector 锁定由 Unity 自己处理。
 
-- 不保存或长期持有 `SerializedProperty`。
-- 不直接调用 `Undo.RecordObject` 或修改 `SkillConfig`。
-- 编辑期间使用草稿；确认时只提交一次请求和一次 Undo。
-- 宿主切换 SkillConfig、删除目标 Item 或关闭时间轴窗口后，Custom Window 应关闭或进入只读失效状态。
-- 取消操作不产生资产变更。
-- 如果窗口允许在未选中 Item 时继续编辑，ViewModel 需要增加按 `TrackId + ItemId` 提交的重载，不能依赖当前 Selection。
+Undo/Redo 后，Document 重建根 `SerializedObject`，ViewModel 根据 GUID 在当前 `Config.Tracks` 和 `Track.Items` 中恢复 Selection。
 
-## 7. 验收基线
+### 3.5 Preview
 
-- 新模块只在 Registry 注册一次，Canvas、ViewModel、InspectorView 不出现具体轨道类型判断。
-- 新增、删除、移动、Resize、Inspector 编辑与 Custom Window 编辑均经过 Document。
-- 一次语义操作只产生一条 Undo；非法区间或非法参数不会留下部分写入。
-- Undo/Redo、轨道重排和投影重建后，Selection 能通过 GUID 恢复。
-- 新 Item 的 UXML 可由 UI Builder 打开，视觉尺寸和颜色只定义在 USS。
-- AttackDetection Preview 只绘制形状和编辑配置，不执行 Physics 查询；State 尚未接入时仍可独立扩展。
-- 新增类型、公开方法、非公开方法和复杂类 Region 遵循根 `AGENTS.md` 的中文注释规范。
+```text
+PlaybackController.SampleFrame
+→ CompositePreview
+→ 按 TrackModule 顺序调用 Preview Handler
+├── AnimationPreviewHandler
+├── AttackDetectionPreviewHandler
+├── VfxPreviewHandler
+└── AudioPreviewHandler
+```
 
-## 8. 尚待确定的运行时决策
+Preview Handler 直接从 `SkillConfig.Tracks.OfType<TTrack>()` 读取对应 Track。Handler 可以持有窗口私有缓存、VFX 实例或 Audio Graph，但不能修改 Config、Document 或 UI。
 
-- AttackDetection 的伤害、阵营、重复命中和过滤数据归属。
-- State 使用区间 Clip、单帧 Marker，还是拆成两种 Module。
-- Custom Window 编辑的是单个 State Item，还是独立的状态定义资产。
-- State 在 Preview 中只绘制，还是需要执行无副作用模拟；AttackDetection 当前固定为只绘制。
+## 4. 新增一种轨道
+
+例如新增 State Track：
+
+1. 新增 `StateTrackConfig : TrackConfigBase`，添加 `[TimelineTrack("状态轨道", order: ...)]`。
+2. 新增 `StateItemConfig : TimelineItemConfigBase`，保留稳定 ID 与帧语义。
+3. 新增类型化 Create/Edit Request。
+4. 新增 `StateDocumentHandler`，声明 Track 类型、Item 列表字段、帧字段、初始化、复制和编辑规则；不得缓存 `SerializedProperty`。
+5. 新增 `StateItemFactory`、Item UXML/USS 与具体 ItemView。
+6. 新增 `StateInspectorDrawer`；字段提交经 ViewModel 和 Document。
+7. 如支持 Project 素材拖入，新增 `StateDropHandler`；否则 Module 的 Drop 传空。
+8. 如需要预览，新增 `StatePreviewFactory/Handler`。
+9. 新增 `StateTrackModuleDefinition`，将上述能力组合为 `TrackModule`。
+
+完成后不需要修改 `SkillConfig`、Canvas、RowCollectionView、EditorViewModel、TimelineWindowInspector 或 Track 面板菜单。
+
+## 5. 约束
+
+- `SkillConfig` 只保存运行时数据；窗口尺寸、缩放、滚动和选择不进入资产。
+- Track ID 与 Item ID 是稳定 GUID，不使用名称或列表索引作为持久定位。
+- 所有写入经过 Document；View 和 Drawer 不直接修改 Config。
+- 同一 Track 的 Item 半开区间互斥，Event Marker 视为 `[Frame, Frame + 1)`。
+- `ITrackDocumentHandler.TrackType` 是 Handler 路由依据，不能根据重复的 `clips` 字段名猜测类型。
+- 类型重排只改变统一 Track 列表，不改变 Track 子资产内容。
+- Track 删除必须同时删除列表引用和子资产，避免孤立子资产。
+## 9. Item 与 Track 拖拽表现
+
+Item 的 Move 交互使用三层表现，且拖动期间不修改配置：
+
+```text
+PointerDown
+→ 源 Item 保留在权威帧并弱化
+→ ItemDragPreviewView 通过对应 Module ItemFactory 创建同类型 Ghost 与 Placeholder
+
+PointerMove
+→ Ghost 保持鼠标抓取偏移
+→ ItemDragController 命中 Lane 并换算最近整数帧
+→ Document.CanMoveItem / CanMoveItemToTrack 只读校验
+→ Placeholder 在目标 Lane 内容坐标显示有效或无效落点
+
+PointerUp
+→ 有效落点提交一次 MoveItem / MoveItemToTrack
+→ Document 创建一条 Undo
+→ TimelineChanged 重建权威位置
+```
+
+Resize 不创建 Ghost 或 Placeholder，仍只修改当前 Item 的本地裁剪草稿，松手后提交一次。
+
+Track Header 的第一行包含专用拖拽把手与名称，第二行包含只读的具体 Track 子资产 `ObjectField` 和操作按钮。`ObjectField.objectType` 使用 Track 的实际类型，不能替换引用；`SkillConfig.Tracks` 同样在 Odin Inspector 中只读，结构只能由时间轴窗口修改。
+
+```text
+Track 把手 PointerDown
+→ 固定标题行、Lane 背景与 Item Lane 同步弱化
+→ 左右内容区显示同一插入边界
+
+PointerMove
+→ 按行中点计算 0..TrackCount 插入索引
+→ 靠近标签 ScrollView 上下边缘时通过 CanvasModel.ScrollOffset 自动滚动
+
+PointerUp
+→ EditorViewModel.MoveTrack(track, insertionIndex)
+→ Document.MoveTrackToIndex
+→ 移除源索引后修正目标索引
+→ 有效变化只产生一条 Undo
+```
+
+轨道锁定只限制 Item 编辑，不限制轨道自身排序。Header 的上移、下移按钮与拖拽排序共用 `MoveTrackToIndex()`；删除轨道仍同时移除根列表引用并销毁该 Track 子资产。

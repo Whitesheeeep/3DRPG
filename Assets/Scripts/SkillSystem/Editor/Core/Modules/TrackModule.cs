@@ -3,17 +3,18 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using RPG.SkillSystem;
-using UnityEngine.UIElements;
-using WS_Modules.MVVM;
+using UnityEditor;
 
 namespace RPG.SkillSystem.Editor
 {
     /// <summary>
-    /// 聚合一种轨道的投影、数据、拖入、Item View 与 Inspector 能力，但不持有窗口状态。
+    /// 聚合一种 TrackConfig 的 Document、拖入、Item View、Inspector 与 Preview 能力。
     /// </summary>
     internal sealed class TrackModule
     {
-        public ITrackProjection Projection { get; }
+        public Type TrackType { get; }
+        public Type ItemType { get; }
+        public TimelineTrackAttribute Metadata { get; }
         public ITrackDocumentHandler Document { get; }
         public ITrackDropHandler Drop { get; }
         public IItemViewFactory ItemFactory { get; }
@@ -21,35 +22,50 @@ namespace RPG.SkillSystem.Editor
         public ITrackPreviewFactory PreviewFactory { get; }
 
         /// <summary>
-        /// 创建不可变轨道模块；Drop 和 PreviewFactory 可为空以声明未提供对应能力。
+        /// 创建不可变轨道模块；Drop 与 PreviewFactory 可为空。
         /// </summary>
-        public TrackModule(ITrackProjection projection, ITrackDocumentHandler document,
-            ITrackDropHandler drop, IItemViewFactory itemFactory, IInspectorDrawer itemInspector,
+        public TrackModule(Type trackType, Type itemType, TimelineTrackAttribute metadata,
+            ITrackDocumentHandler document, ITrackDropHandler drop,
+            IItemViewFactory itemFactory, IInspectorDrawer itemInspector,
             ITrackPreviewFactory previewFactory = null)
         {
-            Projection = projection ?? throw new ArgumentNullException(nameof(projection));
+            TrackType = trackType ?? throw new ArgumentNullException(nameof(trackType));
+            ItemType = itemType ?? throw new ArgumentNullException(nameof(itemType));
+            Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
             Document = document ?? throw new ArgumentNullException(nameof(document));
             Drop = drop;
             ItemFactory = itemFactory ?? throw new ArgumentNullException(nameof(itemFactory));
             ItemInspector = itemInspector ?? throw new ArgumentNullException(nameof(itemInspector));
             PreviewFactory = previewFactory;
+            if (Document.TrackType != TrackType)
+                throw new ArgumentException("Document Handler 的 TrackType 必须与 Module TrackType 一致。", nameof(document));
         }
     }
 
     /// <summary>
-    /// 按具体投影与选择类型索引全部轨道模块，是窗口内唯一的轨道能力注册表。
+    /// 声明一种 TrackConfig 对应的完整编辑器能力组合。
+    /// </summary>
+    internal abstract class TrackModuleDefinition
+    {
+        public abstract Type TrackType { get; }
+        public abstract Type ItemType { get; }
+
+        /// <summary>
+        /// 根据轨道元数据创建无状态模块。
+        /// </summary>
+        public abstract TrackModule Create(EditorConfig config, TimelineTrackAttribute metadata);
+    }
+
+    /// <summary>
+    /// 使用 TypeCache 建立 TrackConfig 与 ModuleDefinition 的一对一注册表。
     /// </summary>
     internal sealed class TrackModuleRegistry
     {
         #region 字段与属性
         private readonly List<TrackModule> modules = new();
-        private readonly Dictionary<Type, TrackModule> groupModules = new();
         private readonly Dictionary<Type, TrackModule> trackModules = new();
         private readonly Dictionary<Type, TrackModule> itemModules = new();
-        private readonly Dictionary<Type, TrackModule> selectionModules = new();
-        private readonly IInspectorDrawer groupInspector = new GroupInspectorDrawer();
         private readonly IInspectorDrawer trackInspector = new TrackInspectorDrawer();
-
         public IReadOnlyList<TrackModule> Modules => modules;
         public IReadOnlyList<ITrackDocumentHandler> DocumentHandlers =>
             modules.Select(module => module.Document).ToArray();
@@ -57,119 +73,112 @@ namespace RPG.SkillSystem.Editor
 
         #region 创建与注册
         /// <summary>
-        /// 创建按 Animation、AttackDetection、VFX、Audio、Event 排列的内置模块注册表。
+        /// 扫描并按 TimelineTrack 顺序创建默认注册表。
         /// </summary>
         public static TrackModuleRegistry CreateDefault(EditorConfig config)
         {
             if (config == null) throw new ArgumentNullException(nameof(config));
+            Dictionary<Type, TrackModuleDefinition> definitions = TypeCache
+                .GetTypesDerivedFrom<TrackModuleDefinition>()
+                .Where(type => !type.IsAbstract)
+                .Select(type => (TrackModuleDefinition)Activator.CreateInstance(type))
+                .ToDictionary(definition => definition.TrackType);
+            Type[] trackTypes = TypeCache.GetTypesDerivedFrom<TrackConfigBase>()
+                .Where(type => !type.IsAbstract && GetMetadataOrNull(type) != null)
+                .OrderBy(type => GetMetadataOrNull(type).Order)
+                .ThenBy(type => GetMetadataOrNull(type).MenuPath, StringComparer.Ordinal)
+                .ToArray();
+
             TrackModuleRegistry registry = new();
-            registry.Register(new TrackModule(
-                new AnimationProjection(), new AnimationDocumentHandler(), new AnimationDropHandler(),
-                new AnimationItemFactory(), new AnimationInspectorDrawer(), new AnimationPreviewFactory()));
-            registry.Register(new TrackModule(
-                new AttackDetectionProjection(), new AttackDetectionDocumentHandler(), null,
-                new AttackDetectionItemFactory(), new AttackDetectionInspectorDrawer(),
-                new AttackDetectionPreviewFactory(config)));
-            registry.Register(new TrackModule(
-                new VfxProjection(), new VfxDocumentHandler(), new VfxDropHandler(config),
-                new VfxItemFactory(), new VfxInspectorDrawer(), new VfxPreviewFactory()));
-            registry.Register(new TrackModule(
-                new AudioProjection(), new AudioDocumentHandler(), new AudioDropHandler(),
-                new AudioItemFactory(), new AudioInspectorDrawer(), new AudioPreviewFactory()));
-            registry.Register(new TrackModule(
-                new EventProjection(), new EventDocumentHandler(), null,
-                new EventItemFactory(), new EventInspectorDrawer()));
+            foreach (Type trackType in trackTypes)
+            {
+                if (!definitions.TryGetValue(trackType, out TrackModuleDefinition definition))
+                    throw new InvalidOperationException($"轨道 {trackType.FullName} 缺少 TrackModuleDefinition。");
+                registry.Register(definition.Create(config, GetMetadataOrNull(trackType)));
+            }
+            foreach (Type unused in definitions.Keys.Except(trackTypes))
+                throw new InvalidOperationException($"ModuleDefinition 指向未注册轨道：{unused.FullName}");
             return registry;
         }
 
         /// <summary>
-        /// 注册一个轨道模块；任何投影或选择类型重复时立即失败。
+        /// 注册模块；重复的 Track 或 Item 类型立即失败。
         /// </summary>
         public void Register(TrackModule module)
         {
             if (module == null) throw new ArgumentNullException(nameof(module));
-            ITrackProjection projection = module.Projection;
-            RegisterType(groupModules, projection.GroupType, module, "Group ViewData");
-            RegisterType(trackModules, projection.TrackType, module, "Track ViewData");
-            RegisterType(itemModules, projection.ItemType, module, "Item ViewData");
-            RegisterType(selectionModules, projection.GroupSelectionType, module, "Group Selection");
-            RegisterType(selectionModules, projection.TrackSelectionType, module, "Track Selection");
-            RegisterType(selectionModules, projection.ItemSelectionType, module, "Item Selection");
+            RegisterType(trackModules, module.TrackType, module, "TrackConfig");
+            RegisterType(itemModules, module.ItemType, module, "ItemConfig");
             modules.Add(module);
         }
         #endregion
 
         #region 查询
         /// <summary>
-        /// 获取分组投影所属模块。
+        /// 获取实际轨道子资产所属模块。
         /// </summary>
-        public TrackModule Get(GroupViewData group) => GetRequired(groupModules, group?.GetType(), "分组");
+        public TrackModule Get(TrackConfigBase track) =>
+            GetRequired(trackModules, track?.GetType(), "轨道");
 
         /// <summary>
-        /// 获取轨道投影所属模块。
+        /// 获取实际内容配置所属模块。
         /// </summary>
-        public TrackModule Get(TrackViewData track) => GetRequired(trackModules, track?.GetType(), "轨道");
+        public TrackModule Get(TimelineItemConfigBase item) =>
+            GetRequired(itemModules, item?.GetType(), "内容");
 
         /// <summary>
-        /// 获取内容投影所属模块。
+        /// 按 TrackConfig 类型获取模块。
         /// </summary>
-        public TrackModule Get(ItemViewData item) => GetRequired(itemModules, item?.GetType(), "内容");
+        public TrackModule Get(Type trackType) => GetRequired(trackModules, trackType, "轨道");
 
         /// <summary>
-        /// 获取具体选择所属模块。
+        /// 尝试取得素材拖入能力。
         /// </summary>
-        public TrackModule Get(SelectionState selection) =>
-            GetRequired(selectionModules, selection?.GetType(), "选择");
-
-        /// <summary>
-        /// 尝试获取轨道的素材拖入能力；未注册 Drop 的轨道返回 false。
-        /// </summary>
-        public bool TryGetDrop(TrackViewData track, out ITrackDropHandler drop)
+        public bool TryGetDrop(TrackConfigBase track, out ITrackDropHandler drop)
         {
-            drop = null;
-            if (track == null || !trackModules.TryGetValue(track.GetType(), out TrackModule module)) return false;
-            drop = module.Drop;
+            drop = Get(track).Drop;
             return drop != null;
         }
 
         /// <summary>
-        /// 根据选中 ViewData 返回通用或模块专用 Inspector Drawer。
+        /// 返回 Track 公共 Drawer 或 Item 专用 Drawer。
         /// </summary>
-        public IInspectorDrawer GetInspector(IViewData viewData)
+        public IInspectorDrawer GetInspector(object data)
         {
-            if (viewData is GroupViewData) return groupInspector;
-            if (viewData is TrackViewData) return trackInspector;
-            return viewData is ItemViewData item ? Get(item).ItemInspector : null;
+            if (data is TrackConfigBase) return trackInspector;
+            return data is TimelineItemConfigBase item ? Get(item).ItemInspector : null;
         }
 
         /// <summary>
-        /// 通过 Item 所属模块创建具体时间轴元素视图。
+        /// 通过实际配置创建 Item View。
         /// </summary>
-        public ItemView CreateItemView(TrackViewData track, ItemViewData item,
+        public ItemView CreateItemView(TrackConfigBase track, TimelineItemConfigBase item,
             ElementFactory elements, CoordinateMapper mapper) =>
             Get(item).ItemFactory.Create(track, item, elements, mapper);
 
         /// <summary>
-        /// 按模块注册顺序创建当前窗口私有的轨道预览处理器。
+        /// 按轨道类型顺序创建 Preview Handler。
         /// </summary>
         public IReadOnlyList<ITrackPreviewHandler> CreatePreviewHandlers() =>
-            modules
-                .Where(module => module.PreviewFactory != null)
-                .Select(module => module.PreviewFactory.Create())
-                .ToArray();
+            modules.Where(module => module.PreviewFactory != null)
+                .Select(module => module.PreviewFactory.Create()).ToArray();
         #endregion
 
-        #region 内部校验
-        // 把一种具体类型写入索引，并在重复注册时提供明确错误。
+        #region 内部辅助
+        // 返回轨道声明的 TimelineTrack 元数据；未声明时返回空。
+        private static TimelineTrackAttribute GetMetadataOrNull(Type type) =>
+            type.GetCustomAttributes(typeof(TimelineTrackAttribute), false)
+                .Cast<TimelineTrackAttribute>().SingleOrDefault();
+
+        // 注册精确类型，避免扩展模块静默覆盖。
         private static void RegisterType(Dictionary<Type, TrackModule> index, Type type,
             TrackModule module, string role)
         {
-            if (type == null) throw new InvalidOperationException($"轨道模块没有声明 {role} 类型。");
             if (!index.TryAdd(type, module))
-                throw new InvalidOperationException($"{role} 类型 {type.FullName} 已被其他轨道模块注册。");
+                throw new InvalidOperationException($"{role} 类型 {type.FullName} 已重复注册。");
         }
 
-        // 从精确类型索引获取模块，禁止未知类型静默回退到错误轨道。
+        // 解析精确类型模块，未知类型直接报告扩展缺失。
         private static TrackModule GetRequired(Dictionary<Type, TrackModule> index, Type type, string role)
         {
             if (type != null && index.TryGetValue(type, out TrackModule module)) return module;

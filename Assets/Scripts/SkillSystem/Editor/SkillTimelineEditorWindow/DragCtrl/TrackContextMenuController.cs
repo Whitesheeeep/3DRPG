@@ -25,7 +25,7 @@ namespace RPG.SkillSystem.Editor
         }
 
         // 为一条动态轨道标题注册菜单；行重建前必须通过 Reset 注销旧 Manipulator。
-        internal void Register(TrackViewData track, VisualElement header)
+        internal void Register(TrackConfigBase track, VisualElement header)
         {
             ContextualMenuManipulator manipulator = new(evt => PopulateMenu(evt, track));
             header.AddManipulator(manipulator);
@@ -48,7 +48,7 @@ namespace RPG.SkillSystem.Editor
         #region 菜单构建与语义提交
 
         // 打开菜单时先选中目标轨道，再按当前投影状态显示勾选项。
-        private void PopulateMenu(ContextualMenuPopulateEvent evt, TrackViewData track)
+        private void PopulateMenu(ContextualMenuPopulateEvent evt, TrackConfigBase track)
         {
             viewModel.SelectTrack(track);
             evt.menu.AppendAction("静音",
@@ -57,8 +57,8 @@ namespace RPG.SkillSystem.Editor
                     ? DropdownMenuAction.Status.Checked
                     : DropdownMenuAction.Status.Normal);
             evt.menu.AppendAction("锁定",
-                _ => viewModel.SetTrackLocked(track, !track.Locked),
-                _ => track.Locked
+                _ => viewModel.SetTrackLocked(track, !track.EditorLocked),
+                _ => track.EditorLocked
                     ? DropdownMenuAction.Status.Checked
                     : DropdownMenuAction.Status.Normal);
         }

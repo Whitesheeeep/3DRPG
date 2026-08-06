@@ -15,9 +15,6 @@ namespace RPG.SkillSystem.Editor
 
         [Header("窗口")]
         [SerializeField, LabelText("最小窗口尺寸")] private Vector2 minimumWindowSize = new(860f, 520f);
-        [SerializeField, Min(1f), LabelText("Inspector 最小宽度")] private float inspectorMinimumWidth = 240f;
-        [SerializeField, Min(1f), LabelText("Inspector 默认宽度")] private float inspectorDefaultWidth = 300f;
-        [SerializeField, Min(1f), LabelText("Inspector 最大宽度")] private float inspectorMaximumWidth = 520f;
         [SerializeField, Min(1f), LabelText("轨道标题最小宽度")] private float trackHeaderMinimumWidth = 190f;
         [SerializeField, Min(1f), LabelText("轨道标题默认宽度")] private float trackHeaderDefaultWidth = 240f;
         [SerializeField, Min(1f), LabelText("轨道标题最大宽度")] private float trackHeaderMaximumWidth = 420f;
@@ -74,9 +71,6 @@ namespace RPG.SkillSystem.Editor
         #region 属性
 
         public Vector2 MinimumWindowSize => minimumWindowSize;
-        public float InspectorMinimumWidth => inspectorMinimumWidth;
-        public float InspectorDefaultWidth => inspectorDefaultWidth;
-        public float InspectorMaximumWidth => inspectorMaximumWidth;
         public float TrackHeaderMinimumWidth => trackHeaderMinimumWidth;
         public float TrackHeaderDefaultWidth => trackHeaderDefaultWidth;
         public float TrackHeaderMaximumWidth => trackHeaderMaximumWidth;
@@ -121,9 +115,6 @@ namespace RPG.SkillSystem.Editor
         // 保证通过 Inspector 修改后的缩放范围和绘制尺寸始终有效。
         private void OnValidate()
         {
-            inspectorMinimumWidth = Mathf.Max(1f, inspectorMinimumWidth);
-            inspectorMaximumWidth = Mathf.Max(inspectorMinimumWidth, inspectorMaximumWidth);
-            inspectorDefaultWidth = Mathf.Clamp(inspectorDefaultWidth, inspectorMinimumWidth, inspectorMaximumWidth);
             trackHeaderMinimumWidth = Mathf.Max(1f, trackHeaderMinimumWidth);
             trackHeaderMaximumWidth = Mathf.Max(trackHeaderMinimumWidth, trackHeaderMaximumWidth);
             trackHeaderDefaultWidth = Mathf.Clamp(

@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System;
 using UnityEditor;
 
 namespace RPG.SkillSystem.Editor
@@ -8,7 +9,8 @@ namespace RPG.SkillSystem.Editor
     /// </summary>
     internal interface ITrackDocumentHandler
     {
-        string TracksPropertyName { get; }
+        /// <summary>该处理器对应的唯一 TrackConfig 具体类型。</summary>
+        Type TrackType { get; }
         string ItemsPropertyName { get; }
         string StartFramePropertyName { get; }
         string DurationPropertyName { get; }

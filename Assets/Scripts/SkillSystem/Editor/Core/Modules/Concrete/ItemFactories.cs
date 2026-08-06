@@ -11,11 +11,11 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 创建动画 Clip View，并绑定统一坐标映射器。
         /// </summary>
-        public ItemView Create(TrackViewData track, ItemViewData item,
+        public ItemView Create(TrackConfigBase track, TimelineItemConfigBase item,
             ElementFactory elements, CoordinateMapper mapper)
         {
-            if (item is not AnimationClipViewData animation)
-                throw new ArgumentException("动画 ItemFactory 收到不匹配的 ViewData。", nameof(item));
+            if (item is not AnimationSkillClipConfig animation)
+                throw new ArgumentException("动画 ItemFactory 收到不匹配的 Item Config。", nameof(item));
             return new AnimationClipView(track, animation,
                 elements.Instantiate("Item/SkillTimelineAnimationClipItem.uxml", "AnimationClipRoot"), mapper);
         }
@@ -29,11 +29,11 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 创建攻击检测 Clip View，并绑定统一坐标映射器。
         /// </summary>
-        public ItemView Create(TrackViewData track, ItemViewData item,
+        public ItemView Create(TrackConfigBase track, TimelineItemConfigBase item,
             ElementFactory elements, CoordinateMapper mapper)
         {
-            if (item is not AttackDetectionClipViewData attack)
-                throw new ArgumentException("攻击检测 ItemFactory 收到不匹配的 ViewData。", nameof(item));
+            if (item is not AttackDetectionSkillClipConfig attack)
+                throw new ArgumentException("攻击检测 ItemFactory 收到不匹配的 Item Config。", nameof(item));
             return new AttackDetectionClipView(track, attack,
                 elements.Instantiate("Item/SkillTimelineAttackDetectionClipItem.uxml",
                     "AttackDetectionClipRoot"), mapper);
@@ -48,11 +48,11 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 创建特效 Clip View，并绑定统一坐标映射器。
         /// </summary>
-        public ItemView Create(TrackViewData track, ItemViewData item,
+        public ItemView Create(TrackConfigBase track, TimelineItemConfigBase item,
             ElementFactory elements, CoordinateMapper mapper)
         {
-            if (item is not VfxClipViewData vfx)
-                throw new ArgumentException("特效 ItemFactory 收到不匹配的 ViewData。", nameof(item));
+            if (item is not VfxSkillClipConfig vfx)
+                throw new ArgumentException("特效 ItemFactory 收到不匹配的 Item Config。", nameof(item));
             return new VfxClipView(track, vfx,
                 elements.Instantiate("Item/SkillTimelineVfxClipItem.uxml", "VfxClipRoot"), mapper);
         }
@@ -66,11 +66,11 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 创建音频 Clip View，并绑定统一坐标映射器。
         /// </summary>
-        public ItemView Create(TrackViewData track, ItemViewData item,
+        public ItemView Create(TrackConfigBase track, TimelineItemConfigBase item,
             ElementFactory elements, CoordinateMapper mapper)
         {
-            if (item is not AudioClipViewData audio)
-                throw new ArgumentException("音频 ItemFactory 收到不匹配的 ViewData。", nameof(item));
+            if (item is not AudioSkillClipConfig audio)
+                throw new ArgumentException("音频 ItemFactory 收到不匹配的 Item Config。", nameof(item));
             return new AudioClipView(track, audio,
                 elements.Instantiate("Item/SkillTimelineAudioClipItem.uxml", "AudioClipRoot"), mapper);
         }
@@ -83,11 +83,11 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 创建事件 Marker View，并绑定统一坐标映射器。
         /// </summary>
-        public ItemView Create(TrackViewData track, ItemViewData item,
+        public ItemView Create(TrackConfigBase track, TimelineItemConfigBase item,
             ElementFactory elements, CoordinateMapper mapper)
         {
-            if (item is not EventMarkerViewData marker)
-                throw new ArgumentException("事件 ItemFactory 收到不匹配的 ViewData。", nameof(item));
+            if (item is not SkillEventMarkerConfig marker)
+                throw new ArgumentException("事件 ItemFactory 收到不匹配的 Item Config。", nameof(item));
             return new EventMarkerView(track, marker,
                 elements.Instantiate("Item/SkillTimelineEventMarkerItem.uxml", "EventMarkerRoot"), mapper);
         }
