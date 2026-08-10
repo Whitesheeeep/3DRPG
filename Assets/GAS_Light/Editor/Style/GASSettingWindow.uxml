@@ -6,6 +6,7 @@
             <ui:Button name="GameplayAttributesTab" text="Attribute" class="gas-setting-tab" />
             <ui:Button name="GameplayEffectsTab" text="GE" class="gas-setting-tab" />
             <ui:Button name="GameplayAbilitiesTab" text="GA" class="gas-setting-tab" />
+            <ui:Button name="GameplayCuesTab" text="Cue" class="gas-setting-tab" />
             <ui:VisualElement class="gas-setting-tab-spacer" />
         </ui:VisualElement>
         <ui:VisualElement name="ContentHost" class="gas-setting-content-host" />

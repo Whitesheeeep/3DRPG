@@ -4,24 +4,16 @@
 
 Attribute 系统分成“全局身份”“Set 配置模板”和“Container 运行时实例”三层。Editor 只 Bake `GameplayAttribute` 的稳定 ID 与生成代码；`GameplayAttributeSet` 不参与 Bake，运行时直接从 Set 的 `List<GameplayAttributeDefinition>` 克隆数据。
 
-```text
-GameplayAttributeRegistry (Editor only)
-    └─ Bake → GameplayAttribute(Id) + GameplayAttributes.Generated.cs
-
-GameplayAttributeSet (ScriptableObject template)
-    └─ List<GameplayAttributeDefinition>
-       ├─ Attribute
-       ├─ Type: Stat | Resource
-       ├─ DefaultValue
-       ├─ MinValue
-       └─ MaxValue
-
-GameplayAttributeContainer (runtime instance)
-    └─ serialized List<GameplayAttributeDefinition>
-       ├─ copied configuration
-       ├─ BaseValue (framework internal)
-       ├─ CurrentValue
-       └─ OwnerSet
+```mermaid
+flowchart TD
+    Registry["GameplayAttributeRegistry\nEditor only"] -->|Bake| Identity["GameplayAttribute\n稳定 Id"]
+    Registry --> Generated["GameplayAttributes.Generated.cs"]
+    Set["GameplayAttributeSet\nScriptableObject 模板"] --> Definitions["List<GameplayAttributeDefinition>\nAttribute / Type / Default / Min / Max"]
+    Identity --> Definitions
+    Definitions -->|Initialize 时克隆| Container["GameplayAttributeContainer\n运行时实例"]
+    Container --> Base["BaseValue\n框架内部"]
+    Container --> Current["CurrentValue\n业务唯一读取值"]
+    Container --> Owner["OwnerSet"]
 ```
 
 ## GameplayAttribute 与 Bake
@@ -55,21 +47,33 @@ Set 是可直接使用的配置模板 SO，而不是需要再次 Bake 的中间�
 
 每个运行时 Stat Definition 持有非序列化 Aggregator。GE 资产中的多态 `GameplayEffectModifier` 同时承担作者配置和 Magnitude 计算，计算后直接创建包含 Source、Attribute、Add/Multiply/Override、最终 Magnitude 与 Priority 的不可变 `AttributeModifier`。提交前它是候选结果；成功绑定 Container 后，同一对象引用就是精确删除 Handle。业务层不得修改其 Magnitude。
 
+```mermaid
+flowchart LR
+    GEData["GameplayEffectData"] --> GEMod["GameplayEffectModifier\n作者配置 + Magnitude 计算"]
+    GEMod --> Result["AttributeModifier\n不可变候选/删除句柄"]
+    Result --> Validate["Container 原子校验"]
+    Validate --> Aggregator["Stat AttributeAggregator"]
+    Aggregator --> CurrentValue["CurrentValue"]
+```
+
 Aggregator 按 Priority 从小到大计算，同一 Priority 先合并 Add、再连乘 Multiply，最后由该 Priority 中唯一的 Override 覆盖：
 
-```text
-value = BaseValue
-
-foreach Priority:
-    candidate = (value + ΣAdd) × ΠMultiply
-    value = HasOverride ? Override.Magnitude : candidate
-
-CurrentValue = value
+```mermaid
+flowchart TD
+    Base["BaseValue"] --> Priority["按 Priority 从小到大"]
+    Priority --> Add["同 Priority：Σ Add"]
+    Add --> Multiply["再连乘 Π Multiply"]
+    Multiply --> Override{"存在 Override？"}
+    Override -->|是| OverrideValue["使用唯一 Override.Magnitude"]
+    Override -->|否| Candidate["使用 candidate"]
+    OverrideValue --> Next["进入更高 Priority"]
+    Candidate --> Next
+    Next --> CurrentValue["CurrentValue"]
 ```
 
 Aggregator 内部 List 在 Add 和 Restore 后直接按 Priority 排序，`TryEvaluate` 对连续的同 Priority Modifier 进行单次遍历；不维护额外 Priority List，也不在运行时使用 LINQ 分组。
 
-更高 Priority 会继续基于覆盖后的值计算。同一 Attribute、同一 Priority 最多允许一个持续 Override；重复 Override 使本次 Modifier 添加失败并回滚。负 Add 表示减法，小数 Multiply 表示除法。Modifier 不包含 Source Actor、Target、Tag、持续时间或叠层；未来 `ActiveGameplayEffect` 实现 `IModifierSource`，可按 Source 一次删除该次应用产生的全部 Modifier。
+更高 Priority 会继续基于覆盖后的值计算。同一 Attribute、同一 Priority 最多允许一个持续 Override；单项添加会在修改 Aggregator 前拒绝冲突，Source 级 Replace 会忽略即将被替换的同 Source 旧项，但拒绝候选集合自身重复以及其他 Source 的冲突。失败时旧 Modifier、Owner 和 CurrentValue 保持不变。Aggregator 若发现该内部不变量已被破坏，也会拒绝计算，绝不依赖同 Priority 的 List 排序决定结果。负 Add 表示减法，小数 Multiply 表示除法。Modifier 不包含 Source Actor、Target、Tag、持续时间或叠层；未来 `ActiveGameplayEffect` 实现 `IModifierSource`，可按 Source 一次删除该次应用产生的全部 Modifier。
 
 ### Instant 结算
 
@@ -80,9 +84,41 @@ Aggregator 内部 List 在 Add 和 Restore 后直接按 Priority 排序，`TryEv
 - Resource 拒绝持续 Modifier；周期伤害、回血和回蓝由周期 GE 每次 Tick 执行一次 Instant。
 - MaxHealth、MaxMana、回复速度和倍率等属于 Stat，可使用持续 Modifier。
 
+```mermaid
+flowchart TD
+    Input["修改请求"] --> Kind{"Attribute 类型"}
+    Kind -->|Stat| StatBase["读取 BaseValue"]
+    StatBase --> StatAgg["持续 Modifier 经过 Aggregator"]
+    StatAgg --> StatCurrent["写入 CurrentValue"]
+    Kind -->|Resource| ResourceCurrent["读取 CurrentValue"]
+    ResourceCurrent --> ResourcePre["Base Pre + Current Pre + 动态 Clamp"]
+    ResourcePre --> ResourceCommit["BaseValue 与 CurrentValue 同步写入"]
+```
+
 ## Pre/Post 流程
 
 内部结算先执行 `PreAttributeBaseChange`。Stat 使用候选 Base 通过 Aggregator 计算候选 Current；Resource 直接把候选结算值交给 Current Pre。执行 `PreAttributeChange` 后，Stat 分别提交 Base 与聚合 Current，Resource 将 Current Pre 的最终结果同步提交到内部 Base 与 Current。随后发送实际发生变化的 Post 和 `AttributeChanged`。
+
+```mermaid
+sequenceDiagram
+    participant Caller as 调用方
+    participant Container as AttributeContainer
+    participant Set as GameplayAttributeSet
+    participant Agg as AttributeAggregator
+    participant Listener as 监听者
+    Caller->>Container: 提交 Base/Instant/Modifier 请求
+    Container->>Set: PreAttributeBaseChange
+    alt Stat
+        Container->>Agg: 以候选 Base 重新聚合
+        Agg-->>Container: 候选 Current
+    else Resource
+        Container-->>Container: 以 CurrentValue 作为结算输入
+    end
+    Container->>Set: PreAttributeChange
+    Container->>Container: 提交 Base 与 Current
+    Container->>Set: PostAttributeBaseChange / PostAttributeChange
+    Container->>Listener: AttributeChanged（仅 Current 实际变化）
+```
 
 Container 内部将 Instant、Reset 和 Post FIFO 请求统一视为 BaseValue 修改事务：候选 Base 依次经过 Base Pre、Stat 聚合或 Resource 直通、Current Pre，最后分别判断 Base 与 Current 是否实际变化。Base 未变化不能阻断 Current Post 与 `AttributeChanged`；持续 Modifier 操作仍是独立的 Current-only 事务。
 
@@ -102,16 +138,15 @@ GE 集成增加两个批量事务入口：`TryApplyInstantModifiers` 按输出�
 
 该 Transaction 的首要目的，是阻止 Post 联动产生重复修改或无法结束的同步修改环，而不是负责数值计算、线程安全或业务回滚。例如：
 
-```text
-直接循环：
-A.Post → RequestSetValue(A)
-
-间接循环：
-A.Post → RequestSetValue(B)
-B.Post → RequestSetValue(A)
-
-重复排队：
-A 的 Base Post 和 Current Post → 同时 RequestSetValue(B)
+```mermaid
+flowchart LR
+    A["A.Post"] -->|直接循环| ARequest["RequestSetValue(A)"]
+    A -->|间接联动| BRequest["RequestSetValue(B)"]
+    B["B.Post"] --> ARequest
+    ABase["A 的 Base Post"] --> Duplicate["RequestSetValue(B)"]
+    ACurrent["A 的 Current Post"] --> Duplicate
+    Transaction["GameplayAttributeChangeTransaction"] -.->|拒绝重复排队与已处理节点| ARequest
+    Transaction -.-> Duplicate
 ```
 
 没有事务级检测时，这些请求可能持续扩展 FIFO，或让同一个 Attribute 在一次提交中被反复处理。`scheduledAttributes` 拒绝尚未执行但已经排队的重复请求；`processedAttributes` 拒绝本事务已经处理过的 Attribute，因此合法的单向联动 `A → B` 可以执行一次，而 `A → A`、`A → B → A` 和对 B 的重复排队会返回 `false`。`IsProcessing` 另外用于阻止回调期间重入 Modifier 事务；调用方仍应将被拒绝的修改环视为业务配置错误并主动修正。
@@ -122,20 +157,23 @@ A 的 Base Post 和 Current Post → 同时 RequestSetValue(B)
 - 修改环虽然会被安全拒绝，但仍属于业务关系配置错误；调用方必须检查 Post Context 修改入口返回的 `false`，并在开发阶段修正关系。
 
 `ResetToDefaultValues` 恢复内部默认结算值：Stat 保留活跃 Modifier 并重新聚合，Resource 恢复同步的 CurrentValue；初始化、Clear 和反序列化会丢弃非序列化 Modifier。
+
 ## 四属性 Odin 手动测试
 
 Editor 专用的 `GameplayAttributeTestSet` 使用已烘焙常量配置 Health、MaxHealth、Armor 与 MP，用来验证真实 Container API，而不在测试代码中复制聚合、Clamp 或 FIFO 实现：
 
-| Attribute | Type | Default | 固定范围 | 额外规则 |
-| --- | --- | ---: | --- | --- |
-| Health | Resource | 100 | 0..1000 | Current Pre 再 Clamp 到 `0..MaxHealth.CurrentValue` |
-| MaxHealth | Stat | 100 | 1..1000 | Current Post 将当前 Health 排入 FIFO，触发动态上限重算 |
-| Armor | Stat | 10 | 0..1000 | 用于验证 Add、Multiply 与 Instant |
-| MP | Resource | 50 | 0..100 | 归零时输出资源耗尽测试日志 |
 
-`GameplayAttributeOdinTester` 提供“初始化四属性测试”“测试 Instant 与 Pre/Post”“测试 Modifier 与 Post 联动”和“执行完整四属性测试”按钮。各场景开始前重新初始化专用 Set，日志统一包含 Actual、Expected 与 PASS/FAIL。完整测试在 Instant 组和 Modifier 组之间再次初始化，避免前一组的 Resource 结算和 Stat BaseValue 永久修改污染后一组预期。
+| Attribute | Type     | Default | 固定范围 | 额外规则                                               |
+| --------- | -------- | ------: | -------- | ------------------------------------------------------ |
+| Health    | Resource |     100 | 0..1000  | Current Pre 再 Clamp 到`0..MaxHealth.CurrentValue`     |
+| MaxHealth | Stat     |     100 | 1..1000  | Current Post 将当前 Health 排入 FIFO，触发动态上限重算 |
+| Armor     | Stat     |      10 | 0..1000  | 用于验证 Add、Multiply 与 Instant                      |
+| MP        | Resource |      50 | 0..100   | 归零时输出资源耗尽测试日志                             |
+
+`GameplayAttributeOdinTester` 提供“初始化四属性测试”“测试 Instant 与 Pre/Post”“测试 Modifier 与 Post 联动”“测试 Override 唯一性”和“执行完整四属性测试”按钮。Override 场景覆盖跨 Source 冲突、同 Source Replace、候选集合自身重复以及失败后的 Owner/CurrentValue 原子保持。各场景开始前重新初始化专用 Set，日志统一包含 Actual、Expected 与 PASS/FAIL。完整测试在各组之间重新初始化，避免前一组的 Resource 结算和 Stat BaseValue 永久修改污染后一组预期。
 
 MaxHealth 的 Post 联动严格为单向 `MaxHealth → Health`。Post 只通过 `GameplayAttributePostChangeContext.RequestSetValue` 排队当前 Health，由 Health 的 Current Pre 在 FIFO 消费时执行动态 Clamp；不在 Post 回调栈中直接写 Definition，也不会形成 `Health → MaxHealth` 反向关系。
+
 ## Editor
 
 GAS 主窗口新增 `Attribute` 选项卡，内部包含两个子页面：

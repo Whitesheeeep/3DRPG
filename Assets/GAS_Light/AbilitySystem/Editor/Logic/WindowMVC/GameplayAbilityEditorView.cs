@@ -371,7 +371,8 @@ namespace WS_Modules.GAS.Editor
             propertyPath == "activationTagQuery" ||
             propertyPath == "costEffect" ||
             propertyPath == "cooldownEffect" ||
-            propertyPath == "effects";
+            propertyPath == "effects" ||
+            propertyPath == "cueTags";
 
         // 文本和数值字段使用延迟提交，减少输入过程中的重复校验。
         private void ConfigureDelayedInputs()

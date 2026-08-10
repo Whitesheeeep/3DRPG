@@ -13,7 +13,9 @@ namespace WS_Modules.GAS.Editor
         /// <summary>Gameplay Effect 作者页面。</summary>
         GameplayEffects,
         /// <summary>Gameplay Ability 作者页面。</summary>
-        GameplayAbilities
+        GameplayAbilities,
+        /// <summary>Gameplay Cue 编辑页面。</summary>
+        GameplayCues
     }
 
     /// <summary>定义 GAS 选项卡宿主的模块选择能力，不暴露 UI Toolkit 控件。</summary>

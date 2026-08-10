@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.GameplayEffect;
+using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.TAG;
 
 namespace WS_Modules.GAS.GameplayAbilitySystem
@@ -59,7 +60,9 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 runtime.Source,
                 runtime.Level,
                 runtime.SetByCaller,
-                Effects);
+                Effects,
+                CueTags,
+                runtime);
         }
 
         #endregion
@@ -79,6 +82,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             private int level;
             private IReadOnlyDictionary<GameplayTag, float> setByCaller;
             private GameplayEffectData[] effects;
+            private GameplayTag[] cueTags;
+            private GameplayAbilityRuntime abilityRuntime;
             private bool hit;
 
             // 复制本次激活所需数据，避免投射物继续依赖可被其他激活覆盖的 SO 运行时字段。
@@ -90,7 +95,9 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 GameplayAbilitySystemComponent sourceAsc,
                 int abilityLevel,
                 IReadOnlyDictionary<GameplayTag, float> callerValues,
-                IReadOnlyList<GameplayEffectData> configuredEffects)
+                IReadOnlyList<GameplayEffectData> configuredEffects,
+                IReadOnlyList<GameplayTag> configuredCueTags,
+                GameplayAbilityRuntime sourceAbilityRuntime)
             {
                 body = projectileBody;
                 direction = moveDirection;
@@ -103,6 +110,11 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 effects = new GameplayEffectData[configuredEffects.Count];
                 for (int i = 0; i < configuredEffects.Count; i++)
                     effects[i] = configuredEffects[i];
+
+                cueTags = new GameplayTag[configuredCueTags.Count];
+                for (int i = 0; i < configuredCueTags.Count; i++)
+                    cueTags[i] = configuredCueTags[i];
+                abilityRuntime = sourceAbilityRuntime;
             }
 
             // 在物理步中移动并累计存活时间，确保 Trigger 检测与位置更新使用相同节奏。
@@ -130,6 +142,19 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                     GameplayEffectData effect = effects[i];
                     if (effect != null)
                         target.TryApplyEffect(effect, source, level, setByCaller, out _);
+                }
+
+                for (int i = 0; i < cueTags.Length; i++)
+                {
+                    target.PublishGameplayCue(new GameplayCueRequest(
+                        cueTags[i],
+                        GameplayCueEventType.Execute,
+                        source,
+                        target,
+                        effectRuntime: null,
+                        abilityRuntime: abilityRuntime,
+                        position: transform.position,
+                        rotation: transform.rotation));
                 }
 
                 Destroy(gameObject);

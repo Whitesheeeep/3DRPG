@@ -99,7 +99,7 @@ namespace WS_Modules.GAS.TAG
 
         /// <summary>创建要求所有标签均不满足的查询。</summary>
         /// <param name="tags">禁止满足的标签。</param>
-        /// <returns>仅设置 NoneTags 的新查询。</returns>
+        /// <returns>仅设置 BanedTags 的新查询。</returns>
         public static GameplayTagQuery MatchNone(params GameplayTag[] tags) =>
             new(Array.Empty<GameplayTag>(), Array.Empty<GameplayTag>(), tags);
         #endregion

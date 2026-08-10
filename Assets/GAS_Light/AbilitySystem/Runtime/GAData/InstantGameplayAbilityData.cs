@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.GameplayEffect;
+using WS_Modules.GAS.GameplayCue;
 
 namespace WS_Modules.GAS.GameplayAbilitySystem
 {
@@ -28,12 +29,19 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         #region 同步执行
         // 每个 GE 独立提交；失败项不阻止后续项，也不撤销已成功项。
         // 将全部结果 GE 逐项应用到 Source；单项失败不回滚其他已成功项目。
-        protected override void Execute(SynchronousGameplayAbilityRuntime runtime) =>
+        protected override void Execute(SynchronousGameplayAbilityRuntime runtime)
+        {
             ApplyConfiguredEffects(
                 runtime.Source,
                 runtime.Source,
                 runtime.Level,
                 runtime.SetByCaller);
+            PublishConfiguredCues(
+                GameplayCueEventType.Execute,
+                runtime.Source,
+                runtime.Source,
+                abilityRuntime: runtime);
+        }
         #endregion
     }
 }

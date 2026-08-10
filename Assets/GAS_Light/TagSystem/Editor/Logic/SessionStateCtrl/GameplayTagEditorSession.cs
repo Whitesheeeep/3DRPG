@@ -1,4 +1,5 @@
 ﻿#if UNITY_EDITOR
+using System;
 using UnityEditor;
 using WS_Modules.GAS.TAG;
 
@@ -12,11 +13,17 @@ namespace WS_Modules.GAS.Editor
         private const string SearchKey = "WSFrame.GAS.GameplayTag.Search";
         private const string ExpandedGuidsKey = "WSFrame.GAS.GameplayTag.ExpandedGuids";
 
+        #region 事件
+        /// <summary>当前 Tag Database 改变后通知其他 Editor 页面刷新显示上下文。</summary>
+        public static event Action<GameplayTagDatabase> DatabaseChanged;
+        #endregion
+
         /// <summary>记录当前数据库资产 Guid。</summary>
         public static void SetDatabase(GameplayTagDatabase database)
         {
             string path = database == null ? string.Empty : AssetDatabase.GetAssetPath(database);
             SessionState.SetString(DatabaseGuidKey, string.IsNullOrEmpty(path) ? string.Empty : AssetDatabase.AssetPathToGUID(path));
+            DatabaseChanged?.Invoke(database);
         }
 
         /// <summary>恢复上次选择的数据库。</summary>

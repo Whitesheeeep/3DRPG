@@ -15,6 +15,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         // 运行时激活的技能
         private readonly List<GameplayAbilityRuntime> activeRuntimes = new();
         private readonly List<Action<float>> tickCallbacks = new();
+        // Tick 期间使用稳定快照，避免回调注销自身或其他回调时破坏当前遍历。
+        private readonly List<Action<float>> tickSnapshot = new();
         private int nextHandleId = 1;
         private int nextActivationId = 1;
         #endregion
@@ -95,17 +97,23 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             if (float.IsNaN(deltaTime) || float.IsInfinity(deltaTime) || deltaTime < 0f)
                 return;
 
-            // 在 Tick 回调中可能会移除自身或其他回调，因此使用倒序遍历。
-            for (int i = tickCallbacks.Count - 1; i >= 0; i--)
+            // 复制当前帧边界；本次 Tick 中新注册的回调从下一帧开始执行。
+            tickSnapshot.Clear();
+            tickSnapshot.AddRange(tickCallbacks);
+            for (int i = tickSnapshot.Count - 1; i >= 0; i--)
             {
-                tickCallbacks[i](deltaTime);
+                Action<float> callback = tickSnapshot[i];
+                // 其他回调可能已经注销该项，尚未执行的已注销回调必须在本帧跳过。
+                if (tickCallbacks.Contains(callback)) callback(deltaTime);
             }
         }
 
         /// <summary>获取当前仍注册在 Controller 中的 Tick 回调数量，仅供测试和诊断使用。</summary>
         internal int TickRegistrationCount => tickCallbacks.Count;
 
-        // TickTask 启动时注册回调；返回的句柄负责在 Task 终止时移除回调。
+        /// <summary>注册由当前 Controller 推进的 Ability Tick 回调。</summary>
+        /// <param name="callback">每次有效 ASC Tick 时执行的回调。</param>
+        /// <returns>负责解除本次注册的 WSFrame 生命周期句柄。</returns>
         internal IUnRegister RegisterTick(Action<float> callback)
         {
             if (callback == null) throw new ArgumentNullException(nameof(callback));
@@ -113,6 +121,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             return new CustomUnRegister(() => UnRegisterTick(callback));
         }
 
+        /// <summary>解除指定 Tick 回调；在当前 Tick 中尚未执行的回调会被快照遍历跳过。</summary>
+        /// <param name="callback">需要解除的回调。</param>
         private void UnRegisterTick(Action<float> callback) => tickCallbacks.Remove(callback);
         #endregion
 
@@ -180,6 +190,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             while (activeRuntimes.Count > 0)
                 activeRuntimes[activeRuntimes.Count - 1].Cancel();
             tickCallbacks.Clear();
+            tickSnapshot.Clear();
             grantedAbilities.Clear();
         }
 

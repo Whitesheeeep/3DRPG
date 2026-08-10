@@ -1,0 +1,12 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
+    <ui:VisualElement name="RowRoot" class="cue-row">
+        <ui:VisualElement class="cue-row-main">
+            <ui:Label name="NameLabel" class="cue-row-name" />
+            <ui:TextField name="RenameField" class="cue-row-rename" />
+            <ui:Button name="PingButton" text="Ping" class="cue-row-ping" />
+            <ui:Button name="RemoveButton" text="Unreg" class="cue-row-action" />
+            <ui:Button name="DeleteButton" text="Del" class="cue-row-action" />
+        </ui:VisualElement>
+        <ui:Label name="TagLabel" class="cue-row-tag" />
+    </ui:VisualElement>
+</ui:UXML>

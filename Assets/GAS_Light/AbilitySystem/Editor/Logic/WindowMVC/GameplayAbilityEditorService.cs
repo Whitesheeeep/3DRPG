@@ -5,6 +5,7 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 using WS_Modules.GAS.GameplayAbilitySystem;
+using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.GameplayEffect;
 
 namespace WS_Modules.GAS.Editor
@@ -138,6 +139,7 @@ namespace WS_Modules.GAS.Editor
                     $"Cooldown GE '{GetAssetLabel(ability.CooldownEffect)}' 必须是 Duration 或 Infinite。"));
 
             ValidateEffectReferences(ability.Effects, issues);
+            ValidateCueTags(ability.CueTags, issues);
 
             if (ability is AsynchronousGameplayAbilityData asynchronous)
             {
@@ -172,7 +174,7 @@ namespace WS_Modules.GAS.Editor
 
         }
 
-        // Every Ability shares the same result list; concrete types add only timing-specific rules.
+        // 所有 Ability 共用同一份结果列表，具体类型只追加与执行时机相关的规则。
         private static void ValidateEffectReferences(
             IReadOnlyList<GameplayEffectData> effects,
             ICollection<GameplayAbilityValidationIssue> issues)
@@ -181,6 +183,29 @@ namespace WS_Modules.GAS.Editor
             for (int i = 0; i < effects.Count; i++)
                 if (effects[i] == null)
                     issues.Add(Error($"Effects[{i}] cannot be null."));
+        }
+
+        // CueTag 只检查作者数据完整性；映射是否存在仅在 CueDatabase 已初始化时检查。
+        private static void ValidateCueTags(
+            IReadOnlyList<WS_Modules.GAS.TAG.GameplayTag> cueTags,
+            ICollection<GameplayAbilityValidationIssue> issues)
+        {
+            if (cueTags == null) return;
+            var unique = new HashSet<WS_Modules.GAS.TAG.GameplayTag>();
+            for (int i = 0; i < cueTags.Count; i++)
+            {
+                var tag = cueTags[i];
+                if (!tag.IsValid)
+                {
+                    issues.Add(Error($"CueTags[{i}] 不是有效的 GameplayTag。"));
+                    continue;
+                }
+                if (!unique.Add(tag))
+                    issues.Add(Error($"CueTags[{i}] 与前面的 CueTag 重复。"));
+                if (GameplayCueManager.Instance.IsInitialized &&
+                    !GameplayCueManager.Instance.TryGetCue(tag, out _))
+                    issues.Add(Error($"CueTags[{i}] 在当前 CueDatabase 中没有对应 CueData。"));
+            }
         }
 
         private static void ValidateInstantEffects(

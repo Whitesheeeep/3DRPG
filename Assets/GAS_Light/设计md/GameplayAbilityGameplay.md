@@ -4,16 +4,20 @@
 
 Gameplay Ability 按执行生命周期分成同步和异步两条多态分支：
 
-GameplayAbilityData
-├─ SynchronousGameplayAbilityData
-└─ AsynchronousGameplayAbilityData
-
-GameplayAbilityRuntime
-├─ SynchronousGameplayAbilityRuntime
-└─ AsynchronousGameplayAbilityRuntime
 核心 AbilitySystem 不依赖 SkillConfig、碰撞、投射物、动画或具体目标系统。业务模块可以用清晰的业务类名继承对应分支，例如 ProjectileGameplayAbilityData 继承同步基类，CastGameplayAbilityData 继承异步基类。
 
 Runtime 直接持有 Root Task，不增加 Runner、ExecutionNode、通用 Context 或目标黑板。
+
+```mermaid
+classDiagram
+    GameplayAbilityData <|-- SynchronousGameplayAbilityData
+    GameplayAbilityData <|-- AsynchronousGameplayAbilityData
+    GameplayAbilityRuntime <|-- SynchronousGameplayAbilityRuntime
+    GameplayAbilityRuntime <|-- AsynchronousGameplayAbilityRuntime
+    AsynchronousGameplayAbilityRuntime o-- GameplayAbilityTask : RootTask
+    SynchronousGameplayAbilityData ..> SynchronousGameplayAbilityRuntime : 创建
+    AsynchronousGameplayAbilityData ..> AsynchronousGameplayAbilityRuntime : 创建
+```
 
 ## 2. 公共 Data 与 Spec
 
@@ -32,17 +36,40 @@ GameplayAbilitySpec 是 ASC 中长期存在的授予状态，保存 Handle、Dat
 
 Controller 激活顺序固定为：
 
-查找 Spec
-→ 校验 Level、Tag、Cost/Cooldown Policy
-→ 校验具体 Data 契约
-→ 异步 Data 检查 Root Task
-→ 创建 Created Runtime 候选
-→ 提交 Cooldown
-→ 提交 Cost
-→ 注册 Runtime 并进入 Active
-→ AbilityActivated
-→ Runtime.Start
+```mermaid
+flowchart TD
+    Spec["查找 Spec"] --> Level["校验 Level、Tag、Cost/Cooldown Policy"]
+    Level --> Contract["校验具体 Data 契约"]
+    Contract --> Root["异步 Data 检查 Root Task"]
+    Root --> Candidate["创建 Created Runtime 候选"]
+    Candidate --> Cooldown["提交 Cooldown"]
+    Cooldown --> Cost["提交 Cost"]
+    Cost --> Register["注册 Runtime 并进入 Active"]
+    Register --> Activated["AbilityActivated"]
+    Activated --> Start["Runtime.Start"]
+```
 Cost 失败时精确移除本次刚创建的 Cooldown Runtime。Root Task 为空或 Task 配置非法时，必须在 Cost/Cooldown 副作用前拒绝；异步 Ability 由 Owner 主动调用 ASC.Tick 推进。
+
+```mermaid
+sequenceDiagram
+    participant Owner as Owner
+    participant Ctrl as GameplayAbilityCtrl
+    participant GE as GameEffectCtrl
+    participant Runtime as GameplayAbilityRuntime
+    Owner->>Ctrl: TryActivate(handle, setByCaller)
+    Ctrl->>Ctrl: 查询 Spec、Level、ActivationTagQuery
+    Ctrl->>Ctrl: 校验 Data 与 Root Task 契约
+    Ctrl->>GE: 提交 Cooldown
+    Ctrl->>GE: 提交 Cost
+    alt Cost 失败
+        Ctrl->>GE: 只移除本次 Cooldown
+        Ctrl-->>Owner: 激活失败
+    else Cost 成功
+        Ctrl->>Runtime: 创建并注册 Runtime
+        Ctrl-->>Owner: AbilityActivated
+        Ctrl->>Runtime: Start
+    end
+```
 
 Runtime 进入终态后，Controller 先将它从 ActiveRuntimes 移除，再发送 AbilityEnded 或 AbilityCancelled。同步 Runtime 可能在 TryActivate 返回前结束，但事件顺序仍是 Activated → Ended。
 
@@ -70,11 +97,24 @@ AsynchronousGameplayAbilityData 使用 SerializeReference 保存 Root Task Confi
 
 Root Task 生命周期驱动 Runtime：
 
-Root Completed → Runtime Ended
-外部 TryEnd    → Root Stopped  → Runtime Ended
-TryCancel      → Root Cancelled → Runtime Cancelled
-Clear          → 逐个 Cancel
+```mermaid
+flowchart TD
+    Complete["Root Completed"] --> Ended["Runtime Ended"]
+    TryEnd["外部 TryEnd"] --> Stopped["Root Stopped"] --> Ended
+    TryCancel["TryCancel"] --> Cancelled["Root Cancelled"] --> RuntimeCancelled["Runtime Cancelled"]
+    Clear["Clear"] --> CancelAll["逐个 Cancel"] --> RuntimeCancelled
+```
 Task 不能直接写 Runtime.State。Task 完成只通知父 Sequence 或 Root Runtime。
+
+```mermaid
+stateDiagram-v2
+    [*] --> Created
+    Created --> Active: Runtime.Start
+    Active --> Ended: Root Complete 或 TryEnd
+    Active --> Cancelled: TryCancel / ASC.Clear
+    Ended --> [*]
+    Cancelled --> [*]
+```
 
 GameplayAbilityTaskState：
 
@@ -120,10 +160,12 @@ source.Abilities.TryCancel(runtime);
 
 例如一个由两个阶段组成的技能：
 
-```text
-Sequence
-├─ WaitDuration(1 秒)
-└─ ApplyHit
+```mermaid
+flowchart TD
+    Sequence["Sequence"] --> Wait["WaitDuration（1 秒）"]
+    Wait --> Hit["ApplyHit"]
+    Wait -.->|TryEnd：Stop，不继续| End["Runtime Ended"]
+    Wait -.->|TryCancel：Cancel，不继续| Cancel["Runtime Cancelled"]
 ```
 
 - 等待满 1 秒：`WaitDuration.Complete()`，Sequence 继续执行 `ApplyHit`。
@@ -151,6 +193,7 @@ GameplayAbilityTickTask：
 - 每次更新调用业务子类的 OnTick(deltaTime)。
 - 业务 Task 在 OnTick 中驱动动画进度、蓄力值、位移或持续输入，并在完成时调用 Complete()。
 - Stop、Cancel 和 Complete 都会在完成通知前释放 Tick 注册。
+- AbilityCtrl 每帧复用稳定快照推进回调：本帧注销且尚未执行的回调会跳过，本帧新增的回调从下一帧开始执行，因此回调修改注册表不会造成重复执行或漏执行。
 - Tick Task 不保存 Animator、AnimationClip、SkillConfig、Transform 或目标信息。
 
 WaitDuration：
@@ -165,13 +208,36 @@ Odin Tester 中的 Tick Probe Task 按 ASC Tick 次数完成，用于验证“�
 
 同步 Ability 不使用 Tick 注册；异步 Ability 由所属 ASC 的 AbilityCtrl 接收统一 Tick。
 
+```mermaid
+sequenceDiagram
+    participant Owner as Owner
+    participant ASC as GameplayAbilitySystemComponent
+    participant GE as GameEffectCtrl
+    participant GA as GameplayAbilityCtrl
+    participant Task as GameplayAbilityTickTask
+    Owner->>ASC: Tick(deltaTime)
+    ASC->>GE: Tick(deltaTime)
+    ASC->>GA: Tick(deltaTime)
+    GA->>Task: OnTick(deltaTime)
+    Task-->>GA: Complete / 保持 Running
+```
+
 ## 7. 统一 Tick 入口
 
 外部 Owner 负责主动调用 `GameplayAbilitySystemComponent.Tick(deltaTime)`，GAS 不自动绑定 Unity `Update`。ASC 内部固定先调用 `GameEffectCtrl.Tick(deltaTime)`，再调用 `GameplayAbilityCtrl.Tick(deltaTime)`，因此同一帧先推进 GE 的周期与到期，再推进 GA 的 Tick Task。`deltaTime` 为负数、NaN 或 Infinity 时会被安全忽略。
 
-同步 Ability 不使用 Tick 注册；异步 Ability 的 WaitDuration、动画、蓄力和其他持续 Task 都由所属 ASC 的 AbilityCtrl 接收 Tick。Task 持有的 `IUnRegister` 只管理这一个回调的注销，不承担外部对象或 ASC 的生命周期。
+同步 Ability 不使用 Tick 注册；异步 Ability 的 WaitDuration、动画、蓄力和其他持续 Task 都由所属 ASC 的 AbilityCtrl 接收 Tick。Task 持有的 `IUnRegister` 只管理这一个回调的注销，不承担外部对象或 ASC 的生命周期。Controller 遍历帧开始时的回调快照，同时以当前注册表判断该项是否仍有效；因此 Task 可以在 `OnTick` 中完成自身、取消其他 Ability 或启动新 Task，而不会破坏当前帧遍历。
 
 ## 8. Editor
+
+```mermaid
+flowchart LR
+    Asset["GameplayAbilityData SO"] --> Common["公共字段绑定"]
+    Asset --> Specific["具体 Data 字段动态 PropertyField"]
+    Specific --> Root["SerializeReference Root Task"]
+    Root --> Validate["GA Validator"]
+    Validate --> ListState["ListView Error 背景"]
+```
 
 GA Editor 通过 TypeCache 发现公开、非抽象、非泛型的 GameplayAbilityData 子类。抽象同步/异步基类不会出现在 Create 菜单；内部测试类型也不会出现。
 

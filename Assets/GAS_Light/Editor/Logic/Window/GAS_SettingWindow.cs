@@ -6,6 +6,7 @@ using UnityEngine.UIElements;
 using WS_Modules.GAS.AttributeSystem;
 using WS_Modules.GAS.GameplayAbilitySystem;
 using WS_Modules.GAS.GameplayEffect;
+using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.TAG;
 
 namespace WS_Modules.GAS.Editor
@@ -25,6 +26,7 @@ namespace WS_Modules.GAS.Editor
         [SerializeField] private GameplayAttributeSet requestedAttributeSet;
         [SerializeField] private GameplayEffectData requestedGameplayEffect;
         [SerializeField] private GameplayAbilityData requestedGameplayAbility;
+        [SerializeField] private GameplayCueDatabase requestedGameplayCueDatabase;
         [SerializeField] private GameplayAttributeEditorPage requestedAttributePage =
             GameplayAttributeEditorPage.Specs;
 
@@ -32,11 +34,13 @@ namespace WS_Modules.GAS.Editor
         private Button gameplayAttributesTab;
         private Button gameplayEffectsTab;
         private Button gameplayAbilitiesTab;
+        private Button gameplayCuesTab;
         private VisualElement contentHost;
         private IGameplayTagWindow gameplayTagWindow;
         private IGameplayAttributeWindow gameplayAttributeWindow;
         private IGameplayEffectWindow gameplayEffectWindow;
         private IGameplayAbilityWindow gameplayAbilityWindow;
+        private IGameplayCueWindow gameplayCueWindow;
         private GASEditorModule activeModule = GASEditorModule.GameplayTags;
         private bool hasActiveModule;
 
@@ -157,6 +161,58 @@ namespace WS_Modules.GAS.Editor
             window.Show();
         }
 
+        /// <summary>打开 Cue 页面并选择指定的 Cue Database。</summary>
+        /// <param name="database">要编辑的 Cue Database；为空时恢复上次数据库。</param>
+        public static void ShowGameplayCues(GameplayCueDatabase database)
+        {
+            GAS_SettingWindow window = GetConfiguredWindow();
+            GameplayCueDatabase target = database != null
+                ? database
+                : GameplayCueEditorSession.GetDatabase();
+            window.requestedGameplayCueDatabase = target;
+            window.SelectModule(GASEditorModule.GameplayCues);
+            if (window.gameplayCueWindow != null)
+            {
+                window.gameplayCueWindow.SetDatabase(target, true);
+                window.requestedGameplayCueDatabase = null;
+            }
+
+            window.Show();
+        }
+
+        // 菜单入口使用 SessionState 恢复上次选中的 Cue Database。
+        [MenuItem("WSFrame/GAS/Gameplay Cues")]
+        private static void ShowGameplayCuesMenu() => ShowGameplayCues(null);
+
+        /// <summary>打开 Cue 页面并定位已注册的 CueData。</summary>
+        /// <param name="cue">要定位的 CueData。</param>
+        public static void ShowGameplayCue(GameplayCueData cue)
+        {
+            GameplayCueDatabase database = GameplayCueEditorSession.GetDatabase();
+            if (cue != null)
+            {
+                GameplayCueEditorService service = new GameplayCueEditorService();
+                System.Collections.Generic.List<GameplayCueDatabase> matches =
+                    service.FindDatabasesContaining(cue);
+                if (database == null || !matches.Contains(database))
+                    database = matches.Count == 1 ? matches[0] : matches.Count > 0 ? matches[0] : null;
+                if (matches.Count > 1)
+                    Debug.LogWarning($"CueData '{cue.name}' 注册在多个 GameplayCueDatabase 中，已选择 '{database?.name}'。", cue);
+            }
+
+            GAS_SettingWindow window = GetConfiguredWindow();
+            window.requestedGameplayCueDatabase = database;
+            window.SelectModule(GASEditorModule.GameplayCues);
+            if (window.gameplayCueWindow != null)
+            {
+                window.gameplayCueWindow.SetDatabase(database, true);
+                window.gameplayCueWindow.SetCue(cue, false);
+                window.requestedGameplayCueDatabase = null;
+            }
+
+            window.Show();
+        }
+
         /// <summary>释放当前页面并在同一内容宿主中创建目标模块页面。</summary>
         /// <param name="module">需要显示的模块。</param>
         /// <exception cref="ArgumentOutOfRangeException">模块值未定义。</exception>
@@ -208,6 +264,13 @@ namespace WS_Modules.GAS.Editor
                     gameplayAbilityWindow = new GameplayAbilityWindow(contentHost, ability);
                     requestedGameplayAbility = null;
                     break;
+                case GASEditorModule.GameplayCues:
+                    GameplayCueDatabase cueDatabase = requestedGameplayCueDatabase != null
+                        ? requestedGameplayCueDatabase
+                        : GameplayCueEditorSession.GetDatabase();
+                    gameplayCueWindow = new GameplayCueWindow(contentHost, cueDatabase);
+                    requestedGameplayCueDatabase = null;
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(module), module, "未知的 GAS 编辑模块。");
             }
@@ -242,12 +305,14 @@ namespace WS_Modules.GAS.Editor
             gameplayAttributesTab = RequireElement<Button>("GameplayAttributesTab");
             gameplayEffectsTab = RequireElement<Button>("GameplayEffectsTab");
             gameplayAbilitiesTab = RequireElement<Button>("GameplayAbilitiesTab");
+            gameplayCuesTab = RequireElement<Button>("GameplayCuesTab");
             contentHost = RequireElement<VisualElement>("ContentHost");
 
             gameplayTagsTab.clicked += OnGameplayTagsClicked;
             gameplayAttributesTab.clicked += OnGameplayAttributesClicked;
             gameplayEffectsTab.clicked += OnGameplayEffectsClicked;
             gameplayAbilitiesTab.clicked += OnGameplayAbilitiesClicked;
+            gameplayCuesTab.clicked += OnGameplayCuesClicked;
 
             hasActiveModule = false;
             SelectModule(requestedModule);
@@ -269,6 +334,8 @@ namespace WS_Modules.GAS.Editor
         private void OnGameplayEffectsClicked() => SelectModule(GASEditorModule.GameplayEffects);
         // Ability 选项卡请求切换到 GA 子 MVC。
         private void OnGameplayAbilitiesClicked() => SelectModule(GASEditorModule.GameplayAbilities);
+        // Cue 选项卡只请求宿主切换页面，不参与 Cue 详情编辑。
+        private void OnGameplayCuesClicked() => SelectModule(GASEditorModule.GameplayCues);
 
         #endregion
 
@@ -285,6 +352,8 @@ namespace WS_Modules.GAS.Editor
             gameplayEffectWindow = null;
             gameplayAbilityWindow?.Dispose();
             gameplayAbilityWindow = null;
+            gameplayCueWindow?.Dispose();
+            gameplayCueWindow = null;
             contentHost?.Clear();
             hasActiveModule = false;
         }
@@ -300,6 +369,8 @@ namespace WS_Modules.GAS.Editor
                 ActiveTabClass, activeModule == GASEditorModule.GameplayEffects);
             gameplayAbilitiesTab?.EnableInClassList(
                 ActiveTabClass, activeModule == GASEditorModule.GameplayAbilities);
+            gameplayCuesTab?.EnableInClassList(
+                ActiveTabClass, activeModule == GASEditorModule.GameplayCues);
         }
 
         #endregion
@@ -361,11 +432,14 @@ namespace WS_Modules.GAS.Editor
             if (gameplayEffectsTab != null) gameplayEffectsTab.clicked -= OnGameplayEffectsClicked;
             if (gameplayAbilitiesTab != null)
                 gameplayAbilitiesTab.clicked -= OnGameplayAbilitiesClicked;
+            if (gameplayCuesTab != null)
+                gameplayCuesTab.clicked -= OnGameplayCuesClicked;
 
             gameplayTagsTab = null;
             gameplayAttributesTab = null;
             gameplayEffectsTab = null;
             gameplayAbilitiesTab = null;
+            gameplayCuesTab = null;
             contentHost = null;
         }
 

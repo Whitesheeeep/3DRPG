@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.GameplayEffect;
+using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.TAG;
 
 namespace WS_Modules.GAS.GameplayAbilitySystem
@@ -39,6 +40,11 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         {
             PassiveGameplayAbilityData data = (PassiveGameplayAbilityData)Data;
             data.ApplyConfiguredEffects(Source, Source, Level, SetByCaller, appliedEffects);
+            data.PublishConfiguredCues(
+                GameplayCueEventType.Active,
+                Source,
+                Source,
+                abilityRuntime: this);
             base.OnStart();
         }
 
@@ -47,6 +53,11 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         {
             base.OnEnd();
             RemoveAppliedEffects();
+            ((PassiveGameplayAbilityData)Data).PublishConfiguredCues(
+                GameplayCueEventType.Remove,
+                Source,
+                Source,
+                abilityRuntime: this);
         }
 
         // 取消与正常结束使用同一组精确句柄清理，避免 Passive 留下 Infinite GE。
@@ -54,6 +65,11 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         {
             base.OnCancel();
             RemoveAppliedEffects();
+            ((PassiveGameplayAbilityData)Data).PublishConfiguredCues(
+                GameplayCueEventType.Remove,
+                Source,
+                Source,
+                abilityRuntime: this);
         }
         #endregion
 

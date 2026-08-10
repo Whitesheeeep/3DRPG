@@ -134,7 +134,6 @@ namespace RPG.SkillSystem.Editor
         private readonly Animator animator;
         private readonly AnimancerGraph graph;
         private readonly MarkerProvider rootMarkerProvider;
-        private readonly string rootMarkerProviderError;
         private readonly Vector3 initialPosition;
         private readonly Quaternion initialRotation;
         private readonly Vector3 initialScale;
@@ -150,13 +149,18 @@ namespace RPG.SkillSystem.Editor
 
         #region 生命周期
 
-        // 创建独立 AnimancerGraph，并仅在 Scene View 中隐藏场景源对象。
+        /// <summary>
+        /// 创建独立 AnimancerGraph，并仅在 Scene View 中隐藏场景源对象。
+        /// </summary>
+        /// <param name="source">预览使用的源对象。</param>
+        /// <param name="instance">已经放入预览场景的隔离副本。</param>
+        /// <param name="animator">隔离副本上的 Animator。</param>
         internal PreviewActorInstance(GameObject source, GameObject instance, Animator animator)
         {
             this.source = source;
             this.instance = instance ?? throw new ArgumentNullException(nameof(instance));
             this.animator = animator ?? throw new ArgumentNullException(nameof(animator));
-            RebuildMarkerProviders(instance, out rootMarkerProvider, out rootMarkerProviderError);
+            RebuildMarkerProviders(instance, out rootMarkerProvider);
             initialPosition = instance.transform.position;
             initialRotation = instance.transform.rotation;
             initialScale = instance.transform.localScale;
@@ -191,37 +195,33 @@ namespace RPG.SkillSystem.Editor
 
         #region 绑定解析与姿势采样
 
-        // 解析角色根 Provider 中的语义 Socket；空 Key 明确返回角色根节点。
-        internal bool TryGetMarker(MarkerKey key, out Transform marker, out string error)
+        /// <summary>
+        /// 解析角色根 Provider 中的语义 Socket；空 Key 明确返回角色根节点。
+        /// </summary>
+        /// <param name="key">要查询的 MarkerKey。</param>
+        /// <param name="marker">成功时返回对应的 Transform。</param>
+        /// <returns>找到有效挂点时返回 true。</returns>
+        internal bool TryGetMarker(MarkerKey key, out Transform marker)
         {
             if (key == null)
             {
                 marker = RootTransform;
-                error = marker != null ? string.Empty : "预览角色已经失效。";
                 return marker != null;
             }
 
             if (rootMarkerProvider == null)
             {
                 marker = null;
-                error = rootMarkerProviderError;
-                return false;
-            }
-
-            if (!string.IsNullOrEmpty(rootMarkerProvider.LastError))
-            {
-                marker = null;
-                error = rootMarkerProvider.LastError;
+                Debug.LogError("预览角色根节点没有 MarkerProvider，无法解析非空 MarkerKey。", instance);
                 return false;
             }
 
             if (rootMarkerProvider.TryGetMarker(key, out marker))
             {
-                error = string.Empty;
                 return true;
             }
 
-            error = $"预览角色根 MarkerProvider 中不存在 MarkerKey“{key.name}”。";
+            Debug.LogError($"预览角色根 MarkerProvider 中不存在 MarkerKey“{key.name}”。", instance);
             return false;
         }
 
@@ -250,15 +250,9 @@ namespace RPG.SkillSystem.Editor
             }
 
             MarkerProvider matchedProvider = null;
-            string firstProviderError = string.Empty;
             foreach (MarkerProvider provider in instance.GetComponentsInChildren<MarkerProvider>(true))
             {
                 if (!provider.gameObject.activeInHierarchy) continue;
-                if (!string.IsNullOrEmpty(provider.LastError))
-                {
-                    if (string.IsNullOrEmpty(firstProviderError)) firstProviderError = provider.LastError;
-                    continue;
-                }
 
                 if (!provider.TryGetMarker(rootKey, out Transform candidateRoot) ||
                     !provider.TryGetMarker(tipKey, out Transform candidateTip))
@@ -278,9 +272,7 @@ namespace RPG.SkillSystem.Editor
 
             if (matchedProvider == null)
             {
-                error = string.IsNullOrEmpty(firstProviderError)
-                    ? $"没有激活的 MarkerProvider 同时提供“{rootKey.name}”和“{tipKey.name}”。"
-                    : firstProviderError;
+                error = $"没有激活的 MarkerProvider 同时提供“{rootKey.name}”和“{tipKey.name}”。";
                 return false;
             }
 
@@ -296,19 +288,17 @@ namespace RPG.SkillSystem.Editor
             return true;
         }
 
-        // 显式重建预览副本中的全部 Provider，并单独记录角色根 Provider 的 VFX Socket 状态。
+        /// <summary>
+        /// 显式重建预览副本中的全部 MarkerProvider；重建失败由 Provider 直接记录诊断。
+        /// </summary>
+        /// <param name="actor">需要重建 Marker 索引的角色副本。</param>
+        /// <param name="rootProvider">角色根节点上的 MarkerProvider，可能为空。</param>
         private static void RebuildMarkerProviders(GameObject actor,
-            out MarkerProvider rootProvider, out string rootError)
+            out MarkerProvider rootProvider)
         {
             rootProvider = actor.GetComponent<MarkerProvider>();
-            rootError = rootProvider == null
-                ? "预览角色根节点没有 MarkerProvider，无法解析非空角色 MarkerKey。"
-                : string.Empty;
             foreach (MarkerProvider provider in actor.GetComponentsInChildren<MarkerProvider>(true))
-            {
-                bool succeeded = provider.TryRebuild(out string error);
-                if (provider == rootProvider && !succeeded) rootError = error;
-            }
+                provider.TryRebuild();
         }
         // 使用 AnimancerGraph 绝对定位源动画时间；根节点位移由 RootMotionCache 单独应用。
         internal void SamplePose(AnimationSample sample)

@@ -14,12 +14,20 @@ Gameplay Tag 使用 `State.Ready.Combat` 形式的树状路径表达作者语义
 
 ## 2. Editor 作者数据
 
-```text
-GameplayTagEditorNode
-├─ Guid         持久身份
-├─ Name         当前层级局部名称
-├─ Description  作者说明
-└─ ParentGuid   父节点身份，空值表示根节点
+```mermaid
+classDiagram
+    class GameplayTagEditorNode {
+        +Guid 持久身份
+        +Name 局部名称
+        +Description 作者说明
+        +ParentGuid 父节点身份
+    }
+    class GameplayTagDatabase {
+        +EditorNodes 作者节点
+        +RuntimeNodes 运行时节点
+    }
+    GameplayTagDatabase *-- GameplayTagEditorNode : 保存
+    GameplayTagEditorNode --> GameplayTagEditorNode : ParentGuid
 ```
 
 Path 不持久化，由父链实时计算。Path 字段采用延迟提交：Enter 或失焦后拆分完整路径，最后一段作为 Name，前缀作为父路径。缺失父级会在同一个 Undo 操作中自动创建；空层级、路径冲突以及移动到自身后代会整次拒绝。
@@ -28,25 +36,34 @@ Path 不持久化，由父链实时计算。Path 字段采用延迟提交：Ente
 
 GAS Editor 只保留一个真正的 `EditorWindow`，顶部选项卡切换同一内容区域中的模块页面：
 
-```text
-GAS_SettingWindow : EditorWindow
-├─ TabBar   Tag | GE | GA | 扩展空白
-└─ ContentHost
-   ├─ GameplayTagWindow（嵌入式 Tag 子 MVC）
-   ├─ Gameplay Effects Placeholder
-   └─ Gameplay Abilities Placeholder
+```mermaid
+flowchart TB
+    Window["GAS_SettingWindow : EditorWindow"]
+    Tabs["TabBar：Tag | GE | GA | 扩展空白"]
+    Host["ContentHost"]
+    TagPage["GameplayTagWindow\n嵌入式 Tag 子 MVC"]
+    GEPage["Gameplay Effects Placeholder"]
+    GAPage["Gameplay Abilities Placeholder"]
+    Window --> Tabs --> Host
+    Host --> TagPage
+    Host --> GEPage
+    Host --> GAPage
 ```
 
 资源与逻辑位于：
 
-```text
-GAS_Light/Editor
-├─ Logic/Window   GAS_SettingWindow 与 IGASSettingWindow
-└─ Style          主窗口选项卡 UXML/USS
-
-TagSystem/Editor
-├─ Logic   GameplayTagWindow、Controller、Service、Bake、Drawer、打开与会话逻辑
-└─ Style   Tag 页面 UXML、Tree 行 UXML、USS
+```mermaid
+flowchart LR
+    GAS["GAS_Light/Editor"]
+    GASLogic["Logic/Window\n主窗口与接口"]
+    GASStyle["Style\n主窗口 UXML/USS"]
+    Tags["TagSystem/Editor"]
+    TagLogic["Logic\nWindow、Controller、Service、Bake、Drawer、Session"]
+    TagStyle["Style\nTag 页面 UXML、Tree 行 UXML、USS"]
+    GAS --> GASLogic
+    GAS --> GASStyle
+    Tags --> TagLogic
+    Tags --> TagStyle
 ```
 
 窗口使用 UI Toolkit UXML/USS 和接口化 MVC，不引入完整 MVVM：
@@ -73,18 +90,14 @@ TagSystem/Editor
 
 ## 4. 烘焙
 
-```text
-Editor Nodes
-  ↓ 完整校验
-保留已有 Guid → TagId；新 Guid 使用单调递增 nextTagId
-  ↓
-计算 Parent 与 Ancestors
-  ↓
-生成 Dictionary<GameplayTag, GameplayTagNode>
-  ↓
-原子写入 GameplayTags.Generated.cs
-  ↓
-提交运行时字典、ID 历史和废弃 ID
+```mermaid
+flowchart TD
+    Nodes["Editor Nodes"] --> Validate["完整校验"]
+    Validate --> Ids["保留 Guid 对应 TagId\n新 Guid 使用单调递增 nextTagId"]
+    Ids --> Relations["计算 Parent 与 Ancestors"]
+    Relations --> Runtime["生成 Dictionary<GameplayTag, GameplayTagNode>"]
+    Runtime --> Generated["原子写入 GameplayTags.Generated.cs"]
+    Generated --> Commit["提交运行时字典、ID 历史与废弃 ID"]
 ```
 
 路径只在 Editor 烘焙期间用于生成稳定的 C# 访问字段，不进入 Player 数据库。烘焙失败时保留上一次有效运行时数据；作者数据发生修改后标记 Bake Dirty，进入 Play Mode 或 Build 前由 Guard 拦截。
@@ -94,6 +107,20 @@ Editor Nodes
 ## 5. UE 匹配语义
 
 调用方向固定为 `ActualTag.MatchesTag(QueryTag)`：更具体的实际标签能匹配自身和祖先查询，父标签不能反向匹配子标签。
+
+```mermaid
+flowchart LR
+    Actual["ActualTag：State.Ready.Combat"] --> Self["自身"]
+    Actual --> Parent["祖先：State.Ready"]
+    Actual --> Root["祖先：State"]
+    QueryChild["QueryTag：State.Ready.Combat"] --> MatchSelf["匹配"]
+    QueryParent["QueryTag：State.Ready"] --> MatchParent["匹配"]
+    QueryRoot["QueryTag：State"] --> MatchRoot["匹配"]
+    QueryChild --> MatchSelf
+    QueryParent --> MatchParent
+    QueryRoot --> MatchRoot
+    ParentActual["ActualTag：State"] -.->|不能向下匹配| QueryChild
+```
 
 
 | ActualTag            | QueryTag             | MatchesTag |
@@ -106,6 +133,13 @@ Editor Nodes
 ## 6. GameplayTagContainer
 
 Container 是纯运行时内存对象：`Tags` 保存显式标签，`ParentTags` 保存由数据库关系展开的隐式祖先。删除显式标签后会从剩余 Tags 完整重建祖先缓存，以正确处理共享祖先。
+
+```mermaid
+flowchart LR
+    Explicit["Tags\n显式标签"] --> Rebuild["按数据库关系重建"]
+    Rebuild --> Parents["ParentTags\n隐式祖先缓存"]
+    Remove["删除显式标签"] --> Rebuild
+```
 
 `IReadOnlyGameplayTagContainer` 统一普通 Container、计数 Container 和 Query 的只读匹配入口；`IGameplayTagContainer` 只为可直接增删的集合增加修改操作。空查询遵循 UE 语义：`HasAny(empty)` 为 false，`HasAll(empty)` 为 true。
 
@@ -125,11 +159,17 @@ Tag Count 与 GE StackCount 分离：前者表示目标当前拥有 Tag 的来�
 
 当前 Query 使用可直接理解和序列化的三组数组，不使用 Token Stream 或递归表达式：
 
-```text
-AllTags   全部满足
-AnyTags   非空时至少满足一个
-BanedTags  一个都不能满足
+```mermaid
+flowchart LR
+    Query["GameplayTagQuery"] --> All["AllTags：全部满足"]
+    Query --> Any["AnyTags：非空时至少满足一个"]
+    Query --> Baned["BanedTags：一个都不能拥有"]
+    All --> Formula["All(AllTags) && (AnyTags 为空 || Any(AnyTags)) && None(BanedTags)"]
+    Any --> Formula
+    Baned --> Formula
 ```
+
+`BanedTags` 表示容器不应该拥有的标签集合；其中任意一个标签通过层级 `HasTag` 匹配时，整个 Query 返回 false。
 
 三组条件均使用层级 `HasTag`。完全空 Query 表示没有限制，对任意非 null 容器返回 true；任意数组包含非法或未烘焙 Tag 时 Query 整体失效并返回 false。业务资产只序列化数组元素中的稳定 TagId。
 

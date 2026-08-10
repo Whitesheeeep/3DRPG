@@ -24,6 +24,8 @@ MonoBehaviour:
     noneTags: []
   grantedTags:
   - id: 8
+  cueTags:
+  - id: 18
   modifiers:
   - rid: 7552782473606201369
   - rid: 7552782473606201370

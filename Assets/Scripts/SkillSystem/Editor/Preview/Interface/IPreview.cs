@@ -93,9 +93,14 @@ namespace RPG.SkillSystem.Editor
                 ? ActorPoseProvider.GetRootPose(Config, Actor, frame)
                 : RootPose.Identity;
 
-        // 从当前预览角色解析指定语义挂点；空 Key 明确返回角色根节点。
-        internal bool TryGetBindingTransform(MarkerKey markerKey, out Transform transform,
-            out string error) => Actor.TryGetMarker(markerKey, out transform, out error);
+        /// <summary>
+        /// 从当前预览角色解析指定语义挂点；空 Key 明确返回角色根节点。
+        /// </summary>
+        /// <param name="markerKey">要解析的 MarkerKey。</param>
+        /// <param name="transform">成功时返回预览实例中的挂点。</param>
+        /// <returns>找到有效挂点时返回 true。</returns>
+        internal bool TryGetBindingTransform(MarkerKey markerKey, out Transform transform) =>
+            Actor.TryGetMarker(markerKey, out transform);
 
         // 通过动画模块临时采样目标帧的完整角色姿势与 Root Motion，并在查询后恢复当前帧。
         internal bool TryResolveBindingWorldMatrix(MarkerKey markerKey, int frame,

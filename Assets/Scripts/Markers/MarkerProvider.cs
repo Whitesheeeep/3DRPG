@@ -13,21 +13,6 @@ namespace RPG.Markers
 
         private Dictionary<MarkerKey, Transform> markers = new();
 
-        /// <summary>
-        /// 获取最近一次重建失败原因；空字符串表示当前索引有效。
-        /// </summary>
-        public string LastError { get; private set; } = string.Empty;
-
-        #endregion
-
-        #region 生命周期
-
-        // 在运行时实例初始化时建立当前作用域索引；换装或层级变化后由所有者再次显式重建。
-        private void Awake()
-        {
-            if (!TryRebuild(out string error)) Debug.LogError(error, this);
-        }
-
         #endregion
 
         #region 公开操作
@@ -35,9 +20,8 @@ namespace RPG.Markers
         /// <summary>
         /// 原子重建当前 Provider 作用域中的 Marker 索引，并排除嵌套 Provider 管理的节点。
         /// </summary>
-        /// <param name="error">失败时返回空 Key 或同作用域重复 Key 的明确原因。</param>
         /// <returns>完整索引构建成功时返回 true；失败时保留上一份有效索引。</returns>
-        public bool TryRebuild(out string error)
+        public bool TryRebuild()
         {
             TransformMarker[] components = GetComponentsInChildren<TransformMarker>(true);
             Dictionary<MarkerKey, Transform> rebuilt = new(components.Length);
@@ -47,24 +31,21 @@ namespace RPG.Markers
                 MarkerKey key = component.Key;
                 if (key == null)
                 {
-                    error = $"Marker 节点“{GetHierarchyPath(component.transform)}”没有配置 MarkerKey。";
-                    LastError = error;
+                    Debug.LogError($"Marker 节点“{GetHierarchyPath(component.transform)}”没有配置 MarkerKey。");
                     return false;
                 }
 
                 if (!rebuilt.TryAdd(key, component.transform))
                 {
                     Transform existing = rebuilt[key];
-                    error = $"MarkerProvider“{name}”中存在重复 MarkerKey“{key.name}”："
-                            + $"“{GetHierarchyPath(existing)}”与“{GetHierarchyPath(component.transform)}”。";
-                    LastError = error;
+                    Debug.LogError(
+                        $"MarkerProvider“{name}”中存在重复 MarkerKey“{key.name}”："
+                        + $"“{GetHierarchyPath(existing)}”与“{GetHierarchyPath(component.transform)}”。");
                     return false;
                 }
             }
 
             markers = rebuilt;
-            error = string.Empty;
-            LastError = string.Empty;
             return true;
         }
 

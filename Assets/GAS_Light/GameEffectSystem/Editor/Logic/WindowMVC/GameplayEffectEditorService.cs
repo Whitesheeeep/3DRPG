@@ -6,6 +6,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using WS_Modules.GAS.AttributeSystem;
+using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.GameplayEffect;
 
 namespace WS_Modules.GAS.Editor
@@ -271,6 +272,7 @@ namespace WS_Modules.GAS.Editor
             if (effect == null) return issues;
 
             ValidatePolicies(effect, issues);
+            ValidateCueTags(effect.CueTags, issues);
             GameplayAttributeRegistry registry = ResolveRegistry(issues);
             List<GameplayAttributeSet> sets = ResolveValidationSets(effect, issues);
             ValidateModifiers(effect, registry, sets, issues);
@@ -295,6 +297,29 @@ namespace WS_Modules.GAS.Editor
                 AddError(issues, "StackingType 包含未定义枚举值。");
             if (effect.StackingType != E_GameEffectStackingType.None && effect.MaxStackCount < 1)
                 AddError(issues, "启用叠层时 MaxStackCount 必须至少为 1。");
+        }
+
+        // CueTag 只检查序列化值和当前已初始化数据库中的映射，不复制运行时 Cue 规则。
+        private static void ValidateCueTags(
+            IReadOnlyList<WS_Modules.GAS.TAG.GameplayTag> cueTags,
+            ICollection<GameplayEffectValidationIssue> issues)
+        {
+            if (cueTags == null) return;
+            var unique = new HashSet<WS_Modules.GAS.TAG.GameplayTag>();
+            for (int i = 0; i < cueTags.Count; i++)
+            {
+                var tag = cueTags[i];
+                if (!tag.IsValid)
+                {
+                    AddError(issues, $"CueTags[{i}] 不是有效的 GameplayTag。");
+                    continue;
+                }
+                if (!unique.Add(tag))
+                    AddError(issues, $"CueTags[{i}] 与前面的 CueTag 重复。");
+                if (GameplayCueManager.Instance.IsInitialized &&
+                    !GameplayCueManager.Instance.TryGetCue(tag, out _))
+                    AddError(issues, $"CueTags[{i}] 在当前 CueDatabase 中没有对应 CueData。");
+            }
         }
 
         // 优先使用 Attribute Editor Session Registry；没有会话选择时只接受项目唯一 Registry。

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using WS_Modules.CustomEventSystem;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.AttributeSystem;
 using WS_Modules.GAS.GameplayEffect;
@@ -299,6 +300,45 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             DestroyImmediate(data);
             LogSummary();
         }
+
+        /// <summary>验证 Tick 回调注销其他回调和注册新回调时不会重复执行、漏执行或提前执行。</summary>
+        [Button("测试 Tick 回调修改安全")]
+        public void TestTickMutationSafety()
+        {
+            ResetTest();
+            int removedCallbackCount = 0;
+            int controllerCallbackCount = 0;
+            int nextFrameCallbackCount = 0;
+            bool nextFrameRegistered = false;
+            IUnRegister nextFrameRegistration = null;
+            IUnRegister removedRegistration = source.RegisterAbilityTick(
+                _ => removedCallbackCount++);
+            IUnRegister controllerRegistration = source.RegisterAbilityTick(_ =>
+            {
+                controllerCallbackCount++;
+                removedRegistration.UnRegister();
+                if (nextFrameRegistered) return;
+                nextFrameRegistered = true;
+                nextFrameRegistration = source.RegisterAbilityTick(
+                    _ => nextFrameCallbackCount++);
+            });
+
+            // 倒序执行的 Controller 回调先注销前一项，并在当前帧注册第三项。
+            source.Tick(0.1f);
+            Expect("被其他回调注销后本帧不再执行", removedCallbackCount == 0);
+            Expect("修改注册表的回调本帧只执行一次", controllerCallbackCount == 1);
+            Expect("Tick 中新增回调不在当前帧执行", nextFrameCallbackCount == 0);
+
+            source.Tick(0.1f);
+            Expect("下一帧继续执行原回调一次", controllerCallbackCount == 2);
+            Expect("新增回调从下一帧开始执行", nextFrameCallbackCount == 1);
+
+            controllerRegistration.UnRegister();
+            nextFrameRegistration?.UnRegister();
+            Expect("测试结束后 Tick 注册全部释放", source.TickRegistrationCount == 0);
+            LogSummary();
+        }
+
         /// <summary>验证外部 End、Cancel 与 Clear 对 Root Task 的不同终态传播。</summary>
         [Button("测试异步 End / Cancel / Clear")]
         public void TestAsynchronousTermination()
@@ -342,6 +382,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             TestSynchronousAbility();
             TestAsynchronousSequence();
             TestTickTask();
+            TestTickMutationSafety();
             TestAsynchronousTermination();
         }
         #endregion

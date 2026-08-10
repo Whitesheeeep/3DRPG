@@ -286,7 +286,7 @@ namespace RPG.SkillSystem.Editor
             try
             {
                 SampleActorAtFrame(config, actor, frame, applyRootMotion);
-                found = actor.TryGetMarker(markerKey, out Transform marker, out _);
+                found = actor.TryGetMarker(markerKey, out Transform marker);
                 if (found) matrix = marker.localToWorldMatrix;
             }
             finally

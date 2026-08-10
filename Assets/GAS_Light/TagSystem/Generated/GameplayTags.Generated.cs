@@ -6,6 +6,34 @@ namespace WS_Modules.GAS.Generated
     /// <summary>由 Gameplay Tag 烘焙器生成的稳定标签常量。</summary>
     public static class GameplayTags
     {
+        /// <summary>CueTest</summary>
+        public static readonly GameplayTag Tag_CueTest = new GameplayTag(10);
+        /// <summary>CueTest.Cue_Follow</summary>
+        public static readonly GameplayTag Tag_CueTest_Cue_Follow = new GameplayTag(14);
+        /// <summary>CueTest.Cue_Source</summary>
+        public static readonly GameplayTag Tag_CueTest_Cue_Source = new GameplayTag(12);
+        /// <summary>CueTest.Cue_Target</summary>
+        public static readonly GameplayTag Tag_CueTest_Cue_Target = new GameplayTag(13);
+        /// <summary>CueTest.Cue_world</summary>
+        public static readonly GameplayTag Tag_CueTest_Cue_world = new GameplayTag(11);
+        /// <summary>CueTest.GA</summary>
+        public static readonly GameplayTag Tag_CueTest_GA = new GameplayTag(20);
+        /// <summary>CueTest.GA.Instant</summary>
+        public static readonly GameplayTag Tag_CueTest_GA_Instant = new GameplayTag(21);
+        /// <summary>CueTest.GA.Passive</summary>
+        public static readonly GameplayTag Tag_CueTest_GA_Passive = new GameplayTag(22);
+        /// <summary>CueTest.GA.Projectile</summary>
+        public static readonly GameplayTag Tag_CueTest_GA_Projectile = new GameplayTag(23);
+        /// <summary>CueTest.GE</summary>
+        public static readonly GameplayTag Tag_CueTest_GE = new GameplayTag(15);
+        /// <summary>CueTest.GE.Duration</summary>
+        public static readonly GameplayTag Tag_CueTest_GE_Duration = new GameplayTag(17);
+        /// <summary>CueTest.GE.Infinite</summary>
+        public static readonly GameplayTag Tag_CueTest_GE_Infinite = new GameplayTag(18);
+        /// <summary>CueTest.GE.Instant</summary>
+        public static readonly GameplayTag Tag_CueTest_GE_Instant = new GameplayTag(16);
+        /// <summary>CueTest.GE.Periodic</summary>
+        public static readonly GameplayTag Tag_CueTest_GE_Periodic = new GameplayTag(19);
         /// <summary>MyTag</summary>
         public static readonly GameplayTag Tag_MyTag = new GameplayTag(0);
         /// <summary>MyTag.的</summary>

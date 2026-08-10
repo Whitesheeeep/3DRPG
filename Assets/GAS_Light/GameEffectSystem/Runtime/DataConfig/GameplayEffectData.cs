@@ -32,6 +32,8 @@ namespace WS_Modules.GAS.GameplayEffect
         private GameplayTagQuery targetTagQuery;
         [SerializeField, Tooltip("非 Instant GE 激活期间赋予 Target 的标签。")]
         private GameplayTag[] grantedTags = Array.Empty<GameplayTag>();
+        [SerializeField, Tooltip("GE 成功提交后发布的 GameplayCueTag 列表。")]
+        private GameplayTag[] cueTags = Array.Empty<GameplayTag>();
         [SerializeReference, Tooltip("按列表顺序执行；每项生成一个最终 Attribute Modifier。")]
         private List<GameplayEffectModifier> modifiers = new();
 
@@ -79,6 +81,8 @@ namespace WS_Modules.GAS.GameplayEffect
         public GameplayTagQuery TargetTagQuery => targetTagQuery;
         /// <summary>获取激活期间赋予 Target 的标签。</summary>
         public IReadOnlyList<GameplayTag> GrantedTags => grantedTags;
+        /// <summary>获取 GE 成功提交后发布的 CueTag 列表。</summary>
+        public IReadOnlyList<GameplayTag> CueTags => cueTags;
         /// <summary>获取按顺序计算并提交的 GE Modifier 作者配置。</summary>
         public IReadOnlyList<GameplayEffectModifier> Modifiers => modifiers;
         /// <summary>获取重复应用时的合并规则。</summary>

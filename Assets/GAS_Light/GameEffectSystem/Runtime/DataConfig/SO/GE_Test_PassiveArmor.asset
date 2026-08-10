@@ -22,6 +22,8 @@ MonoBehaviour:
     anyTags: []
     noneTags: []
   grantedTags: []
+  cueTags:
+  - id: 18
   modifiers:
   - rid: 889100410001
   validationSets: []

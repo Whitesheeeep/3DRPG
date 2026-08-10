@@ -13,6 +13,7 @@
             <uie:PropertyField name="ExecutePeriodField" binding-path="executePeriodicOnApplication" label="Execute On Application" />
             <uie:PropertyField name="TargetTagQueryField" binding-path="targetTagQuery" label="Target Tag Query" />
             <uie:PropertyField name="GrantedTagsField" binding-path="grantedTags" label="Granted Tags" />
+            <uie:PropertyField name="CueTagsField" binding-path="cueTags" label="Cue Tags" />
             <ui:VisualElement name="StackingGroup" class="ge-config-group">
                 <ui:Label text="Stacking" class="ge-section-title" />
                 <uie:PropertyField name="StackingTypeField" binding-path="stackingType" label="Stacking Type" />

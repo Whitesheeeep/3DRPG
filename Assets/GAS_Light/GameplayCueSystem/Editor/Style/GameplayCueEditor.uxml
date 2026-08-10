@@ -1,0 +1,27 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <Style src="project://database/Assets/GAS_Light/GameplayCueSystem/Editor/Style/GameplayCueEditor.uss?fileID=7433441132597879392&amp;guid=b3c884f83e9b6f749bf44189e4f76c6a&amp;type=3#GameplayCueEditor" />
+    <ui:VisualElement class="cue-page">
+        <ui:VisualElement class="cue-toolbar">
+            <uie:ObjectField name="DatabaseField" label="Cue Database" class="cue-database-field" />
+            <ui:Button name="CreateDatabaseButton" text="Create Database" />
+            <ui:Button name="RefreshButton" text="Refresh" />
+        </ui:VisualElement>
+        <ui:VisualElement name="ToolBar" style="flex-grow: 0; height: -35px; flex-direction: row;">
+            <ui:VisualElement class="cue-list-toolbar" style="flex-grow: 1;">
+                <ui:Button name="CreateCueButton" text="Create Cue" />
+                <ui:Button name="AddCueButton" text="Add Existing" />
+                <ui:Button name="DuplicateCueButton" text="Duplicate" />
+            </ui:VisualElement>
+            <uie:ToolbarSearchField name="SearchField" class="cue-search" />
+        </ui:VisualElement>
+        <ui:TwoPaneSplitView fixed-pane-index="0" fixed-pane-initial-dimension="270" orientation="Horizontal" class="cue-main-split">
+            <ui:VisualElement class="cue-assets-panel">
+                <ui:ListView name="CueList" class="cue-list" />
+            </ui:VisualElement>
+            <ui:ScrollView name="DetailsScroll" class="cue-details-scroll">
+                <ui:VisualElement name="DetailsHost" class="cue-details-host" />
+                <ui:VisualElement name="ValidationHost" class="cue-validation-host" />
+            </ui:ScrollView>
+        </ui:TwoPaneSplitView>
+    </ui:VisualElement>
+</ui:UXML>

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.GameplayEffect;
+using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.TAG;
 
 namespace WS_Modules.GAS.GameplayAbilitySystem
@@ -20,6 +21,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private GameplayEffectData cooldownEffect;
         [SerializeField, Tooltip("Ability 的统一结果 GE 列表，由具体 Data 或 Task 决定应用时机。")]
         private List<GameplayEffectData> effects = new();
+        [SerializeField, Tooltip("Ability 成功执行后发布的 GameplayCueTag 列表。")]
+        private GameplayTag[] cueTags = System.Array.Empty<GameplayTag>();
         #endregion
 
         #region 属性
@@ -33,6 +36,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         public GameplayEffectData CooldownEffect => cooldownEffect;
         /// <summary>获取该 Ability 配置的统一结果 GE 列表。</summary>
         public IReadOnlyList<GameplayEffectData> Effects => effects;
+        /// <summary>获取 Ability 配置的 CueTag 列表。</summary>
+        public IReadOnlyList<GameplayTag> CueTags => cueTags;
 
         // 让 Controller 在提交 Cost/Cooldown 前检查具体 Data 的运行时契约。
         internal virtual bool IsRuntimeConfigurationValid => true;
@@ -84,6 +89,38 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             }
 
             return appliedCount;
+        }
+
+        // 具体 Ability 或 Task 在确定的业务时机发布 Cue，基类只遍历作者配置。
+        internal void PublishConfiguredCues(
+            GameplayCueEventType eventType,
+            GameplayAbilitySystemComponent source,
+            GameplayAbilitySystemComponent target,
+            GameEffectRuntime effectRuntime = null,
+            GameplayAbilityRuntime abilityRuntime = null,
+            Vector3? position = null,
+            Quaternion? rotation = null,
+            Transform attachTransform = null)
+        {
+            if (source == null || target == null || cueTags == null) return;
+            for (int i = 0; i < cueTags.Length; i++)
+            {
+                GameplayCueRequest request;
+                if (position.HasValue || attachTransform != null)
+                {
+                    request = new GameplayCueRequest(
+                        cueTags[i], eventType, source, target, effectRuntime, abilityRuntime,
+                        position ?? target.transform.position,
+                        rotation ?? Quaternion.identity,
+                        attachTransform);
+                }
+                else
+                {
+                    request = new GameplayCueRequest(
+                        cueTags[i], eventType, source, target, effectRuntime, abilityRuntime);
+                }
+                target.PublishGameplayCue(request);
+            }
         }
         #endregion
     }

@@ -203,13 +203,20 @@ namespace RPG.SkillSystem.Editor
                 ? clip.Id
                 : $"runtime:{RuntimeHelpers.GetHashCode(clip)}";
 
-        // 每个 Clip 先解析自己的 Marker；FollowBinding 使用当前姿态，KeepWorldPosition 冻结起始帧姿态。
+        /// <summary>
+        /// 每个 Clip 先解析自己的 Marker；FollowBinding 使用当前姿态，KeepWorldPosition 冻结起始帧姿态。
+        /// </summary>
+        /// <param name="context">当前预览帧上下文。</param>
+        /// <param name="clip">需要解析挂点的 VFX Clip。</param>
+        /// <param name="bindingTransform">解析到的挂点。</param>
+        /// <param name="matrix">用于生成或冻结 VFX 的世界矩阵。</param>
+        /// <returns>挂点和世界矩阵解析成功时返回 true。</returns>
         private bool TryResolveBindingMatrix(in PreviewFrameContext context,
             VfxSkillClipConfig clip, out Transform bindingTransform, out Matrix4x4 matrix)
         {
-            if (!context.TryGetBindingTransform(clip.MarkerKey, out bindingTransform, out string error))
+            if (!context.TryGetBindingTransform(clip.MarkerKey, out bindingTransform))
             {
-                RecordBindingError(clip, error);
+                RecordBindingError(clip, "预览角色无法解析该 Clip 的 MarkerKey，请查看 Console 中的 MarkerProvider 诊断。");
                 matrix = Matrix4x4.identity;
                 return false;
             }

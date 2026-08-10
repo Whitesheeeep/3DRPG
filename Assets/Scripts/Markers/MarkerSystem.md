@@ -35,7 +35,7 @@ Character（MarkerProvider）
 
 - MarkerKey 不能为空。
 - MarkerKey 必须唯一。
-- 重建失败时保留上一份有效索引，并通过 `LastError` 暴露失败原因。
+- 重建失败时保留上一份有效索引，并由 `MarkerProvider` 直接记录明确的 Console 错误；调用方只依据 `TryRebuild()` 的布尔结果继续处理。
 - Provider 会在 `Awake()`初次重建；换装或层级变化后必须由实例所有者再次调用 `TryRebuild()`。
 
 ## 3. 创建与配置

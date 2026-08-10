@@ -350,6 +350,8 @@ namespace WS_Modules.GAS.AttributeSystem
                 modifier.Owner != null ||
                 !TryGetDefinition(modifier.Attribute, out GameplayAttributeDefinition definition) ||
                 definition.Type != GameplayAttributeType.Stat ||
+                (modifier.Type == AttributeModifierType.Override &&
+                 definition.Aggregator.HasOverride(modifier.Priority)) ||
                 !TryBeginModifierTransaction())
                 return false;
 
@@ -487,7 +489,10 @@ namespace WS_Modules.GAS.AttributeSystem
                     !uniqueModifiers.Add(modifier) ||
                     !ReferenceEquals(modifier.Source, source) ||
                     !TryGetDefinition(modifier.Attribute, out GameplayAttributeDefinition definition) ||
-                    definition.Type != GameplayAttributeType.Stat)
+                    definition.Type != GameplayAttributeType.Stat ||
+                    (modifier.Type == AttributeModifierType.Override &&
+                     (HasPreviousOverride(modifiers, i, modifier) ||
+                      definition.Aggregator.HasOverride(modifier.Priority, source))))
                     return false;
                 newDefinitions.Add(definition);
             }
@@ -552,6 +557,32 @@ namespace WS_Modules.GAS.AttributeSystem
                 changeTransaction.Complete();
             }
         }
+        #endregion
+
+        #region Modifier 校验
+
+        /// <summary>检查 Replace 候选列表前段是否已有相同 Attribute 和 Priority 的 Override。</summary>
+        /// <param name="modifiers">本次准备整体提交的候选 Modifier。</param>
+        /// <param name="currentIndex">当前已经通过基础校验的候选索引。</param>
+        /// <param name="current">当前 Override 候选。</param>
+        /// <returns>候选集合自身存在 Override 冲突时返回 true。</returns>
+        private static bool HasPreviousOverride(
+            IReadOnlyList<AttributeModifier> modifiers,
+            int currentIndex,
+            AttributeModifier current)
+        {
+            for (int i = 0; i < currentIndex; i++)
+            {
+                AttributeModifier previous = modifiers[i];
+                if (previous.Type == AttributeModifierType.Override &&
+                    previous.Attribute == current.Attribute &&
+                    previous.Priority == current.Priority)
+                    return true;
+            }
+
+            return false;
+        }
+
         #endregion
 
         #region 修改事务

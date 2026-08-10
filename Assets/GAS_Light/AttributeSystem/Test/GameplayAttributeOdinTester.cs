@@ -12,6 +12,15 @@ namespace WS_Modules.GAS.AttributeSystem
     /// </summary>
     public sealed class GameplayAttributeOdinTester : MonoBehaviour, IModifierSource
     {
+        #region 测试类型
+
+        /// <summary>提供与 Tester 不同的 Modifier Source，用于验证跨 Source Override 冲突。</summary>
+        private sealed class TestModifierSource : IModifierSource
+        {
+        }
+
+        #endregion
+
         #region 测试输入与状态
 
         [Title("通用 Attribute 测试")]
@@ -200,6 +209,55 @@ namespace WS_Modules.GAS.AttributeSystem
             LogBooleanResult("Instant Modifier 不绑定 Owner", instantRemainsUnbound, true);
         }
 
+        /// <summary>验证同 Attribute、同 Priority 的持续 Override 唯一性和 Replace 原子回滚。</summary>
+        [Button("测试 Override 唯一性")]
+        public void TestOverrideUniqueness()
+        {
+            if (!TryInitializeFourAttributeTest()) return;
+            GameplayAttribute armor = GameplayAttributes.Attribute_Armor;
+            const int priority = 7;
+            var otherSource = new TestModifierSource();
+            var original = new AttributeModifier(
+                this, armor, AttributeModifierType.Override, 20f, priority);
+            bool originalAdded = container.TryAddModifier(original);
+            LogBooleanResult("首次 Override 添加", originalAdded, true);
+            AssertCurrentValue("首次 Override 结果", armor, 20f);
+
+            var crossSourceConflict = new AttributeModifier(
+                otherSource, armor, AttributeModifierType.Override, 30f, priority);
+            bool crossSourceRejected = !container.TryAddModifier(crossSourceConflict);
+            LogBooleanResult("不同 Source 同 Priority Override 被拒绝", crossSourceRejected, true);
+            LogBooleanResult("冲突 Modifier 保持未绑定", crossSourceConflict.Owner == null, true);
+            AssertCurrentValue("冲突后旧结果保持", armor, 20f);
+
+            var replacement = new AttributeModifier(
+                this, armor, AttributeModifierType.Override, 40f, priority);
+            bool replaced = container.TryReplaceModifiers(
+                this,
+                new AttributeModifier[] { replacement });
+            LogBooleanResult("相同 Source 原子替换 Override", replaced, true);
+            LogBooleanResult("旧 Override 替换后解除绑定", original.Owner == null, true);
+            LogBooleanResult("新 Override 替换后绑定", replacement.Owner == container, true);
+            AssertCurrentValue("替换后的 Override 结果", armor, 40f);
+
+            var duplicateA = new AttributeModifier(
+                this, armor, AttributeModifierType.Override, 50f, priority);
+            var duplicateB = new AttributeModifier(
+                this, armor, AttributeModifierType.Override, 60f, priority);
+            bool duplicateReplaceRejected = !container.TryReplaceModifiers(
+                this,
+                new AttributeModifier[] { duplicateA, duplicateB });
+            LogBooleanResult("Replace 候选重复 Override 被拒绝", duplicateReplaceRejected, true);
+            LogBooleanResult("失败候选保持未绑定",
+                duplicateA.Owner == null && duplicateB.Owner == null, true);
+            LogBooleanResult("Replace 失败后旧 Handle 保持绑定", replacement.Owner == container, true);
+            AssertCurrentValue("Replace 失败后旧结果保持", armor, 40f);
+
+            bool removed = container.TryRemoveModifiers(this, out int removedCount);
+            LogBooleanResult("Override 测试清理成功", removed && removedCount == 1, true);
+            AssertCurrentValue("Override 清理后恢复基础值", armor, 10f);
+        }
+
         #endregion
 
         #region 四属性场景按钮
@@ -241,6 +299,8 @@ namespace WS_Modules.GAS.AttributeSystem
 
             bool modifierReady = TryInitializeFourAttributeTest();
             if (modifierReady) RunModifierScenario();
+
+            TestOverrideUniqueness();
 
             appliedModifiers.Clear();
             selectedModifierIndex = 0;

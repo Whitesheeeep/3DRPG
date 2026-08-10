@@ -6,14 +6,12 @@
 
 运行时只使用一个 `GameEffectRuntime`：Instant 创建临时 Runtime 后立即释放；Duration 与 Infinite 把同一种 Runtime 加入目标 `GameEffectCtrl.ActiveEffects`。当前不拆分 Spec 和 Active，也不增加独立计算 Context。
 
-```text
-GameplayEffectData
-        ↓ GameEffectCtrl 创建
-GameEffectRuntime(Data、Source、Target、Level、StackCount、SetByCaller、计时)
-        ↓ GameplayEffectModifier 计算
-AttributeModifier List
-        ↓
-Target GameplayAttributeContainer
+```mermaid
+flowchart TD
+    Data["GameplayEffectData\n可复用 SO 配置"] -->|GameEffectCtrl 创建| Runtime["GameEffectRuntime\nData / Source / Target / Level / Stack / SetByCaller / 计时"]
+    Runtime -->|逐项 CalculateMagnitude| Modifiers["GameplayEffectModifier 列表"]
+    Modifiers --> Results["AttributeModifier 列表"]
+    Results --> Target["Target GameplayAttributeContainer"]
 ```
 
 ## GameplayEffectModifier
@@ -27,6 +25,18 @@ Target GameplayAttributeContainer
 - 自定义 Modifier 可以读取 Source/Target CurrentValue、Runtime.Level 和 Runtime.StackCount；一个配置只生成一个 AttributeModifier，多个目标使用多个配置项。
 
 所有 Modifier 作者配置必须无运行时状态。层数不由框架自动放大；需要层数参与时，由具体子类明确读取 `Runtime.StackCount`，避免双重缩放。
+
+```mermaid
+flowchart LR
+    Fixed["Fixed"] --> Output["一个最终 AttributeModifier"]
+    Curve["Curve"] --> Output
+    Level["Level 阶梯值"] --> Output
+    Caller["SetByCaller"] --> Output
+    Runtime["Source / Target / Level / StackCount / SetByCaller"] --> Fixed
+    Runtime --> Curve
+    Runtime --> Level
+    Runtime --> Caller
+```
 
 离散 Level 配置必须包含 Level 1，等级必须为正数且不可重复，Magnitude 必须为有限值。列表顺序不参与语义；运行时线性选择不高于当前等级的最高条目，不进行插值、LINQ 或临时排序。
 
@@ -43,6 +53,19 @@ GE 配置由 Editor 作者数据保证结构正确。Modifier 直接产出最终
 候选 Runtime 不是保底默认值，而是叠层事务的暂存状态。只有 AttributeContainer 成功提交整组 Modifier 后，Source、Level、StackCount、SetByCaller 和计时才会写回现有 Runtime，防止数值状态与 GE 状态分离。
 
 ## 生命周期
+
+```mermaid
+stateDiagram-v2
+    [*] --> Created
+    Created --> InstantApplied: Instant 结算成功
+    Created --> Active: Duration / Infinite 首次应用成功
+    Active --> Active: Periodic Tick / 叠层重算
+    Active --> Expired: Duration 到期
+    Active --> Removed: 主动移除
+    Expired --> Removed
+    InstantApplied --> [*]
+    Removed --> [*]
+```
 
 | DurationType | Period | 运行方式 |
 |---|---:|---|
@@ -64,26 +87,68 @@ Runtime 移除时不重新计算 Magnitude，也不反向计算 Magnitude。`Gam
 
 层数增加或成功溢出覆盖时，Controller 使用候选 Runtime 计算 Modifier；持续 GE 通过 AttributeContainer 原子替换原 Runtime 的整组 Modifier，成功后才提交 Source、StackCount 和计时。失败不会留下半更新 Runtime。
 
+```mermaid
+sequenceDiagram
+    participant Caller as Apply 调用方
+    participant Ctrl as GameEffectCtrl
+    participant Candidate as Candidate Runtime
+    participant Attr as AttributeContainer
+    participant Active as Existing Runtime
+    Caller->>Ctrl: 重新应用同 Data
+    Ctrl->>Candidate: 复制新 Level、StackCount、计时与 SetByCaller
+    Candidate->>Ctrl: 计算新 AttributeModifier 列表
+    Ctrl->>Attr: TryReplaceModifiers(Source, modifiers)
+    alt 原子校验成功
+        Attr-->>Ctrl: 提交新聚合值
+        Ctrl->>Active: 写回 Source、层数与计时
+    else 任意 Attribute 失败
+        Attr-->>Ctrl: 拒绝并恢复旧值
+        Ctrl-->>Caller: 失败，旧 Runtime 保持不变
+    end
+```
+
 GrantedTags 按 Active Runtime 计数，而不是按 StackCount 计数。多个 Runtime 共享 Tag 时，由 `GameplayTagCountContainer` 保证移除其中一个不会提前清除标签。
 
 Duration 到期策略只保留两种：`ClearEntireStack` 清除整个 Active Runtime；`RemoveSingleStackAndRefreshDuration` 每次移除一层，仍有层数时刷新完整 Duration。到期后不减少层数、只自动刷新 Duration 的策略等价于 Infinite，因此不提供；永久效果必须明确配置为 `Infinite`。
 
 ## 依赖方向
 
-```text
-GameplayAbilitySystemComponent
-├─ GameplayTagCountContainer
-├─ GameplayAttributeContainer
-└─ GameEffectCtrl
-   ├─ GameplayEffectData
-   ├─ GameEffectRuntime : IModifierSource
-   └─ GameplayEffectModifier
-      └─ 直接输出不可变 AttributeModifier
+```mermaid
+flowchart TD
+    ASC["GameplayAbilitySystemComponent"] --> Tags["GameplayTagCountContainer"]
+    ASC --> Attributes["GameplayAttributeContainer"]
+    ASC --> GEController["GameEffectCtrl"]
+    GEController --> Data["GameplayEffectData"]
+    GEController --> GERuntime["GameplayEffectRuntime : IModifierSource"]
+    Data --> Modifier["GameplayEffectModifier"]
+    Modifier --> AttributeModifier["不可变 AttributeModifier"]
+    AttributeModifier --> Attributes
 ```
 
 配置资产不依赖 Editor Window；`GameEffectCtrl` 不依赖 View、Editor 或 Odin Tester。Odin Tester 仅在 `UNITY_EDITOR` 下调用真实公开 API。
 
+```mermaid
+flowchart TD
+    ASC["GameplayAbilitySystemComponent"] --> Tags["GameplayTagCountContainer"]
+    ASC --> Attributes["GameplayAttributeContainer"]
+    ASC --> GEController["GameEffectCtrl"]
+    GEController --> Data["GameplayEffectData"]
+    GEController --> GERuntime["GameplayEffectRuntime : IModifierSource"]
+    Data --> Modifier["GameplayEffectModifier"]
+    Modifier --> AttributeModifier["不可变 AttributeModifier"]
+    AttributeModifier --> Attributes
+```
+
 ## Editor 作者流程
+
+```mermaid
+flowchart LR
+    Asset["选择 GameplayEffectData"] --> Details["SerializedObject 详情"]
+    Details --> ModifierEdit["Managed-reference Modifier 编辑"]
+    ModifierEdit --> Validate["延迟合并校验"]
+    Validate --> State["列表 Error/Warning 背景"]
+    ModifierEdit --> Undo["Unity Undo/Redo"]
+```
 
 GE Editor 作为 `GAS_SettingWindow` 的内嵌 MVC 页面，不创建独立 `EditorWindow`。左侧列出项目中的 `GameplayEffectData`，右侧直接使用 `SerializedObject` 绑定配置和选中的 managed-reference Modifier，不设置 Apply 按钮。字段 Enter 或失焦提交后，校验请求合并到下一次 Editor 更新执行，避免阻塞当前点击和拖放事件。
 

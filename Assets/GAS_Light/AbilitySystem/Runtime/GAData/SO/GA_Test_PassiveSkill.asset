@@ -23,6 +23,8 @@ MonoBehaviour:
     rid: 3428733691224653825
   effects:
   - {fileID: 11400000, guid: a12f1e6d370a4f93a846d7d9b3e20c71, type: 2}
+  cueTags:
+  - id: 22
   references:
     version: 2
     RefIds:

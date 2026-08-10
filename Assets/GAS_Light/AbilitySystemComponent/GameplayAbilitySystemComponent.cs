@@ -5,6 +5,7 @@ using WS_Modules.CustomEventSystem;
 using WS_Modules.GAS.AttributeSystem;
 using WS_Modules.GAS.GameplayAbilitySystem;
 using WS_Modules.GAS.GameplayEffect;
+using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.TAG;
 
 namespace WS_Modules.GAS.AbilitySystemComponent
@@ -17,6 +18,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
     {
         #region 字段
         private GameplayAbilityCtrl abilityController;
+        private GameplayCueCtrl cueController;
         private bool initialized;
         #endregion
 
@@ -36,6 +38,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         /// <summary>获取当前实例的 GA Controller。</summary>
         public IGameplayAbilityCtrl Abilities { get; private set; }
 
+        /// <summary>获取当前 ASC 的 GameplayCue 控制器。</summary>
+        public IGameplayCueCtrl Cues { get; private set; }
+
         /// <summary>获取当前 Target ASC 上 Active GE 的只读列表。</summary>
         public IReadOnlyList<GameEffectRuntime> ActiveEffects => GameEffectCtrl.ActiveEffects;
 
@@ -50,6 +55,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
 
         // Attribute 结算必须绕过只读门面，由 ASC 内部统一持有可变实例。
         internal GameplayAttributeContainer MutableAttributes { get; private set; }
+
+        /// <summary>接收 GE/GA 提交成功后的局部 Cue 请求。</summary>
+        internal event Action<GameplayCueRequest> CueRequested;
         #endregion
 
         #region Unity 生命周期
@@ -63,10 +71,16 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             GameEffectCtrl = new GameEffectCtrl(this);
             abilityController = new GameplayAbilityCtrl(this);
             Abilities = abilityController;
+            cueController = new GameplayCueCtrl(this);
+            Cues = cueController;
         }
 
         // 组件销毁时释放 Tick 注册、Active GA、GE 和容器运行状态。
-        private void OnDestroy() => Clear();
+        private void OnDestroy()
+        {
+            Clear();
+            cueController.Dispose();
+        }
         #endregion
 
         #region 公开生命周期
@@ -95,6 +109,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         {
             abilityController.Clear();
             GameEffectCtrl.Clear();
+            cueController.Clear();
             MutableTags.Reset();
             MutableAttributes.Clear();
             initialized = false;
@@ -238,6 +253,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         // TickTask 通过 ASC 注册到所属 Ability Controller，避免依赖外部调度器实现。
         internal IUnRegister RegisterAbilityTick(Action<float> callback) =>
             abilityController.RegisterTick(callback);
+
+        // 仅允许当前 ASC 内部发布 Cue 请求，Controller 负责消费和对象池生命周期。
+        internal void PublishGameplayCue(GameplayCueRequest request) => CueRequested?.Invoke(request);
         #endregion
     }
 }

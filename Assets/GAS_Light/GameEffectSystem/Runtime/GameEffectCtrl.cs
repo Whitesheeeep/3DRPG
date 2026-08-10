@@ -4,6 +4,8 @@ using System.Linq;
 using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.AttributeSystem;
+using WS_Modules.GAS.GameplayAbilitySystem;
+using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.TAG;
 
 namespace WS_Modules.GAS.GameplayEffect
@@ -83,6 +85,7 @@ namespace WS_Modules.GAS.GameplayEffect
             Owner.MutableAttributes.TryRemoveModifiers(activeEffect, out _);
             activeEffects.RemoveAt(index);
             activeEffect.SetActive(false);
+            PublishCues(activeEffect.Data, GameplayCueEventType.Remove, activeEffect.Source, activeEffect, null);
             return true;
         }
 
@@ -118,7 +121,10 @@ namespace WS_Modules.GAS.GameplayEffect
         {
             var runtime = new GameEffectRuntime(data, source, Owner, level, setByCaller);
             List<AttributeModifier> results = runtime.CalculateModifiers(runtime);
-            return Owner.MutableAttributes.TryApplyInstantModifiers(results);
+            bool applied = Owner.MutableAttributes.TryApplyInstantModifiers(results);
+            if (applied)
+                PublishCues(data, GameplayCueEventType.Execute, source, runtime, null);
+            return applied;
         }
 
         // 创建新 Active 前完成当前应执行的 Modifier 计算与 Tag 校验；延迟周期不会提前消费随机计算。
@@ -146,6 +152,9 @@ namespace WS_Modules.GAS.GameplayEffect
             runtime.SetActive(true);
             activeEffects.Add(runtime);
             activeEffect = runtime;
+            PublishCues(data, GameplayCueEventType.Active, source, runtime, null);
+            if (data.IsPeriodic && data.ExecutePeriodicOnApplication)
+                PublishCues(data, GameplayCueEventType.Execute, source, runtime, null);
             return true;
         }
 
@@ -185,6 +194,7 @@ namespace WS_Modules.GAS.GameplayEffect
 
             existing.CommitCandidate(candidate);
             activeEffect = existing;
+            PublishCues(data, GameplayCueEventType.Execute, source, existing, null);
             return true;
         }
 
@@ -215,7 +225,8 @@ namespace WS_Modules.GAS.GameplayEffect
             while (remaining <= 0f)
             {
                 List<AttributeModifier> results = runtime.CalculateModifiers(runtime);
-                Owner.MutableAttributes.TryApplyInstantModifiers(results);
+                if (Owner.MutableAttributes.TryApplyInstantModifiers(results))
+                    PublishCues(runtime.Data, GameplayCueEventType.Execute, runtime.Source, runtime, null);
                 remaining += runtime.Data.Period;
             }
 
@@ -348,6 +359,23 @@ namespace WS_Modules.GAS.GameplayEffect
         // GE 计时、等级输入和 SetByCaller 均禁止 NaN 与 Infinity。
         private static bool IsFinite(float value) =>
             !float.IsNaN(value) && !float.IsInfinity(value);
+
+        // 将已提交的 GE 生命周期转成 ASC 局部事件，Cue 失败不会影响 GE 结果。
+        private void PublishCues(
+            GameplayEffectData data,
+            GameplayCueEventType eventType,
+            GameplayAbilitySystemComponent source,
+            GameEffectRuntime effectRuntime,
+            GameplayAbilityRuntime abilityRuntime)
+        {
+            IReadOnlyList<GameplayTag> tags = data.CueTags;
+            if (tags == null) return;
+            for (int i = 0; i < tags.Count; i++)
+            {
+                Owner.PublishGameplayCue(new GameplayCueRequest(
+                    tags[i], eventType, source, Owner, effectRuntime, abilityRuntime));
+            }
+        }
 
         #endregion
     }

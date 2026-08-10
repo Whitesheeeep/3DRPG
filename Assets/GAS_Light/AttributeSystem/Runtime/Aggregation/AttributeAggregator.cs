@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace WS_Modules.GAS.AttributeSystem
@@ -13,20 +14,47 @@ namespace WS_Modules.GAS.AttributeSystem
 
         #region Modifier 管理
 
-        // 添加已经由 Container 校验的 Modifier，并保持 Priority 从小到大排列。
+        /// <summary>添加已经由 Container 校验的 Modifier，并保持 Priority 从小到大排列。</summary>
+        /// <param name="modifier">需要加入聚合器的运行时 Modifier。</param>
         internal void Add(AttributeModifier modifier)
         {
             modifiers.Add(modifier);
             SortByPriority();
         }
 
-        // 按对象引用判断该 Modifier 是否属于当前 Aggregator。
+        /// <summary>按对象引用判断该 Modifier 是否属于当前 Aggregator。</summary>
+        /// <param name="modifier">需要查询的运行时 Modifier。</param>
+        /// <returns>当前聚合器持有该对象时返回 true。</returns>
         internal bool Contains(AttributeModifier modifier) => modifiers.Contains(modifier);
 
-        // 按对象引用移除单个 Modifier。
+        /// <summary>按对象引用移除单个 Modifier。</summary>
+        /// <param name="modifier">需要移除的运行时 Modifier。</param>
+        /// <returns>成功移除时返回 true。</returns>
         internal bool Remove(AttributeModifier modifier) => modifiers.Remove(modifier);
 
-        // 移除指定 Source 的全部 Modifier，并返回实例供失败事务恢复。
+        /// <summary>检查指定 Priority 是否已有其他 Source 提供的 Override。</summary>
+        /// <param name="priority">需要检查的运算优先级。</param>
+        /// <param name="ignoredSource">替换事务中即将整体移除、因此应忽略的 Source。</param>
+        /// <returns>存在冲突 Override 时返回 true。</returns>
+        internal bool HasOverride(int priority, IModifierSource ignoredSource = null)
+        {
+            for (int i = 0; i < modifiers.Count; i++)
+            {
+                AttributeModifier modifier = modifiers[i];
+                if (modifier.Priority != priority ||
+                    modifier.Type != AttributeModifierType.Override ||
+                    ReferenceEquals(modifier.Source, ignoredSource))
+                    continue;
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>移除指定 Source 的全部 Modifier，并返回实例供失败事务恢复。</summary>
+        /// <param name="source">需要移除的 Modifier 来源。</param>
+        /// <param name="removed">接收被移除对象的列表。</param>
+        /// <returns>实际移除数量。</returns>
         internal int RemoveBySource(
             IModifierSource source,
             List<AttributeModifier> removed)
@@ -44,14 +72,16 @@ namespace WS_Modules.GAS.AttributeSystem
             return count;
         }
 
-        // 恢复原子操作中暂时移除的 Modifier；同 Priority 最多一个 Override，因此 List 顺序不影响结果。
+        /// <summary>恢复原子操作中暂时移除的 Modifier。</summary>
+        /// <param name="removed">需要恢复的运行时 Modifier。</param>
         internal void Restore(IReadOnlyList<AttributeModifier> removed)
         {
             for (int i = 0; i < removed.Count; i++) modifiers.Add(removed[i]);
             SortByPriority();
         }
 
-        // Container 被清空或重新初始化时解除全部 Handle，并清空当前聚合集合。
+        /// <summary>在 Container 清空或重新初始化时解除全部 Handle，并清空聚合集合。</summary>
+        /// <param name="owner">当前绑定的 Attribute Container。</param>
         internal void DetachAll(GameplayAttributeContainer owner)
         {
             for (int i = 0; i < modifiers.Count; i++) modifiers[i].Detach(owner);
@@ -62,7 +92,10 @@ namespace WS_Modules.GAS.AttributeSystem
 
         #region 聚合计算
 
-        // 按优先级从小到大执行；每级先计算 Add/Multiply，再由唯一 Override 覆盖。
+        /// <summary>按优先级从小到大执行；每级先计算 Add/Multiply，再由唯一 Override 覆盖。</summary>
+        /// <param name="baseValue">进入聚合器的内部基础值。</param>
+        /// <param name="result">接收最终有限数值。</param>
+        /// <returns>全部运算合法且不存在 Override 冲突时返回 true。</returns>
         internal bool TryEvaluate(float baseValue, out float result)
         {
             if (!IsFinite(baseValue))
@@ -94,10 +127,10 @@ namespace WS_Modules.GAS.AttributeSystem
                             multiplier *= modifier.Magnitude;
                             break;
                         case AttributeModifierType.Override:
-                            // 只允许一个 Override 生效
+                            // Container 应保证唯一性；这里再次拒绝被破坏的内部不变量，禁止结果依赖排序。
                             if (overrideModifier != null)
                             {
-                                break;
+                                throw new InvalidOperationException("同一 Attribute、同一 Priority 层级不允许存在多个 Override Modifier。");
                             }
 
                             overrideModifier = modifier;
@@ -130,11 +163,13 @@ namespace WS_Modules.GAS.AttributeSystem
             return true;
         }
 
-        // Modifier 数量较少，直接排序比维护额外 Priority 集合更简单且不会产生 LINQ 分配。
+        /// <summary>按 Priority 排列少量 Modifier，不维护额外分组结构或产生 LINQ 分配。</summary>
         private void SortByPriority() =>
             modifiers.Sort((left, right) => left.Priority.CompareTo(right.Priority));
 
-        // 聚合中间值使用 double 降低误差，但仍禁止超出有限数值范围。
+        /// <summary>检查聚合中间值是否仍处于有限数值范围。</summary>
+        /// <param name="value">需要检查的双精度中间值。</param>
+        /// <returns>不是 NaN 或 Infinity 时返回 true。</returns>
         private static bool IsFinite(double value) =>
             !double.IsNaN(value) && !double.IsInfinity(value);
 
