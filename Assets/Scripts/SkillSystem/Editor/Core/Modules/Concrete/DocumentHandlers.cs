@@ -82,6 +82,74 @@ namespace RPG.SkillSystem.Editor
     }
 
     /// <summary>
+    /// 定义动作阶段轨道序列化结构，并处理阶段区间与打断设置。
+    /// </summary>
+    internal sealed class ActionPhaseDocumentHandler : TrackDocumentHandler
+    {
+        /// <summary>
+        /// 创建动作阶段轨道数据处理器。
+        /// </summary>
+        public ActionPhaseDocumentHandler()
+            : base(typeof(ActionPhaseTrackConfig), DocumentFieldNames.Clips,
+                DocumentFieldNames.StartFrame, DocumentFieldNames.DurationFrames, "动作阶段轨道")
+        {
+        }
+
+        /// <summary>
+        /// 动作阶段轨道不接受 Project 素材拖入。
+        /// </summary>
+        /// <param name="document">负责资产事务的 Document。</param>
+        /// <param name="trackId">目标轨道稳定 GUID。</param>
+        /// <param name="request">当前轨道不支持的素材创建请求。</param>
+        /// <returns>始终返回不支持素材拖入的失败结果。</returns>
+        public override ItemsCreateResult CreateItems(Document document, string trackId, IItemCreateRequest request) =>
+            ItemsCreateResult.Failure("动作阶段轨道不支持从 Project 素材创建内容。");
+
+        /// <summary>
+        /// 校验动作阶段编辑请求并提交半开帧区间、阶段类型和打断设置。
+        /// </summary>
+        /// <param name="document">负责区间校验、Undo 和资产写入的 Document。</param>
+        /// <param name="trackId">目标轨道稳定 GUID。</param>
+        /// <param name="itemId">目标动作阶段 Item 稳定 GUID。</param>
+        /// <param name="request">动作阶段完整编辑请求。</param>
+        /// <returns>提交结果及可能的区间冲突原因。</returns>
+        public override EditResult EditItem(Document document, string trackId, string itemId,
+            IItemEditRequest request)
+        {
+            if (request is not ActionPhaseEditRequest actionPhase)
+                return EditResult.Failure("动作阶段轨道收到不匹配的编辑请求。");
+            return document.EditClip(this, trackId, itemId, actionPhase.StartFrame,
+                actionPhase.DurationFrames, "修改动作阶段", item =>
+                {
+                    item.FindPropertyRelative(DocumentFieldNames.ActionPhase).enumValueIndex =
+                        (int)actionPhase.Phase;
+                    item.FindPropertyRelative(DocumentFieldNames.CanBeInterrupted).boolValue =
+                        actionPhase.CanBeInterrupted;
+                });
+        }
+
+        /// <summary>
+        /// 复制动作阶段类型与打断设置，供复制操作共用。
+        /// </summary>
+        /// <param name="source">保持不变的源 Item。</param>
+        /// <param name="destination">接收类型专用字段的新 Item。</param>
+        public override void CopySpecificFields(SerializedProperty source, SerializedProperty destination)
+        {
+            destination.FindPropertyRelative(DocumentFieldNames.ActionPhase).enumValueIndex =
+                source.FindPropertyRelative(DocumentFieldNames.ActionPhase).enumValueIndex;
+            destination.FindPropertyRelative(DocumentFieldNames.CanBeInterrupted).boolValue =
+                source.FindPropertyRelative(DocumentFieldNames.CanBeInterrupted).boolValue;
+        }
+
+        // 新建动作阶段默认为一帧前摇，并且不允许被外部逻辑打断。
+        protected override void InitializeSpecificFields(SerializedProperty item)
+        {
+            item.FindPropertyRelative(DocumentFieldNames.ActionPhase).enumValueIndex =
+                (int)ActionPhaseType.Startup;
+            item.FindPropertyRelative(DocumentFieldNames.CanBeInterrupted).boolValue = false;
+        }
+    }
+    /// <summary>
     /// 定义动画轨道序列化结构，并处理 AnimationClip 的创建与字段编辑。
     /// </summary>
     internal sealed class AnimationDocumentHandler : TrackDocumentHandler
@@ -164,6 +232,7 @@ namespace RPG.SkillSystem.Editor
                     item.FindPropertyRelative(DocumentFieldNames.AnimationClip).objectReferenceValue = animation.AnimationClip;
                     item.FindPropertyRelative(DocumentFieldNames.SourceStartFrame).intValue = Mathf.Max(0, animation.SourceStartFrame);
                     item.FindPropertyRelative(DocumentFieldNames.PlaybackSpeed).floatValue = Mathf.Max(0.01f, animation.PlaybackSpeed);
+                    item.FindPropertyRelative(DocumentFieldNames.FadeDuration).floatValue = Mathf.Max(0f, animation.FadeDuration);
                 });
         }
 
@@ -180,6 +249,8 @@ namespace RPG.SkillSystem.Editor
                 source.FindPropertyRelative(DocumentFieldNames.SourceStartFrame).intValue;
             destination.FindPropertyRelative(DocumentFieldNames.PlaybackSpeed).floatValue =
                 source.FindPropertyRelative(DocumentFieldNames.PlaybackSpeed).floatValue;
+            destination.FindPropertyRelative(DocumentFieldNames.FadeDuration).floatValue =
+                source.FindPropertyRelative(DocumentFieldNames.FadeDuration).floatValue;
         }
 
         // 初始化动画 Clip 的素材、源偏移和播放速度默认值。
@@ -188,6 +259,7 @@ namespace RPG.SkillSystem.Editor
             item.FindPropertyRelative(DocumentFieldNames.AnimationClip).objectReferenceValue = null;
             item.FindPropertyRelative(DocumentFieldNames.SourceStartFrame).intValue = 0;
             item.FindPropertyRelative(DocumentFieldNames.PlaybackSpeed).floatValue = 1f;
+            item.FindPropertyRelative(DocumentFieldNames.FadeDuration).floatValue = 0.1f;
         }
     }
 
@@ -557,7 +629,7 @@ namespace RPG.SkillSystem.Editor
             ItemsCreateResult.Failure("事件轨道不支持 Project 素材拖入。");
 
         /// <summary>
-        /// 修改事件 Marker 的帧、类型名、显示名和参数文本。
+        /// 修改事件 Marker 的帧、业务键、显示名和完整类型化参数联合体。
         /// </summary>
         /// <param name="document">负责 Undo、校验和资产写入的文档。</param>
         /// <param name="trackId">目标轨道头中的稳定 GUID，不是轨道数组索引或显示名称。</param>
@@ -568,6 +640,8 @@ namespace RPG.SkillSystem.Editor
         {
             if (request is not EventEditRequest marker)
                 return EditResult.Failure("事件轨道收到不匹配的编辑请求。");
+            if (marker.ObjectValue != null && !EditorUtility.IsPersistent(marker.ObjectValue))
+                return EditResult.Failure("事件对象参数只允许引用 Project 资产。");
             if (!document.TryFindItem(this, trackId, itemId, out TrackConfigBase track,
                     out SerializedObject trackObject, out SerializedProperty items,
                     out SerializedProperty item, out _))
@@ -578,12 +652,20 @@ namespace RPG.SkillSystem.Editor
                 return EditResult.Failure("目标帧已有其他 Event Marker。");
             document.MutateTrack("修改事件 Marker", track, trackObject, () =>
             {
+                // 一次事务写入全部候选值，切换 ValueType 时不会清空非活动字段。
                 Document.SetItemFrame(this, item, targetFrame, 1);
-                item.FindPropertyRelative(DocumentFieldNames.EventTypeName).stringValue = marker.EventTypeName ?? string.Empty;
+                item.FindPropertyRelative(DocumentFieldNames.EventKey).stringValue = marker.EventKey ?? string.Empty;
                 item.FindPropertyRelative(DocumentFieldNames.DisplayName).stringValue = string.IsNullOrWhiteSpace(marker.DisplayName)
                     ? "事件"
                     : marker.DisplayName.Trim();
-                item.FindPropertyRelative(DocumentFieldNames.ParameterText).stringValue = marker.ParameterText ?? string.Empty;
+                item.FindPropertyRelative(DocumentFieldNames.EventValueType).enumValueIndex = (int)marker.ValueType;
+                item.FindPropertyRelative(DocumentFieldNames.IntValue).intValue = marker.IntValue;
+                item.FindPropertyRelative(DocumentFieldNames.StringValue).stringValue = marker.StringValue ?? string.Empty;
+                item.FindPropertyRelative(DocumentFieldNames.LongValue).longValue = marker.LongValue;
+                item.FindPropertyRelative(DocumentFieldNames.BoolValue).boolValue = marker.BoolValue;
+                item.FindPropertyRelative(DocumentFieldNames.DoubleValue).doubleValue = marker.DoubleValue;
+                item.FindPropertyRelative(DocumentFieldNames.FloatValue).floatValue = marker.FloatValue;
+                item.FindPropertyRelative(DocumentFieldNames.ObjectValue).objectReferenceValue = marker.ObjectValue;
                 document.ExpandDurationForItem(this, item);
                 Document.SortItems(this, items);
             });
@@ -591,26 +673,57 @@ namespace RPG.SkillSystem.Editor
         }
 
         /// <summary>
-        /// 复制事件类型名、显示名和参数文本，供复制与跨轨道移动共用。
+        /// 复制事件业务信息和全部候选值，供复制与跨轨道移动共用。
         /// </summary>
         /// <param name="source">保持不变的源事件 Marker。</param>
         /// <param name="destination">接收事件专用字段的目标 Marker。</param>
         public override void CopySpecificFields(SerializedProperty source, SerializedProperty destination)
         {
-            destination.FindPropertyRelative(DocumentFieldNames.EventTypeName).stringValue =
-                source.FindPropertyRelative(DocumentFieldNames.EventTypeName).stringValue;
+            // 联合体的所有字段都必须复制，不能只复制当前 ValueType 对应的活动值。
+            destination.FindPropertyRelative(DocumentFieldNames.EventKey).stringValue =
+                source.FindPropertyRelative(DocumentFieldNames.EventKey).stringValue;
             destination.FindPropertyRelative(DocumentFieldNames.DisplayName).stringValue =
                 source.FindPropertyRelative(DocumentFieldNames.DisplayName).stringValue;
-            destination.FindPropertyRelative(DocumentFieldNames.ParameterText).stringValue =
-                source.FindPropertyRelative(DocumentFieldNames.ParameterText).stringValue;
+            destination.FindPropertyRelative(DocumentFieldNames.EventValueType).enumValueIndex =
+                source.FindPropertyRelative(DocumentFieldNames.EventValueType).enumValueIndex;
+            destination.FindPropertyRelative(DocumentFieldNames.IntValue).intValue =
+                source.FindPropertyRelative(DocumentFieldNames.IntValue).intValue;
+            destination.FindPropertyRelative(DocumentFieldNames.StringValue).stringValue =
+                source.FindPropertyRelative(DocumentFieldNames.StringValue).stringValue;
+            destination.FindPropertyRelative(DocumentFieldNames.LongValue).longValue =
+                source.FindPropertyRelative(DocumentFieldNames.LongValue).longValue;
+            destination.FindPropertyRelative(DocumentFieldNames.BoolValue).boolValue =
+                source.FindPropertyRelative(DocumentFieldNames.BoolValue).boolValue;
+            destination.FindPropertyRelative(DocumentFieldNames.DoubleValue).doubleValue =
+                source.FindPropertyRelative(DocumentFieldNames.DoubleValue).doubleValue;
+            destination.FindPropertyRelative(DocumentFieldNames.FloatValue).floatValue =
+                source.FindPropertyRelative(DocumentFieldNames.FloatValue).floatValue;
+            destination.FindPropertyRelative(DocumentFieldNames.ObjectValue).objectReferenceValue =
+                source.FindPropertyRelative(DocumentFieldNames.ObjectValue).objectReferenceValue;
         }
 
-        // 初始化事件 Marker 的类型名、显示名和参数文本默认值。
+        /// <summary>
+        /// 初始化新事件 Marker 的业务字段，并默认选择字符串参数。
+        /// </summary>
+        /// <param name="item">待初始化的新 Marker 序列化节点。</param>
+        /// <summary>
+        /// 初始化动画 Clip 的素材、源偏移、播放速度和淡入时长默认值。
+        /// </summary>
+        /// <param name="item">刚追加到轨道列表的动画 Clip SerializedProperty。</param>
         protected override void InitializeSpecificFields(SerializedProperty item)
         {
-            item.FindPropertyRelative(DocumentFieldNames.EventTypeName).stringValue = string.Empty;
+            // 初始化全部候选值，避免新建、复制和 Undo 路径之间出现未定义状态。
+            item.FindPropertyRelative(DocumentFieldNames.EventKey).stringValue = string.Empty;
             item.FindPropertyRelative(DocumentFieldNames.DisplayName).stringValue = "事件";
-            item.FindPropertyRelative(DocumentFieldNames.ParameterText).stringValue = string.Empty;
+            item.FindPropertyRelative(DocumentFieldNames.EventValueType).enumValueIndex =
+                (int)SkillEventValueType.String;
+            item.FindPropertyRelative(DocumentFieldNames.IntValue).intValue = 0;
+            item.FindPropertyRelative(DocumentFieldNames.StringValue).stringValue = string.Empty;
+            item.FindPropertyRelative(DocumentFieldNames.LongValue).longValue = 0L;
+            item.FindPropertyRelative(DocumentFieldNames.BoolValue).boolValue = false;
+            item.FindPropertyRelative(DocumentFieldNames.DoubleValue).doubleValue = 0d;
+            item.FindPropertyRelative(DocumentFieldNames.FloatValue).floatValue = 0f;
+            item.FindPropertyRelative(DocumentFieldNames.ObjectValue).objectReferenceValue = null;
         }
     }
 }

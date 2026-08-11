@@ -1,3 +1,15 @@
-﻿fileFormatVersion: 2
+fileFormatVersion: 2
 guid: 19617b9b2a304d73b118141a9ae64d57
-timeCreated: 1784029461
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - Idle: {instanceID: 0}
+  - moveMixer: {fileID: 11400000, guid: a92e140e5fc25614ab9b46ee033b5512, type: 2}
+  - moveMixerName_X: {instanceID: 0}
+  - moveMixerName_Rotator: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

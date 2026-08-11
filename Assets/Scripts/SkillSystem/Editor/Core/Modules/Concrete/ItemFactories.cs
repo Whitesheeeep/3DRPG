@@ -4,6 +4,28 @@ using System;
 namespace RPG.SkillSystem.Editor
 {
     /// <summary>
+    /// 使用动作阶段独立模板创建动作阶段时间轴 Item View。
+    /// </summary>
+    internal sealed class ActionPhaseItemFactory : IItemViewFactory
+    {
+        /// <summary>
+        /// 创建动作阶段 Clip View，并绑定统一坐标映射器。
+        /// </summary>
+        /// <param name="track">Item 所属的实际轨道配置。</param>
+        /// <param name="item">待显示的实际 Item 配置。</param>
+        /// <param name="elements">UXML 元素工厂。</param>
+        /// <param name="mapper">帧与内容坐标映射器。</param>
+        /// <returns>绑定实际配置的动作阶段视图。</returns>
+        public ItemView Create(TrackConfigBase track, TimelineItemConfigBase item,
+            ElementFactory elements, CoordinateMapper mapper)
+        {
+            if (item is not ActionPhaseSkillClipConfig actionPhase)
+                throw new ArgumentException("动作阶段 ItemFactory 收到不匹配的 Item Config。", nameof(item));
+            return new ActionPhaseClipView(track, actionPhase,
+                elements.Instantiate("Item/SkillTimelineActionPhaseClipItem.uxml", "ActionPhaseClipRoot"), mapper);
+        }
+    }
+    /// <summary>
     /// 使用动画 Clip 独立模板创建动画时间轴 Item View。
     /// </summary>
     internal sealed class AnimationItemFactory : IItemViewFactory

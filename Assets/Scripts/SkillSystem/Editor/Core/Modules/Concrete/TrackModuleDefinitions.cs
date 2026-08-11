@@ -5,6 +5,24 @@ using RPG.SkillSystem;
 namespace RPG.SkillSystem.Editor
 {
     /// <summary>
+    /// 组合动作阶段轨道的配置编辑、时间轴显示和 Inspector 能力。
+    /// </summary>
+    internal sealed class ActionPhaseModuleDefinition : TrackModuleDefinition
+    {
+        public override Type TrackType => typeof(ActionPhaseTrackConfig);
+        public override Type ItemType => typeof(ActionPhaseSkillClipConfig);
+
+        /// <summary>
+        /// 创建动作阶段轨道模块；该模块不提供素材拖入和预览能力。
+        /// </summary>
+        /// <param name="config">编辑器窗口配置。</param>
+        /// <param name="metadata">扫描得到的轨道元数据。</param>
+        /// <returns>组合完成的动作阶段轨道模块。</returns>
+        public override TrackModule Create(EditorConfig config, TimelineTrackAttribute metadata) =>
+            new(TrackType, ItemType, metadata, new ActionPhaseDocumentHandler(),
+                null, new ActionPhaseItemFactory(), new ActionPhaseInspectorDrawer());
+    }
+    /// <summary>
     /// 组合动画轨道的全部编辑器能力。
     /// </summary>
     internal sealed class AnimationModuleDefinition : TrackModuleDefinition

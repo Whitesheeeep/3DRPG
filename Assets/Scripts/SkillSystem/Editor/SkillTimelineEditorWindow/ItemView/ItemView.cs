@@ -41,6 +41,7 @@ namespace RPG.SkillSystem.Editor
         // 直接从实际内容配置生成短标题，避免维护与 Config 重复的 ViewData。
         protected static string GetDisplayName(TimelineItemConfigBase item) => item switch
         {
+            ActionPhaseSkillClipConfig actionPhase => GetActionPhaseDisplayName(actionPhase),
             AnimationSkillClipConfig animation => animation.AnimationClip != null
                 ? animation.AnimationClip.name : "Animation Clip",
             AttackDetectionSkillClipConfig attack => $"{attack.DetectionType} Detection",
@@ -49,6 +50,20 @@ namespace RPG.SkillSystem.Editor
             SkillEventMarkerConfig marker => marker.DisplayName,
             _ => item.GetType().Name
         };
+
+        // 将动作阶段枚举转换为紧凑中文标题，并显式提示该阶段可被外部打断。
+        private static string GetActionPhaseDisplayName(ActionPhaseSkillClipConfig item)
+        {
+            string phase = item.Phase switch
+            {
+                ActionPhaseType.None => "未指定",
+                ActionPhaseType.Startup => "前摇",
+                ActionPhaseType.Active => "生效",
+                ActionPhaseType.Recovery => "后摇",
+                _ => item.Phase.ToString()
+            };
+            return item.CanBeInterrupted ? $"{phase} · 可打断" : phase;
+        }
     }
 
     /// <summary>
@@ -77,6 +92,32 @@ namespace RPG.SkillSystem.Editor
         }
     }
 
+    /// <summary>
+    /// 显示动作阶段区间，并按具体阶段切换独立的颜色状态。
+    /// </summary>
+    internal sealed class ActionPhaseClipView : ClipItemView
+    {
+        /// <summary>
+        /// 创建动作阶段 Clip 视图并应用阶段 USS 状态。
+        /// </summary>
+        /// <param name="track">Item 所属实际轨道。</param>
+        /// <param name="item">实际动作阶段配置。</param>
+        /// <param name="element">从类型模板实例化的根元素。</param>
+        /// <param name="mapper">帧与内容坐标映射器。</param>
+        public ActionPhaseClipView(TrackConfigBase track,
+            ActionPhaseSkillClipConfig item, VisualElement element,
+            CoordinateMapper mapper) : base(track, item, element, mapper)
+        {
+            Element.AddToClassList(item.Phase switch
+            {
+                ActionPhaseType.None => "phase-none",
+                ActionPhaseType.Startup => "phase-startup",
+                ActionPhaseType.Active => "phase-active",
+                ActionPhaseType.Recovery => "phase-recovery",
+                _ => "phase-none"
+            });
+        }
+    }
     /// <summary>
     /// 显示拥有独立 UXML/USS 的动画 Clip 时间轴内容。
     /// </summary>

@@ -1,6 +1,7 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
     <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/EditorWindowStyle/SkillTimelineEditorWindow.uss" />
     <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineItemCommon.uss" />
+    <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineActionPhaseClipItem.uss" />
     <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineAnimationClipItem.uss" />
     <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineAttackDetectionClipItem.uss" />
     <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineVfxClipItem.uss" />
@@ -14,7 +15,7 @@
             </ui:VisualElement>
             <ui:VisualElement class="toolbar-section numeric-section">
                 <ui:IntegerField name="FrameRateField" label="FPS" class="number-field unity-base-field__aligned" />
-                <ui:IntegerField name="DurationField" label="总帧" class="number-field unity-base-field__aligned" />
+                <ui:IntegerField name="DurationField" label="总帧" is-delayed="true" class="number-field unity-base-field__aligned" />
                 <ui:Button name="TrimButton" text="裁剪到内容" class="toolbar-button" />
             </ui:VisualElement>
         </ui:VisualElement>

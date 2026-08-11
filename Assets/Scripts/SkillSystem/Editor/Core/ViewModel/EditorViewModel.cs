@@ -285,10 +285,23 @@ namespace RPG.SkillSystem.Editor
         public void TrimToContent() => document.TrimToContent();
 
         /// <summary>
+        /// 查询当前技能是否允许新增指定模块的轨道。
+        /// </summary>
+        /// <param name="module">待创建轨道的模块定义。</param>
+        /// <returns>允许创建时返回成功，否则包含拒绝原因。</returns>
+        public EditResult CanAddTrack(TrackModule module) => document.CanAddTrack(module);
+
+        /// <summary>
         /// 追加一个模块声明的 Track 子资产。
         /// </summary>
         public void AddTrack(TrackModule module)
         {
+            EditResult validation = document.CanAddTrack(module);
+            if (!validation.Succeeded)
+            {
+                Report(validation);
+                return;
+            }
             string id = document.AddTrack(module);
             if (!string.IsNullOrEmpty(id)) Select(new TrackSelection(id));
         }
@@ -438,6 +451,20 @@ namespace RPG.SkillSystem.Editor
             return result;
         }
 
+        /// <summary>将攻击检测 Inspector 草稿转发到 Scene View，不修改 Config。</summary>
+        public void PreviewAttackDetectionInspectorDraft(AttackDetectionSkillClipConfig item,
+            AttackDetectionDataBase data)
+        {
+            if (item == null || data == null) return;
+            attackDetectionSceneEditService.SetInspectorDraft(item.Id, data);
+        }
+
+        /// <summary>清除指定攻击检测 Item 的 Inspector 预览草稿。</summary>
+        public void ClearAttackDetectionInspectorDraft(AttackDetectionSkillClipConfig item)
+        {
+            if (item != null) attackDetectionSceneEditService.ClearInspectorDraft(item.Id);
+        }
+
         /// <summary>判断动画持续帧是否可匹配素材原始长度。</summary>
         public bool CanMatchAnimationDuration(AnimationSkillClipConfig item)
         {
@@ -454,7 +481,31 @@ namespace RPG.SkillSystem.Editor
             int duration = Mathf.Max(1,
                 Mathf.CeilToInt(item.AnimationClip.length * CurrentConfig.FrameRate));
             return EditItem(SelectedTrack, item, new AnimationEditRequest(
-                item.AnimationClip, item.StartFrame, duration, item.SourceStartFrame, item.PlaybackSpeed));
+                item.AnimationClip, item.StartFrame, duration, item.SourceStartFrame,
+                item.PlaybackSpeed, item.FadeDuration));
+        }
+
+        /// <summary>判断音频持续帧是否可按当前 Pitch 匹配素材播放长度。</summary>
+        public bool CanMatchAudioDuration(AudioSkillClipConfig item)
+        {
+            if (item?.AudioClip == null || CurrentConfig == null ||
+                float.IsNaN(item.Pitch) || float.IsInfinity(item.Pitch) || item.Pitch < 0.01f)
+                return false;
+            return item.DurationFrames != Mathf.Max(1,
+                Mathf.CeilToInt(item.AudioClip.length * CurrentConfig.FrameRate / item.Pitch));
+        }
+
+        /// <summary>将音频持续帧按素材长度、当前技能 FPS 与 Pitch 进行匹配。</summary>
+        public EditResult MatchAudioDuration(AudioSkillClipConfig item)
+        {
+            if (item?.AudioClip == null || SelectedTrack == null || CurrentConfig == null)
+                return EditResult.Failure("音频素材为空。");
+            if (float.IsNaN(item.Pitch) || float.IsInfinity(item.Pitch) || item.Pitch < 0.01f)
+                return EditResult.Failure("音频 Pitch 必须大于或等于 0.01。");
+            int duration = Mathf.Max(1,
+                Mathf.CeilToInt(item.AudioClip.length * CurrentConfig.FrameRate / item.Pitch));
+            return EditItem(SelectedTrack, item, new AudioEditRequest(
+                item.AudioClip, item.StartFrame, duration, item.Volume, item.Pitch));
         }
         #endregion
 

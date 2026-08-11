@@ -22,14 +22,21 @@ namespace RPG.SkillSystem
         public int Order { get; }
 
         /// <summary>
+        /// 是否允许同一 SkillConfig 同时持有多个该类型轨道。
+        /// </summary>
+        public bool AllowMultiple { get; }
+
+        /// <summary>
         /// 创建轨道类型元数据。
         /// </summary>
         /// <param name="menuPath">右键菜单路径。</param>
         /// <param name="order">类型排序权重。</param>
-        public TimelineTrackAttribute(string menuPath, int order)
+        /// <param name="allowMultiple">是否允许同一技能配置重复添加该轨道类型。</param>
+        public TimelineTrackAttribute(string menuPath, int order, bool allowMultiple = true)
         {
             MenuPath = menuPath;
             Order = order;
+            AllowMultiple = allowMultiple;
         }
     }
 
@@ -46,7 +53,6 @@ namespace RPG.SkillSystem
 #if UNITY_EDITOR
         [SerializeField, LabelText("轨道名称")] private string displayName = "新轨道";
         [SerializeField, LabelText("锁定")] private bool editorLocked;
-        [SerializeField, LabelText("编辑颜色")] private Color editorColor = Color.white;
 #endif
 
         #endregion
@@ -59,7 +65,6 @@ namespace RPG.SkillSystem
 #if UNITY_EDITOR
         public string DisplayName => displayName;
         public bool EditorLocked => editorLocked;
-        public Color EditorColor => editorColor;
 #endif
 
         /// <summary>

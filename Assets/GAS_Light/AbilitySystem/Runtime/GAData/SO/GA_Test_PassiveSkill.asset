@@ -20,11 +20,12 @@ MonoBehaviour:
   costEffect: {fileID: 11400000, guid: c4005860abd1f1a47be545ea558a6a3c, type: 2}
   cooldownEffect: {fileID: 11400000, guid: 0bed64fb37a789e489389e2346d0c8a4, type: 2}
   rootTask:
-    rid: 3428733655084433410
+    rid: 3428733787460075522
   effects: []
   references:
     version: 2
     RefIds:
-    - rid: 3428733655084433410
-      type: {class: PassiveGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
-      data: 
+    - rid: 3428733787460075522
+      type: {class: WaitDurationGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
+      data:
+        duration: 0

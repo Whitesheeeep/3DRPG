@@ -16,6 +16,7 @@ namespace RPG.SkillSystem
         [SerializeField, Min(1)] private int durationFrames = 1;
         [SerializeField, Min(0)] private int sourceStartFrame;
         [SerializeField, Min(0.01f)] private float playbackSpeed = 1f;
+        [SerializeField, Min(0f)] private float fadeDuration = 0.1f;
 
         public override string Id => id;
         public AnimationClip AnimationClip => animationClip;
@@ -23,5 +24,6 @@ namespace RPG.SkillSystem
         public override int DurationFrames => durationFrames;
         public int SourceStartFrame => sourceStartFrame;
         public float PlaybackSpeed => playbackSpeed;
+        public float FadeDuration => fadeDuration;
     }
 }

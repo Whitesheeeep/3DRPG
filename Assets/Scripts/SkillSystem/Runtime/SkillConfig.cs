@@ -13,10 +13,14 @@ namespace RPG.SkillSystem
     [CreateAssetMenu(fileName = "SkillConfig", menuName = "RPG/Skill/Skill Config")]
     public sealed class SkillConfig : ScriptableObject
     {
-        [SerializeField, ReadOnly, LabelText("技能 ID")] private string id = string.Empty;
-        [SerializeField, Min(1), LabelText("FPS")] private int frameRate = 30;
-        [SerializeField, Min(1), LabelText("总帧")] private int durationFrames = 1;
-        [SerializeField, ReadOnly, LabelText("轨道")] private List<TrackConfigBase> tracks = new();
+        [SerializeField, ReadOnly, LabelText("技能 ID")]
+        private string id = string.Empty;
+        [SerializeField, ReadOnly, Min(1), LabelText("FPS")]
+        private int frameRate = 30;
+        [SerializeField, ReadOnly, Min(1), LabelText("总帧")]
+        private int durationFrames = 1;
+        [SerializeField, ReadOnly, LabelText("轨道")]
+        private List<TrackConfigBase> tracks = new();
 
         public string Id => id;
         public int FrameRate => frameRate;

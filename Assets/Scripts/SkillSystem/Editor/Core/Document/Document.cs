@@ -137,13 +137,28 @@ namespace RPG.SkillSystem.Editor
 
         #region Track 子资产编辑
         /// <summary>
+        /// 检查当前技能是否允许新增指定模块的轨道，单例轨道按具体 TrackConfig 类型判重。
+        /// </summary>
+        /// <param name="module">待创建轨道的完整模块定义。</param>
+        /// <returns>允许创建时返回成功，否则包含拒绝原因。</returns>
+        public EditResult CanAddTrack(TrackModule module)
+        {
+            if (!HasConfig) return EditResult.Failure("请先选择 SkillConfig。");
+            if (module == null) return EditResult.Failure("轨道模块不存在。");
+            if (!module.Metadata.AllowMultiple && CurrentConfig.Tracks.Any(track =>
+                    track != null && track.GetType() == module.TrackType))
+                return EditResult.Failure($"每个技能只能创建一条{module.Metadata.MenuPath}。");
+            return EditResult.Success();
+        }
+
+        /// <summary>
         /// 创建指定模块的 Track 子资产并追加到统一列表。
         /// </summary>
         public string AddTrack(TrackModule module)
         {
-            if (!HasConfig || module == null) return string.Empty;
+            if (!CanAddTrack(module).Succeeded) return string.Empty;
             TrackConfigBase track = (TrackConfigBase)ScriptableObject.CreateInstance(module.TrackType);
-            string id = NewId();
+            string id = NewGUID();
             track.name = module.Metadata.MenuPath;
             track.hideFlags = HideFlags.HideInHierarchy;
             int group = Undo.GetCurrentGroup();
@@ -158,7 +173,6 @@ namespace RPG.SkillSystem.Editor
             trackObject.FindProperty(DocumentFieldNames.DisplayName).stringValue = module.Metadata.MenuPath;
             trackObject.FindProperty(DocumentFieldNames.Muted).boolValue = false;
             trackObject.FindProperty(DocumentFieldNames.EditorLocked).boolValue = false;
-            trackObject.FindProperty(DocumentFieldNames.EditorColor).colorValue = Color.white;
             trackObject.FindProperty(module.Document.ItemsPropertyName).ClearArray();
             trackObject.ApplyModifiedProperties();
 
@@ -274,7 +288,7 @@ namespace RPG.SkillSystem.Editor
             if (!TryFindTrack(handler, trackId, out TrackConfigBase track,
                     out SerializedObject trackObject, out SerializedProperty items)) return string.Empty;
             if (track.EditorLocked) return string.Empty;
-            string id = NewId();
+            string id = NewGUID();
             MutateTrack("添加技能时间轴内容", track, trackObject, () =>
             {
                 SerializedProperty item = AppendItem(handler, items, id, FindAvailableStartFrame(handler, items), 1);
@@ -313,7 +327,7 @@ namespace RPG.SkillSystem.Editor
                     out SerializedObject trackObject, out SerializedProperty items,
                     out SerializedProperty source, out _)) return string.Empty;
             if (track.EditorLocked) return string.Empty;
-            string id = NewId();
+            string id = NewGUID();
             int start = FindAvailableStartFrame(handler, items);
             int duration = GetItemDuration(handler, source);
             MutateTrack("复制技能时间轴内容", track, trackObject, () =>
@@ -565,7 +579,7 @@ namespace RPG.SkillSystem.Editor
         internal static string[] CreateItemIds(int count)
         {
             string[] ids = new string[count];
-            for (int index = 0; index < count; index++) ids[index] = NewId();
+            for (int index = 0; index < count; index++) ids[index] = NewGUID();
             return ids;
         }
 
@@ -795,12 +809,12 @@ namespace RPG.SkillSystem.Editor
         private static string NewUniqueId(ISet<string> used)
         {
             string id;
-            do id = NewId(); while (!used.Add(id));
+            do id = NewGUID(); while (!used.Add(id));
             return id;
         }
 
         // 创建稳定 GUID。
-        private static string NewId() => Guid.NewGuid().ToString("N");
+        private static string NewGUID() => Guid.NewGuid().ToString("N");
         #endregion
 
         /// <summary>

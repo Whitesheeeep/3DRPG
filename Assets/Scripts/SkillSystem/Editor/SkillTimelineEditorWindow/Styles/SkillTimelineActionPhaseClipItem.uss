@@ -1,0 +1,40 @@
+.action-phase-clip-item {
+    top: 9px;
+    height: 36px;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-width: 1px;
+    border-radius: 3px;
+    -unity-text-align: middle-left;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.action-phase-clip-item.phase-none {
+    border-color: rgb(132, 132, 132);
+    background-color: rgb(78, 78, 78);
+}
+
+.action-phase-clip-item.phase-startup {
+    border-color: rgb(226, 179, 72);
+    background-color: rgb(139, 103, 38);
+}
+
+.action-phase-clip-item.phase-active {
+    border-color: rgb(103, 198, 111);
+    background-color: rgb(62, 124, 68);
+}
+
+.action-phase-clip-item.phase-recovery {
+    border-color: rgb(122, 155, 184);
+    background-color: rgb(62, 87, 108);
+}
+
+.action-phase-clip-item:hover {
+    border-color: rgb(235, 215, 156);
+}
+
+.action-phase-clip-item.is-selected {
+    border-width: 2px;
+    border-color: rgb(255, 220, 112);
+}
