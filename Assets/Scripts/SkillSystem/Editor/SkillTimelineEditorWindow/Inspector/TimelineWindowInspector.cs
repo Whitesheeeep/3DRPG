@@ -14,6 +14,7 @@ namespace RPG.SkillSystem.Editor
             "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/EditorWindowStyle/SkillTimelineEditorWindow.uss";
         private TimelineWindow window;
         private VisualElement root;
+        private InspectorFieldCommitController fieldCommitController;
 
         /// <summary>
         /// 创建原生 Inspector UI，并订阅窗口稳定刷新事件。
@@ -34,6 +35,8 @@ namespace RPG.SkillSystem.Editor
         private void Refresh()
         {
             if (root == null || window == null) return;
+            fieldCommitController?.Dispose();
+            fieldCommitController = null;
             root.Clear();
             object data = window.SelectedData;
             if (data == null)
@@ -42,19 +45,25 @@ namespace RPG.SkillSystem.Editor
                     HelpBoxMessageType.Info));
                 return;
             }
-            IInspectorDrawer drawer = window.Modules?.GetInspector(data);
+            IInspectorDrawer drawer = window.Modules?.GetInspectorDrawer(data);
             if (drawer == null)
             {
                 root.Add(new HelpBox("当前选择没有可用 Inspector。",
                     HelpBoxMessageType.Info));
                 return;
             }
-            drawer.Draw(root, data, window.ViewModel);
+            fieldCommitController = new InspectorFieldCommitController(
+                data is AttackDetectionSkillClipConfig attack
+                    ? () => window.ViewModel.ClearAttackDetectionInspectorDraft(attack)
+                    : null);
+            drawer.Draw(root, data, window.ViewModel, fieldCommitController);
         }
 
         // Inspector 被销毁或切换目标时注销窗口事件，避免重复刷新。
         private void OnDetached(DetachFromPanelEvent _)
         {
+            fieldCommitController?.Dispose();
+            fieldCommitController = null;
             if (window != null) window.NativeInspectorChanged -= Refresh;
             window = null;
             root = null;

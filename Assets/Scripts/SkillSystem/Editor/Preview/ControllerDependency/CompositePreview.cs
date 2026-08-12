@@ -214,6 +214,17 @@ namespace RPG.SkillSystem.Editor
         /// </summary>
         public void SetSelectedClip(string clipId) =>
             attackDetectionSceneEditService.SetSelectedClip(clipId);
+        /// <summary>
+        /// 将 Inspector 连续输入草稿转发给攻击检测预览处理器。
+        /// </summary>
+        public void SetInspectorDraft(string clipId, AttackDetectionDataBase data) =>
+            attackDetectionSceneEditService.SetInspectorDraft(clipId, data);
+
+        /// <summary>
+        /// 清除指定攻击检测 Clip 的 Inspector 预览草稿。
+        /// </summary>
+        public void ClearInspectorDraft(string clipId) =>
+            attackDetectionSceneEditService.ClearInspectorDraft(clipId);
 
         #endregion
 

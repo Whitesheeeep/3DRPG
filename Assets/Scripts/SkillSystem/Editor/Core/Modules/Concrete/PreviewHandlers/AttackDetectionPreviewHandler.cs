@@ -42,8 +42,10 @@ namespace RPG.SkillSystem.Editor
         private readonly Dictionary<Type, IAttackDetectionSceneDrawer> drawers = new();
         private readonly List<PreviewEntry> entries = new();
         private string selectedClipId = string.Empty;
-        private string draftClipId = string.Empty;
-        private AttackDetectionDataBase draftData;
+        private string handleDraftClipId = string.Empty;
+        private AttackDetectionDataBase handleDraftData;
+        private string inspectorDraftClipId = string.Empty;
+        private AttackDetectionDataBase inspectorDraftData;
         private int activeHandleControlId;
         private string statusMessage = string.Empty;
         private bool isPlaying;
@@ -140,10 +142,9 @@ namespace RPG.SkillSystem.Editor
         public void Stop()
         {
             isPlaying = false;
-            CancelDraft();
+            CancelAllDrafts();
             SceneView.RepaintAll();
         }
-
         /// <summary>
         /// 清理全部 Scene 显示状态和错误信息。
         /// </summary>
@@ -163,10 +164,30 @@ namespace RPG.SkillSystem.Editor
             clipId ??= string.Empty;
             if (selectedClipId == clipId) return;
             selectedClipId = clipId;
-            CancelDraft();
+            CancelAllDrafts();
             SceneView.RepaintAll();
         }
 
+        /// <summary>
+        /// 保存 Inspector 输入产生的独立快照，并立即刷新 Scene View；不会修改 Config。
+        /// </summary>
+        public void SetInspectorDraft(string clipId, AttackDetectionDataBase data)
+        {
+            if (disposed || string.IsNullOrEmpty(clipId) || data == null) return;
+            inspectorDraftClipId = clipId;
+            inspectorDraftData = AttackDetectionDataBase.Copy(data);
+            SceneView.RepaintAll();
+        }
+
+        /// <summary>
+        /// 清除指定 Clip 的 Inspector 草稿，不干扰正在进行的 Scene Handle 草稿。
+        /// </summary>
+        public void ClearInspectorDraft(string clipId)
+        {
+            if (inspectorDraftClipId != clipId) return;
+            CancelInspectorDraft();
+            SceneView.RepaintAll();
+        }
         #endregion
 
         #region Scene 绘制与编辑
@@ -178,7 +199,7 @@ namespace RPG.SkillSystem.Editor
             Event currentEvent = Event.current;
             if (currentEvent.type == EventType.KeyDown && currentEvent.keyCode == KeyCode.Escape)
             {
-                CancelDraft();
+                CancelAllDrafts();
                 currentEvent.Use();
                 SceneView.RepaintAll();
                 return;
@@ -188,9 +209,7 @@ namespace RPG.SkillSystem.Editor
             bool shouldCommit = false;
             foreach (PreviewEntry entry in entries)
             {
-                AttackDetectionDataBase displayData = entry.Clip.Id == draftClipId && draftData != null
-                    ? draftData
-                    : entry.Clip.DetectionData;
+                AttackDetectionDataBase displayData = ResolveDisplayData(entry.Clip);
                 Color color = entry.Clip.Id == selectedClipId
                     ? config.AttackDetectionSelectedColor
                     : config.AttackDetectionColor;
@@ -207,8 +226,8 @@ namespace RPG.SkillSystem.Editor
                     drawContext, displayData, handleMode);
                 if (EditorGUI.EndChangeCheck())
                 {
-                    draftClipId = entry.Clip.Id;
-                    draftData = changed;
+                    handleDraftClipId = entry.Clip.Id;
+                    handleDraftData = changed;
                     if (GUIUtility.hotControl != 0)
                         activeHandleControlId = GUIUtility.hotControl;
                     else
@@ -217,11 +236,18 @@ namespace RPG.SkillSystem.Editor
             }
 
             // Handles 会消费 MouseUp；以 hotControl 释放作为拖拽完成的权威信号。
-            if (draftData != null && activeHandleControlId != 0 && GUIUtility.hotControl == 0)
+            if (handleDraftData != null && activeHandleControlId != 0 && GUIUtility.hotControl == 0)
                 shouldCommit = true;
-            if (shouldCommit && draftData != null) CommitDraft();
+            if (shouldCommit && handleDraftData != null) CommitHandleDraft();
         }
 
+        // Scene Handle 草稿优先于 Inspector 草稿，二者都不存在时才读取权威 Config。
+        private AttackDetectionDataBase ResolveDisplayData(AttackDetectionSkillClipConfig clip)
+        {
+            if (clip.Id == handleDraftClipId && handleDraftData != null) return handleDraftData;
+            if (clip.Id == inspectorDraftClipId && inspectorDraftData != null) return inspectorDraftData;
+            return clip.DetectionData;
+        }
         // 根据线框透明度继续乘以表面透明度，确保非采样帧的两层表现同步弱化。
         private AttackDetectionSceneDrawContext CreateDrawContext(Transform actorRoot, Color color,
             WeaponTraceSweepSegment? weaponSegment)
@@ -242,11 +268,11 @@ namespace RPG.SkillSystem.Editor
         };
 
         // 在 Scene 绘制循环结束后发送独立快照，避免同步刷新 entries 时修改正在遍历的集合。
-        private void CommitDraft()
+        private void CommitHandleDraft()
         {
             AttackDetectionSceneEditCommit commit = new(
-                draftClipId, AttackDetectionDataBase.Copy(draftData));
-            CancelDraft();
+                handleDraftClipId, AttackDetectionDataBase.Copy(handleDraftData));
+            CancelHandleDraft();
             EditCommitted?.Invoke(commit);
             SceneView.RepaintAll();
         }
@@ -260,20 +286,33 @@ namespace RPG.SkillSystem.Editor
         }
 
         // 丢弃未完成 Handle 草稿；权威 Config 始终由 ViewModel/Document 修改。
-        private void CancelDraft()
+        private void CancelHandleDraft()
         {
-            draftClipId = string.Empty;
-            draftData = null;
+            handleDraftClipId = string.Empty;
+            handleDraftData = null;
             activeHandleControlId = 0;
         }
 
-        // 清除逐帧快照和草稿，不改变当前选择。
+        // 丢弃 Inspector 连续输入草稿，不修改 Scene Handle 草稿或 Config。
+        private void CancelInspectorDraft()
+        {
+            inspectorDraftClipId = string.Empty;
+            inspectorDraftData = null;
+        }
+
+        // 同时清理两种表现草稿，供切帧、播放、选择变化和生命周期结束使用。
+        private void CancelAllDrafts()
+        {
+            CancelHandleDraft();
+            CancelInspectorDraft();
+        }
+
+        // 清除逐帧快照和全部草稿，不改变当前选择。
         private void ClearEntriesAndDraft()
         {
             entries.Clear();
-            CancelDraft();
+            CancelAllDrafts();
         }
-
         #endregion
 
         #region WeaponTrace 快照

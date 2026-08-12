@@ -143,7 +143,7 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 返回 Track 公共 Drawer 或 Item 专用 Drawer。
         /// </summary>
-        public IInspectorDrawer GetInspector(object data)
+        public IInspectorDrawer GetInspectorDrawer(object data)
         {
             if (data is TrackConfigBase) return trackInspector;
             return data is TimelineItemConfigBase item ? Get(item).ItemInspector : null;

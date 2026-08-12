@@ -31,6 +31,19 @@ namespace RPG.SkillSystem.Editor
         /// </summary>
         /// <param name="clipId">稳定 Clip GUID。</param>
         void SetSelectedClip(string clipId);
+
+        /// <summary>
+        /// 设置 Inspector 连续输入产生的独立检测数据草稿，仅影响 Scene View 绘制。
+        /// </summary>
+        /// <param name="clipId">草稿所属的稳定 Clip GUID。</param>
+        /// <param name="data">与 Config 隔离的检测数据快照。</param>
+        void SetInspectorDraft(string clipId, AttackDetectionDataBase data);
+
+        /// <summary>
+        /// 清除指定 Clip 的 Inspector 草稿，不修改 Config 或 Scene Handle 草稿。
+        /// </summary>
+        /// <param name="clipId">需要清除草稿的稳定 Clip GUID。</param>
+        void ClearInspectorDraft(string clipId);
     }
 }
 #endif

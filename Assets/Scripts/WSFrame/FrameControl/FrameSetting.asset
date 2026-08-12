@@ -28,7 +28,7 @@ MonoBehaviour:
   configRegisterSetting:
     rootNode: {fileID: 11400000, guid: 30f35db3f22d447b836bb6e958bbda22, type: 2}
     clearRootNodeAfterRegister: 1
-  resLoadType: 0
+  resLoadType: 1
   audioSystemSetting:
     audioSourceInitCount: 5
     audioSourcePrefabPath: AudioSourcePrefab

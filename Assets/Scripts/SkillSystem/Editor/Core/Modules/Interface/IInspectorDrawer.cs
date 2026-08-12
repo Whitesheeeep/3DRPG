@@ -12,7 +12,8 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 将实际配置绘制到容器，并通过 ViewModel 提交语义修改。
         /// </summary>
-        void Draw(VisualElement container, object data, EditorViewModel viewModel);
+        void Draw(VisualElement container, object data, EditorViewModel viewModel,
+            InspectorFieldCommitController fieldCommitController);
     }
 
     /// <summary>
@@ -26,7 +27,8 @@ namespace RPG.SkillSystem.Editor
         /// 绘制具体检测参数，并在字段提交时发送独立完整快照。
         /// </summary>
         void Draw(VisualElement container, AttackDetectionDataBase data,
-            Action<AttackDetectionDataBase> submit);
+            Action<AttackDetectionDataBase> preview, Action<AttackDetectionDataBase> submit,
+            InspectorFieldCommitController fieldCommitController);
     }
 }
 #endif

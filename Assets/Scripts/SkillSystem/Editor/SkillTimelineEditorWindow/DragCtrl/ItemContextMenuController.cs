@@ -6,7 +6,7 @@ using UnityEngine.UIElements;
 namespace RPG.SkillSystem.Editor
 {
     /// <summary>
-    /// 管理 Item 右键“吸附到播放头”菜单。
+    /// 管理 Item 的播放头吸附、复制和删除右键命令。
     /// </summary>
     internal sealed class ItemContextMenuController : IDisposable
     {
@@ -22,8 +22,9 @@ namespace RPG.SkillSystem.Editor
             this.viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
 
         /// <summary>
-        /// 为动态 Item 注册播放头吸附菜单。
+        /// 为动态 Item 注册上下文菜单。
         /// </summary>
+        /// <param name="itemView">需要响应右键操作的实际 Item View。</param>
         public void Register(ItemView itemView)
         {
             VisualElement element = itemView.Element;
@@ -51,16 +52,28 @@ namespace RPG.SkillSystem.Editor
 
         #region 菜单构建
 
-        // 菜单打开时冻结播放头帧并选中目标实际 Item。
+        /// <summary>
+        /// 在菜单打开时冻结播放头帧、选中目标 Item，并构建语义操作菜单。
+        /// </summary>
+        /// <param name="evt">当前 Item 的上下文菜单构建事件。</param>
+        /// <param name="itemView">菜单对应的实际 Track 与 Item 引用。</param>
         private void PopulateMenu(ContextualMenuPopulateEvent evt, ItemView itemView)
         {
             int targetFrame = viewModel.CurrentFrame;
             viewModel.SelectItem(itemView.Track, itemView.Item);
-            DropdownMenuAction.Status status =
+            DropdownMenuAction.Status snapStatus =
                 itemView.Track.EditorLocked || itemView.Item.StartFrame == targetFrame
                     ? DropdownMenuAction.Status.Disabled : DropdownMenuAction.Status.Normal;
             evt.menu.AppendAction($"吸附到播放头（帧 {targetFrame}）",
-                _ => viewModel.MoveItem(itemView.Track, itemView.Item, targetFrame), status);;
+                _ => viewModel.MoveItem(itemView.Track, itemView.Item, targetFrame), snapStatus);
+
+            evt.menu.AppendSeparator();
+            DropdownMenuAction.Status editStatus = itemView.Track.EditorLocked
+                ? DropdownMenuAction.Status.Disabled
+                : DropdownMenuAction.Status.Normal;
+            // ViewModel 已在菜单打开时选中目标，因此复用现有选择语义和单次 Undo 事务。
+            evt.menu.AppendAction("复制片段", _ => viewModel.DuplicateSelectedItem(), editStatus);
+            evt.menu.AppendAction("删除片段", _ => viewModel.RemoveSelectedItem(), editStatus);
         }
 
         #endregion

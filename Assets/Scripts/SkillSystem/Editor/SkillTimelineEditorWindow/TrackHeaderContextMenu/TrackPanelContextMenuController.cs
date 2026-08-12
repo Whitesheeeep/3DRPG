@@ -39,8 +39,11 @@ namespace RPG.SkillSystem.Editor
             foreach (TrackModule module in modules.Modules)
             {
                 TrackModule captured = module;
+                DropdownMenuAction.Status status = viewModel.CanAddTrack(captured).Succeeded
+                    ? DropdownMenuAction.Status.Normal
+                    : DropdownMenuAction.Status.Disabled;
                 evt.menu.AppendAction($"添加轨道/{module.Metadata.MenuPath}",
-                    _ => viewModel.AddTrack(captured));
+                    _ => viewModel.AddTrack(captured), status);
             }
             evt.menu.AppendSeparator();
             evt.menu.AppendAction("按轨道类型重排", _ => viewModel.SortTracksByType());

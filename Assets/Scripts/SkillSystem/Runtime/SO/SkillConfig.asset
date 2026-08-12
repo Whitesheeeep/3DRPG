@@ -1,26 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-8322679809515797647
-MonoBehaviour:
-  m_ObjectHideFlags: 1
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 977a117e6397476dafe68fee63f8f607, type: 3}
-  m_Name: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
-  m_EditorClassIdentifier: 
-  id: 702a725655ac47b3af7b3fcf45eae9b8
-  muted: 0
-  displayName: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
-  editorLocked: 0
-  editorColor: {r: 1, g: 1, b: 1, a: 1}
-  clips: []
-  references:
-    version: 2
-    RefIds: []
 --- !u!114 &-6094935103478630086
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -37,13 +16,51 @@ MonoBehaviour:
   muted: 0
   displayName: "\u4E8B\u4EF6\u8F68\u9053"
   editorLocked: 0
-  editorColor: {r: 1, g: 1, b: 1, a: 1}
   markers:
   - id: d8c8df4a43244a639f3de94b676d17fc
     frame: 9
-    eventTypeName: 
+    eventKey: 
     displayName: "\u4E8B\u4EF6"
-    parameterText: 
+    valueType: 0
+    intValue: 0
+    stringValue: 
+    longValue: 0
+    boolValue: 0
+    doubleValue: 0
+    floatValue: 0
+    objectValue: {fileID: 0}
+--- !u!114 &-4210482925188201434
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b7edf08181143d342b9c4e9e3e3e114c, type: 3}
+  m_Name: "\u52A8\u4F5C\u9636\u6BB5\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 004c440682b34174a623bd646f5e6a11
+  muted: 0
+  displayName: "\u52A8\u4F5C\u9636\u6BB5\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: fb0fcde9a5da4a3287b8f03b8bef27bb
+    startFrame: 0
+    durationFrames: 6
+    phase: 1
+    canBeInterrupted: 1
+  - id: 6d1b11b89a5748cab3e4f9fd673ee89e
+    startFrame: 6
+    durationFrames: 8
+    phase: 2
+    canBeInterrupted: 0
+  - id: 507007bd51e64918a1fabe572f50be19
+    startFrame: 14
+    durationFrames: 21
+    phase: 3
+    canBeInterrupted: 1
 --- !u!114 &-1994680328166295026
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -60,12 +77,11 @@ MonoBehaviour:
   muted: 0
   displayName: "\u97F3\u9891\u8F68\u9053"
   editorLocked: 0
-  editorColor: {r: 1, g: 1, b: 1, a: 1}
   clips:
   - id: 40cfe4b40ca54f3da679324623786f20
     audioClip: {fileID: 8300000, guid: 9ed4573abd1465749b538474846f4995, type: 3}
-    startFrame: 6
-    durationFrames: 7
+    startFrame: 0
+    durationFrames: 35
     volume: 1
     pitch: 1
 --- !u!114 &11400000
@@ -84,12 +100,48 @@ MonoBehaviour:
   frameRate: 30
   durationFrames: 35
   tracks:
+  - {fileID: -4210482925188201434}
   - {fileID: 2445572420126570095}
   - {fileID: 1577898779245526341}
-  - {fileID: -8322679809515797647}
+  - {fileID: 1472487350023512403}
   - {fileID: 8092662235759112968}
   - {fileID: -1994680328166295026}
   - {fileID: -6094935103478630086}
+--- !u!114 &1472487350023512403
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977a117e6397476dafe68fee63f8f607, type: 3}
+  m_Name: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 84bb858b83494f908e56874a91da3734
+  muted: 0
+  displayName: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: fa8c711639f24abea3279591a640c07f
+    startFrame: 6
+    durationFrames: 7
+    sampleIntervalFrames: 1
+    detectionData:
+      rid: 3428733716005650436
+  references:
+    version: 2
+    RefIds:
+    - rid: 3428733716005650436
+      type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        localPosition: {x: 6.7566525e-12, y: 0.5252155, z: 0}
+        localEulerAngles: {x: 0, y: 0, z: 0}
+        innerRadius: 1.22
+        outerRadius: 3.09
+        angle: 90
+        height: 1
 --- !u!114 &1577898779245526341
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -106,11 +158,10 @@ MonoBehaviour:
   muted: 0
   displayName: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
   editorLocked: 0
-  editorColor: {r: 1, g: 1, b: 1, a: 1}
   clips:
   - id: 39888a3231e74bc683383442823b0c2b
     startFrame: 6
-    durationFrames: 6
+    durationFrames: 7
     sampleIntervalFrames: 1
     detectionData:
       rid: 3428733677177143315
@@ -137,7 +188,6 @@ MonoBehaviour:
   muted: 0
   displayName: "\u52A8\u753B\u8F68\u9053"
   editorLocked: 0
-  editorColor: {r: 1, g: 1, b: 1, a: 1}
   clips:
   - id: 863bafd6ee0b4a5f8e88906e8696a865
     animationClip: {fileID: 3094330708855449807, guid: 51abf42ce9b0fb14095cec752ae7f176, type: 3}
@@ -145,6 +195,7 @@ MonoBehaviour:
     durationFrames: 35
     sourceStartFrame: 0
     playbackSpeed: 1
+    fadeDuration: 0.1
 --- !u!114 &7860235216540199354
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -161,7 +212,6 @@ MonoBehaviour:
   muted: 0
   displayName: "\u52A8\u753B\u8F68\u9053"
   editorLocked: 0
-  editorColor: {r: 1, g: 1, b: 1, a: 1}
   clips: []
 --- !u!114 &8092662235759112968
 MonoBehaviour:
@@ -179,7 +229,6 @@ MonoBehaviour:
   muted: 0
   displayName: "\u7279\u6548\u8F68\u9053"
   editorLocked: 0
-  editorColor: {r: 1, g: 1, b: 1, a: 1}
   clips:
   - id: d80c230ac8fc4b2d91461ed4ed9b3a30
     prefab: {fileID: 4214304940546854769, guid: 695ff324093e91743a8abf684fa028de, type: 3}

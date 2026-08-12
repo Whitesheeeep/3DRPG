@@ -56,7 +56,9 @@ namespace RPG.SkillSystem.Editor
 
         #region 初始化与事件注册
 
-        // 左侧只允许纵向滚动并隐藏滚动条，右侧保留始终可见的双向滚动条。
+        /// <summary>
+        /// 配置左右 ScrollView 的滚动方向和滚动条可见性。
+        /// </summary>
         private void ConfigureScrollViews()
         {
             trackHeaderScroll.mode = ScrollViewMode.Vertical;
@@ -67,7 +69,9 @@ namespace RPG.SkillSystem.Editor
             timelineScroll.verticalScrollerVisibility = ScrollerVisibility.AlwaysVisible;
         }
 
-        // 只注册输入源和 Model 偏移回写；真实视口 Geometry 由 CanvasController 负责测量。
+        /// <summary>
+        /// 注册滚轮、Scroller 和 CanvasModel 偏移同步回调。
+        /// </summary>
         private void RegisterEvents()
         {
             panel.RegisterCallback<WheelEvent>(OnWheel, TrickleDown.TrickleDown);
@@ -81,7 +85,10 @@ namespace RPG.SkillSystem.Editor
 
         #region 输入与状态提交
 
-        // Ctrl/Command 滚轮以右侧鼠标帧为锚点缩放；Shift 滚轮提交水平偏移。
+        /// <summary>
+        /// 将滚轮输入转换为锚点缩放或受边界约束的水平滚动。
+        /// </summary>
+        /// <param name="evt">当前时间轴面板接收到的滚轮事件。</param>
         private void OnWheel(WheelEvent evt)
         {
             if (evt.ctrlKey || evt.commandKey)
@@ -100,14 +107,36 @@ namespace RPG.SkillSystem.Editor
             }
 
             if (!evt.shiftKey) return;
+
+            // 普通鼠标通常写入 Y，触控板或 Unity 的 Shift 转换可能直接写入 X。
+            float wheelDelta = ResolveHorizontalWheelDelta(evt.delta);
+            float minimumOffset = timelineScroll.horizontalScroller.lowValue;
+            float maximumOffset = Mathf.Max(minimumOffset,
+                timelineScroll.horizontalScroller.highValue);
             Vector2 horizontalOffset = canvasModel.ScrollOffset;
-            horizontalOffset.x = Mathf.Max(0f,
-                horizontalOffset.x + evt.delta.y * config.HorizontalWheelStep);
+            // 使用真实 ScrollView 偏移作为本次输入起点，避免 Model 与 Scroller 边界不同步。
+            horizontalOffset.x = Mathf.Clamp(
+                timelineScroll.scrollOffset.x + wheelDelta * config.HorizontalWheelStep,
+                minimumOffset, maximumOffset);
             canvasModel.SetScrollOffset(horizontalOffset);
+
+            // 阻止 ScrollView 再执行默认滚动，避免横移后继续纵向滚动或重复横移。
+            evt.PreventDefault();
             evt.StopPropagation();
         }
 
-        // 将右侧水平 Scroller 的真实值提交到 CanvasModel，左侧水平偏移始终保持为零。
+        /// <summary>
+        /// 从 WheelEvent 的二维增量中提取横向滚动量。
+        /// </summary>
+        /// <param name="delta">Unity UI Toolkit 提供的滚轮增量。</param>
+        /// <returns>优先使用直接横向输入，否则使用普通滚轮的纵向输入。</returns>
+        private static float ResolveHorizontalWheelDelta(Vector3 delta) =>
+            !Mathf.Approximately(delta.x, 0f) ? delta.x : delta.y;
+
+        /// <summary>
+        /// 将右侧水平 Scroller 的真实值提交到 CanvasModel。
+        /// </summary>
+        /// <param name="value">右侧 ScrollView 当前水平像素偏移。</param>
         private void OnRightHorizontalChanged(float value)
         {
             if (applyingScrollOffset) return;
@@ -116,7 +145,10 @@ namespace RPG.SkillSystem.Editor
             canvasModel.SetScrollOffset(offset);
         }
 
-        // 将右侧纵向 Scroller 的真实值提交到 CanvasModel，由 Model 事件统一同步左侧。
+        /// <summary>
+        /// 将右侧纵向 Scroller 的真实值提交到 CanvasModel，并由 Model 同步左侧。
+        /// </summary>
+        /// <param name="value">右侧 ScrollView 当前纵向像素偏移。</param>
         private void OnRightVerticalChanged(float value)
         {
             if (applyingScrollOffset) return;
@@ -125,7 +157,10 @@ namespace RPG.SkillSystem.Editor
             canvasModel.SetScrollOffset(offset);
         }
 
-        // 将左侧纵向 Scroller 的真实值提交到 CanvasModel，由 Model 事件统一同步右侧。
+        /// <summary>
+        /// 将左侧纵向 Scroller 的真实值提交到 CanvasModel，并由 Model 同步右侧。
+        /// </summary>
+        /// <param name="value">左侧 ScrollView 当前纵向像素偏移。</param>
         private void OnLeftVerticalChanged(float value)
         {
             if (applyingScrollOffset) return;
@@ -138,14 +173,18 @@ namespace RPG.SkillSystem.Editor
 
         #region Model 状态应用
 
-        // 延迟到 ScrollView 完成首次布局后恢复 SessionState 中的权威偏移。
+        /// <summary>
+        /// 在 ScrollView 完成首次布局后恢复 SessionState 中的权威偏移。
+        /// </summary>
         private void RestoreCanvasScrollOffset()
         {
             restoreItem = null;
             ApplyCanvasScrollOffset();
         }
 
-        // 把会话恢复、用户输入或播放头定位产生的权威偏移同时应用到左右 ScrollView。
+        /// <summary>
+        /// 将会话恢复、用户输入或播放头定位产生的权威偏移应用到左右 ScrollView。
+        /// </summary>
         private void ApplyCanvasScrollOffset()
         {
             Vector2 target = canvasModel.ScrollOffset;

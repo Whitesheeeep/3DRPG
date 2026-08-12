@@ -7,6 +7,7 @@
 ```text
 SkillConfig
 └── List<TrackConfigBase> Tracks
+    ├── ActionPhaseTrackConfig
     ├── AnimationTrackConfig
     ├── AttackDetectionTrackConfig
     ├── VfxTrackConfig
@@ -37,7 +38,7 @@ AnimationTrackConfig
                 └── ITrackPreviewFactory（可选）
 ```
 
-`TrackModuleRegistry` 使用 `TypeCache` 扫描具体 `TrackConfigBase` 和 `TrackModuleDefinition`，要求二者按 Track 类型一对一匹配。Attribute 的 `order` 只决定右键菜单顺序和“按轨道类型重排”的顺序；新建 Track 默认追加到列表末尾。
+`TrackModuleRegistry` 使用 `TypeCache` 扫描具体 `TrackConfigBase` 和 `TrackModuleDefinition`，要求二者按 Track 类型一对一匹配。Attribute 的 `order` 只决定右键菜单顺序和“按轨道类型重排”的顺序；新建 Track 默认追加到列表末尾。`allowMultiple: false` 可声明每个 `SkillConfig` 只允许存在一条该类型轨道，菜单和 Document 会共同阻止重复创建。
 
 接口位于 `Core/Modules/Interface`，实现位于 `Core/Modules/Concrete`。Canvas、ViewModel、Document 和原生 Inspector 不包含具体轨道类型的 `switch`。
 
@@ -126,7 +127,53 @@ PlaybackController.SampleFrame
 
 Preview Handler 直接从 `SkillConfig.Tracks.OfType<TTrack>()` 读取对应 Track。Handler 可以持有窗口私有缓存、VFX 实例或 Audio Graph，但不能修改 Config、Document 或 UI。
 
-## 4. 新增一种轨道
+## 4. 动作阶段轨道
+
+`ActionPhaseTrackConfig` 使用 `[TimelineTrack("动作阶段轨道", -10, false)]` 注册，因此位于类型排序最前方，并且每个技能最多存在一条。Item 使用 `[StartFrame, EndFrame)` 半开区间；空白帧不隐式补资产，未来运行时可将其解释为 `ActionPhaseType.None`。
+
+```text
+当前整数帧
+→ 在 ActionPhaseTrackConfig.Clips 中查找覆盖该帧的区间
+→ 读取 ActionPhaseSkillClipConfig.Phase
+→ 读取 CanBeInterrupted
+→ 未来动作状态机决定取消、连招或状态切换
+```
+
+阶段允许重复出现，编辑器只约束同轨区间不重叠。`CanBeInterrupted` 表示当前动作在该阶段是否允许被外部动作或状态逻辑打断，并不表示该阶段能够主动打断其他动作。该轨道不接受 Project 素材拖入，也不注册 Preview Handler。
+
+## 5. Event Track 类型化事件
+
+`SkillEventMarkerConfig` 使用固定联合体保存全部候选值，`ValueType` 只声明本次事件的有效参数。切换参数类型不会清空其他字段；`EventKey` 是稳定业务键，`DisplayName` 和 `MarkerId` 只用于显示、日志与配置定位。
+
+```mermaid
+flowchart LR
+    A["SkillEventMarkerConfig"] --> B["运行时技能播放器"]
+    B --> C["构造 SkillConfigEventArgs 快照"]
+    C --> D["EventSystem.EventTrigger_Type"]
+    D --> E["事件监听者"]
+    E --> F["按 EventKey 识别业务"]
+    F --> G["按 ValueType 读取有效值"]
+```
+
+运行时播放器到达 Marker 帧时直接发布 `SkillConfigEventArgs`，不需要额外的技能事件中心转发层：
+
+```csharp
+using WS_Modules.CustomEventSystem;
+
+IUnRegister unregister = EventSystem.Register_Type<SkillConfigEventArgs>(
+    typeof(SkillConfigEventArgs),
+    OnSkillConfigEvent);
+
+EventSystem.EventTrigger_Type(
+    typeof(SkillConfigEventArgs),
+    new SkillConfigEventArgs(config, owner, marker));
+```
+
+监听者先使用 `EventKey` 判断业务含义，再按照 `ValueType` 读取 `IntValue`、`StringValue`、`LongValue`、`BoolValue`、`DoubleValue`、`FloatValue` 或 `ObjectValue`。`Owner` 用于区分同一技能配置的并发释放实例。注册返回的 `IUnRegister` 必须由监听者随自身生命周期释放。
+
+Editor Preview 和 Scrub 不发布业务事件，避免编辑操作产生运行时副作用；该职责留给后续运行时技能播放器。
+
+## 6. 新增一种轨道
 
 例如新增 State Track：
 
@@ -142,7 +189,7 @@ Preview Handler 直接从 `SkillConfig.Tracks.OfType<TTrack>()` 读取对应 Tra
 
 完成后不需要修改 `SkillConfig`、Canvas、RowCollectionView、EditorViewModel、TimelineWindowInspector 或 Track 面板菜单。
 
-## 5. 约束
+## 7. 约束
 
 - `SkillConfig` 只保存运行时数据；窗口尺寸、缩放、滚动和选择不进入资产。
 - Track ID 与 Item ID 是稳定 GUID，不使用名称或列表索引作为持久定位。
@@ -151,7 +198,7 @@ Preview Handler 直接从 `SkillConfig.Tracks.OfType<TTrack>()` 读取对应 Tra
 - `ITrackDocumentHandler.TrackType` 是 Handler 路由依据，不能根据重复的 `clips` 字段名猜测类型。
 - 类型重排只改变统一 Track 列表，不改变 Track 子资产内容。
 - Track 删除必须同时删除列表引用和子资产，避免孤立子资产。
-## 9. Item 与 Track 拖拽表现
+## 8. Item 与 Track 拖拽表现
 
 Item 的 Move 交互使用三层表现，且拖动期间不修改配置：
 
@@ -193,3 +240,7 @@ PointerUp
 ```
 
 轨道锁定只限制 Item 编辑，不限制轨道自身排序。Header 的上移、下移按钮与拖拽排序共用 `MoveTrackToIndex()`；删除轨道仍同时移除根列表引用并销毁该 Track 子资产。
+# 运行时播放器
+
+SkillConfig 的运行时执行入口、依赖关系、结束语义与 Odin 手动测试方法见
+[`../../Runtime/SkillRuntime.md`](../../Runtime/SkillRuntime.md)。

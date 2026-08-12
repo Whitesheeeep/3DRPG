@@ -151,7 +151,7 @@ namespace RPG.SkillSystem.Editor
             trackAssetField.allowSceneObjects = false;
             trackAssetField.SetValueWithoutNotify(track);
             trackAssetField.SetEnabled(false);
-            trackAssetField.tooltip = AssetDatabase.GetAssetPath(track);
+            trackAssetField.tooltip = "避免重复引用，文件只允许只读\n" + AssetDatabase.GetAssetPath(track);
             rowSelections.Add(new RowSelectionBinding(header, track));
             trackContextMenuController.Register(track, header);
             headerRows.Add(header);
