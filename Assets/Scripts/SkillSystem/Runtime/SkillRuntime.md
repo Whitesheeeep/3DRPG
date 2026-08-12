@@ -4,8 +4,10 @@
 
 ```mermaid
 flowchart LR
-    StateMachine["外部状态机 / GAS"] --> Runner["SkillRunner"]
-    Runner --> Execution["SkillExecution"]
+    StateMachine["外部状态机 / GAS"] --> Runner["SkillRunner 自动驱动适配器"]
+    AbilityTask["未来 AbilityTask 手动驱动"] --> Module["SkillRuntimeModule"]
+    Runner -->|"Tick / LateTick"| Module
+    Module --> Execution["SkillExecution"]
     Execution --> Registry["SkillRuntimeRegistry 创建固定处理管线"]
     Registry --> Handlers["每种轨道类型一个 Runtime Handler"]
     Handlers --> Tracks["收集同类型且未静音的全部 Track"]
@@ -14,10 +16,12 @@ flowchart LR
     Handlers --> Pool["PoolManager VFX"]
     Handlers --> Audio["AudioManager"]
     Handlers --> Events["WSFrame EventSystem"]
-    Runner -->|"Completed(reason)"| StateMachine
+    Module -->|"Completed(reason)"| StateMachine
 ```
 
-`SkillRunner`只负责执行技能时间轴。是否能释放、是否能打断以及结束后进入哪个状态，均由外部状态机决定。动画 Handler 通过角色 `IAnimationPlayer`在固定语义层播放，并在技能结束时有意不停止该层或恢复 Locomotion。
+`SkillRuntimeModule`负责技能时间轴状态和单次执行所有权，但不依赖 `MonoBehaviour`或任何全局更新器。调用方必须按 Unity 阶段分别调用 `Tick(deltaTime)`和`LateTick()`；同一个 Module 只能由一个调用方驱动，避免重复推进帧、事件和攻击检测。
+
+`SkillRunner`只是在 `Update/LateUpdate`中转发帧驱动的默认 MonoBehaviour 适配器。是否能释放、是否能打断以及结束后进入哪个状态，均由外部状态机决定。动画 Handler 通过角色 `IAnimationPlayer`在固定语义层播放，并在技能结束时有意不停止该层或恢复 Locomotion。
 
 每次 `SkillExecution`都会创建 ActionPhase、Animation、AttackDetection、VFX、Audio 和 Event 六个独立 Handler。每个 Handler 在初始化时按 `SkillConfig.Tracks`物理顺序收集自己的全部同类型未静音轨道；执行期间 Config 视为不可变，不会动态重新收集。不同技能执行不会共享命中记录、特效实例或音频句柄。
 
@@ -46,7 +50,25 @@ SkillStartResult result = runner.TryPlay(
     new SkillPlayRequest(skillConfig, currentWeaponRoot, currentWeaponTip));
 ```
 
-Runner 同一时间只允许一个活动执行。装备系统负责选择当前武器，并在每次 Play 时传入刀根和刀尖；SkillConfig 不绑定具体武器。
+Module 同一时间只允许一个活动执行。装备系统负责选择当前武器，并在每次 Play 时传入刀根和刀尖；SkillConfig 不绑定具体武器。
+
+## 手动驱动接入
+
+未来 AbilitySystem 可以为每个角色执行通道持有一个 Module，并由自己的 Task 生命周期驱动：
+
+```csharp
+ISkillRuntimeModule skillModule = new SkillRuntimeModule();
+skillModule.Initialize(actor, attack);
+skillModule.TryPlay(new SkillPlayRequest(skillConfig, weaponRoot, weaponTip));
+
+// AbilityTask 的普通更新阶段。
+skillModule.Tick(deltaTime);
+
+// AbilityTask 的 Late 更新阶段；最终帧攻击检测和自然结束在这里完成。
+skillModule.LateTick();
+```
+
+Module 常驻，但每次播放仍创建独立的 `SkillExecution`和六类 Handler。AbilityTask 应使用 AbilitySystem 所属的角色 Module，不应为每个 Task 创建可以并行驱动的执行通道。
 
 ## 结束语义
 
@@ -62,7 +84,7 @@ stateDiagram-v2
 - `Natural`：完整处理最后有效帧及其 LateUpdate 检测后结束。
 - `Stopped`：停止时间轴，VFX 尾迹和已开始音频允许自然结束。
 - `Cancelled`：立即回收本次执行仍持有的 VFX 与音频。
-- 三种路径都只发送一次 `Completed`；事件发送前 Runner 已清空当前执行，可在回调中启动下一技能。
+- 三种路径都只发送一次 `Completed`；事件发送前 Module 已清空当前执行，可在回调中启动下一技能。
 
 ## 攻击检测
 

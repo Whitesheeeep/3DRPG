@@ -37,7 +37,6 @@ namespace RPG.SkillSystem
         /// 创建执行对象，并按固定类型顺序初始化本次执行独占的聚合轨道处理器。
         /// </summary>
         /// <param name="context">本次执行共享上下文。</param>
-        /// <param name="registry">轨道运行时处理器注册表。</param>
         public SkillExecution(SkillRuntimeContext context)
         {
             this.context = context;
@@ -57,7 +56,7 @@ namespace RPG.SkillSystem
         #region 帧推进
 
         /// <summary>
-        /// 在 Runner 保存当前执行引用后同步处理第 0 帧，使帧零事件回调可以安全 Stop 或 Cancel。
+        /// 在 Module 保存当前执行引用后同步处理第 0 帧，使帧零事件回调可以安全 Stop 或 Cancel。
         /// </summary>
         public void Start()
         {

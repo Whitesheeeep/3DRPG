@@ -21,10 +21,10 @@ MonoBehaviour:
     initialWeight: 0
     applyAnimatorIK: 0
   upperBodyLayer:
-    avatarMask: {fileID: 0}
+    avatarMask: {fileID: 101100000, guid: a5b5bfc1e90b5514f9b30b23377aa15e, type: 2}
     initialWeight: 0
     applyAnimatorIK: 0
   additiveLayer:
-    avatarMask: {fileID: 0}
+    avatarMask: {fileID: 101100000, guid: a5b5bfc1e90b5514f9b30b23377aa15e, type: 2}
     initialWeight: 0
     applyAnimatorIK: 0

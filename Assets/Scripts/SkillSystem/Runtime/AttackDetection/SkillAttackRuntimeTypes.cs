@@ -25,7 +25,7 @@ namespace RPG.SkillSystem
     }
 
     /// <summary>
-    /// 保存 SkillRunner 初始化时使用的 Physics 查询范围和可选业务过滤器。
+    /// 保存 SkillRuntimeModule 初始化时使用的 Physics 查询范围和可选业务过滤器。
     /// </summary>
     public readonly struct SkillAttackSettings
     {
@@ -71,7 +71,7 @@ namespace RPG.SkillSystem
     public readonly struct SkillHitEventArgs
     {
         /// <summary>
-        /// 所属技能执行标识，用于在 SkillRunner 内部去重和外部事件订阅区分不同技能实例。
+        /// 所属技能执行标识，用于在运行时 Module 内部去重和外部事件订阅区分不同技能实例。
         /// </summary>
         public ulong ExecutionId { get; }
         public SkillConfig Config { get; }

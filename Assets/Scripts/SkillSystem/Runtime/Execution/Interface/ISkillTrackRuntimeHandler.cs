@@ -32,7 +32,7 @@ namespace RPG.SkillSystem
     }
 
     /// <summary>
-    /// 向 SkillExecution 暴露动作阶段查询，而不让 Runner 依赖具体处理器类型。
+    /// 向 SkillExecution 暴露动作阶段查询，而不让运行时 Module 依赖具体处理器类型。
     /// </summary>
     internal interface IActionPhaseRuntimeState
     {

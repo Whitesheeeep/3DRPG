@@ -4,30 +4,41 @@ using UnityEngine;
 namespace RPG.SkillSystem
 {
     /// <summary>
-    /// 为一个角色托管唯一活动 SkillExecution，并通过实例事件向外部状态机发布命中与结束通知。
+    /// 作为 Unity 自动帧驱动适配器，将播放 API、状态和事件转发给纯 C# SkillRuntimeModule。
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class SkillRunner : MonoBehaviour
     {
-        #region 字段与事件
+        #region 模块与事件
 
-        private SkillActorContext actorContext;
-        private SkillAttackSettings attackSettings;
-        private SkillExecution execution;
-        private ulong nextExecutionId;
-        private bool initialized;
+        private readonly SkillRuntimeModule module = new();
 
-        public event Action<SkillHitEventArgs> HitDetected;
-        public event Action<SkillCompletedEventArgs> Completed;
+        /// <summary>
+        /// 在 Module 完成目标过滤和 Clip 内去重后转发命中事件。
+        /// </summary>
+        public event Action<SkillHitEventArgs> HitDetected
+        {
+            add => module.HitDetected += value;
+            remove => module.HitDetected -= value;
+        }
+
+        /// <summary>
+        /// 在 Module 清理当前执行后转发技能完成事件。
+        /// </summary>
+        public event Action<SkillCompletedEventArgs> Completed
+        {
+            add => module.Completed += value;
+            remove => module.Completed -= value;
+        }
 
         #endregion
 
         #region 状态查询
 
-        public bool IsPlaying => execution != null;
-        public int CurrentFrame => execution?.CurrentFrame ?? 0;
-        public ActionPhaseType CurrentPhase => execution?.CurrentPhase ?? ActionPhaseType.None;
-        public bool CanBeInterrupted => execution?.CanBeInterrupted ?? false;
+        public bool IsPlaying => module.IsPlaying;
+        public int CurrentFrame => module.CurrentFrame;
+        public ActionPhaseType CurrentPhase => module.CurrentPhase;
+        public bool CanBeInterrupted => module.CanBeInterrupted;
 
         #endregion
 
@@ -38,7 +49,7 @@ namespace RPG.SkillSystem
         /// </summary>
         private void Update()
         {
-            execution?.Advance(Time.deltaTime);
+            module.Tick(Time.deltaTime);
         }
 
         /// <summary>
@@ -46,12 +57,7 @@ namespace RPG.SkillSystem
         /// </summary>
         private void LateUpdate()
         {
-            if (execution == null) return;
-            SkillExecution activeExecution = execution;
-            activeExecution.ProcessLateFrames();
-            // 命中回调允许同步 Stop/Cancel；只有原执行仍归 Runner 所有时才能继续自然结束判断。
-            if (execution == activeExecution && activeExecution.CanCompleteNaturally)
-                CompleteExecution(SkillCompletionReason.Natural);
+            module.LateTick();
         }
 
         /// <summary>
@@ -59,7 +65,7 @@ namespace RPG.SkillSystem
         /// </summary>
         private void OnDestroy()
         {
-            if (execution != null) CompleteExecution(SkillCompletionReason.Cancelled);
+            module.Dispose();
         }
 
         #endregion
@@ -73,11 +79,7 @@ namespace RPG.SkillSystem
         /// <param name="attack">LayerMask、Trigger 和可选业务过滤器。</param>
         public void Initialize(SkillActorContext actor, SkillAttackSettings attack)
         {
-            if (execution != null)
-                throw new InvalidOperationException("不能在技能执行期间重新初始化 SkillRunner。");
-            actorContext = actor;
-            attackSettings = attack;
-            initialized = true;
+            module.Initialize(actor, attack);
         }
 
         /// <summary>
@@ -86,7 +88,7 @@ namespace RPG.SkillSystem
         /// <param name="filter">新的过滤器；为空表示不做额外业务筛选。</param>
         public void SetAttackTargetFilter(ISkillAttackTargetFilter filter)
         {
-            attackSettings = attackSettings.WithTargetFilter(filter);
+            module.SetAttackTargetFilter(filter);
         }
 
         /// <summary>
@@ -95,7 +97,7 @@ namespace RPG.SkillSystem
         /// <param name="layerMask">新的目标层掩码。</param>
         public void SetAttackLayerMask(LayerMask layerMask)
         {
-            attackSettings = attackSettings.WithLayerMask(layerMask);
+            module.SetAttackLayerMask(layerMask);
         }
 
         /// <summary>
@@ -105,17 +107,7 @@ namespace RPG.SkillSystem
         /// <returns>成功状态或明确失败原因。</returns>
         public SkillStartResult TryPlay(in SkillPlayRequest request)
         {
-            if (!initialized) return SkillStartResult.Failure("SkillRunner 尚未 Initialize。");
-            if (execution != null) return SkillStartResult.Failure("SkillRunner 当前已有活动技能。");
-            if (request.Config == null) return SkillStartResult.Failure("SkillPlayRequest 缺少 SkillConfig。");
-            if (request.Config.FrameRate <= 0 || request.Config.DurationFrames <= 0)
-                return SkillStartResult.Failure("SkillConfig 的 FPS 与总帧必须大于零。");
-
-            ulong executionId = ++nextExecutionId;
-            SkillRuntimeContext context = new(executionId, actorContext, request, attackSettings, PublishHit);
-            execution = new SkillExecution(context);
-            execution.Start();
-            return SkillStartResult.Success();
+            return module.TryPlay(request);
         }
 
         /// <summary>
@@ -123,7 +115,7 @@ namespace RPG.SkillSystem
         /// </summary>
         public void Stop()
         {
-            if (execution != null) CompleteExecution(SkillCompletionReason.Stopped);
+            module.Stop();
         }
 
         /// <summary>
@@ -131,39 +123,7 @@ namespace RPG.SkillSystem
         /// </summary>
         public void Cancel()
         {
-            if (execution != null) CompleteExecution(SkillCompletionReason.Cancelled);
-        }
-
-        #endregion
-
-        #region 事件与结束
-
-        /// <summary>
-        /// 将攻击处理器发布的实例命中转发给当前 Runner 监听者。
-        /// </summary>
-        /// <param name="args">已经完成全部过滤和去重的命中快照。</param>
-        private void PublishHit(SkillHitEventArgs args)
-        {
-            HitDetected?.Invoke(args);
-        }
-
-        /// <summary>
-        /// 先释放 Runner 当前执行引用，再发送结束事件，允许回调立即启动下一技能。
-        /// </summary>
-        /// <param name="reason">结束原因。</param>
-        private void CompleteExecution(SkillCompletionReason reason)
-        {
-            SkillExecution completedExecution = execution;
-            completedExecution.Complete(reason);
-            execution = null;
-
-            // 动画退出完全由监听者负责；Runner 只提供已结束技能的不可变上下文。
-            Completed?.Invoke(new SkillCompletedEventArgs(
-                completedExecution.ExecutionId,
-                completedExecution.Config,
-                completedExecution.Owner,
-                reason,
-                completedExecution.CurrentFrame));
+            module.Cancel();
         }
 
         #endregion

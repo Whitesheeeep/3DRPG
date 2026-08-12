@@ -1,7 +1,7 @@
 namespace RPG.SkillSystem
 {
     /// <summary>
-    /// 将动作阶段轨道投影为当前阶段和可打断状态，不直接干预 Runner 的停止决策。
+    /// 将动作阶段轨道投影为当前阶段和可打断状态，不直接干预外部系统的停止决策。
     /// </summary>
     internal sealed class ActionPhaseRuntimeHandler : TrackRuntimeHandler<ActionPhaseTrackConfig>, IActionPhaseRuntimeState
     {

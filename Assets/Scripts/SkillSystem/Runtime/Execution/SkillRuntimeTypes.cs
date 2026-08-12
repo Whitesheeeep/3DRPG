@@ -70,7 +70,7 @@ namespace RPG.SkillSystem
     }
 
     /// <summary>
-    /// 描述一次技能执行结束事件；事件发送前 Runner 已释放当前执行引用，可在回调中立即播放下一技能。
+    /// 描述一次技能执行结束事件；事件发送前 Module 已释放当前执行引用，可在回调中立即播放下一技能。
     /// </summary>
     public readonly struct SkillCompletedEventArgs
     {
@@ -83,7 +83,7 @@ namespace RPG.SkillSystem
         /// <summary>
         /// 创建技能结束事件快照。
         /// </summary>
-        /// <param name="executionId">Runner 内单调递增的执行标识。</param>
+        /// <param name="executionId">Module 内单调递增的执行标识。</param>
         /// <param name="config">已经结束的技能配置。</param>
         /// <param name="owner">本次技能施法者。</param>
         /// <param name="reason">自然结束、主动停止或取消原因。</param>
