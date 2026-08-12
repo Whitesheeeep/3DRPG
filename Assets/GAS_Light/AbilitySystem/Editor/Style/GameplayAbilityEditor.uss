@@ -11,8 +11,35 @@
     flex-direction: row;
 }
 
+.ga-bake-toolbar {
+    flex-shrink: 0;
+    padding-left: 4px;
+    padding-right: 4px;
+    flex-direction: row;
+    align-items: center;
+}
+
 .ga-toolbar-spacer {
     flex-grow: 1;
+}
+
+.ga-database-field {
+    flex-grow: 1;
+    min-width: 260px;
+}
+
+.ga-bake-status {
+    max-width: 280px;
+    margin-left: 6px;
+    align-self: center;
+    color: rgb(155, 205, 155);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ga-bake-status.has-bake-error {
+    color: rgb(235, 112, 112);
 }
 
 .ga-search {
@@ -46,6 +73,11 @@
 
 .ga-details-root {
     flex-grow: 1;
+}
+
+.ga-ability-id {
+    color: rgb(155, 155, 155);
+    margin-bottom: 4px;
 }
 
 .ga-section-title {

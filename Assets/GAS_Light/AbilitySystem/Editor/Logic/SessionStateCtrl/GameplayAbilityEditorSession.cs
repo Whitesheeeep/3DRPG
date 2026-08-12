@@ -9,6 +9,7 @@ namespace WS_Modules.GAS.Editor
     {
         #region 常量
         private const string AbilityKey = "WSFrame.GAS.GameplayAbility.Ability";
+        private const string DatabaseKey = "WSFrame.GAS.GameplayAbility.Database";
         private const string SearchKey = "WSFrame.GAS.GameplayAbility.Search";
         #endregion
 
@@ -31,6 +32,28 @@ namespace WS_Modules.GAS.Editor
             return string.IsNullOrEmpty(path)
                 ? null
                 : AssetDatabase.LoadAssetAtPath<GameplayAbilityData>(path);
+        }
+
+        /// <summary>保存当前 GameplayAbilityDatabase 的 Asset GUID。</summary>
+        /// <param name="database">当前 GA Editor 使用的 Database。</param>
+        public static void SetDatabase(GameplayAbilityDatabase database)
+        {
+            string path = database == null ? string.Empty : AssetDatabase.GetAssetPath(database);
+            SessionState.SetString(
+                DatabaseKey,
+                string.IsNullOrEmpty(path) ? string.Empty : AssetDatabase.AssetPathToGUID(path));
+        }
+
+        /// <summary>从 SessionState 恢复上次选择的 GameplayAbilityDatabase。</summary>
+        /// <returns>资产仍存在时返回 Database，否则返回 null。</returns>
+        public static GameplayAbilityDatabase GetDatabase()
+        {
+            string guid = SessionState.GetString(DatabaseKey, string.Empty);
+            if (string.IsNullOrEmpty(guid)) return null;
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            return string.IsNullOrEmpty(path)
+                ? null
+                : AssetDatabase.LoadAssetAtPath<GameplayAbilityDatabase>(path);
         }
 
         /// <summary>获取或保存当前搜索文本。</summary>

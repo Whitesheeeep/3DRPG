@@ -64,9 +64,18 @@ namespace WS_Modules.GAS.GameplayCue
                 hasPrefab = prefab != null;
                 if (hasPrefab && !prefab.TryGetComponent<GameplayCueBehaviour>(out _))
                     Debug.LogError($"GameplayCueData '{name}' 的 Fallback Prefab 缺少 GameplayCueBehaviour。", prefab);
-                if (hasPrefab && prefab.TryGetComponent<PoolObjectIdentity>(out PoolObjectIdentity identity) &&
-                    string.IsNullOrWhiteSpace(identity.PoolKey))
-                    Debug.LogWarning($"GameplayCueData '{name}' 的 Fallback Prefab PoolObjectIdentity.PoolKey 为空，将使用预制体名称作为池 Key。", prefab);
+                if (hasPrefab)
+                {
+                    IGameObjectPoolable poolable = prefab.GetComponent<IGameObjectPoolable>();
+                    if (poolable == null)
+                        Debug.LogError($"GameplayCueData '{name}' 的 Fallback Prefab 必须实现 IGameObjectPoolable。", prefab);
+                    else if (string.IsNullOrWhiteSpace(poolable.Key))
+                        Debug.LogError($"GameplayCueData '{name}' 的 Fallback Prefab IGameObjectPoolable.Key 不能为空。", prefab);
+                    else if (!string.IsNullOrWhiteSpace(addressableKey) && poolable.Key != addressableKey)
+                        Debug.LogError(
+                            $"GameplayCueData '{name}' 的 Fallback Prefab Key '{poolable.Key}' 与 Addressable Key '{addressableKey}' 不一致。",
+                            prefab);
+                }
             }
             catch (MissingReferenceException)
             {

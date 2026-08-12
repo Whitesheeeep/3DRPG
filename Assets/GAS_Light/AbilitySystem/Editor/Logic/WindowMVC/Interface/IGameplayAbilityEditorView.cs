@@ -67,11 +67,22 @@ namespace WS_Modules.GAS.Editor
         event Action<GameplayAbilityRenameRequest> RenameSubmitted;
         /// <summary>当前 GA 的序列化字段发生变化时触发。</summary>
         event Action AbilityChanged;
+        /// <summary>用户切换 GameplayAbilityDatabase 时触发。</summary>
+        event Action<GameplayAbilityDatabase> DatabaseChanged;
+        /// <summary>用户请求 Bake 稳定 AbilityId 和运行时索引时触发。</summary>
+        event Action BakeRequested;
 
         /// <summary>设置可创建的具体 Ability Data 类型。</summary>
         void SetCreatableAbilityTypes(IReadOnlyList<Type> types);
         /// <summary>设置搜索文本而不产生用户意图。</summary>
         void SetSearch(string search);
+        /// <summary>设置当前 Database，不产生用户切换意图。</summary>
+        /// <param name="database">当前 Database。</param>
+        void SetDatabase(GameplayAbilityDatabase database);
+        /// <summary>渲染 Ability Bake 状态。</summary>
+        /// <param name="message">状态摘要或首条错误。</param>
+        /// <param name="hasError">当前是否不可直接使用。</param>
+        void RenderBakeStatus(string message, bool hasError);
         /// <summary>渲染稳定的 GA 资产引用列表并恢复选择。</summary>
         void RenderAbilities(IReadOnlyList<GameplayAbilityData> abilities, GameplayAbilityData selected);
         /// <summary>绑定当前 GA 的公共字段和具体子类字段。</summary>

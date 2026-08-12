@@ -1,8 +1,5 @@
-using System.Collections.Generic;
 using UnityEngine;
-using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.GameplayEffect;
-using WS_Modules.GAS.TAG;
 
 namespace WS_Modules.GAS.GameplayAbilitySystem
 {
@@ -15,7 +12,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <summary>创建默认使用 Passive 保持 Task 的 Ability 数据。</summary>
         public PassiveGameplayAbilityData()
         {
-            SetRootTask(new PassiveGameplayAbilityTaskConfig());
+            SetRootTask(new PersistentSelfEffectsGameplayAbilityTaskConfig());
         }
         #endregion
 
@@ -25,7 +22,9 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         {
             get
             {
-                if (!base.IsRuntimeConfigurationValid || RootTask is not PassiveGameplayAbilityTaskConfig || Effects == null)
+                if (!base.IsRuntimeConfigurationValid ||
+                    RootTask is not PersistentSelfEffectsGameplayAbilityTaskConfig ||
+                    Effects == null)
                     return false;
 
                 for (int i = 0; i < Effects.Count; i++)
@@ -42,19 +41,12 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         }
         #endregion
 
-        #region Runtime 工厂
-        // Passive Runtime 额外保存本次成功应用的 GE 句柄，结束时精确移除。
-        protected override AsynchronousGameplayAbilityRuntime CreateAsynchronousRuntime(
-            int activationId,
-            GameplayAbilitySpec spec,
-            GameplayAbilitySystemComponent source,
-            IReadOnlyDictionary<GameplayTag, float> setByCaller) =>
-            new PassiveGameplayAbilityRuntime(
-                activationId,
-                spec,
-                source,
-                setByCaller,
-                this);
+        #region 激活策略
+
+        /// <summary>Passive 已激活时拒绝重复创建 Runtime。</summary>
+        public override GameplayAbilityReactivationPolicy ReactivationPolicy =>
+            GameplayAbilityReactivationPolicy.RejectWhileActive;
+
         #endregion
     }
 }

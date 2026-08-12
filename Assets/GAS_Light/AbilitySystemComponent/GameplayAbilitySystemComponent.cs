@@ -193,6 +193,13 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         public GameplayAbilityHandle GiveAbility(GameplayAbilityData data, int level) =>
             abilityController.GiveAbility(data, level);
 
+        /// <summary>通过全局稳定 AbilityId 查询当前 ASC 的临时授予 Handle。</summary>
+        /// <param name="abilityId">由 GameplayAbilityDatabase Bake 的稳定 ID。</param>
+        /// <param name="handle">查询成功时返回当前 ASC 的 Handle。</param>
+        /// <returns>当前 ASC 已授予对应 Ability 时返回 true。</returns>
+        public bool TryGetAbilityHandle(int abilityId, out GameplayAbilityHandle handle) =>
+            abilityController.TryGetAbilityHandle(abilityId, out handle);
+
         /// <summary>修改已授予 Ability Spec 后续激活使用的等级。</summary>
         /// <param name="handle">要修改的 Ability Spec Handle。</param>
         /// <param name="level">新等级，必须至少为 1。</param>

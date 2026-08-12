@@ -1,10 +1,11 @@
 using System;
 using UnityEngine;
+using WS_Modules.Pooling;
 
 namespace WS_Modules.GAS.GameplayCue
 {
     /// <summary>挂在 Cue 预制体上的表现行为基类，具体效果通过重写生命周期方法实现。</summary>
-    public abstract class GameplayCueBehaviour : MonoBehaviour
+    public abstract class GameplayCueBehaviour : PoolObjectIdentity
     {
         #region 表现生命周期
         /// <summary>对象从对象池取出并完成位置设置后调用。</summary>

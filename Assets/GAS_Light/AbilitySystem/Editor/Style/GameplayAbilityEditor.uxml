@@ -1,6 +1,11 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
-    <ui:Style src="project://database/Assets/GAS_Light/AbilitySystem/Editor/Style/GameplayAbilityEditor.uss" />
+    <Style src="project://database/Assets/GAS_Light/AbilitySystem/Editor/Style/GameplayAbilityEditor.uss?fileID=7433441132597879392&amp;guid=7d000429d62f7454f8a64a9ca2271eb7&amp;type=3#GameplayAbilityEditor" />
     <ui:VisualElement class="ga-editor">
+        <ui:VisualElement class="ga-bake-toolbar">
+            <uie:ObjectField name="DatabaseField" label="Gameplay Ability Database" class="ga-database-field" style="flex-shrink: 1;" />
+            <ui:Button name="BakeAbilityButton" text="Bake" />
+            <ui:Label name="BakeStatusLabel" text="Not Baked" class="ga-bake-status" />
+        </ui:VisualElement>
         <ui:VisualElement class="ga-toolbar">
             <ui:Button name="CreateAbilityButton" text="Create" />
             <ui:Button name="DuplicateAbilityButton" text="Duplicate" />
@@ -17,6 +22,7 @@
                 <ui:Label name="AbilityTitle" text="No Gameplay Ability Selected" class="ga-details-title" />
                 <ui:VisualElement name="AbilityDetailsRoot" class="ga-details-root">
                     <ui:Label text="Ability" class="ga-section-title" />
+                    <ui:Label name="AbilityIdLabel" text="Ability ID: Unbaked" class="ga-ability-id" />
                     <uie:PropertyField binding-path="description" label="Description" />
                     <uie:PropertyField binding-path="activationTagQuery" label="Activation Tag Query" />
                     <ui:Label text="Commit" class="ga-section-title ga-section-gap" />

@@ -2,9 +2,10 @@ using System;
 
 namespace WS_Modules.GAS.GameplayAbilitySystem
 {
-    /// <summary>配置一个保持运行、直到所属 Passive Ability 结束或取消的 Task。</summary>
+    /// <summary>兼容旧 Passive 资产的持续效果配置；新资产使用 PersistentSelfEffectsGameplayAbilityTaskConfig。</summary>
     [Serializable]
-    public sealed class PassiveGameplayAbilityTaskConfig : GameplayAbilityTaskConfig
+    [Obsolete("请使用 PersistentSelfEffectsGameplayAbilityTaskConfig。")]
+    public sealed class PassiveGameplayAbilityTaskConfig : PersistentSelfEffectsGameplayAbilityTaskConfig
     {
         #region 构造与工厂
         /// <summary>创建不主动完成的 Passive 保持 Task 配置。</summary>

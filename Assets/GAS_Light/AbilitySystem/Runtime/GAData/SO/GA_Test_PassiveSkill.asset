@@ -12,22 +12,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0705aa94aa9817742a5a53df12d3f9d1, type: 3}
   m_Name: GA_Test_PassiveSkill
   m_EditorClassIdentifier: 
+  abilityId: 3
   description: Editor validation fixture for a Passive Gameplay Ability.
   activationTagQuery:
     allTags: []
     anyTags: []
-    noneTags: []
+    banedTags: []
   costEffect: {fileID: 11400000, guid: c4005860abd1f1a47be545ea558a6a3c, type: 2}
   cooldownEffect: {fileID: 11400000, guid: 0bed64fb37a789e489389e2346d0c8a4, type: 2}
-  rootTask:
-    rid: 3428733691224653825
   effects:
   - {fileID: 11400000, guid: a12f1e6d370a4f93a846d7d9b3e20c71, type: 2}
   cueTags:
   - id: 22
+  rootTask:
+    rid: 3428733691224653825
   references:
     version: 2
     RefIds:
     - rid: 3428733691224653825
-      type: {class: PassiveGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
+      type: {class: PersistentSelfEffectsGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
       data: 

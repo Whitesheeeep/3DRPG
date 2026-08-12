@@ -52,9 +52,36 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         public GameplayAbilityHandle GiveAbility(GameplayAbilityData data, int level)
         {
             if (data == null || level < 1) return GameplayAbilityHandle.Invalid;
+            for (int i = 0; i < grantedAbilities.Count; i++)
+                if (ReferenceEquals(grantedAbilities[i].Data, data))
+                    return GameplayAbilityHandle.Invalid;
+
             var handle = new GameplayAbilityHandle(AllocateHandleId());
             grantedAbilities.Add(new GameplayAbilitySpec(handle, data, level));
             return handle;
+        }
+
+        /// <inheritdoc />
+        public bool TryGetAbilityHandle(int abilityId, out GameplayAbilityHandle handle)
+        {
+            if (!GameplayAbilityManager.Instance.TryGetAbility(
+                    abilityId,
+                    out GameplayAbilityData ability))
+            {
+                handle = GameplayAbilityHandle.Invalid;
+                return false;
+            }
+
+            for (int i = 0; i < grantedAbilities.Count; i++)
+            {
+                GameplayAbilitySpec spec = grantedAbilities[i];
+                if (!ReferenceEquals(spec.Data, ability)) continue;
+                handle = spec.Handle;
+                return true;
+            }
+
+            handle = GameplayAbilityHandle.Invalid;
+            return false;
         }
 
         /// <inheritdoc />
@@ -134,8 +161,22 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             out GameplayAbilityRuntime runtime)
         {
             runtime = null;
-            if (!TryGetAbilitySpec(handle, out GameplayAbilitySpec spec) ||
-                spec.Level < 1 ||
+            if (!TryGetAbilitySpec(handle, out GameplayAbilitySpec spec)) return false;
+
+            // 重复激活策略必须先于 Cost、Cooldown 和条件检查处理，Toggle 关闭不会产生新的激活副作用。
+            GameplayAbilityRuntime existing = FindActiveRuntime(spec);
+            if (existing != null)
+            {
+                if (spec.Data.ReactivationPolicy == GameplayAbilityReactivationPolicy.RejectWhileActive)
+                    return false;
+                if (spec.Data.ReactivationPolicy == GameplayAbilityReactivationPolicy.ToggleOff)
+                {
+                    runtime = existing;
+                    return existing.End();
+                }
+            }
+
+            if (spec.Level < 1 ||
                 !spec.Data.ActivationTagQuery.Matches(Owner.Tags) ||
                 !HasValidActivationPolicies(spec.Data) ||
                 !spec.Data.IsRuntimeConfigurationValid)
@@ -223,13 +264,23 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             ReferenceEquals(runtime.Source, Owner) &&
             activeRuntimes.Contains(runtime);
 
-        // 查找指定 Spec 是否仍有激活实例。
+        /// <summary>判断指定 Spec 是否仍有激活实例。</summary>
+        /// <param name="spec">需要查询的已授予 Ability Spec。</param>
+        /// <returns>存在 Active Runtime 时返回 true。</returns>
         private bool HasActiveRuntime(GameplayAbilitySpec spec)
+        {
+            return FindActiveRuntime(spec) != null;
+        }
+
+        /// <summary>查找指定 Spec 当前第一个 Active Runtime。</summary>
+        /// <param name="spec">需要查询的已授予 Ability Spec。</param>
+        /// <returns>找到时返回 Runtime，否则返回 null。</returns>
+        private GameplayAbilityRuntime FindActiveRuntime(GameplayAbilitySpec spec)
         {
             for (int i = 0; i < activeRuntimes.Count; i++)
                 if (ReferenceEquals(activeRuntimes[i].Spec, spec))
-                    return true;
-            return false;
+                    return activeRuntimes[i];
+            return null;
         }
 
         // 单调分配当前 Controller 内 Spec Handle。

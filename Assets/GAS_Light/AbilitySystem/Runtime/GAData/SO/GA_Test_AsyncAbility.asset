@@ -12,14 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 92a3fd70e0644c4da339c935362b3d99, type: 3}
   m_Name: GA_Test_AsyncAbility
   m_EditorClassIdentifier: 
+  abilityId: 0
   description: Test asynchronous Ability driven by a one second WaitDuration task.
   activationTagQuery:
     allTags: []
     anyTags: []
-    noneTags: []
+    banedTags: []
   costEffect: {fileID: 0}
   cooldownEffect: {fileID: 0}
   effects: []
+  cueTags: []
   rootTask:
     rid: 3428733655084433420
   references:

@@ -55,8 +55,9 @@ namespace WS_Modules.GAS.GameplayCue
         #region Unity 生命周期
 
         /// <summary>缓存 Renderer、材质属性块和对象池初始缩放。</summary>
-        private void Awake()
+        protected override void Awake()
         {
+            base.Awake();
             renderers = GetComponentsInChildren<Renderer>(true);
             propertyBlock = new MaterialPropertyBlock();
             initialScale = transform.localScale;

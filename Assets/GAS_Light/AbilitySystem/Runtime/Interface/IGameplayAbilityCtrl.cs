@@ -28,6 +28,12 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <returns>授予成功时返回有效 Handle，否则返回 Invalid。</returns>
         GameplayAbilityHandle GiveAbility(GameplayAbilityData data, int level);
 
+        /// <summary>通过全局稳定 AbilityId 查询当前 ASC 内的临时授予 Handle。</summary>
+        /// <param name="abilityId">由 GameplayAbilityDatabase Bake 的全局稳定 ID。</param>
+        /// <param name="handle">当前 ASC 已授予该 Ability 时返回 Handle。</param>
+        /// <returns>Manager 能解析 ID 且当前 ASC 已授予对应 Data 时返回 true。</returns>
+        bool TryGetAbilityHandle(int abilityId, out GameplayAbilityHandle handle);
+
         /// <summary>修改后续激活使用的 Spec 等级，不改变已有 Runtime 快照。</summary>
         /// <param name="handle">目标 Ability Spec Handle。</param>
         /// <param name="level">新等级，必须至少为 1。</param>

@@ -404,6 +404,7 @@ namespace WS_Modules.GAS.Editor
             bool hasBehaviour = false;
             bool hasPoolIdentity = false;
             bool poolKeyMissing = false;
+            bool poolKeyMismatch = false;
             bool invalidPrefabReference = false;
             try
             {
@@ -413,8 +414,13 @@ namespace WS_Modules.GAS.Editor
                 {
                     AssetDatabase.GetAssetPath(fallbackPrefab);
                     hasBehaviour = fallbackPrefab.TryGetComponent<GameplayCueBehaviour>(out _);
-                    hasPoolIdentity = fallbackPrefab.TryGetComponent<PoolObjectIdentity>(out PoolObjectIdentity identity);
-                    poolKeyMissing = hasPoolIdentity && string.IsNullOrWhiteSpace(identity.PoolKey);
+                    IGameObjectPoolable poolable = fallbackPrefab.GetComponent<IGameObjectPoolable>();
+                    hasPoolIdentity = poolable != null;
+                    poolKeyMissing = hasPoolIdentity && string.IsNullOrWhiteSpace(poolable.Key);
+                    poolKeyMismatch = hasPoolIdentity &&
+                                      !poolKeyMissing &&
+                                      !string.IsNullOrWhiteSpace(cue.AddressableKey) &&
+                                      poolable.Key != cue.AddressableKey;
                 }
             }
             catch (MissingReferenceException)
@@ -429,13 +435,14 @@ namespace WS_Modules.GAS.Editor
             if (!invalidPrefabReference && hasFallbackPrefab && !hasBehaviour)
                 issues.Add(Error(cue, "Fallback Prefab 缺少 GameplayCueBehaviour。"));
 
-            if (!invalidPrefabReference && hasFallbackPrefab && hasPoolIdentity && poolKeyMissing)
-            {
-                issues.Add(new GameplayCueValidationIssue(
-                    GameplayCueValidationSeverity.Warning,
+            if (!invalidPrefabReference && hasFallbackPrefab && !hasPoolIdentity)
+                issues.Add(Error(cue, "Fallback Prefab 必须实现 IGameObjectPoolable。"));
+            else if (!invalidPrefabReference && hasFallbackPrefab && poolKeyMissing)
+                issues.Add(Error(cue, "Fallback Prefab 的 IGameObjectPoolable.Key 不能为空。"));
+            else if (!invalidPrefabReference && hasFallbackPrefab && poolKeyMismatch)
+                issues.Add(Error(
                     cue,
-                    "Fallback Prefab 的 PoolObjectIdentity.PoolKey 为空，运行时将使用默认池 Key。"));
-            }
+                    $"Fallback Prefab Key 与 Addressable Key '{cue.AddressableKey}' 不一致。"));
 
             if (ContainsInvalid(cue.LocalPosition) || ContainsInvalid(cue.LocalRotation.eulerAngles))
                 issues.Add(Error(cue, "位置或旋转偏移包含 NaN/Infinity。"));

@@ -34,7 +34,7 @@ namespace WS_Modules.Pooling
         }
 
         /// <summary>
-        /// 浣跨敤宸茬粡鎸佹湁鐨?prefab 棰勭儹 GameObject 姹犮€備紭鍏堜娇鐢?prefab 涓婄殑 PoolObjectIdentity.PoolKey锛岀己澶辨椂浣跨敤 prefab 鍚嶇О锛涜祫婧愯矾寰勬垨 Addressable 鍦烘櫙寤鸿浼樺厛浣跨敤 string key 閲嶈浇銆?
+        /// 使用 Prefab 根节点 IGameObjectPoolable.Key 预热 GameObject 池；身份缺失或 Key 非法时拒绝预热。
         /// </summary>
         public void Prewarm(GameObject prefab, int initCount, int maxCapacity, bool usePrefabAsFirst = false)
         {
@@ -75,6 +75,7 @@ namespace WS_Modules.Pooling
                 WSLog.LogWarning($"Prewarm: no prefab found for key '{key}'.");
                 return;
             }
+            if (!TryGetPoolable(prefab, key, out _)) return;
 
             PrewarmObjects(poolData, key, prefab, needed, false);
         }
@@ -112,6 +113,11 @@ namespace WS_Modules.Pooling
                 onComplete?.Invoke(false);
                 return;
             }
+            if (!TryGetPoolable(prefab, key, out _))
+            {
+                onComplete?.Invoke(false);
+                return;
+            }
 
             PrewarmObjects(data, key, prefab, needed, false);
 
@@ -123,7 +129,7 @@ namespace WS_Modules.Pooling
         /// 璇ユ柟娉曟彁渚涗簡涓€涓畝鍖栫殑鎺ュ彛锛屽厑璁歌皟鐢ㄦ柟鐩存帴閫氳繃绫诲瀷鍙傛暟鏉ヨ幏鍙栧璞″疄渚嬶紝鍐呴儴浼氫娇鐢ㄧ被鍨嬪悕绉颁綔涓?key 鏉ョ鐞嗘睜瀛愶紝閫傜敤浜庢瘡涓被鍨嬪搴斾竴涓鍒朵綋鐨勫父瑙佹儏鍐点€?
         /// 瑕佹眰锛?c>蹇呴』鏄祫婧愪笌瀵瑰簲鐨勭被涓€鑷村悕绉?/c>
         /// </summary>
-        public GameObject Get<T>(Transform parent = null) where T : IPoolable
+        public GameObject Get<T>(Transform parent = null) where T : IGameObjectPoolable
         {
             return Get(typeof(T).Name, parent);
         }
@@ -148,7 +154,8 @@ namespace WS_Modules.Pooling
 
             if (data.TryGet(out var go, parent))
             {
-                PrepareForGet(go);
+                if (!TryGetPoolable(go, key, out IGameObjectPoolable poolable)) return null;
+                poolable.Spawn();
                 return go;
             }
 
@@ -158,16 +165,21 @@ namespace WS_Modules.Pooling
                 WSLog.LogWarning($"Get: no prefab found for key '{key}' and pool is empty.");
                 return null;
             }
+            if (!TryGetPoolable(prefab, key, out _)) return null;
 
             var inst = GameObject.Instantiate(prefab, parent, false);
-            MarkObjectIdentity(inst, key);
-            PrepareForGet(inst);
+            if (!TryGetPoolable(inst, key, out IGameObjectPoolable instancePoolable))
+            {
+                GameObject.Destroy(inst);
+                return null;
+            }
+            instancePoolable.Spawn();
             inst.name = prefab.name;
             return inst;
         }
 
         /// <summary>
-        /// 浣跨敤宸茬粡鎸佹湁鐨?prefab 鑾峰彇 GameObject銆備紭鍏堜娇鐢?prefab 涓婄殑 PoolObjectIdentity.PoolKey锛岀己澶辨椂浣跨敤 prefab 鍚嶇О锛涙睜涓虹┖鏃剁洿鎺ュ疄渚嬪寲璇?prefab锛屼笉璧拌祫婧愬姞杞藉櫒銆?
+        /// 使用 Prefab 根节点 IGameObjectPoolable.Key 获取 GameObject；池为空时直接实例化该 Prefab。
         /// </summary>
         public GameObject Get(GameObject prefab, Transform parent = null)
         {
@@ -190,17 +202,23 @@ namespace WS_Modules.Pooling
 
             if (data.TryGet(out var go, parent))
             {
-                PrepareForGet(go);
+                if (!TryGetPoolable(go, key, out IGameObjectPoolable poolable)) return null;
+                poolable.Spawn();
                 return go;
             }
 
             var inst = GameObject.Instantiate(prefab, parent, false);
-            MarkObjectIdentity(inst, key);
-            PrepareForGet(inst);
+            if (!TryGetPoolable(inst, key, out IGameObjectPoolable instancePoolable))
+            {
+                GameObject.Destroy(inst);
+                return null;
+            }
+            instancePoolable.Spawn();
             inst.name = prefab.name;
             return inst;
         }
 
+        /// <summary>按稳定 Key 批量获取并统一 Spawn 指定数量的对象。</summary>
         public List<GameObject> GetSome(string key, int count, Transform parent = null)
         {
             if (!CheckKeyAndResLoadValid(key)) return null;
@@ -214,7 +232,8 @@ namespace WS_Modules.Pooling
 
             if (data.TryGetSome(count, out var gos, parent))
             {
-                PrepareForGet(gos);
+                if (!TryGetPoolables(gos, key, out List<IGameObjectPoolable> poolables)) return null;
+                SpawnAll(poolables);
                 return gos;
             }
 
@@ -224,13 +243,18 @@ namespace WS_Modules.Pooling
                 WSLog.LogWarning($"Get(count): no prefab found for key '{key}' and pool is empty.");
                 return null;
             }
+            if (!TryGetPoolable(prefab, key, out _)) return null;
 
             var instList = new List<GameObject>(count);
             for (int i = 0; i < count; i++)
             {
                 var inst = GameObject.Instantiate(prefab, parent, false);
-                MarkObjectIdentity(inst, key);
-                PrepareForGet(inst);
+                if (!TryGetPoolable(inst, key, out IGameObjectPoolable poolable))
+                {
+                    GameObject.Destroy(inst);
+                    return null;
+                }
+                poolable.Spawn();
                 inst.name = prefab.name;
                 instList.Add(inst);
             }
@@ -239,7 +263,7 @@ namespace WS_Modules.Pooling
         }
         
         /// <summary>
-        /// 浣跨敤宸茬粡鎸佹湁鐨?prefab 鎵归噺鑾峰彇 GameObject銆備紭鍏堜娇鐢?prefab 涓婄殑 PoolObjectIdentity.PoolKey锛岀己澶辨椂浣跨敤 prefab 鍚嶇О锛涙睜鏁伴噺涓嶈冻鏃剁洿鎺ュ疄渚嬪寲璇?prefab 琛ヨ冻锛屼笉璧拌祫婧愬姞杞藉櫒銆?
+        /// 使用 Prefab 根节点 IGameObjectPoolable.Key 批量获取 GameObject；池数量不足时直接实例化该 Prefab。
         /// </summary>
         public List<GameObject> GetSome(GameObject prefab, int count, Transform parent = null)
         {
@@ -268,7 +292,8 @@ namespace WS_Modules.Pooling
 
             if (data.TryGetSome(count, out var gos, parent))
             {
-                PrepareForGet(gos);
+                if (!TryGetPoolables(gos, key, out List<IGameObjectPoolable> poolables)) return null;
+                SpawnAll(poolables);
                 return gos;
             }
 
@@ -276,8 +301,12 @@ namespace WS_Modules.Pooling
             for (int i = 0; i < count; i++)
             {
                 var inst = GameObject.Instantiate(prefab, parent, false);
-                MarkObjectIdentity(inst, key);
-                PrepareForGet(inst);
+                if (!TryGetPoolable(inst, key, out IGameObjectPoolable poolable))
+                {
+                    GameObject.Destroy(inst);
+                    return null;
+                }
+                poolable.Spawn();
                 inst.name = prefab.name;
                 instList.Add(inst);
             }
@@ -291,10 +320,12 @@ namespace WS_Modules.Pooling
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
         public async UniTask<GameObject> GetAsync<T>(Transform parent = null)
+            where T : IGameObjectPoolable
         {
             return await GetAsync(typeof(T).Name, parent);
         }
 
+        /// <summary>异步加载稳定 Key 对应资源，并在身份校验后 Spawn 对象。</summary>
         public async UniTask<GameObject> GetAsync(string key, Transform parent = null)
         {
             if (!CheckKeyAndResLoadValid(key))
@@ -311,7 +342,8 @@ namespace WS_Modules.Pooling
 
             if (data.TryGet(out var go, parent))
             {
-                PrepareForGet(go);
+                if (!TryGetPoolable(go, key, out IGameObjectPoolable poolable)) return null;
+                poolable.Spawn();
                 return go;
             }
 
@@ -323,20 +355,27 @@ namespace WS_Modules.Pooling
                 WSLog.LogWarning($"GetAsync: no prefab found for key '{key}' and pool is empty.");
                 return null;
             }
+            if (!TryGetPoolable(prefab, key, out _)) return null;
 
             var inst = GameObject.Instantiate(prefab, parent, false);
-            MarkObjectIdentity(inst, key);
-            PrepareForGet(inst);
+            if (!TryGetPoolable(inst, key, out IGameObjectPoolable instancePoolable))
+            {
+                GameObject.Destroy(inst);
+                return null;
+            }
+            instancePoolable.Spawn();
             inst.name = prefab.name;
             return inst;
         }
 
-        // 鍥炶皟寮忕殑寮傛鑾峰彇锛氱珛鍗宠繑鍥烇紝閫氳繃鍥炶皟鍦ㄨ祫婧愬姞杞藉畬鎴愭椂杩斿洖瀹炰緥锛岄伩鍏嶈皟鐢ㄦ柟鍦ㄤ富绾跨▼绛夊緟
+        /// <summary>按类型名异步获取对象，并在资源与身份准备完成后回调。</summary>
         public void GetAsync<T>(Transform parent, UnityAction<GameObject> onComplete)
+            where T : IGameObjectPoolable
         {
             GetAsync(typeof(T).Name, parent, onComplete);
         }
 
+        /// <summary>按稳定 Key 异步获取对象，并在身份准备完成后回调。</summary>
         public void GetAsync(string key, Transform parent, UnityAction<GameObject> onComplete)
         {
             if (!CheckKeyAndResLoadValid(key))
@@ -354,7 +393,12 @@ namespace WS_Modules.Pooling
 
             if (data.TryGet(out var go, parent))
             {
-                PrepareForGet(go);
+                if (!TryGetPoolable(go, key, out IGameObjectPoolable poolable))
+                {
+                    onComplete?.Invoke(null);
+                    return;
+                }
+                poolable.Spawn();
                 onComplete?.Invoke(go);
                 return;
             }
@@ -368,10 +412,20 @@ namespace WS_Modules.Pooling
                     onComplete?.Invoke(null);
                     return;
                 }
+                if (!TryGetPoolable(prefab, key, out _))
+                {
+                    onComplete?.Invoke(null);
+                    return;
+                }
 
                 var inst = GameObject.Instantiate(prefab, parent, false);
-                MarkObjectIdentity(inst, key);
-                PrepareForGet(inst);
+                if (!TryGetPoolable(inst, key, out IGameObjectPoolable poolable))
+                {
+                    GameObject.Destroy(inst);
+                    onComplete?.Invoke(null);
+                    return;
+                }
+                poolable.Spawn();
                 inst.name = prefab.name;
                 onComplete?.Invoke(inst);
             });
@@ -384,19 +438,20 @@ namespace WS_Modules.Pooling
         {
             if (string.IsNullOrEmpty(key) || go == null) return;
 
+            if (!TryGetPoolable(go, key, out IGameObjectPoolable poolable)) return;
+
             if (!PoolDic.TryGetValue(key, out var data))
             {
-                ClearEditorSelectionIfNeeded(go);
-                GameObject.Destroy(go);
+                WSLog.LogError($"Recycle: Pool '{key}' does not exist for GameObject '{go.name}'.");
                 return;
             }
 
-            PrepareForRecycle(go, key);
+            poolable.Despawn();
             data.PushObj(go);
         }
 
         /// <summary>
-        /// 鍥炴敹宸茬粡鎸佹湁鐨?GameObject 瀹炰緥銆備紭鍏堜娇鐢ㄥ疄渚嬩笂鐨?PoolObjectIdentity.PoolKey锛岀己澶辨椂浣跨敤瀹炰緥鍚嶇О锛涜祫婧愯矾寰勬垨 Addressable 鍦烘櫙寤鸿纭繚瀹炰緥甯︽湁绋冲畾鐨?PoolObjectIdentity銆?
+        /// 使用实例根节点 IGameObjectPoolable.Key 回收 GameObject，不使用实例名称推断池身份。
         /// </summary>
         public void Recycle(GameObject go)
         {
@@ -407,28 +462,27 @@ namespace WS_Modules.Pooling
         }
 
         /// <summary>
-        /// 鎵归噺鍥炴敹宸茬粡鎸佹湁鐨?GameObject 瀹炰緥銆備娇鐢ㄧ涓€椤圭殑 PoolObjectIdentity.PoolKey 鎴栧悕绉板畾浣嶆睜锛岃姹傚垪琛ㄥ唴瀵硅薄鏉ヨ嚜鍚屼竴涓睜銆?
+        /// 使用第一项的 IGameObjectPoolable.Key 定位池，并要求列表内全部对象拥有相同身份。
         /// </summary>
         public void RecycleSome(List<GameObject> gos)
         {
             if (gos is not { Count: > 0 }) return;
 
             string key = ResolvePoolKey(gos[0]);
+            if (!CheckKeyValid(key)) return;
+            if (!TryGetPoolables(gos, key, out List<IGameObjectPoolable> poolables)) return;
+
             if (!PoolDic.TryGetValue(key, out var data))
             {
-                foreach (var go in gos)
-                {
-                    ClearEditorSelectionIfNeeded(go);
-                GameObject.Destroy(go);
-                }
-
+                WSLog.LogError($"RecycleSome: Pool '{key}' does not exist.");
                 return;
             }
             
-            PrepareForRecycle(gos, key);
+            DespawnAll(poolables);
             data.PushObjs(gos);
         }
 
+        /// <summary>销毁指定 Key 池内当前已 Despawn 的对象并移除池数据。</summary>
         public void ClearPool(string key)
         {
             if (string.IsNullOrEmpty(key)) return;
@@ -439,6 +493,7 @@ namespace WS_Modules.Pooling
             }
         }
 
+        /// <summary>销毁全部池内当前已 Despawn 的对象并清空池数据。</summary>
         public void ClearAll()
         {
             foreach (var p in PoolDic.Values)
@@ -449,9 +504,11 @@ namespace WS_Modules.Pooling
             PoolDic.Clear();
         }
 
+        /// <summary>保留 Editor 选择清理扩展点，运行时无需处理。</summary>
         private static void ClearEditorSelectionIfNeeded(GameObject root)
         {
         }
+        /// <summary>取得预热目标池，不存在时创建，存在时只允许扩大容量。</summary>
         private GameObjectPoolData GetOrCreatePrewarmPool(string key, int maxCapacity)
         {
             if (!PoolDic.TryGetValue(key, out var poolData))
@@ -465,6 +522,7 @@ namespace WS_Modules.Pooling
             return poolData;
         }
 
+        /// <summary>实例化指定数量对象，并通过 Despawn 入口放入初始池状态。</summary>
         private void PrewarmObjects(
             GameObjectPoolData poolData,
             string key,
@@ -477,8 +535,8 @@ namespace WS_Modules.Pooling
             int startIndex = 0;
             if (usePrefabAsFirst)
             {
-                MarkObjectIdentity(prefab, key);
-                PrepareForRecycle(prefab);
+                if (!TryGetPoolable(prefab, key, out IGameObjectPoolable poolable)) return;
+                poolable.Despawn();
                 poolData.PushObj(prefab);
                 startIndex = 1;
             }
@@ -487,13 +545,18 @@ namespace WS_Modules.Pooling
             {
                 var inst = GameObject.Instantiate(prefab, poolRootTransform, false);
                 inst.name = prefab.name;
-                MarkObjectIdentity(inst, key);
-                PrepareForRecycle(inst);
+                if (!TryGetPoolable(inst, key, out IGameObjectPoolable poolable))
+                {
+                    GameObject.Destroy(inst);
+                    return;
+                }
+                poolable.Despawn();
                 poolData.PushObj(inst);
             }
         }
 
         #region 璇ョ被鐨勫悎鐞嗘€ф楠?
+        /// <summary>校验预热 Key、资源加载器和容量参数。</summary>
         private bool CheckPrewarmValid(string key, int initCount, int maxCapacity, bool requireResLoader = true)
         {
             if (!CheckKeyValid(key)) return false;
@@ -509,11 +572,13 @@ namespace WS_Modules.Pooling
             return true;
         }
 
+        /// <summary>校验 Key 与资源加载器均可用。</summary>
         private bool CheckKeyAndResLoadValid(string key)
         {
             return CheckKeyValid(key) && CheckResLoadValid();
         }
 
+        /// <summary>校验对象池 Key 不为空。</summary>
         private bool CheckKeyValid(string key)
         {
             if (!string.IsNullOrEmpty(key))
@@ -525,6 +590,7 @@ namespace WS_Modules.Pooling
             return false;
         }
 
+        /// <summary>校验当前对象池拥有资源加载器。</summary>
         private bool CheckResLoadValid()
         {
             if (gameObjectResLoader != null)
@@ -538,93 +604,77 @@ namespace WS_Modules.Pooling
         #endregion
 
         #region 杈呭姪鍑芥暟
-        // 瑙ｆ瀽 GameObject 瀵瑰簲鐨勬睜 key锛屼紭鍏堜娇鐢?PoolObjectIdentity锛岀己澶辨椂閫€鍥炲埌瀵硅薄鍚嶇О銆?
+        /// <summary>从池化根对象的强制身份组件读取唯一 Key。</summary>
+        /// <param name="go">待读取身份的根对象。</param>
+        /// <returns>有效 Key；身份缺失时返回 null。</returns>
         private string ResolvePoolKey(GameObject go)
         {
-            if (go == null)
-            {
-                return null;
-            }
-
-            if (go.TryGetComponent(out PoolObjectIdentity identity) && !string.IsNullOrEmpty(identity.PoolKey))
-            {
-                return identity.PoolKey;
-            }
-
-            return go.name.Replace("(Clone)", string.Empty);
-        }
-        private void MarkObjectIdentity(GameObject go, string key)
-        {
-            if (go == null) return;
-            if (!go.TryGetComponent<PoolObjectIdentity>(out var identity))
-            {
-                identity = go.AddComponent<PoolObjectIdentity>();
-            }
-
-            identity.PoolKey = key;
+            if (go == null) return null;
+            return TryGetPoolable(go, expectedKey: null, out IGameObjectPoolable poolable)
+                ? poolable.Key
+                : null;
         }
 
-        // 灏嗗璞″噯澶囦负鍙敤鐘舵€侊細婵€娲汇€侀噸缃?transform銆乸arent 鍒版寚瀹氳妭鐐?
-        private void PrepareForGet(GameObject go)
+        /// <summary>校验强制池身份，并确认对象 Key 与当前池一致。</summary>
+        /// <param name="go">待校验的池化根对象。</param>
+        /// <param name="expectedKey">当前对象池 Key；为空时只验证身份与 Key 有效性。</param>
+        /// <param name="poolable">成功时返回池化身份接口。</param>
+        /// <returns>身份存在、Key 有效且与当前池一致时返回 true。</returns>
+        private bool TryGetPoolable(
+            GameObject go,
+            string expectedKey,
+            out IGameObjectPoolable poolable)
         {
-            if (go == null) return;
-
-            go.transform.localPosition = Vector3.zero;
-            go.transform.localRotation = Quaternion.identity;
-            go.transform.localScale = Vector3.one;
-        }
-        
-        private void PrepareForGet(List<GameObject> gos)
-        {
-            if (gos is not { Count: > 0 }) return;
-            foreach (var go in gos)
+            poolable = null;
+            if (go == null) return false;
+            poolable = go.GetComponent<IGameObjectPoolable>();
+            if (poolable == null)
             {
-                PrepareForGet(go);
+                WSLog.LogError($"Pool GameObject '{go.name}' must implement IGameObjectPoolable on its root.");
+                return false;
             }
-        }
-        
-        private void PrepareForGet(GameObject[] gos)
-        {
-            if (gos is not { Length: > 0 }) return;
-            foreach (var go in gos)
+            if (string.IsNullOrWhiteSpace(poolable.Key))
             {
-                PrepareForGet(go);
+                WSLog.LogError($"Pool GameObject '{go.name}' has an empty IGameObjectPoolable.Key.");
+                return false;
             }
-        }
-        
-        /// <summary>
-        /// 灏嗗璞″噯澶囦负鍙洖鏀剁姸鎬侊細鍋滅敤銆侀噸缃?transform銆乸arent 鍒?poolRoot 
-        /// </summary>
-        /// <param name="go">灏嗚鍥炴敹鐨勫璞?/param>
-        /// <param name="key">濡傛灉濉叆鍐呭锛屽垯浼氭坊鍔?ObjectIdentity 瀵硅薄锛屾爣璁板睘浜庡摢涓睜瀛?/param>
-        private void PrepareForRecycle(GameObject go, string key = null)
-        {
-            if (go == null) return;
-            // 鍙牴鎹渶瑕佸湪杩欓噷娓呴櫎缁勪欢鐘舵€侊紙濡傚仠姝㈠崗绋嬨€侀噸缃姩鐢汇€佸叧闂壒鏁堢瓑锛?
 
-            go.transform.localPosition = Vector3.zero;
-            go.transform.localRotation = Quaternion.identity;
-            go.transform.localScale = Vector3.one;
-            
-            if (key is not null) MarkObjectIdentity(go, key);
+            if (!string.IsNullOrEmpty(expectedKey) && poolable.Key != expectedKey)
+            {
+                WSLog.LogError(
+                    $"Pool GameObject '{go.name}' Key '{poolable.Key}' does not match requested Key '{expectedKey}'.");
+                return false;
+            }
+
+            return true;
         }
 
-        private void PrepareForRecycle(List<GameObject> gos, string key = null)
+        /// <summary>批量校验全部对象身份，避免生命周期只提交一部分。</summary>
+        private bool TryGetPoolables(
+            List<GameObject> gameObjects,
+            string key,
+            out List<IGameObjectPoolable> poolables)
         {
-            if (gos is not { Count: > 0 }) return;
-            foreach (var go in gos)
+            poolables = new List<IGameObjectPoolable>(gameObjects.Count);
+            for (int i = 0; i < gameObjects.Count; i++)
             {
-                PrepareForRecycle(go, key);
+                if (!TryGetPoolable(gameObjects[i], key, out IGameObjectPoolable poolable))
+                    return false;
+                poolables.Add(poolable);
             }
+            return true;
         }
 
-        private void PrepareForRecycle(GameObject[] gos, string key = null)
+        /// <summary>在全部对象通过校验后统一发送 Spawn。</summary>
+        private static void SpawnAll(List<IGameObjectPoolable> poolables)
         {
-            if (gos is not { Length: > 0 }) return;
-            foreach (var go in gos)
-            {
-                PrepareForRecycle(go, key);
-            }
+            for (int i = 0; i < poolables.Count; i++) poolables[i].Spawn();
+        }
+
+        /// <summary>在全部对象通过校验后统一发送 Despawn。</summary>
+        private static void DespawnAll(List<IGameObjectPoolable> poolables)
+        {
+            for (int i = 0; i < poolables.Count; i++) poolables[i].Despawn();
         }
         #endregion
     }

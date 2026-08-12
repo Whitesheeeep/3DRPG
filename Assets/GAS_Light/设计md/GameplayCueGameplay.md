@@ -58,7 +58,7 @@ GE 的 Instant 和 Periodic 成功结算发布 Execute；Duration/Infinite 首�
 
 ## 对象池与位置
 
-CueController 不直接调用 `Instantiate` 或 `Destroy`。Addressable Key 优先，获取失败后使用 Fallback Prefab，两者都失败则记录错误并放弃本次表现。正式项目应使用 WSFrame PoolManager 的 Prewarm，避免首帧资源加载阻塞；Prefab 建议配置 `PoolObjectIdentity.PoolKey` 以保证回收定位稳定。
+CueController 不直接调用 `Instantiate` 或 `Destroy`。Addressable Key 优先，获取失败后使用 Fallback Prefab，两者都失败则记录错误并放弃本次表现。正式项目应使用 WSFrame PoolManager 的 Prewarm，避免首帧资源加载阻塞；`GameplayCueBehaviour` 继承 `PoolObjectIdentity` 并直接保存 Key，且 Addressable Key 必须与对象池 Key 一致。
 
 位置优先级为：请求动态挂点、请求显式世界位置、CueData 的 Marker 与 DefaultAnchor Mode。`DefaultAnchor Mode` 是默认挂载对象模式，不是 Marker 本身：当没有显式挂点或世界位置时，它决定使用 Source、Target 或 World。`DefaultAnchor = Source` 时，在 Source ASC 根节点的 `MarkerProvider` 中查找 `MarkerKey`；`DefaultAnchor = Target` 时，在 Target ASC 根节点的 `MarkerProvider` 中查找。Marker 解析失败时，才回退到 DefaultAnchor 指定的 ASC Transform；`DefaultAnchor = World` 时不查找 Marker，直接使用世界位置。`FollowAnchor` 为真时对象保持挂在解析出的 Marker 或 ASC Transform 下；否则只在生成时写入一次世界位置。Marker 和 DefaultAnchor 只影响表现位置，不参与 GE/GA 规则计算。
 
@@ -119,7 +119,7 @@ Cue 编辑器作为 GAS 主窗口中的 `Cue` 选项卡存在，不创建第二�
 
 详情页面直接使用 `SerializedObject` 和 `PropertyField` 绑定 CueTag、Addressable Key、Fallback Prefab、Anchor、偏移和 Follow Anchor。CueTag 的选择继续由现有 GameplayTagPropertyDrawer 负责。编辑器只做静态校验和资源定位，不加载 Addressable、不调用 PoolManager、不生成预览对象，也不执行 GameplayCueBehaviour。
 
-列表行根据当前 Database 校验结果显示红色 Error 或黄色 Warning 背景。校验包括空引用、重复 CueTag、资源入口、Fallback Prefab 上的 GameplayCueBehaviour、PoolObjectIdentity.PoolKey 以及非法位置数据。运行时仍由 GameplayCueManager、GameplayCueCtrl 和 PoolManager 负责真正映射、生成、执行和回收。
+列表行根据当前 Database 校验结果显示红色 Error 或黄色 Warning 背景。校验包括空引用、重复 CueTag、资源入口、Fallback Prefab 上的 GameplayCueBehaviour、`IGameObjectPoolable.Key` 以及非法位置数据。运行时仍由 GameplayCueManager、GameplayCueCtrl 和 PoolManager 负责真正映射、生成、执行和回收。
 
 ## GE/GA 与 Cue 集成测试
 
@@ -161,3 +161,20 @@ CueTest.GA.Projectile
 GA 集成场景验证 Instant、Passive 和 Projectile：Instant 在同步执行中发布 Execute，Passive 在 Runtime 存续期间保持 Active Cue，Projectile 在真实 Trigger 命中时对 Target 应用 Effects 并在命中点发布 Execute Cue。
 
 新增的 `GameplayCueVisualProbeBehaviour` 使用 `MaterialPropertyBlock` 修改 Renderer 的实例颜色，并通过局部 Scale 区分状态。Execute Cue 保持正式的立即回收语义，因此通过 Probe 回调记录；Duration、Infinite 和 Passive Cue 在生命周期内保持可见。对象回收时 Probe 会恢复材质属性、Scale 和计数，避免下一次测试继承旧状态。
+
+## ASC 周期中的 Cue 可视化
+
+ASC 真实周期测试复用 Addressable Key 为 `Cube` 的正式测试 Cue Prefab。Active Cue 是 `GameplayCueCtrl` 经 `PoolManager` 获取的真实对象，保持绿色并放大，直到 Toggle、Passive 或 ASC 清理触发 Remove 与对象池回收。
+
+Execute Cue 的正式语义仍是执行后立即回收。`GameplayAbilitySystemComponentTestVisualizer` 在 `GameplayCueVisualProbeBehaviour.CueObserved` 回调期间捕获 Cue 的世界位置，并复用一个测试专用小球显示短暂青色位置脉冲；Remove 使用灰色脉冲。脉冲只帮助观察同帧结束的事件，不替代 Cue、不参与 CueDatabase 映射，也不改变对象池生命周期。
+
+ASC Tester 将每种 GA 拆为独立按钮。每个技能场景重建 Source、Target 与 Cue 状态，并清空上一场景的 Cue 记录和测试脉冲；完整套件只负责按固定顺序调用这些相同场景。OnGUI 同时显示单项/套件模式、当前场景序号、本场景独立 PASS/FAIL、投射物通道和最近 Cue 的实际 Target。
+
+```mermaid
+flowchart TD
+    Event["真实 Cue 回调"] --> Active{"Active?"}
+    Active -->|是| PoolCue["对象池 Cue 保持可见"]
+    Active -->|否| Capture["捕获回收前世界位置"]
+    Capture --> Pulse["测试脉冲短暂显示"]
+    Event --> Overlay["OnGUI 记录 CueData、阶段、目标与位置"]
+```

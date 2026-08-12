@@ -17,8 +17,12 @@ namespace WS_Modules.GAS.Editor
             "Assets/GAS_Light/AbilitySystem/Editor/Style/GameplayAbilityAssetRow.uxml";
         private const string HiddenClass = "is-hidden";
         private const string ValidationErrorClass = "has-validation-error";
+        private const string BakeErrorClass = "has-bake-error";
 
         private readonly VisualElement root;
+        private readonly ObjectField databaseField;
+        private readonly Button bakeButton;
+        private readonly Label bakeStatusLabel;
         private readonly Button createButton;
         private readonly Button duplicateButton;
         private readonly Button deleteButton;
@@ -27,6 +31,7 @@ namespace WS_Modules.GAS.Editor
         private readonly VisualElement detailsRoot;
         private readonly VisualElement subclassFieldsContainer;
         private readonly Label abilityTitle;
+        private readonly Label abilityIdLabel;
         private readonly VisualElement validationContainer;
         private readonly VisualTreeAsset rowTemplate;
         private readonly List<GameplayAbilityData> displayedAbilities = new();
@@ -57,6 +62,10 @@ namespace WS_Modules.GAS.Editor
         public event Action<GameplayAbilityRenameRequest> RenameSubmitted;
         /// <inheritdoc />
         public event Action AbilityChanged;
+        /// <inheritdoc />
+        public event Action<GameplayAbilityDatabase> DatabaseChanged;
+        /// <inheritdoc />
+        public event Action BakeRequested;
         #endregion
 
         #region 生命周期
@@ -64,6 +73,9 @@ namespace WS_Modules.GAS.Editor
         public GameplayAbilityEditorView(VisualElement root)
         {
             this.root = root ?? throw new ArgumentNullException(nameof(root));
+            databaseField = Require<ObjectField>("DatabaseField");
+            bakeButton = Require<Button>("BakeAbilityButton");
+            bakeStatusLabel = Require<Label>("BakeStatusLabel");
             createButton = Require<Button>("CreateAbilityButton");
             duplicateButton = Require<Button>("DuplicateAbilityButton");
             deleteButton = Require<Button>("DeleteAbilityButton");
@@ -72,12 +84,17 @@ namespace WS_Modules.GAS.Editor
             detailsRoot = Require<VisualElement>("AbilityDetailsRoot");
             subclassFieldsContainer = Require<VisualElement>("SubclassFieldsContainer");
             abilityTitle = Require<Label>("AbilityTitle");
+            abilityIdLabel = Require<Label>("AbilityIdLabel");
             validationContainer = Require<VisualElement>("ValidationContainer");
             rowTemplate = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(RowUxmlPath);
             if (rowTemplate == null)
                 throw new InvalidOperationException("Gameplay Ability asset row UXML is missing.");
 
             ConfigureList();
+            databaseField.objectType = typeof(GameplayAbilityDatabase);
+            databaseField.allowSceneObjects = false;
+            databaseField.RegisterValueChangedCallback(OnDatabaseChanged);
+            bakeButton.clicked += OnBakeClicked;
             createButton.clicked += OnCreateClicked;
             duplicateButton.clicked += OnDuplicateClicked;
             deleteButton.clicked += OnDeleteClicked;
@@ -92,6 +109,8 @@ namespace WS_Modules.GAS.Editor
         {
             if (disposed) return;
             disposed = true;
+            databaseField.UnregisterValueChangedCallback(OnDatabaseChanged);
+            bakeButton.clicked -= OnBakeClicked;
             createButton.clicked -= OnCreateClicked;
             duplicateButton.clicked -= OnDuplicateClicked;
             deleteButton.clicked -= OnDeleteClicked;
@@ -120,6 +139,18 @@ namespace WS_Modules.GAS.Editor
             searchField.SetValueWithoutNotify(search ?? string.Empty);
 
         /// <inheritdoc />
+        public void SetDatabase(GameplayAbilityDatabase database) =>
+            databaseField.SetValueWithoutNotify(database);
+
+        /// <inheritdoc />
+        public void RenderBakeStatus(string message, bool hasError)
+        {
+            bakeStatusLabel.text = message ?? string.Empty;
+            bakeStatusLabel.tooltip = bakeStatusLabel.text;
+            bakeStatusLabel.EnableInClassList(BakeErrorClass, hasError);
+        }
+
+        /// <inheritdoc />
         public void RenderAbilities(
             IReadOnlyList<GameplayAbilityData> abilities,
             GameplayAbilityData selected)
@@ -143,6 +174,11 @@ namespace WS_Modules.GAS.Editor
             bool hasAbility = ability != null;
             detailsRoot.EnableInClassList(HiddenClass, !hasAbility);
             abilityTitle.text = hasAbility ? ability.name : "No Gameplay Ability Selected";
+            abilityIdLabel.text = !hasAbility
+                ? "Ability ID: -"
+                : ability.AbilityId == GameplayAbilityData.InvalidId
+                    ? "Ability ID: Unbaked"
+                    : $"Ability ID: {ability.AbilityId}";
             duplicateButton.SetEnabled(hasAbility);
             deleteButton.SetEnabled(hasAbility);
             if (!hasAbility) return;
@@ -205,6 +241,14 @@ namespace WS_Modules.GAS.Editor
         #endregion
 
         #region 事件处理
+        /// <summary>将 Database ObjectField 变化转发为明确的用户意图。</summary>
+        /// <param name="evt">包含新 Database 引用的 UI Toolkit 变化事件。</param>
+        private void OnDatabaseChanged(ChangeEvent<UnityEngine.Object> evt) =>
+            DatabaseChanged?.Invoke(evt.newValue as GameplayAbilityDatabase);
+
+        /// <summary>转发当前 Database 的 Bake 请求。</summary>
+        private void OnBakeClicked() => BakeRequested?.Invoke();
+
         // 创建菜单只包含 Service 发现的具体 Data 类型。
         private void OnCreateClicked()
         {

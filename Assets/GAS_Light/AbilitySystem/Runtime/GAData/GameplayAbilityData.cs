@@ -7,10 +7,15 @@ using WS_Modules.GAS.TAG;
 
 namespace WS_Modules.GAS.GameplayAbilitySystem
 {
-    /// <summary>保存所有 Gameplay Ability 共用的激活条件、Cost 与 Cooldown 配置。</summary>
+    /// <summary>保存所有 Gameplay Ability 共用的激活条件、提交 GE、结果 Effects 与 Cue 配置。</summary>
     public abstract class GameplayAbilityData : ScriptableObject
     {
         #region 字段
+        /// <summary>表示尚未 Bake 或非法 Ability 资产的保留 ID。</summary>
+        public const int InvalidId = -1;
+
+        [SerializeField, HideInInspector]
+        private int abilityId = InvalidId;
         [SerializeField, TextArea, Tooltip("用于编辑器和日志显示的能力说明。")]
         private string description;
         [SerializeField, Tooltip("Source Tags 必须满足该查询才能激活能力；空查询表示不限制。")]
@@ -26,6 +31,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         #endregion
 
         #region 属性
+        /// <summary>获取由 GameplayAbilityDatabase Bake 的全局稳定 AbilityId。</summary>
+        public int AbilityId => abilityId;
         /// <summary>获取能力说明。</summary>
         public string Description => description;
         /// <summary>获取 Source 在激活前必须满足的 Tag 查询。</summary>
@@ -38,13 +45,21 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         public IReadOnlyList<GameplayEffectData> Effects => effects;
         /// <summary>获取 Ability 配置的 CueTag 列表。</summary>
         public IReadOnlyList<GameplayTag> CueTags => cueTags;
+        /// <summary>获取同一 Spec 已有 Active Runtime 时采用的重复激活策略。</summary>
+        public virtual GameplayAbilityReactivationPolicy ReactivationPolicy =>
+            GameplayAbilityReactivationPolicy.AllowMultiple;
 
         // 让 Controller 在提交 Cost/Cooldown 前检查具体 Data 的运行时契约。
         internal virtual bool IsRuntimeConfigurationValid => true;
         #endregion
 
         #region Runtime 工厂
-        // 统一 Controller 到多态工厂的入口，避免 Controller 判断具体 Ability 类型。
+        /// <summary>通过多态工厂为本次激活创建独立 Runtime。</summary>
+        /// <param name="activationId">当前 Controller 分配的激活标识。</param>
+        /// <param name="spec">被激活的已授予 Spec。</param>
+        /// <param name="source">拥有并激活 Ability 的 Source ASC。</param>
+        /// <param name="setByCaller">本次激活的 SetByCaller 数据。</param>
+        /// <returns>由具体 Ability Data 创建的 Runtime。</returns>
         internal GameplayAbilityRuntime CreateRuntimeInstance(
             int activationId,
             GameplayAbilitySpec spec,
@@ -52,7 +67,12 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             IReadOnlyDictionary<GameplayTag, float> setByCaller) =>
             CreateRuntime(activationId, spec, source, setByCaller);
 
-        // 具体同步或异步 Data 决定 Runtime 类型及其私有状态。
+        /// <summary>由具体同步或异步 Data 创建对应 Runtime 类型及其私有状态。</summary>
+        /// <param name="activationId">当前 Controller 分配的激活标识。</param>
+        /// <param name="spec">被激活的已授予 Spec。</param>
+        /// <param name="source">拥有并激活 Ability 的 Source ASC。</param>
+        /// <param name="setByCaller">本次激活的 SetByCaller 数据。</param>
+        /// <returns>新建的 Ability Runtime。</returns>
         protected abstract GameplayAbilityRuntime CreateRuntime(
             int activationId,
             GameplayAbilitySpec spec,
@@ -60,8 +80,15 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             IReadOnlyDictionary<GameplayTag, float> setByCaller);
         #endregion
 
-        #region Effect application
-        // 应用统一结果 GE 列表，但不决定本次调用属于激活、命中还是其他业务时机。
+        #region 效果与 Cue 提交
+
+        /// <summary>向指定 Target 应用统一结果 GE 列表，但不决定激活、命中等业务时机。</summary>
+        /// <param name="source">本次 GE 的来源 ASC。</param>
+        /// <param name="target">接收 GE 的目标 ASC。</param>
+        /// <param name="level">Ability 激活等级快照。</param>
+        /// <param name="setByCaller">本次激活的 SetByCaller 快照。</param>
+        /// <param name="retainedEffects">可选的 Active GE Runtime 收集容器。</param>
+        /// <returns>成功提交的 GE 数量。</returns>
         internal int ApplyConfiguredEffects(
             GameplayAbilitySystemComponent source,
             GameplayAbilitySystemComponent target,
@@ -91,7 +118,15 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             return appliedCount;
         }
 
-        // 具体 Ability 或 Task 在确定的业务时机发布 Cue，基类只遍历作者配置。
+        /// <summary>在具体 Ability 或 Task 确定的业务时机发布所有作者 Cue 配置。</summary>
+        /// <param name="eventType">本次 Cue 生命周期事件。</param>
+        /// <param name="source">Cue 来源 ASC。</param>
+        /// <param name="target">接收并处理 Cue 的 ASC。</param>
+        /// <param name="effectRuntime">可选的来源 GE Runtime。</param>
+        /// <param name="abilityRuntime">可选的来源 GA Runtime。</param>
+        /// <param name="position">可选的显式世界位置。</param>
+        /// <param name="rotation">可选的显式世界旋转。</param>
+        /// <param name="attachTransform">可选的显式挂点。</param>
         internal void PublishConfiguredCues(
             GameplayCueEventType eventType,
             GameplayAbilitySystemComponent source,

@@ -14,7 +14,7 @@ namespace WS_Modules.GAS.TAG
         [SerializeField, Tooltip("至少满足一个的标签；空数组表示没有 Any 限制。")]
         private GameplayTag[] anyTags;
         [SerializeField, Tooltip("一个都不能满足的标签；空数组表示没有排除限制。")]
-        private GameplayTag[] noneTags;
+        private GameplayTag[] banedTags;
         #endregion
 
         #region 属性
@@ -23,7 +23,7 @@ namespace WS_Modules.GAS.TAG
         /// <summary>获取非空时至少满足一个的标签。</summary>
         public IReadOnlyList<GameplayTag> AnyTags => anyTags ?? Array.Empty<GameplayTag>();
         /// <summary>获取一个都不能满足的标签。</summary>
-        public IReadOnlyList<GameplayTag> BanedTags => noneTags ?? Array.Empty<GameplayTag>();
+        public IReadOnlyList<GameplayTag> BanedTags => banedTags ?? Array.Empty<GameplayTag>();
         /// <summary>获取查询是否完全不包含条件。</summary>
         public bool IsEmpty => AllTags.Count == 0 && AnyTags.Count == 0 && BanedTags.Count == 0;
         /// <summary>获取查询中的所有标签是否存在于当前 GameplayTagDatabase。</summary>
@@ -34,12 +34,12 @@ namespace WS_Modules.GAS.TAG
         /// <summary>使用三组标签创建查询，并复制输入数组避免外部后续修改。</summary>
         /// <param name="allTags">必须全部满足的标签。</param>
         /// <param name="anyTags">非空时至少满足一个的标签。</param>
-        /// <param name="noneTags">一个都不能满足的标签。</param>
-        public GameplayTagQuery(GameplayTag[] allTags, GameplayTag[] anyTags, GameplayTag[] noneTags)
+        /// <param name="banedTags">一个都不能满足的标签。</param>
+        public GameplayTagQuery(GameplayTag[] allTags, GameplayTag[] anyTags, GameplayTag[] banedTags)
         {
             this.allTags = CloneTags(allTags);
             this.anyTags = CloneTags(anyTags);
-            this.noneTags = CloneTags(noneTags);
+            this.banedTags = CloneTags(banedTags);
         }
         #endregion
 
@@ -82,7 +82,7 @@ namespace WS_Modules.GAS.TAG
         {
             allTags = Array.Empty<GameplayTag>();
             anyTags = Array.Empty<GameplayTag>();
-            noneTags = Array.Empty<GameplayTag>();
+            banedTags = Array.Empty<GameplayTag>();
         }
 
         /// <summary>创建要求全部标签都满足的查询。</summary>

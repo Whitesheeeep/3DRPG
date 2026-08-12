@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62e3216d7f3810b48bab3f786c24a91d, type: 3}
+  m_Name: GA_Test_LinearProjectile
+  m_EditorClassIdentifier: 
+  abilityId: 2
+  description: "\u4ECE Source \u524D\u65B9\u53D1\u5C04\u6C60\u5316\u53EF\u89C6\u6295\u5C04\u7269\uFF0C\u9996\u6B21\u547D\u4E2D\u5176\u4ED6
+    ASC \u65F6\u7ED3\u7B97 Effects\u3002"
+  activationTagQuery:
+    allTags: []
+    anyTags: []
+    banedTags: []
+  costEffect: {fileID: 0}
+  cooldownEffect: {fileID: 0}
+  effects:
+  - {fileID: 11400000, guid: 6861f23c72baf27428de65bec7d0d062, type: 2}
+  cueTags:
+  - id: 23
+  addressableKey: 
+  fallbackPrefab: {fileID: 100000, guid: 6fdae0aae4594fa396c5bb6c568bbdc4, type: 3}
+  spawnMarker: {fileID: 0}
+  localPosition: {x: 0, y: 0.5, z: 0.5}
+  localEulerAngles: {x: 0, y: 0, z: 0}
+  speed: 5
+  lifetime: 3

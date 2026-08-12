@@ -63,7 +63,7 @@ PoolManager.Instance.Prewarm("TestFolder/Cube1", 5, 10);
 PoolManager.Instance.Prewarm(prefabGameObject, 5, 10);
 ```
 
-该重载会优先使用 `PoolObjectIdentity.PoolKey` 作为池 key，没有标记时使用 `prefabGameObject.name`。需要补充对象时，传入的 `prefabGameObject` 会被标记 `PoolObjectIdentity` 并作为第一个对象放入池中，剩余对象通过 `Instantiate(prefabGameObject, poolRootTransform, false)` 补足到 `initCount`。如果已有可用对象数量已经满足 `initCount`，不会重复把同一个 `GameObject` 放入池中。`initCount` 和 `maxCapacity` 的校验规则与按 key 预热一致。
+该重载只使用根节点 `IGameObjectPoolable.Key` 作为池身份。Prefab 缺少接口实现、Key 为空时会拒绝预热，不再自动添加组件或回退到 GameObject 名称。需要补充对象时，可选择将传入的 `prefabGameObject` 作为第一个池对象，其余对象通过 `Instantiate(prefabGameObject, poolRootTransform, false)` 补足到 `initCount`。如果已有可用对象数量已经满足 `initCount`，不会重复放入对象。`initCount` 和 `maxCapacity` 的校验规则与按 Key 预热一致。
 
 ### 异步预热
 
@@ -123,7 +123,7 @@ PoolManager.Instance.GetAsync("TestFolder/Cube1", parent, obj =>
 PoolManager.Instance.Recycle(obj);
 ```
 
-池会通过 `PoolObjectIdentity` 找回对象所属的池 key。对象由池创建或预热时，会自动挂载并写入 `PoolObjectIdentity`。
+池只通过根节点 `IGameObjectPoolable.Key` 找回对象所属的池。Prefab 必须预先配置接口实现，池不会自动添加身份组件。
 
 也可以显式指定 key：
 
@@ -309,5 +309,5 @@ PoolManager.Instance.ClearAll();
 - 只在某个玩法或界面中使用的对象，建议进入对应流程时调用运行时 `Prewarm`。
 - 需要容量限制的 GameObject 池必须先预热，否则首次 `Get` 创建的池默认无限容量。
 - 已经持有模板对象且不需要资源加载时，可以使用 `PoolManager.Instance.Prewarm(GameObject, initCount, maxCapacity)`；否则优先使用资源 key 预热。
-- GameObject 回收优先使用 `Recycle(GameObject)`，让 `PoolObjectIdentity` 自动定位池。
+- GameObject 回收优先使用 `Recycle(GameObject)`，通过根节点 `IGameObjectPoolable.Key` 定位池。
 - Class 池对象如果有状态，建议实现 `IPoolable` 并在 `OnSpawn` / `OnDespawn` 中重置。

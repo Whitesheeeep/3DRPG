@@ -16,6 +16,7 @@ namespace WS_Modules.GAS.Editor
         private readonly List<GameplayAbilityData> filteredAbilities = new();
         private readonly Dictionary<GameplayAbilityData, GameplayAbilityValidationSeverity>
             validationStates = new();
+        private GameplayAbilityDatabase database;
         private GameplayAbilityData currentAbility;
         private string search;
         private bool disposed;
@@ -28,8 +29,10 @@ namespace WS_Modules.GAS.Editor
             this.view = view ?? throw new ArgumentNullException(nameof(view));
             service = new GameplayAbilityEditorService();
             search = GameplayAbilityEditorSession.Search;
+            database = service.ResolveDatabase();
             Subscribe();
             view.SetCreatableAbilityTypes(service.FindCreatableAbilityTypes());
+            view.SetDatabase(database);
             view.SetSearch(search);
             RefreshAssets(GameplayAbilityEditorSession.GetAbility());
         }
@@ -55,12 +58,24 @@ namespace WS_Modules.GAS.Editor
             SelectAbility(target);
             RenderList();
         }
+
+        /// <summary>切换当前 Ability Database，并立即刷新 Bake 状态与 Session。</summary>
+        /// <param name="value">同时保存稳定 ID 历史和运行时索引的 Database。</param>
+        public void SetDatabase(GameplayAbilityDatabase value)
+        {
+            database = value;
+            GameplayAbilityEditorSession.SetDatabase(value);
+            view.SetDatabase(value);
+            RefreshBakeStatus();
+        }
         #endregion
 
         #region 事件订阅
-        // View、Undo 与 Project 回调在同一生命周期内对称连接。
+        /// <summary>在同一页面生命周期内对称连接 View、Undo 与 Project 回调。</summary>
         private void Subscribe()
         {
+            view.DatabaseChanged += OnDatabaseChanged;
+            view.BakeRequested += OnBakeRequested;
             view.SearchChanged += OnSearchChanged;
             view.AbilitySelected += OnAbilitySelected;
             view.CreateRequested += OnCreateRequested;
@@ -73,9 +88,11 @@ namespace WS_Modules.GAS.Editor
             EditorApplication.projectChanged += OnProjectChanged;
         }
 
-        // 页面释放前解除外部事件，防止旧 Controller 继续刷新。
+        /// <summary>页面释放前解除外部事件，防止旧 Controller 继续刷新。</summary>
         private void Unsubscribe()
         {
+            view.DatabaseChanged -= OnDatabaseChanged;
+            view.BakeRequested -= OnBakeRequested;
             view.SearchChanged -= OnSearchChanged;
             view.AbilitySelected -= OnAbilitySelected;
             view.CreateRequested -= OnCreateRequested;
@@ -90,6 +107,26 @@ namespace WS_Modules.GAS.Editor
         #endregion
 
         #region 事件处理
+        /// <summary>处理 Database ObjectField 切换意图。</summary>
+        /// <param name="value">用户选择的 Database。</param>
+        private void OnDatabaseChanged(GameplayAbilityDatabase value) => SetDatabase(value);
+
+        /// <summary>执行当前 Database 的 Bake，并在成功后重新绑定 ID 显示。</summary>
+        private void OnBakeRequested()
+        {
+            List<string> errors = service.ValidateForBake(database);
+            if (errors.Count > 0)
+            {
+                view.ShowError(string.Join("\n", errors));
+                RefreshBakeStatus();
+                return;
+            }
+
+            string summary = service.Bake(database);
+            view.RenderBakeStatus(summary, false);
+            RefreshAssets(currentAbility);
+        }
+
         // 搜索即时更新过滤列表并持久化到 SessionState。
         private void OnSearchChanged(string value)
         {
@@ -101,21 +138,26 @@ namespace WS_Modules.GAS.Editor
         // 选择变化统一更新 Session、详情绑定与校验。
         private void OnAbilitySelected(GameplayAbilityData ability) => SelectAbility(ability);
 
-        // 创建成功后刷新项目列表并选择新资产。
+        /// <summary>创建新 GA 资产，标记 Bake Dirty 并切换到新资产。</summary>
+        /// <param name="abilityType">用户选择的具体 Ability Data 类型。</param>
         private void OnCreateRequested(Type abilityType)
         {
             GameplayAbilityData created = service.CreateAbility(abilityType);
-            if (created != null) RefreshAssets(created);
+            if (created == null) return;
+            service.MarkBakeDirty(database);
+            RefreshAssets(created);
         }
 
-        // 复制成功后刷新排序并选择新资产。
+        /// <summary>复制当前 GA 资产，标记 Bake Dirty 并恢复对新资产的选择。</summary>
         private void OnDuplicateRequested()
         {
             GameplayAbilityData duplicate = service.DuplicateAbility(currentAbility);
-            if (duplicate != null) RefreshAssets(duplicate);
+            if (duplicate == null) return;
+            service.MarkBakeDirty(database);
+            RefreshAssets(duplicate);
         }
 
-        // 删除成功后选择过滤列表中的邻近资产。
+        /// <summary>将当前 GA 移入回收站，标记 Bake Dirty 并选择邻近资产。</summary>
         private void OnDeleteRequested()
         {
             if (currentAbility == null || !view.ConfirmDelete(currentAbility)) return;
@@ -125,6 +167,8 @@ namespace WS_Modules.GAS.Editor
                 view.ShowError("Unable to move the Gameplay Ability asset to the recycle bin.");
                 return;
             }
+
+            service.MarkBakeDirty(database);
 
             RefreshAssetCache();
             ApplyFilter();
@@ -154,16 +198,19 @@ namespace WS_Modules.GAS.Editor
         // Undo/Redo 后重新绑定，避免继续使用旧 SerializedProperty。
         private void OnUndoRedo() => RefreshAssets(currentAbility);
 
-        // 项目资产变化后重建列表和具体可创建类型。
+        /// <summary>项目资产变化后重建列表、可创建类型和 Bake 状态。</summary>
         private void OnProjectChanged()
         {
+            if (database == null) SetDatabase(service.ResolveDatabase());
+            service.MarkBakeDirtyIfAssetSetChanged(database);
             view.SetCreatableAbilityTypes(service.FindCreatableAbilityTypes());
             RefreshAssets(currentAbility);
         }
         #endregion
 
         #region 状态刷新
-        // 扫描、过滤、恢复目标选择并刷新全部可见区域。
+        /// <summary>扫描、过滤、恢复目标选择，并刷新资产列表与 Bake 状态。</summary>
+        /// <param name="preferred">刷新后优先恢复的 GA 资产。</param>
         private void RefreshAssets(GameplayAbilityData preferred)
         {
             RefreshAssetCache();
@@ -174,6 +221,7 @@ namespace WS_Modules.GAS.Editor
             if (target != null && !allAbilities.Contains(target)) target = null;
             SelectAbility(target);
             view.RenderAbilities(filteredAbilities, currentAbility);
+            RefreshBakeStatus();
         }
 
         // Service 返回真实 Model 引用，Controller 不创建资产 ViewData。
@@ -230,6 +278,20 @@ namespace WS_Modules.GAS.Editor
             }
 
             view.RenderAbilityValidationStates(validationStates);
+        }
+
+        /// <summary>根据 Data、稳定 ID 历史与 Database 运行时索引的一致性渲染 Bake 摘要。</summary>
+        private void RefreshBakeStatus()
+        {
+            List<string> errors = service.ValidateBakeState(database);
+            if (errors.Count > 0)
+            {
+                view.RenderBakeStatus(errors[0], true);
+                return;
+            }
+
+            int count = database?.Count ?? 0;
+            view.RenderBakeStatus($"Baked: {count}", false);
         }
 
         // 全量资产刷新时重建列表着色缓存。

@@ -27,8 +27,10 @@ GameplayAbilityData 只保存所有技能共用的作者配置：
 - ActivationTagQuery
 - CostEffect
 - CooldownEffect
+- Effects
+- CueTags
 
-SelfEffects 与 TargetEffects 已从公共 Data 删除。具体技能需要的 GE、目标或投射物配置由具体同步 Data 或具体 Task 保存。
+`Effects` 是所有技能统一的结果 GE 配置。具体 Data 或 Task 决定何时、向谁提交；本阶段的自身技能只提交到 Source，投射物在物理命中其他 ASC 后提交。Target 快照、锁定目标和目标提交接口仍留给后续 Targeting 阶段。
 
 GameplayAbilitySpec 是 ASC 中长期存在的授予状态，保存 Handle、Data 和当前 Level。Runtime 激活时复制 Level 与 SetByCaller，之后修改 Spec Level 不影响已创建 Runtime。
 
@@ -79,16 +81,16 @@ SynchronousGameplayAbilityData 直接覆盖 Execute。执行返回后 Runtime �
 
 同步只表示 Ability 业务入口在当前调用内完成，不代表它产生的对象必须立即销毁。例如投射物技能可以同步创建并发射投射物，投射物随后独立管理碰撞和生命周期。
 
-同步实现不得注册持续更新或等待外部事件；需要等待时应改为异步 Ability。同步、Passive 和 Projectile 三类基础技能：
+同步实现不得注册持续更新或等待外部事件；需要等待时应改为异步 Ability。当前同步技能包括：
 
 - `InstantGameplayAbilityData` 保存多个 Instant GE。激活时按列表顺序逐个提交；某一项 GE 被目标拒绝只记录失败，不回滚已成功项，也不阻止后续项。
-- `PassiveGameplayAbilityData` 使用不主动完成的 `PassiveGameplayAbilityTaskConfig` 保持 Runtime Active。每次成功应用的 Infinite GE Runtime 都保存为本次 Runtime 的精确句柄；End/Cancel 时只移除这些句柄，不使用按 Source 的全量删除，因此不会误删其他技能或外部效果。Passive GE 当前要求 `StackingType.None`，保证每次激活拥有独立句柄。
 - `ProjectileGameplayAbilityData` 在同步入口中创建投射物，GA Runtime 随即 Ended。Sphere 示例从 Source ASC 的 Transform 生成球体，投射物通过 Rigidbody 与 Trigger 独立移动和命中，并在首次有效命中时应用统一 Effects；通用阵营、LayerMask、范围和 Targeting 仍由后续业务层扩展。
+- `LinearProjectileGameplayAbilityData` 从 Source Marker 或 Transform 沿前方向对象池发射投射物。Addressable Key 优先，Prefab 作为回退；命中或超时后统一回收，不直接 `Instantiate` 或 `Destroy`。
 
 上述配置均可作为 ScriptableObject 在 GA Editor 中创建和检查。Odin Tester 使用 SO 引用而不是每次按钮点击临时创建 Ability Data，便于检查多态字段和 Validation。 测试夹具位于 Assets/GAS_Light/AbilitySystem/Runtime/GAData/SO/，可直接拖到 GameplayAbilityOdinTester 的 Skill 测试 SO 字段。
 GA Odin 测试器还需要配置 `Assets/GAS_Light/AttributeSystem/Editor/TestAssets/GameplayAttributeTestSet.asset`。每次重置测试时，Tester 会将该 Set 导入新的 ASC；否则依赖 Attribute 的 Cost GE 无法提交。该 Set 只用于测试夹具，不是 GA Runtime 的必需依赖。
 
-`GA_Test_PassiveSkill.asset` 当前 `Effects` 为空，因此只能验证 Passive Runtime 的激活、保持和结束生命周期；`AppliedEffects=0` 是当前资产配置结果，不代表 Runtime 错误。
+`GA_Test_PassiveSkill.asset` 使用 `PersistentSelfEffectsGameplayAbilityTaskConfig`，其 Infinite Effect 在启动时保存精确 Runtime 句柄，并在 End/Cancel 时只移除本次句柄。
 
 ## 5. 异步 Ability 与 Task
 
@@ -222,13 +224,44 @@ sequenceDiagram
     Task-->>GA: Complete / 保持 Running
 ```
 
-## 7. 统一 Tick 入口
+## 7. 常用自身技能与重复激活
+
+当前阶段不依赖 Target Runtime。六类常用技能通过统一重复激活策略和三个自身 Effects Task 组合：
+
+| Ability | 重复激活策略 | 执行方式 |
+|---|---|---|
+| Instant | `AllowMultiple` | 激活时立即向 Source 结算 |
+| Passive | `RejectWhileActive` | Persistent Task 持有自身 Infinite Effects |
+| Toggle | `ToggleOff` | 再次激活正常 End 旧 Runtime，不重复提交 Cost/Cooldown |
+| SelfCast | `RejectWhileActive` | `WaitDuration → ApplySelfEffects` |
+| SelfChannel | `RejectWhileActive` | Periodic Task 按 ASC Tick 结算 Instant Effects |
+| LinearProjectile | `AllowMultiple` | 同步发射，投射物独立命中并结算 |
+
+```mermaid
+flowchart LR
+    Activate["激活 GA"] --> Policy{"重复激活策略"}
+    Policy -->|AllowMultiple| NewRuntime["创建新 Runtime"]
+    Policy -->|RejectWhileActive| Reject["已有 Runtime 时拒绝"]
+    Policy -->|ToggleOff| EndOld["正常结束旧 Runtime"]
+    NewRuntime --> SelfTask{"自身 Task"}
+    SelfTask -->|ApplySelfEffects| Once["向 Source 结算一次"]
+    SelfTask -->|PeriodicSelfEffects| Periodic["按 Tick 周期结算"]
+    SelfTask -->|PersistentSelfEffects| Persistent["保存并持有 Infinite GE Runtime"]
+```
+
+`PersistentSelfEffectsGameplayAbilityTask` 只接受 `Infinite + StackingType.None`，这样每次 Ability 激活都能保存并精确移除自己的 GE Runtime。`PeriodicSelfEffectsGameplayAbilityTask` 只接受 Instant GE；已经完成的周期结算不会因后续 End/Cancel 回滚。
+
+SelfCast 的等待正常完成后才进入 Apply Task。外部 `TryEnd` 会 Stop 当前 Root，`TryCancel` 会 Cancel 当前 Root，两者都不会越过等待阶段结算 Effects。
+
+线性投射物复制 Source、Level、SetByCaller、Effects 与 CueTags 快照。GA Runtime 在发射后立即 Ended，投射物随后通过 Trigger 获取命中的 ASC；命中目标选择、阵营、LayerMask 和锁定逻辑不属于本阶段。
+
+## 8. 统一 Tick 入口
 
 外部 Owner 负责主动调用 `GameplayAbilitySystemComponent.Tick(deltaTime)`，GAS 不自动绑定 Unity `Update`。ASC 内部固定先调用 `GameEffectCtrl.Tick(deltaTime)`，再调用 `GameplayAbilityCtrl.Tick(deltaTime)`，因此同一帧先推进 GE 的周期与到期，再推进 GA 的 Tick Task。`deltaTime` 为负数、NaN 或 Infinity 时会被安全忽略。
 
 同步 Ability 不使用 Tick 注册；异步 Ability 的 WaitDuration、动画、蓄力和其他持续 Task 都由所属 ASC 的 AbilityCtrl 接收 Tick。Task 持有的 `IUnRegister` 只管理这一个回调的注销，不承担外部对象或 ASC 的生命周期。Controller 遍历帧开始时的回调快照，同时以当前注册表判断该项是否仍有效；因此 Task 可以在 `OnTick` 中完成自身、取消其他 Ability 或启动新 Task，而不会破坏当前帧遍历。
 
-## 8. Editor
+## 9. Editor
 
 ```mermaid
 flowchart LR
@@ -243,12 +276,7 @@ GA Editor 通过 TypeCache 发现公开、非抽象、非泛型的 GameplayAbili
 
 公共字段由固定 UXML 绑定，具体子类字段通过 SerializedObject 动态生成 PropertyField，不复制 Model 或 ViewData。
 
-Task Config PropertyDrawer 支持：
-
-- 发现具体 Task Config 类型。
-- 创建、替换与清空 managed reference。
-- Sequence 子项复用同一 Drawer。
-- 使用 Unity Undo 写回。
+Root Task 与 Sequence 子项直接使用 Unity 原生 `SerializeReference PropertyField`。类型选择、替换、清空、Undo 和域重载都由原生 managed-reference 编辑能力处理，不再维护第二套自定义 Dropdown。
 
 Validation 检查：
 
@@ -257,10 +285,44 @@ Validation 检查：
 - 异步 Root Task 不能为空。
 - Sequence 子项不能为空。
 - Wait Duration 不能为负数、NaN 或 Infinity。
+- Passive 与 Toggle 必须使用 Persistent Task，Effects 必须是非叠层 Infinite GE。
+- SelfCast 必须保持 `WaitDuration → ApplySelfEffects` 顺序。
+- SelfChannel 必须使用合法 Periodic Task，Effects 只能是 Instant GE。
+- LinearProjectile 必须具备 Addressable Key 或 Fallback Prefab；Prefab 需要投射物 Behaviour、Trigger Collider、Rigidbody 和根节点有效的 `IGameObjectPoolable.Key`。配置 Addressable Key 时，两者必须一致。
 
 存在 Error 的 GA 在资产 ListView 中显示错误背景。
 
-## 9. 当前边界
+## Gameplay Ability 稳定身份与 Bake
+
+`GameplayAbilityData.AbilityId` 是 Ability 资产的全局稳定整数身份，由 Editor Bake 后直接写入 Data。`GameplayAbilityHandle` 仍然只是某个 ASC 授予 Spec 时分配的临时运行时身份，不能跨 ASC 或跨会话保存。
+
+```mermaid
+flowchart TD
+    Database["GameplayAbilityDatabase"]
+    Editor["Editor 数据<br/>GUID 到 ID 历史<br/>废弃 ID / NextId / BakeDirty"]
+    Runtime["Runtime 数据<br/>AbilityId 到 GameplayAbilityData"]
+    Data["GameplayAbilityData<br/>AbilityId"]
+    Manager["GameplayAbilityManager"]
+    Manager --> Spec["当前 ASC 的 GameplayAbilitySpec"]
+    Spec --> Handle["GameplayAbilityHandle<br/>ASC 局部身份"]
+    Database --> Editor
+    Database --> Runtime
+    Editor -->|Bake| Data
+    Data --> Runtime
+    Runtime --> Manager
+```
+
+Database 使用 Unity 资产 GUID 识别同一个 Data，因此资产改名或移动不会改变 AbilityId。被删除资产使用过的 ID 进入废弃列表，后续不再复用。Editor 历史字段位于 `#if UNITY_EDITOR` 中，不进入 Player；运行时只保留已经 Bake 的 `AbilityId → GameplayAbilityData` 字典。
+
+GA Editor 顶部只选择一个 GameplayAbilityDatabase 并执行 Bake。Play Mode 和 Build Guard 会检查 Data、GUID 历史与运行时字典是否一致。运行时启动流程负责调用 `GameplayAbilityManager.Initialize(database)`，Manager 不再临时重建第二份索引。
+
+Database Inspector 中的 `Abilities By Id` 直接显示这份 Bake 生成的运行时字典，Key 是稳定 AbilityId，Value 是对应的 GA SO。该字典只读，不能在 Inspector 中手工增删；Ability 资产集合变化后必须回到 GA Editor 重新 Bake。Editor GUID 历史与 Runtime 字典始终由同一个 Database 维护。
+
+同一 ASC 不能重复授予同一个 `GameplayAbilityData`。需要从未来存档的 AbilityId 找回当前 ASC Handle 时，调用 `TryGetAbilityHandle(abilityId, out handle)`：Manager 先将 ID 解析为 Data，当前 Controller 再查找该 Data 的 Spec。
+
+本阶段不定义玩家存档 DTO、Capture 或 Restore API。未来存档只需保存 `AbilityId + Level`，不保存 `GameplayAbilityHandle`。
+
+## 10. 当前边界
 
 本阶段不实现：
 
@@ -268,14 +330,13 @@ Validation 检查：
 - CancelReason
 - SkillConfig Task
 - Target Context
-- 通用碰撞策略、范围和阵营筛选
-- 投射物业务 Task
+- 通用目标提交、锁定、范围、阵营和 LayerMask 筛选
 - GE 业务 Task
 - 具体动画系统、输入、网络预测
 
 这些能力后续通过具体同步 Data、具体异步 Data 或业务 Task 扩展，不改变当前同步/异步基类和 Runtime 生命周期。
 
-## 10. Root Task 完成语义
+## 11. Root Task 完成语义
 
 当前 Root Task 代表整套 Ability 流程。Root Task 完成后，GameplayAbilityRuntime 自动进入 Ended；如果需要多个阶段，使用 Sequence 继续组织子 Task。
 
@@ -309,4 +370,26 @@ GE 快捷接口作用于当前 ASC 作为 Target：`TryApplyEffect` 接收显式
 
 具体 Projectile GA 可以直接读取 `runtime.Source.transform`。投射物的移动、碰撞与命中结算属于具体 GA 产生的投射物实例，不需要额外的 ASC Behaviour 包装或 Owner Context。
 
-`GameplayAbilitySystemComponentOdinTester` 专门验证 ASC 集成周期：它在 Play Mode 临时创建 Source/Target Mono ASC，通过自身真实 `Update` 推进 Tick，并覆盖 Instant、异步 Wait、Passive Infinite、Cooldown 到期和 Sphere Trigger 命中。`GameplayAbilityOdinTester` 只保留 GA Data、Runtime、Task 与事件的隔离测试。
+`GameplayAbilitySystemComponentOdinTester` 专门验证 ASC 集成周期：它在 Play Mode 为每个技能分别创建 Source/Target Mono ASC，通过自身真实 `Update` 推进 Tick，并覆盖 Instant、Async、SelfCast、SelfChannel、Toggle、Passive/Cooldown、Sphere Projectile 和 Linear Projectile。每个技能均有独立 Odin 按钮；完整套件调用相同场景实现，但在场景之间重建 ASC。`GameplayAbilityOdinTester` 只保留 GA Data、Runtime、Task 与事件的隔离测试。
+
+## ASC 真实周期可视化
+
+`GameplayAbilitySystemComponentOdinTester` 在每个独立技能场景开始时创建蓝色 Source 和红色 Target，Target 默认位于 Source 前方三米。两者均使用真实 Mono ASC；Tester 的 `Update` 继续作为 Owner 调用 `Tick(Time.deltaTime)`。Coroutine 只等待与断言，不伪造 Tick。Attribute、Cooldown、Active GE/GA/Cue 和 Tick 注册不会跨技能场景保留。
+
+```mermaid
+flowchart LR
+    Tester["ASC Odin Tester"] --> Tick["Update -> Source/Target ASC.Tick"]
+    Tick --> Runtime["真实 GA / GE / Cue"]
+    Runtime --> Scene["场景 Actor、投射物、对象池 Cue"]
+    Runtime --> Panel["OnGUI 阶段、数值、Runtime 与断言"]
+```
+
+独立的 `GameplayAbilitySystemComponentTestVisualizer` 只读取 CurrentValue 和只读 Runtime 列表。Source 默认显示蓝色，Armor 增益期间变为绿色；Target Health 降低时短暂闪烁黄色。面板实时显示 Health、MP、Armor、Active GA、Active GE、Active Cue、当前阶段和 PASS/FAIL，不参与任何业务提交。
+
+完整周期依赖 `GameplayAbilityDatabase` 与 `GameplayCueDatabase`。每个场景只检查当前 GA 的非空 CueTag；测试结束时通过 ASC 正式 `Clear` 路径清理 Active Cue，再解除静态观察事件并重置测试 Manager。
+
+投射物场景使用相对 Tester 的 `Test World Offset` 建立独立测试通道。发射前通过物理查询检查 Source 到 Target 之间是否存在第三方 ASC；发现时输出具体对象和位置并停止当前投射物场景。命中断言同时检查专用 Target 的 Health 和 Cue Runtime 的实际 Target，避免投射物先命中其他角色后产生误报。
+
+池化 Linear Projectile 的生成 Pose 由 `GameplayAbilityProjectileBehaviour.Initialize` 统一提交。Data 只解析 Marker、位置偏移和旋转；Behaviour 在 `running = false` 时恢复 Prefab Scale，先同步写入 `Transform` 与 `Rigidbody` Pose，再清零旧速度，全部运行快照完成后才允许 FixedUpdate。`Transform` Pose 保证插值刚体在生成当帧就能正确显示和查询，`Rigidbody` Pose 则保证下一物理帧从同一位置开始碰撞与 `MovePosition`；两者不能只写其一。
+
+Linear Projectile 单项场景连续发射两次：第一次验证新实例，第二次验证对象池复用。Tester 记录 Transform/Rigidbody 初始位置、最后飞行位置、Target 位置、回收状态和 Prefab Scale；OnGUI 在投射物存续期间实时显示其世界位置。

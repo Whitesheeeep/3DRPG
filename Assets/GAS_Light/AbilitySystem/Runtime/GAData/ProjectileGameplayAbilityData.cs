@@ -1,14 +1,16 @@
-using System.Collections.Generic;
-using UnityEngine;
-using WS_Modules.GAS.AbilitySystemComponent;
-using WS_Modules.GAS.GameplayEffect;
-using WS_Modules.GAS.TAG;
-
 namespace WS_Modules.GAS.GameplayAbilitySystem
 {
     /// <summary>定义同步创建投射物并立即结束 GA 的业务基类；碰撞和目标由具体子类负责。</summary>
     public abstract class ProjectileGameplayAbilityData : SynchronousGameplayAbilityData
     {
+
+        #region 激活策略
+
+        /// <summary>投射物生成后独立存活，因此允许连续激活并生成多个实例。</summary>
+        public override GameplayAbilityReactivationPolicy ReactivationPolicy =>
+            GameplayAbilityReactivationPolicy.AllowMultiple;
+
+        #endregion
 
         #region 同步执行
         // 统一由子类同步创建投射物；投射物生命周期与 GA Runtime 解耦。

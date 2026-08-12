@@ -22,19 +22,23 @@ namespace WS_Modules.Pooling
         public static bool IsOpenLayout { get; set; } = true;
         public int Count => _poolStack?.Count ?? 0;
 
+        /// <summary>使用 GameObject 根节点创建池数据。</summary>
         public GameObjectPoolData(GameObject poolRootGo, int maxCapacity = -1, string name = "PoolRoot")
         {
             InitPool(poolRootGo, maxCapacity, name);
         }
 
+        /// <summary>使用 Transform 根节点创建池数据。</summary>
         public GameObjectPoolData(Transform poolRootTrans, int maxCapacity = -1, string name = "PoolRoot")
         {
             InitPool(poolRootTrans, maxCapacity, name);
         }
 
+        /// <summary>使用 GameObject 根节点初始化池存储。</summary>
         public void InitPool(GameObject poolRootGo, int maxCapacity = -1, string name = "PoolRoot") =>
             InitPool(poolRootGo.transform, maxCapacity, name);
 
+        /// <summary>使用 Transform 根节点初始化池存储和可选抽屉节点。</summary>
         public void InitPool(Transform poolRootTrans, int maxCapacity = -1, string name = "PoolRoot")
         {
             this._maxCapacity = maxCapacity;
@@ -52,6 +56,7 @@ namespace WS_Modules.Pooling
             }
         }
 
+        /// <summary>只允许扩大池容量，避免预热降低已有池的容量契约。</summary>
         public void EnsureMaxCapacity(int maxCapacity)
         {
             if (_maxCapacity == -1) return;
@@ -62,6 +67,7 @@ namespace WS_Modules.Pooling
             }
         }
 
+        /// <summary>将已完成 Despawn 的对象加入可用队列。</summary>
         public void PushObj(GameObject go)
         {
             if (go is null) return;
@@ -76,11 +82,11 @@ namespace WS_Modules.Pooling
             {
                 ClearEditorSelectionIfNeeded(go);
                 _poolStack.Enqueue(go);
-                go.SetActive(false);
                 if(_root) go.transform.SetParent(_root);
             }
         }
 
+        /// <summary>将一组已完成 Despawn 的对象加入可用队列。</summary>
         public void PushObjs([DisallowNull] GameObject[] gos)
         {
             foreach (var go in gos)
@@ -89,6 +95,7 @@ namespace WS_Modules.Pooling
             }
         }
         
+        /// <summary>将一组已完成 Despawn 的对象加入可用队列。</summary>
         public void PushObjs([DisallowNull] List<GameObject> gos)
         {
             foreach (var go in gos)
@@ -97,6 +104,7 @@ namespace WS_Modules.Pooling
             }
         }
 
+        /// <summary>从队列取出一个对象并设置父节点；激活由 Identity.Spawn 统一完成。</summary>
         public bool TryGet(out GameObject go, Transform parent = null)
         {
             if (_poolStack.Count > 0)
@@ -105,7 +113,6 @@ namespace WS_Modules.Pooling
                 if (go)
                 {
                     go.transform.SetParent(parent);
-                    go.SetActive(true);
                     if (parent is null) go.MoveToActiveScene();
                     return true;
                 }
@@ -117,6 +124,7 @@ namespace WS_Modules.Pooling
             return false;
         }
 
+        /// <summary>从队列批量取出对象并设置父节点；激活由 Identity.Spawn 统一完成。</summary>
         public bool TryGetSome(int count, out List<GameObject> gos, Transform parent = null)
         {
             if (count <= 0)
@@ -134,7 +142,6 @@ namespace WS_Modules.Pooling
                     var go = _poolStack.Dequeue();
                     if (go)
                     {
-                        go.SetActive(true);
                         go.transform.SetParent(parent);
                         if (parent is null) go.MoveToActiveScene();
                         gos.Add(go);
@@ -149,10 +156,12 @@ namespace WS_Modules.Pooling
             }
         }
         
+        /// <summary>保留 Editor 选择清理扩展点，运行时无需处理。</summary>
         private static void ClearEditorSelectionIfNeeded(GameObject root)
         {
         }
 
+        /// <summary>销毁池内当前处于 Despawn 状态的全部对象和抽屉节点。</summary>
         public void ClearPool()
         {
             if (_poolStack == null) return;

@@ -11,6 +11,14 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
     public sealed class InstantGameplayAbilityData : SynchronousGameplayAbilityData
     {
 
+        #region 激活策略
+
+        /// <summary>同步结算允许同一 Spec 连续或并行触发。</summary>
+        public override GameplayAbilityReactivationPolicy ReactivationPolicy =>
+            GameplayAbilityReactivationPolicy.AllowMultiple;
+
+        #endregion
+
         #region 运行时校验
         // 每个专属 GE 都必须在当前调用内完成，避免同步 Ability 残留异步生命周期。
         internal override bool IsRuntimeConfigurationValid

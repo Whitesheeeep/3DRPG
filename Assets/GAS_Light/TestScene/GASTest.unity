@@ -356,7 +356,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &502244385
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -827,7 +827,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!23 &1203861532
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -1035,9 +1035,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   testAttributeSet: {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
+  abilityDatabase: {fileID: 11400000, guid: 1a17a26fee721d940838d5befe222554, type: 2}
   instantSkill: {fileID: 11400000, guid: 8dd9cbf03c2d4dcf8b0b9276fb7fc9b1, type: 2}
   passiveSkill: {fileID: 11400000, guid: f1e6875193c543f89aee4ec2a1e2a04a, type: 2}
   sphereProjectileSkill: {fileID: 11400000, guid: d9fc6a1d2b8e490bb12d3b3be9b2e0f8, type: 2}
+  selfCastSkill: {fileID: 11400000, guid: 7c68c905fb1240e3a920e9a1240f2d19, type: 2}
+  selfChannelSkill: {fileID: 11400000, guid: b51db005f9ad4a3e800780ca1f834f79, type: 2}
+  toggleSkill: {fileID: 11400000, guid: 0bcaf93a89b74feb82dd830fe0897150, type: 2}
 --- !u!114 &1696073711
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1052,10 +1056,21 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   attributeSets:
   - {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
+  abilityDatabase: {fileID: 11400000, guid: 1a17a26fee721d940838d5befe222554, type: 2}
+  cueDatabase: {fileID: 11400000, guid: 1d5d8bec41f863940bc59fc14cc022f0, type: 2}
   instantAbility: {fileID: 11400000, guid: 8dd9cbf03c2d4dcf8b0b9276fb7fc9b1, type: 2}
   asynchronousAbility: {fileID: 11400000, guid: b1236d98197e43c283ffc1f644b3f4fb, type: 2}
   passiveAbility: {fileID: 11400000, guid: f1e6875193c543f89aee4ec2a1e2a04a, type: 2}
   projectileAbility: {fileID: 11400000, guid: d9fc6a1d2b8e490bb12d3b3be9b2e0f8, type: 2}
+  linearProjectileAbility: {fileID: 11400000, guid: 7f6375c05d59444e8118a97d9c99eca3, type: 2}
+  selfCastAbility: {fileID: 11400000, guid: 7c68c905fb1240e3a920e9a1240f2d19, type: 2}
+  selfChannelAbility: {fileID: 11400000, guid: b51db005f9ad4a3e800780ca1f834f79, type: 2}
+  toggleAbility: {fileID: 11400000, guid: 0bcaf93a89b74feb82dd830fe0897150, type: 2}
+  testWorldOffset: {x: -3, y: 0, z: 0}
+  targetDistance: 3
+  stageHoldDuration: 1
+  activeCueObserveDuration: 2
+  cuePulseDuration: 0.75
 --- !u!114 &1696073713
 MonoBehaviour:
   m_ObjectHideFlags: 0

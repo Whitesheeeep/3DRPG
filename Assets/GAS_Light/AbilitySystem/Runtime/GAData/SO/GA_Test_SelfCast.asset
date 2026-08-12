@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a44228c15f3014a428c29de93f26cdb9, type: 3}
+  m_Name: GA_Test_SelfCast
+  m_EditorClassIdentifier: 
+  abilityId: 4
+  description: "\u4E00\u79D2\u8BFB\u6761\u5B8C\u6210\u540E\u5BF9\u81EA\u8EAB\u5E94\u7528\u4E00\u6B21
+    Instant Effects\u3002"
+  activationTagQuery:
+    allTags: []
+    anyTags: []
+    banedTags: []
+  costEffect: {fileID: 0}
+  cooldownEffect: {fileID: 0}
+  effects:
+  - {fileID: 11400000, guid: 6861f23c72baf27428de65bec7d0d062, type: 2}
+  cueTags:
+  - id: 21
+  rootTask:
+    rid: 710001
+  references:
+    version: 2
+    RefIds:
+    - rid: 710001
+      type: {class: SequenceGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
+      data:
+        children:
+        - rid: 710002
+        - rid: 710003
+    - rid: 710002
+      type: {class: WaitDurationGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
+      data:
+        duration: 1
+    - rid: 710003
+      type: {class: ApplySelfEffectsGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
+      data: 

@@ -7,10 +7,11 @@ using WS_Modules.CustomEventSystem;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.AttributeSystem;
 using WS_Modules.GAS.GameplayEffect;
+using WS_Modules.GAS.Generated;
 
 namespace WS_Modules.GAS.GameplayAbilitySystem
 {
-    /// <summary>通过 Odin Inspector 手动验证 Instant、Passive、Projectile、同步/异步 Task 与终态事件。</summary>
+    /// <summary>通过 Odin Inspector 手动验证常用 GA、同步/异步 Task、重复激活策略与终态事件。</summary>
     public sealed class GameplayAbilityOdinTester : MonoBehaviour
     {
         #region 测试类型
@@ -91,6 +92,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         [Title("Skill 测试依赖")]
         [SerializeField, AssetsOnly, Required, Tooltip("Cost GE 使用的四属性测试 Set；每次测试重置 ASC 时导入。")]
         private GameplayAttributeSet testAttributeSet;
+        [SerializeField, AssetsOnly, Required, Tooltip("用于验证 AbilityId 查表与 ASC Handle 反查。")]
+        private GameplayAbilityDatabase abilityDatabase;
 
         [Title("Skill 测试 SO")]
         [SerializeField, AssetsOnly, Tooltip("可直接在 GA Editor 中编辑的 Instant Skill SO。")]
@@ -99,6 +102,12 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private PassiveGameplayAbilityData passiveSkill;
         [SerializeField, AssetsOnly, Tooltip("可直接在 GA Editor 中编辑的 Sphere Projectile Skill SO。")]
         private SphereProjectileGameplayAbilityData sphereProjectileSkill;
+        [SerializeField, AssetsOnly, Tooltip("等待后对 Source 结算的 SelfCast Skill SO。")]
+        private SelfCastGameplayAbilityData selfCastSkill;
+        [SerializeField, AssetsOnly, Tooltip("周期对 Source 结算的 SelfChannel Skill SO。")]
+        private SelfChannelGameplayAbilityData selfChannelSkill;
+        [SerializeField, AssetsOnly, Tooltip("再次激活时关闭的 Toggle Skill SO。")]
+        private ToggleGameplayAbilityData toggleSkill;
         #endregion
 
         #region Odin 测试
@@ -151,15 +160,18 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             GameplayAbilityHandle handle = source.GiveAbility(data, 1);
             bool activated = source.TryActivateAbility(handle, null, out runtime);
             if (!activated) LogActivationFailure(data);
-            var passive = runtime as PassiveGameplayAbilityRuntime;
             Expect("Passive Skill 激活成功", activated);
-            Expect("Passive Runtime 保持 Active", passive != null &&
+            Expect("Passive Runtime 保持 Active", runtime is AsynchronousGameplayAbilityRuntime &&
                 runtime.State == GameplayAbilityRuntimeState.Active);
-            var applied = passive == null
-                ? new List<GameEffectRuntime>()
-                : new List<GameEffectRuntime>(passive.AppliedEffects);
-            Expect("Passive 精确保存成功 GE 句柄", passive != null &&
-                applied.Count <= data.Effects.Count);
+            var applied = new List<GameEffectRuntime>();
+            for (int i = 0; i < source.ActiveEffects.Count; i++)
+            {
+                GameEffectRuntime effectRuntime = source.ActiveEffects[i];
+                for (int j = 0; j < data.Effects.Count; j++)
+                    if (ReferenceEquals(effectRuntime.Data, data.Effects[j]))
+                        applied.Add(effectRuntime);
+            }
+            Expect("Passive 精确保存成功 GE 句柄", applied.Count <= data.Effects.Count);
             bool ended = source.TryEndAbility(runtime);
             Expect("Passive End 成功", ended);
             bool allRemoved = true;
@@ -167,6 +179,117 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 allRemoved &= !applied[i].IsActive;
             Expect("Passive End 精确移除本次 GE", allRemoved);
             Debug.Log($"[GATest][Passive] SO={data.name}, Configured={data.Effects.Count}, Applied={applied.Count}");
+
+            LogSummary();
+        }
+
+        /// <summary>验证 Database 稳定 ID 查表、当前 ASC Handle 反查和重复授予拒绝。</summary>
+        [Button("测试 Ability 稳定 ID")]
+        public void TestStableAbilityId()
+        {
+            ResetTest();
+            Expect("GameplayAbilityDatabase 已配置", abilityDatabase != null);
+            Expect("Instant Skill SO 已配置", instantSkill != null);
+            if (abilityDatabase == null || instantSkill == null)
+            {
+                LogSummary();
+                return;
+            }
+
+            GameplayAbilityHandle first = source.GiveAbility(instantSkill, 1);
+            GameplayAbilityHandle duplicate = source.GiveAbility(instantSkill, 1);
+            bool dataResolved = GameplayAbilityManager.Instance.TryGetAbility(
+                instantSkill.AbilityId,
+                out GameplayAbilityData resolvedData);
+            bool resolved = source.TryGetAbilityHandle(instantSkill.AbilityId, out GameplayAbilityHandle queried);
+            var otherObject = new GameObject("GA Stable ID Other ASC")
+            {
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            GameplayAbilitySystemComponent other =
+                otherObject.AddComponent<GameplayAbilitySystemComponent>();
+            GameplayAbilityHandle otherHandle = other.GiveAbility(instantSkill, 1);
+            Expect("AbilityId 已 Bake", instantSkill.AbilityId != GameplayAbilityData.InvalidId);
+            Expect("Database 可通过 AbilityId 找回同一 Data",
+                dataResolved && ReferenceEquals(resolvedData, instantSkill));
+            Expect("首次授予返回有效 Handle", first.IsValid);
+            Expect("同一 ASC 拒绝重复授予", !duplicate.IsValid);
+            Expect("不同 ASC 可分别授予同一 Ability Data", otherHandle.IsValid);
+            Expect("AbilityId 反查返回当前 ASC Handle", resolved && queried == first);
+            DestroyImmediate(otherObject);
+            LogSummary();
+        }
+
+        /// <summary>验证 SelfCast、SelfChannel 与 Toggle 的默认 Root Task 和重复激活策略。</summary>
+        [Button("测试常用自身 Ability")]
+        public void TestCommonSelfAbilities()
+        {
+            ResetTest();
+            if (!EnsureAttributesReady("常用自身 Ability") ||
+                selfCastSkill == null || selfChannelSkill == null || toggleSkill == null)
+            {
+                Expect("SelfCast、SelfChannel、Toggle SO 已配置",
+                    selfCastSkill != null && selfChannelSkill != null && toggleSkill != null);
+                LogSummary();
+                return;
+            }
+
+            GameplayAbilityHandle castHandle = source.GiveAbility(selfCastSkill, 1);
+            bool castActivated = source.TryActivateAbility(castHandle, out GameplayAbilityRuntime castRuntime);
+            Expect("SelfCast 激活成功", castActivated);
+            Expect("SelfCast Active 时拒绝重复激活", !source.TryActivateAbility(castHandle, out _));
+            var castSequence = (SequenceGameplayAbilityTaskConfig)selfCastSkill.RootTask;
+            var castWait = (WaitDurationGameplayAbilityTaskConfig)castSequence.Children[0];
+            source.Tick(castWait.Duration);
+            Expect("SelfCast 等待完成后 Ended",
+                castRuntime.State == GameplayAbilityRuntimeState.Ended);
+
+            source.TryGetCurrentValue(GameplayAttributes.Attribute_Health, out float healthAfterCast);
+            source.TryActivateAbility(castHandle, out GameplayAbilityRuntime stoppedCast);
+            Expect("SelfCast 可在上次完成后重新激活", stoppedCast != null);
+            Expect("SelfCast 提前 End 成功", source.TryEndAbility(stoppedCast));
+            source.Tick(castWait.Duration);
+            source.TryGetCurrentValue(GameplayAttributes.Attribute_Health, out float healthAfterStop);
+            Expect("SelfCast 提前 End 不结算 Effects",
+                Mathf.Approximately(healthAfterStop, healthAfterCast));
+
+            source.TryActivateAbility(castHandle, out GameplayAbilityRuntime cancelledCast);
+            Expect("SelfCast 提前 Cancel 成功", source.TryCancelAbility(cancelledCast));
+            source.Tick(castWait.Duration);
+            source.TryGetCurrentValue(GameplayAttributes.Attribute_Health, out float healthAfterCancel);
+            Expect("SelfCast 提前 Cancel 不结算 Effects",
+                Mathf.Approximately(healthAfterCancel, healthAfterCast));
+
+            GameplayAbilityHandle channelHandle = source.GiveAbility(selfChannelSkill, 1);
+            bool channelActivated = source.TryActivateAbility(
+                channelHandle, out GameplayAbilityRuntime channelRuntime);
+            Expect("SelfChannel 激活成功", channelActivated);
+            Expect("SelfChannel Active 时拒绝重复激活",
+                !source.TryActivateAbility(channelHandle, out _));
+            var periodic = (PeriodicSelfEffectsGameplayAbilityTaskConfig)selfChannelSkill.RootTask;
+            if (periodic.Infinite)
+                source.TryEndAbility(channelRuntime);
+            else
+                source.Tick(periodic.Duration);
+            Expect("SelfChannel 完成或结束后不再 Active",
+                channelRuntime.State == GameplayAbilityRuntimeState.Ended);
+            Expect("SelfChannel 结束后释放 Tick 注册", source.TickRegistrationCount == 0);
+
+            GameplayAbilityHandle toggleHandle = source.GiveAbility(toggleSkill, 1);
+            int effectsBeforeToggle = source.ActiveEffects.Count;
+            bool toggleActivated = source.TryActivateAbility(
+                toggleHandle, out GameplayAbilityRuntime toggleRuntime);
+            Expect("Toggle 首次激活成功并保持 Active", toggleActivated &&
+                toggleRuntime.State == GameplayAbilityRuntimeState.Active);
+            Expect("Toggle 首次激活持有持续 GE",
+                source.ActiveEffects.Count > effectsBeforeToggle);
+            bool toggledOff = source.TryActivateAbility(
+                toggleHandle, out GameplayAbilityRuntime toggledRuntime);
+            Expect("Toggle 再次激活正常关闭", toggledOff &&
+                ReferenceEquals(toggleRuntime, toggledRuntime) &&
+                toggleRuntime.State == GameplayAbilityRuntimeState.Ended);
+            Expect("Toggle 关闭后移除本次持续 GE",
+                source.ActiveEffects.Count == effectsBeforeToggle);
 
             LogSummary();
         }
@@ -376,9 +499,11 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         [Button("执行完整 GA 多态测试", ButtonSizes.Large)]
         public void RunAll()
         {
+            TestStableAbilityId();
             TestInstantSkill();
             TestPassiveSkill();
             TestSphereProjectileSkill();
+            TestCommonSelfAbilities();
             TestSynchronousAbility();
             TestAsynchronousSequence();
             TestTickTask();
@@ -391,7 +516,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private void OnDestroy() => CleanupSource();
 
         #region 内部辅助
-        // 每个场景创建独立 ASC，避免注册和 Runtime 相互污染。
+        /// <summary>为每个场景创建独立 ASC 并初始化 Ability Database，避免运行时状态相互污染。</summary>
         private void ResetTest()
         {
             CleanupSource();
@@ -405,6 +530,9 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             failed = 0;
             attributesReady = false;
             attributeInitializationError = string.Empty;
+
+            if (abilityDatabase != null)
+                GameplayAbilityManager.Instance.Initialize(abilityDatabase);
 
             if (testAttributeSet == null)
             {
@@ -467,12 +595,13 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             CleanupSource();
         }
 
-        // 销毁隔离测试创建的临时 GameObject，避免手动按钮污染当前场景。
+        /// <summary>销毁隔离测试创建的临时 ASC，并清除本测试的 Manager 数据库引用。</summary>
         private void CleanupSource()
         {
             if (sourceObject != null) DestroyImmediate(sourceObject);
             sourceObject = null;
             source = null;
+            GameplayAbilityManager.Instance.Reset();
         }
         #endregion
     }

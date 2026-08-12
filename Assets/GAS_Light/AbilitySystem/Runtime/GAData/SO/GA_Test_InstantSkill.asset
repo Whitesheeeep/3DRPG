@@ -12,11 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 71cd00c1b82da5646a3bb449ed8bf70c, type: 3}
   m_Name: GA_Test_InstantSkill
   m_EditorClassIdentifier: 
+  abilityId: 1
   description: Editor validation fixture for an Instant Gameplay Ability.
   activationTagQuery:
     allTags: []
     anyTags: []
-    noneTags: []
+    banedTags: []
   costEffect: {fileID: 11400000, guid: c4005860abd1f1a47be545ea558a6a3c, type: 2}
   cooldownEffect: {fileID: 0}
   effects:

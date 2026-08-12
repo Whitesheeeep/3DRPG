@@ -12,11 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b4e817d647bc4c70b5ec9d7f2a751e8b, type: 3}
   m_Name: GA_Test_SphereProjectile
   m_EditorClassIdentifier: 
+  abilityId: 6
   description: Editor validation fixture for a Sphere Projectile Gameplay Ability.
   activationTagQuery:
     allTags: []
     anyTags: []
-    noneTags: []
+    banedTags: []
   costEffect: {fileID: 11400000, guid: c4005860abd1f1a47be545ea558a6a3c, type: 2}
   cooldownEffect: {fileID: 11400000, guid: f42153ccd11d0b64d95d878f0ce9053d, type: 2}
   effects:
