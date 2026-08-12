@@ -21,6 +21,7 @@ namespace RPG.SkillSystem.Editor
         private readonly TrackModuleRegistry modules;
         private readonly IVfxSceneEditService vfxSceneEditService;
         private readonly IAttackDetectionSceneEditService attackDetectionSceneEditService;
+        private readonly ICameraModifierPreviewService cameraModifierPreviewService;
         private SelectionState selection = SelectionState.None;
         private bool disposed;
         #endregion
@@ -47,6 +48,8 @@ namespace RPG.SkillSystem.Editor
         public SceneAsset PreviewScene => previewSceneService.PreviewScene;
         public GameObject PreviewActor => previewSceneService.PreviewActor;
         public bool PreviewApplyRootMotion => previewSceneService.ApplyRootMotion;
+        public GameObject GameplayCameraPrefab => previewSceneService.GameplayCameraPrefab;
+        public bool PreviewCameraModifier => previewSceneService.PreviewCameraModifier;
         public string StatusMessage { get; private set; } = "请选择或新建 SkillConfig。";
         public TrackConfigBase SelectedTrack => ResolveSelectedTrack();
         public TimelineItemConfigBase SelectedItem => ResolveSelectedItem();
@@ -61,7 +64,8 @@ namespace RPG.SkillSystem.Editor
         public EditorViewModel(Document document, PlaybackController playback,
             PreviewSceneService previewSceneService, TrackModuleRegistry modules,
             IVfxSceneEditService vfxSceneEditService,
-            IAttackDetectionSceneEditService attackDetectionSceneEditService)
+            IAttackDetectionSceneEditService attackDetectionSceneEditService,
+            ICameraModifierPreviewService cameraModifierPreviewService)
         {
             this.document = document ?? throw new ArgumentNullException(nameof(document));
             this.playback = playback ?? throw new ArgumentNullException(nameof(playback));
@@ -70,6 +74,8 @@ namespace RPG.SkillSystem.Editor
             this.vfxSceneEditService = vfxSceneEditService ?? throw new ArgumentNullException(nameof(vfxSceneEditService));
             this.attackDetectionSceneEditService = attackDetectionSceneEditService ??
                                                    throw new ArgumentNullException(nameof(attackDetectionSceneEditService));
+            this.cameraModifierPreviewService = cameraModifierPreviewService ??
+                throw new ArgumentNullException(nameof(cameraModifierPreviewService));
             attackDetectionSceneEditService.EditCommitted += OnAttackDetectionSceneEditCommitted;
             document.ContentChanged += OnDocumentContentChanged;
             document.ConfigChanged += OnConfigChanged;
@@ -272,6 +278,10 @@ namespace RPG.SkillSystem.Editor
         public void SetPreviewActor(GameObject actor) => previewSceneService.SetPreviewActor(actor);
         /// <summary>设置预览 Root Motion。</summary>
         public void SetPreviewApplyRootMotion(bool value) => previewSceneService.SetApplyRootMotion(value);
+        /// <summary>保存用于 FOV Value 换算的 Gameplay VCam Prefab。</summary>
+        public void SetGameplayCameraPrefab(GameObject prefab) => previewSceneService.SetGameplayCameraPrefab(prefab);
+        /// <summary>切换 Scene View 摄像机修饰预览。</summary>
+        public void SetPreviewCameraModifier(bool value) => previewSceneService.SetPreviewCameraModifier(value);
         /// <summary>打开预览场景。</summary>
         public void OpenPreviewScene() => previewSceneService.OpenPreviewScene();
         #endregion
@@ -463,6 +473,19 @@ namespace RPG.SkillSystem.Editor
         public void ClearAttackDetectionInspectorDraft(AttackDetectionSkillClipConfig item)
         {
             if (item != null) attackDetectionSceneEditService.ClearInspectorDraft(item.Id);
+        }
+
+        /// <summary>把 Camera Modifier Inspector 草稿转发到 Scene View。</summary>
+        public void PreviewCameraModifierDraft(CameraModifierSkillClipConfig item,
+            CameraModifierDataBase data)
+        {
+            if (item != null && data != null) cameraModifierPreviewService.SetDraft(item.Id, data);
+        }
+
+        /// <summary>清除 Camera Modifier Inspector 草稿。</summary>
+        public void ClearCameraModifierDraft(CameraModifierSkillClipConfig item)
+        {
+            if (item != null) cameraModifierPreviewService.ClearDraft(item.Id);
         }
 
         /// <summary>判断动画持续帧是否可匹配素材原始长度。</summary>

@@ -18,6 +18,8 @@ namespace RPG.SkillSystem.Editor
         public SceneAsset PreviewScene => settings.PreviewScene;
         public GameObject PreviewActor => settings.PreviewActor;
         public bool ApplyRootMotion => settings.PreviewApplyRootMotion;
+        public GameObject GameplayCameraPrefab => settings.GameplayCameraPrefab;
+        public bool PreviewCameraModifier => settings.PreviewCameraModifier;
         public bool IsPreviewSceneLoaded
         {
             get
@@ -68,6 +70,20 @@ namespace RPG.SkillSystem.Editor
         public void SetApplyRootMotion(bool value)
         {
             settings.SetPreviewApplyRootMotion(value);
+            SettingsChanged?.Invoke();
+        }
+
+        /// <summary>保存 Gameplay VCam Prefab 并通知 Inspector 刷新参考 FOV。</summary>
+        public void SetGameplayCameraPrefab(GameObject prefab)
+        {
+            settings.SetGameplayCameraPrefab(prefab);
+            SettingsChanged?.Invoke();
+        }
+
+        /// <summary>切换 Scene View 摄像机修饰预览。</summary>
+        public void SetPreviewCameraModifier(bool value)
+        {
+            settings.SetPreviewCameraModifier(value);
             SettingsChanged?.Invoke();
         }
 

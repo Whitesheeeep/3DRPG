@@ -18,6 +18,7 @@ namespace RPG.SkillSystem.Editor
         private readonly CanvasModel canvasModel;
         private readonly EditorConfig config;
         private IVisualElementScheduledItem restoreItem;
+        private IVisualElementScheduledItem geometryClampItem;
         private bool applyingScrollOffset;
 
         #endregion
@@ -47,11 +48,14 @@ namespace RPG.SkillSystem.Editor
         {
             restoreItem?.Pause();
             restoreItem = null;
+            geometryClampItem?.Pause();
+            geometryClampItem = null;
             panel.UnregisterCallback<WheelEvent>(OnWheel, TrickleDown.TrickleDown);
             timelineScroll.horizontalScroller.valueChanged -= OnRightHorizontalChanged;
             timelineScroll.verticalScroller.valueChanged -= OnRightVerticalChanged;
             trackHeaderScroll.verticalScroller.valueChanged -= OnLeftVerticalChanged;
             canvasModel.ScrollOffsetChanged -= ApplyCanvasScrollOffset;
+            canvasModel.GeometryChanged -= ScheduleGeometryClamp;
         }
 
         #region 初始化与事件注册
@@ -79,6 +83,7 @@ namespace RPG.SkillSystem.Editor
             timelineScroll.verticalScroller.valueChanged += OnRightVerticalChanged;
             trackHeaderScroll.verticalScroller.valueChanged += OnLeftVerticalChanged;
             canvasModel.ScrollOffsetChanged += ApplyCanvasScrollOffset;
+            canvasModel.GeometryChanged += ScheduleGeometryClamp;
         }
 
         #endregion
@@ -172,6 +177,41 @@ namespace RPG.SkillSystem.Editor
         #endregion
 
         #region Model 状态应用
+
+        /// <summary>
+        /// 在自定义内容尺寸应用后的下一次布局中夹紧偏移，避免使用尚未更新的 Scroller 范围。
+        /// </summary>
+        private void ScheduleGeometryClamp()
+        {
+            geometryClampItem?.Pause();
+            geometryClampItem = timelineScroll.schedule.Execute(ClampOffsetToResolvedRanges);
+        }
+
+        /// <summary>
+        /// 根据真实水平范围和左右共有的纵向范围夹紧 CanvasModel，并同步两个 ScrollView。
+        /// </summary>
+        private void ClampOffsetToResolvedRanges()
+        {
+            geometryClampItem = null;
+
+            float horizontalMinimum = timelineScroll.horizontalScroller.lowValue;
+            float horizontalMaximum = Mathf.Max(horizontalMinimum,
+                timelineScroll.horizontalScroller.highValue);
+            float rightVerticalMinimum = timelineScroll.verticalScroller.lowValue;
+            float leftVerticalMinimum = trackHeaderScroll.verticalScroller.lowValue;
+            float verticalMinimum = Mathf.Max(rightVerticalMinimum, leftVerticalMinimum);
+            float verticalMaximum = Mathf.Max(verticalMinimum, Mathf.Min(
+                timelineScroll.verticalScroller.highValue,
+                trackHeaderScroll.verticalScroller.highValue));
+
+            Vector2 offset = canvasModel.ScrollOffset;
+            offset.x = Mathf.Clamp(offset.x, horizontalMinimum, horizontalMaximum);
+            offset.y = Mathf.Clamp(offset.y, verticalMinimum, verticalMaximum);
+            canvasModel.SetScrollOffset(offset);
+
+            // Model 值未变化时不会发送事件，仍需把新布局后的真实 ScrollView 对齐到权威偏移。
+            ApplyCanvasScrollOffset();
+        }
 
         /// <summary>
         /// 在 ScrollView 完成首次布局后恢复 SessionState 中的权威偏移。

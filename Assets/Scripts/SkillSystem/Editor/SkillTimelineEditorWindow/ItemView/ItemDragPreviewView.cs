@@ -127,7 +127,7 @@ namespace RPG.SkillSystem.Editor
 
         #region 内部辅助
 
-        // 复用模块 ItemFactory 保持五类 Item 的 UXML 与 USS 外观完全一致，并关闭预览元素 Picking。
+        // 复用模块 ItemFactory，使所有 Item 的统一 UXML 与类型 USS 同时作用于拖拽预览。
         private ItemView CreatePreview(ItemView source, string stateClass)
         {
             ItemView preview = modules.CreateItemView(source.Track, source.Item, elementFactory, mapper);

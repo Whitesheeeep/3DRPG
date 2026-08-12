@@ -47,6 +47,7 @@ namespace RPG.SkillSystem.Editor
             AttackDetectionSkillClipConfig attack => $"{attack.DetectionType} Detection",
             VfxSkillClipConfig vfx => vfx.Prefab != null ? vfx.Prefab.name : "VFX Clip",
             AudioSkillClipConfig audio => audio.AudioClip != null ? audio.AudioClip.name : "Audio Clip",
+            CameraModifierSkillClipConfig modifier => modifier.ModifierType.ToString(),
             SkillEventMarkerConfig marker => marker.DisplayName,
             _ => item.GetType().Name
         };
@@ -119,7 +120,7 @@ namespace RPG.SkillSystem.Editor
         }
     }
     /// <summary>
-    /// 显示拥有独立 UXML/USS 的动画 Clip 时间轴内容。
+    /// 显示使用统一 UXML 和动画专属 USS 的 Clip 时间轴内容。
     /// </summary>
     internal sealed class AnimationClipView : ClipItemView
     {
@@ -134,7 +135,7 @@ namespace RPG.SkillSystem.Editor
     }
 
     /// <summary>
-    /// 显示拥有独立 UXML/USS 的攻击检测 Clip 时间轴内容。
+    /// 显示使用统一 UXML 和攻击检测专属 USS 的 Clip 时间轴内容。
     /// </summary>
     internal sealed class AttackDetectionClipView : ClipItemView
     {
@@ -149,7 +150,7 @@ namespace RPG.SkillSystem.Editor
     }
 
     /// <summary>
-    /// 显示拥有独立 UXML/USS 的特效 Clip 时间轴内容。
+    /// 显示使用统一 UXML 和特效专属 USS 的 Clip 时间轴内容。
     /// </summary>
     internal sealed class VfxClipView : ClipItemView
     {
@@ -164,7 +165,7 @@ namespace RPG.SkillSystem.Editor
     }
 
     /// <summary>
-    /// 显示拥有独立 UXML/USS 的音频 Clip 时间轴内容。
+    /// 显示使用统一 UXML 和音频专属 USS 的 Clip 时间轴内容。
     /// </summary>
     internal sealed class AudioClipView : ClipItemView
     {
@@ -177,8 +178,19 @@ namespace RPG.SkillSystem.Editor
         {
         }
     }
+    /// <summary>显示摄像机修饰区间。</summary>
+    internal sealed class CameraModifierClipView : ClipItemView
+    {
+        /// <summary>创建摄像机修饰 Clip 视图。</summary>
+        internal CameraModifierClipView(TrackConfigBase track,
+            CameraModifierSkillClipConfig item, VisualElement element,
+            CoordinateMapper mapper) : base(track, item, element, mapper)
+        {
+        }
+    }
+
     /// <summary>
-    /// 显示拥有独立 UXML/USS、不可裁剪的事件 Marker 时间轴内容。
+    /// 显示使用统一 UXML 和事件专属 USS、不可裁剪的事件 Marker。
     /// </summary>
     internal sealed class EventMarkerView : ItemView
     {
@@ -189,6 +201,8 @@ namespace RPG.SkillSystem.Editor
             SkillEventMarkerConfig item, VisualElement element,
             CoordinateMapper mapper) : base(track, item, element, mapper)
         {
+            // Event 使用统一 Label 模板，因此由 View 填充固定 Marker 符号而非依赖类型 UXML。
+            if (Element is Label label) label.text = "◆";
             Element.tooltip = GetDisplayName(item);
             RefreshGeometry(item.StartFrame, item.DurationFrames);
         }

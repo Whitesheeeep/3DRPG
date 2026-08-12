@@ -44,6 +44,7 @@ namespace RPG.SkillSystem.Editor
 
         /// <summary>
         /// 查询稳定 UXML 元素并准备接收 CanvasController 的视觉更新。
+        /// ScrollView 内部 contentContainer 由 UI Toolkit 管理，不作为业务尺寸节点暴露。
         /// </summary>
         public void Initialize()
         {
@@ -64,7 +65,9 @@ namespace RPG.SkillSystem.Editor
 
         #region 元素查询
 
-        // 查询主 UXML 中稳定存在的节点；动态 Track 与 Item 仍由 Controller 组合的行 View 创建。
+        /// <summary>
+        /// 查询主 UXML 中稳定存在的节点；自定义直接子节点作为唯一滚动尺寸占位。
+        /// </summary>
         private void QueryElements()
         {
             TimelinePanel = RequireElement<VisualElement>("TimelinePanel");
@@ -88,7 +91,9 @@ namespace RPG.SkillSystem.Editor
             return element ?? throw new InvalidOperationException($"时间轴 UXML 缺少节点：{elementName}");
         }
 
-        // 关闭或重新绑定时清除旧 VisualTree 中的引用，防止 Domain Reload 后误用。
+        /// <summary>
+        /// 关闭或重新绑定时清除旧 VisualTree 中的引用，防止 Domain Reload 后误用。
+        /// </summary>
         private void ClearElementReferences()
         {
             TimelinePanel = null;

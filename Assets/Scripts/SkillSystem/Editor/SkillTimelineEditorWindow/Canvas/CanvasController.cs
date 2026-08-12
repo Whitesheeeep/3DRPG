@@ -10,6 +10,12 @@ namespace RPG.SkillSystem.Editor
     /// </summary>
     internal sealed class CanvasController : IDisposable
     {
+        #region 常量
+
+        private const float MinimumResolvedRowHeight = 1f;
+
+        #endregion
+
         #region 依赖
 
         private readonly CanvasView view;
@@ -36,7 +42,11 @@ namespace RPG.SkillSystem.Editor
         private RulerView rulerView;
         private GridView gridView;
         private PlayheadView playheadView;
+        private IVisualElementScheduledItem rowHeightMeasurement;
+        private int rowHeightMeasurementVersion;
+        private float resolvedRowsHeight;
         private bool isBound;
+        private bool applyingCanvasGeometry;
 
         #endregion
 
@@ -80,6 +90,7 @@ namespace RPG.SkillSystem.Editor
         {
             if (!isBound && viewModel == null) return;
             isBound = false;
+            CancelScheduledRowHeightMeasurement();
             UnregisterEvents();
             scrubController?.Dispose();
             viewportInputController?.Dispose();
@@ -205,13 +216,18 @@ namespace RPG.SkillSystem.Editor
             canvasModel.SynchronizeCurrentFrame(viewModel.CurrentFrame);
         }
 
-        // Config 或 Track 内容变化后重建动态行，并在布局完成后更新纵向范围。
+        /// <summary>
+        /// 重建动态行，并在过渡布局前后强制恢复 CanvasModel 保存的权威虚拟画布范围。
+        /// </summary>
         private void RefreshTimelineView()
         {
             if (!isBound) return;
             rowCollectionView.Rebuild(viewModel.Tracks);
-            RecalculateCanvasGeometry(false);
-            RefreshFixedDrawing();
+
+            // Clear/Rebuild 的中间布局不能成为 ScrollView 推导滚动范围的依据。
+            ApplyCanvasGeometry();
+            RecalculateCanvasGeometry();
+            ApplyCanvasGeometry();
         }
 
         // 根据具体 Selection 更新动态行和 Item 的 USS 状态。
@@ -234,7 +250,7 @@ namespace RPG.SkillSystem.Editor
         private void RefreshZoomGeometry()
         {
             if (!isBound) return;
-            RecalculateCanvasGeometry(false);
+            RecalculateCanvasGeometry();
             // 刷新横排数据
             rowCollectionView.RefreshItemGeometry();
             RefreshFixedDrawing();
@@ -247,16 +263,21 @@ namespace RPG.SkillSystem.Editor
             RefreshFixedDrawing();
         }
 
-        // 真实 contentViewport 尺寸变化后重新测量，并把数值写回 CanvasModel。
-        private void OnViewportGeometryChanged(GeometryChangedEvent _)
+        /// <summary>
+        /// 在真实视口尺寸变化后只更新视口范围，不重新读取可能处于过渡布局的轨道行高。
+        /// </summary>
+        /// <param name="evt">视口几何变化事件。</param>
+        private void OnViewportGeometryChanged(GeometryChangedEvent evt)
         {
-            if (!isBound) return;
-            RecalculateCanvasGeometry(true);
-            RefreshFixedDrawing();
+            if (!isBound || applyingCanvasGeometry) return;
+            RecalculateCanvasGeometry();
+            ApplyCanvasGeometry();
         }
 
-        // 统一计算水平与纵向范围，并原子写入 CanvasModel，避免各 View 分别推导最大帧。
-        private void RecalculateCanvasGeometry(bool includeResolvedRowHeight)
+        /// <summary>
+        /// 使用最后一次有效轨道高度缓存，统一计算水平与纵向虚拟范围。
+        /// </summary>
+        private void RecalculateCanvasGeometry()
         {
             float viewportWidth = ReadTimelineViewportWidth();
             float viewportHeight = ReadTimelineViewportHeight();
@@ -266,53 +287,144 @@ namespace RPG.SkillSystem.Editor
             float viewportRangeWidth = viewportWidth + config.MinimumScrollableOverflow.x;
             float contentWidth = Mathf.Max(1f, frameRangeWidth, viewportRangeWidth);
 
-            float rowHeight = includeResolvedRowHeight ? CalculateRowHeight() : 0f;
-            float contentHeight = includeResolvedRowHeight
-                ? Mathf.Max(rowHeight, config.MinimumTimelineContentHeight,
-                    viewportHeight + config.MinimumScrollableOverflow.y, 1f)
-                : Mathf.Max(canvasModel.ContentHeight, config.MinimumTimelineContentHeight,
-                    viewportHeight + config.MinimumScrollableOverflow.y, 1f);
+            // 视口事件只消费最后一次有效行高，不能用拖拽期间的临时布局覆盖内容范围。
+            float contentHeight = Mathf.Max(
+                resolvedRowsHeight + config.MinimumScrollableOverflow.y,
+                config.MinimumTimelineContentHeight,
+                viewportHeight + config.MinimumScrollableOverflow.y,
+                1f);
             int maximumFrame = CalculateMaximumFrame(contentWidth);
             canvasModel.SynchronizeGeometry(contentWidth, contentHeight,
                 viewportWidth, viewportHeight, maximumFrame);
         }
 
-        // RowCollection 完成折叠或内容重建后，等待布局解析再同步左右内容高度。
+        /// <summary>
+        /// 合并动态行重建产生的测量请求，避免过期任务把临时行高写回滚动范围。
+        /// </summary>
         private void OnRowsChanged()
         {
             if (!isBound) return;
-            view.TimelineContent.schedule.Execute(RecalculateScheduledHeight);
+            CancelScheduledRowHeightMeasurement();
+            int measurementVersion = ++rowHeightMeasurementVersion;
+            rowHeightMeasurement = view.TimelineContent.schedule.Execute(
+                () => RecalculateScheduledHeight(measurementVersion));
         }
 
-        // 动态行布局完成后重新读取真实行高，修正左右一致的纵向可滚动范围。
-        private void RecalculateScheduledHeight()
+        /// <summary>
+        /// 动态行完成一次布局后读取真实行高，并只允许最新重建请求写回权威布局。
+        /// </summary>
+        /// <param name="measurementVersion">创建调度任务时记录的行重建版本。</param>
+        private void RecalculateScheduledHeight(int measurementVersion)
         {
-            if (!isBound) return;
-            RecalculateCanvasGeometry(true);
+            rowHeightMeasurement = null;
+            if (!isBound || measurementVersion != rowHeightMeasurementVersion) return;
+
+            if (!TryCalculateRowHeight(out float measuredHeight))
+            {
+                // 当前 VisualTree 仍处于 Clear/Rebuild 过渡布局，保留旧缓存并等待下一次布局。
+                ScheduleRowHeightMeasurement(measurementVersion);
+                return;
+            }
+
+            resolvedRowsHeight = measuredHeight;
+            RecalculateCanvasGeometry();
+            ApplyCanvasGeometry();
         }
 
-        // 将 Model 中同一份虚拟范围应用到左右内容容器、背景、网格和 Item 层。
+        /// <summary>
+        /// 为当前行重建版本安排一次后续布局测量，旧版本任务不能写回状态。
+        /// </summary>
+        /// <param name="measurementVersion">需要继续测量的行重建版本。</param>
+        private void ScheduleRowHeightMeasurement(int measurementVersion)
+        {
+            rowHeightMeasurement?.Pause();
+            rowHeightMeasurement = view.TimelineContent.schedule.Execute(
+                () => RecalculateScheduledHeight(measurementVersion));
+        }
+
+        /// <summary>
+        /// 取消尚未执行的行高测量，避免重建、关闭或 Domain Reload 后访问旧 VisualTree。
+        /// </summary>
+        private void CancelScheduledRowHeightMeasurement()
+        {
+            rowHeightMeasurement?.Pause();
+            rowHeightMeasurement = null;
+            rowHeightMeasurementVersion++;
+        }
+
+        /// <summary>
+        /// 将 Model 中同一份虚拟范围应用到左右内容容器、背景、网格和 Item 层。
+        /// </summary>
         private void ApplyCanvasGeometry()
         {
-            view.TimelineContent.style.width = canvasModel.ContentWidth;
-            view.LaneBackgroundRows.style.width = canvasModel.ContentWidth;
-            view.LaneItemRows.style.width = canvasModel.ContentWidth;
-            view.GridHost.style.width = canvasModel.ContentWidth;
-            view.TrackHeaderContent.style.height = canvasModel.ContentHeight;
-            view.TimelineContent.style.height = canvasModel.ContentHeight;
-            view.LaneBackgroundRows.style.height = canvasModel.ContentHeight;
-            view.LaneItemRows.style.height = canvasModel.ContentHeight;
-            view.GridHost.style.height = canvasModel.ContentHeight;
+            if (!isBound || applyingCanvasGeometry) return;
+            applyingCanvasGeometry = true;
+            try
+            {
+                // 自定义 TimelineContent 是 ScrollView 的唯一尺寸占位，内部 contentContainer 保持由 UI Toolkit 管理。
+                view.TimelineContent.style.width = canvasModel.ContentWidth;
+                view.TimelineContent.style.minWidth = canvasModel.ContentWidth;
+                view.TimelineContent.style.flexShrink = 0f;
+                view.LaneBackgroundRows.style.width = canvasModel.ContentWidth;
+                view.LaneItemRows.style.width = canvasModel.ContentWidth;
+                view.GridHost.style.width = canvasModel.ContentWidth;
+
+                // 左右直接子内容与全部 Canvas 层共享同一权威高度，且均禁止 Flex 压缩。
+                ApplyFixedContentHeight(view.TrackHeaderContent, canvasModel.ContentHeight);
+                ApplyFixedContentHeight(view.TimelineContent, canvasModel.ContentHeight);
+                ApplyFixedContentHeight(view.LaneBackgroundRows, canvasModel.ContentHeight);
+                ApplyFixedContentHeight(view.LaneItemRows, canvasModel.ContentHeight);
+                ApplyFixedContentHeight(view.GridHost, canvasModel.ContentHeight);
+            }
+            finally
+            {
+                applyingCanvasGeometry = false;
+            }
+
             RefreshFixedDrawing();
         }
 
-        // 汇总动态背景行的真实布局高度，不读取被虚拟高度扩展后的父容器尺寸。
-        private float CalculateRowHeight()
+        /// <summary>
+        /// 将权威高度同时写入高度下限，并禁止目标元素参与 Flex 收缩。
+        /// </summary>
+        /// <param name="element">需要固定虚拟高度的 UI 元素。</param>
+        /// <param name="height">CanvasModel 计算出的像素高度。</param>
+        private static void ApplyFixedContentHeight(VisualElement element, float height)
         {
-            float height = 0f;
+            element.style.height = height;
+            element.style.minHeight = height;
+            element.style.flexShrink = 0f;
+        }
+
+        /// <summary>
+        /// 验证全部动态背景行已完成有效布局，再原子汇总真实轨道高度。
+        /// </summary>
+        /// <param name="height">全部有效背景行的总像素高度；无轨道时为零。</param>
+        /// <returns>行数量与当前 Track 一致且每个非空行都具有有效高度时返回 true。</returns>
+        private bool TryCalculateRowHeight(out float height)
+        {
+            height = 0f;
+            int expectedRowCount = 0;
+            foreach (TrackConfigBase track in viewModel.Tracks)
+                if (track != null) expectedRowCount++;
+
+            if (view.LaneBackgroundRows.childCount != expectedRowCount) return false;
+            if (expectedRowCount == 0) return true;
+
             foreach (VisualElement row in view.LaneBackgroundRows.Children())
-                height += row.resolvedStyle.height;
-            return height;
+            {
+                float rowHeight = row.resolvedStyle.height;
+                if (float.IsNaN(rowHeight) || float.IsInfinity(rowHeight) ||
+                    rowHeight < MinimumResolvedRowHeight)
+                {
+                    height = 0f;
+                    return false;
+                }
+
+                height += rowHeight;
+            }
+
+            return true;
         }
 
         // 有 Config 时返回最后有效帧；空 Config 时按虚拟画布宽度计算可用最大帧。

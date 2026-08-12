@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System;
 using UnityEditor;
 using UnityEngine.UIElements;
 
@@ -52,21 +53,56 @@ namespace RPG.SkillSystem.Editor
                     HelpBoxMessageType.Info));
                 return;
             }
-            fieldCommitController = new InspectorFieldCommitController(
-                data is AttackDetectionSkillClipConfig attack
-                    ? () => window.ViewModel.ClearAttackDetectionInspectorDraft(attack)
-                    : null);
+            TimelineWindow capturedWindow = window;
+            EditorViewModel capturedViewModel = capturedWindow.ViewModel;
+            Action cancelDraft = data switch
+            {
+                AttackDetectionSkillClipConfig attack =>
+                    () => ClearAttackDetectionDraft(capturedWindow, capturedViewModel, attack),
+                CameraModifierSkillClipConfig modifier =>
+                    () => ClearCameraModifierDraft(capturedWindow, capturedViewModel, modifier),
+                _ => null
+            };
+            fieldCommitController = new InspectorFieldCommitController(cancelDraft);
             drawer.Draw(root, data, window.ViewModel, fieldCommitController);
         }
 
         // Inspector 被销毁或切换目标时注销窗口事件，避免重复刷新。
         private void OnDetached(DetachFromPanelEvent _)
         {
+            if (window != null) window.NativeInspectorChanged -= Refresh;
             fieldCommitController?.Dispose();
             fieldCommitController = null;
-            if (window != null) window.NativeInspectorChanged -= Refresh;
             window = null;
             root = null;
+        }
+
+        /// <summary>
+        /// 在捕获窗口仍持有同一 ViewModel 时清除攻击检测 Inspector 草稿。
+        /// </summary>
+        /// <param name="capturedWindow">创建本轮 Inspector 时捕获的窗口实例。</param>
+        /// <param name="capturedViewModel">创建草稿回调时捕获的稳定 ViewModel。</param>
+        /// <param name="clip">需要清除预览草稿的攻击检测片段。</param>
+        private static void ClearAttackDetectionDraft(TimelineWindow capturedWindow,
+            EditorViewModel capturedViewModel, AttackDetectionSkillClipConfig clip)
+        {
+            // 迟到的 Detach 可能发生在窗口组合释放之后，此时 Preview 已由窗口生命周期统一清理。
+            if (capturedWindow == null || capturedWindow.ViewModel != capturedViewModel) return;
+            capturedViewModel.ClearAttackDetectionInspectorDraft(clip);
+        }
+
+        /// <summary>
+        /// 在捕获窗口仍持有同一 ViewModel 时清除镜头修饰 Inspector 草稿。
+        /// </summary>
+        /// <param name="capturedWindow">创建本轮 Inspector 时捕获的窗口实例。</param>
+        /// <param name="capturedViewModel">创建草稿回调时捕获的稳定 ViewModel。</param>
+        /// <param name="clip">需要清除预览草稿的镜头修饰片段。</param>
+        private static void ClearCameraModifierDraft(TimelineWindow capturedWindow,
+            EditorViewModel capturedViewModel, CameraModifierSkillClipConfig clip)
+        {
+            // 只在当前组合仍然有效时访问 ViewModel，避免 Inspector Detach 晚于窗口释放。
+            if (capturedWindow == null || capturedWindow.ViewModel != capturedViewModel) return;
+            capturedViewModel.ClearCameraModifierDraft(clip);
         }
     }
 }

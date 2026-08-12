@@ -7,6 +7,10 @@
     -unity-text-align: middle-center;
 }
 
+.event-marker-item .timeline-resize-handle {
+    display: none;
+}
+
 .event-marker-item:hover {
     color: rgb(255, 207, 88);
 }

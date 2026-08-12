@@ -33,6 +33,15 @@ namespace RPG.SkillSystem.Editor
     }
 
     /// <summary>
+    /// 标记无需预览场景和角色即可采样的轨道预览处理器。
+    /// </summary>
+    internal interface IActorIndependentPreviewHandler : ITrackPreviewHandler
+    {
+        /// <summary>使用技能配置和整数帧执行角色无关采样。</summary>
+        void SampleFrame(SkillConfig config, int frame);
+    }
+
+    /// <summary>
     /// 允许轨道预览处理器向组合预览报告不阻断其他模块的局部状态。
     /// </summary>
     internal interface ITrackPreviewStatusProvider

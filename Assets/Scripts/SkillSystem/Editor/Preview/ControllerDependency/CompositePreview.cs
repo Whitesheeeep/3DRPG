@@ -9,7 +9,8 @@ namespace RPG.SkillSystem.Editor
     /// <summary>
     /// 管理共享预览角色、轨道采样，以及 VFX 与攻击检测的场景编辑服务。
     /// </summary>
-    internal sealed class CompositePreview : IPreview, IVfxSceneEditService, IAttackDetectionSceneEditService
+    internal sealed class CompositePreview : IPreview, IVfxSceneEditService,
+        IAttackDetectionSceneEditService, ICameraModifierPreviewService
     {
         #region 依赖与状态
         // 依赖
@@ -20,6 +21,7 @@ namespace RPG.SkillSystem.Editor
         private readonly IPreviewActorBindingPoseProvider bindingPoseProvider;
         private readonly IVfxSceneEditService vfxSceneEditService;
         private readonly IAttackDetectionSceneEditService attackDetectionSceneEditService;
+        private readonly ICameraModifierPreviewService cameraModifierPreviewService;
         private SkillConfig config;
 
         // 状态
@@ -48,6 +50,7 @@ namespace RPG.SkillSystem.Editor
             bindingPoseProvider = ResolveBindingPoseProvider(handlers);
             vfxSceneEditService = ResolveVfxSceneEditService(handlers);
             attackDetectionSceneEditService = ResolveAttackDetectionSceneEditService(handlers);
+            cameraModifierPreviewService = ResolveCameraModifierPreviewService(handlers);
         }
 
         /// <summary>
@@ -64,6 +67,17 @@ namespace RPG.SkillSystem.Editor
             config = null;
             actorSource = null;
         }
+
+        #endregion
+
+        #region 摄像机修饰草稿
+
+        /// <summary>转发 Camera Modifier Inspector 草稿。</summary>
+        public void SetDraft(string clipId, CameraModifierDataBase data) =>
+            cameraModifierPreviewService.SetDraft(clipId, data);
+
+        /// <summary>清除指定 Camera Modifier Inspector 草稿。</summary>
+        public void ClearDraft(string clipId) => cameraModifierPreviewService.ClearDraft(clipId);
 
         #endregion
 
@@ -121,6 +135,12 @@ namespace RPG.SkillSystem.Editor
         public void SampleFrame(int frame, PreviewSampleReason reason)
         {
             if (disposed || config == null) return;
+            int clampedFrame = Mathf.Clamp(frame, 0, Mathf.Max(0, config.DurationFrames - 1));
+
+            // Camera Modifier 不依赖预览场景或角色，先行采样以支持纯 Gameplay 镜头修饰。
+            foreach (ITrackPreviewHandler handler in handlers)
+                if (handler is IActorIndependentPreviewHandler independent)
+                    independent.SampleFrame(config, clampedFrame);
             if (!sceneService.IsPreviewSceneLoaded)
             {
                 ReportStatus("请先使用工具栏的“加载场景”打开固定预览场景。");
@@ -128,14 +148,13 @@ namespace RPG.SkillSystem.Editor
             }
 
             if (!EnsureActor()) return;
-            int clampedFrame = Mathf.Clamp(frame, 0, Mathf.Max(0, config.DurationFrames - 1));
             PreviewFrameContext context = new(
                 config, actorInstance, clampedFrame, applyRootMotion, reason, actorPoseProvider,
                 bindingPoseProvider);
             try
             {
                 foreach (ITrackPreviewHandler handler in handlers)
-                    handler?.SampleFrame(context);
+                    if (handler is not IActorIndependentPreviewHandler) handler?.SampleFrame(context);
                 string handlerStatus = ResolveHandlerStatus();
                 ReportStatus(string.IsNullOrEmpty(handlerStatus) ? "预览已就绪。" : handlerStatus);
                 SceneView.RepaintAll();
@@ -292,6 +311,20 @@ namespace RPG.SkillSystem.Editor
             }
 
             return result ?? throw new InvalidOperationException("攻击检测模块没有注册场景编辑服务。");
+        }
+
+        /// <summary>解析唯一 Camera Modifier 草稿预览服务。</summary>
+        private static ICameraModifierPreviewService ResolveCameraModifierPreviewService(
+            IReadOnlyList<ITrackPreviewHandler> previewHandlers)
+        {
+            ICameraModifierPreviewService result = null;
+            foreach (ITrackPreviewHandler handler in previewHandlers)
+            {
+                if (handler is not ICameraModifierPreviewService candidate) continue;
+                if (result != null) throw new InvalidOperationException("预览中注册了多个 Camera Modifier 草稿服务。");
+                result = candidate;
+            }
+            return result ?? throw new InvalidOperationException("Camera Modifier 模块没有注册草稿服务。");
         }
 
         // 延迟创建预览角色，并保证创建失败不会阻止播放头继续工作。

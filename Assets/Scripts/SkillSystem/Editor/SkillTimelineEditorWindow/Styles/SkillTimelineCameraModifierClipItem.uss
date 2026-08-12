@@ -1,0 +1,19 @@
+.camera-modifier-item {
+    top: 9px;
+    height: 36px;
+    color: rgb(232, 240, 255);
+    background-color: rgb(50, 90, 126);
+    border-left-color: rgb(91, 158, 211);
+    border-right-color: rgb(91, 158, 211);
+    border-top-color: rgb(91, 158, 211);
+    border-bottom-color: rgb(91, 158, 211);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-radius: 3px;
+    -unity-text-align: middle-left;
+    padding-left: 10px;
+}
+.camera-modifier-item:hover { background-color: rgb(61, 107, 148); }
+.camera-modifier-item.is-selected { border-left-color: rgb(255, 213, 96); border-right-color: rgb(255, 213, 96); border-top-color: rgb(255, 213, 96); border-bottom-color: rgb(255, 213, 96); border-left-width: 2px; border-right-width: 2px; border-top-width: 2px; border-bottom-width: 2px; }

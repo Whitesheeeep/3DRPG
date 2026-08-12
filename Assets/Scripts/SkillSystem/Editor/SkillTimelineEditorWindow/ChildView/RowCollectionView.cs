@@ -99,10 +99,12 @@ namespace RPG.SkillSystem.Editor
         public void RefreshSelection()
         {
             if (viewModel == null) return;
+            // Track Header 选中样式仅在当前 Selection 是 Track 时生效，Item 选中样式由 ViewModel.IsSelected 决定。
             foreach (RowSelectionBinding binding in rowSelections)
                 binding.Element.EnableInClassList("is-selected",
                     binding.Track.Id == viewModel.Selection.TrackId &&
                     viewModel.Selection is TrackSelection);
+            // Item 选中样式由 ViewModel.IsSelected 决定。
             foreach (ItemView itemView in itemViews)
                 itemView.SetSelected(viewModel.IsSelected(itemView.Track, itemView.Item));
         }

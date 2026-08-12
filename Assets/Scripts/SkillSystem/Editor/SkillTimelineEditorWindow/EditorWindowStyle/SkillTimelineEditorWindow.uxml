@@ -7,6 +7,7 @@
     <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineVfxClipItem.uss" />
     <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineAudioClipItem.uss" />
     <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineEventMarkerItem.uss" />
+    <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineCameraModifierClipItem.uss" />
     <ui:VisualElement name="SkillTimelineRoot" class="skill-timeline-root">
         <ui:VisualElement class="toolbar-row toolbar-wrap-row">
             <ui:VisualElement class="toolbar-section config-section">
@@ -29,6 +30,10 @@
             </ui:VisualElement>
             <ui:VisualElement class="toolbar-section root-motion-section">
                 <ui:Toggle name="RootMotionToggle" label="Root Motion" class="root-motion-toggle" />
+            </ui:VisualElement>
+            <ui:VisualElement class="toolbar-section camera-modifier-preview-section">
+                <uie:ObjectField name="GameplayCameraField" label="Gameplay 镜头" type="UnityEngine.GameObject, UnityEngine.CoreModule" class="preview-field compact-object-field unity-base-field__aligned" />
+                <ui:Toggle name="CameraModifierPreviewToggle" label="修饰预览" />
             </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement class="toolbar-row toolbar-wrap-row playback-row">

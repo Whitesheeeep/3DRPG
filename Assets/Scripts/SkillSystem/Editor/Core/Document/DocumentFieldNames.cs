@@ -64,6 +64,8 @@ namespace RPG.SkillSystem.Editor
         internal const string SampleIntervalFrames = "sampleIntervalFrames";
         /// <summary>攻击检测片段保存的局部多态检测参数。</summary>
         internal const string DetectionData = "detectionData";
+        /// <summary>摄像机修饰片段保存的局部多态参数。</summary>
+        internal const string ModifierData = "modifierData";
         /// <summary>事件 Marker 用于运行时业务路由的稳定键。</summary>
         internal const string EventKey = "eventKey";
         /// <summary>事件 Marker 当前有效候选值的类型。</summary>

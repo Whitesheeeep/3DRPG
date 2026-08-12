@@ -32,6 +32,7 @@
 .root-motion-toggle { width: 122px; min-width: 122px; flex-shrink: 0; }
 .root-motion-toggle .unity-base-field__label { width: 86px; min-width: 86px; flex-grow: 0; flex-shrink: 0; }
 .root-motion-toggle .unity-base-field__input { flex-grow: 0; flex-shrink: 0; }
+.camera-modifier-preview-section { flex-direction: row; flex-grow: 0; flex-shrink: 0; flex-basis: 330px; min-width: 310px; }
 .playback-buttons-section { flex-grow: 0; flex-basis: 350px; }
 .playback-fields-section { flex-grow: 1; flex-basis: 360px; }
 .preview-row { min-height: 38px; }
@@ -147,6 +148,10 @@
 }
 .track-header-content { position: relative; flex-shrink: 0; }
 .track-header-rows { position: relative; flex-shrink: 0; }
+.track-header-scroll .unity-scroll-view__content-container,
+.timeline-scroll .unity-scroll-view__content-container {
+    flex-shrink: 0;
+}
 .horizontal-scroller-spacer {
     height: 16px;
     min-height: 16px;
@@ -155,7 +160,11 @@
     border-top-color: rgb(64, 64, 64);
 }
 .timeline-scroll { flex-grow: 1; min-width: 0; min-height: 0; overflow: hidden; }
-.timeline-content { position: relative; min-height: 100%; }
+.timeline-content {
+    position: relative;
+    min-height: 100%;
+    flex-shrink: 0;
+}
 .timeline-lane-background-rows { position: relative; flex-shrink: 0; }
 .timeline-grid-host, .timeline-lane-item-rows {
     position: absolute;
