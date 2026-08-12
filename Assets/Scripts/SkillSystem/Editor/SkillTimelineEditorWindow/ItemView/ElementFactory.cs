@@ -39,6 +39,22 @@ namespace RPG.SkillSystem.Editor
         public VisualElement CreateLaneItemRow() =>
             Instantiate("Item/SkillTimelineLaneItemRow.uxml", "LaneItemRoot");
 
+        /// <summary>
+        /// 从统一 Item 模板创建元素，并添加具体轨道负责的外观样式类。
+        /// </summary>
+        /// <param name="styleClass">具体 Item 类型对应的稳定 USS class。</param>
+        /// <returns>已经应用通用结构与类型样式类的 Item 根元素。</returns>
+        public VisualElement CreateItem(string styleClass)
+        {
+            if (string.IsNullOrWhiteSpace(styleClass))
+                throw new ArgumentException("Item 样式类不能为空。", nameof(styleClass));
+
+            // 所有轨道复用同一视觉树，具体 Factory 只决定外观 class。
+            VisualElement element = Instantiate("Item/SkillTimelineItem.uxml", "TimelineItemRoot");
+            element.AddToClassList(styleClass);
+            return element;
+        }
+
         #endregion
 
         #region 模板实例化

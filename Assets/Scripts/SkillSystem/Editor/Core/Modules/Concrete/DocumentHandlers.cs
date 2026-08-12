@@ -6,6 +6,47 @@ using UnityEngine;
 namespace RPG.SkillSystem.Editor
 {
     /// <summary>
+    /// 定义摄像机修饰轨道的区间、多态数据编辑和深复制规则。
+    /// </summary>
+    internal sealed class CameraModifierDocumentHandler : TrackDocumentHandler
+    {
+        /// <summary>创建摄像机修饰数据处理器。</summary>
+        internal CameraModifierDocumentHandler() : base(typeof(CameraModifierTrackConfig),
+            DocumentFieldNames.Clips, DocumentFieldNames.StartFrame,
+            DocumentFieldNames.DurationFrames, "摄像机修饰轨道")
+        {
+        }
+
+        /// <summary>该轨道不接受 Project 素材拖入。</summary>
+        public override ItemsCreateResult CreateItems(Document document, string trackId,
+            IItemCreateRequest request) => ItemsCreateResult.Failure("摄像机修饰轨道不支持 Project 素材拖入。");
+
+        /// <summary>提交区间和独立 managed reference 快照。</summary>
+        public override EditResult EditItem(Document document, string trackId, string itemId,
+            IItemEditRequest request)
+        {
+            if (request is not CameraModifierEditRequest modifier)
+                return EditResult.Failure("摄像机修饰轨道收到不匹配的编辑请求。");
+            return document.EditClip(this, trackId, itemId, modifier.StartFrame,
+                modifier.DurationFrames, "修改摄像机修饰 Clip", item =>
+                    item.FindPropertyRelative(DocumentFieldNames.ModifierData).managedReferenceValue =
+                        CameraModifierDataBase.Copy(modifier.ModifierData));
+        }
+
+        /// <summary>深复制多态配置，避免复制后的 Clip 共享曲线对象。</summary>
+        public override void CopySpecificFields(SerializedProperty source, SerializedProperty destination) =>
+            destination.FindPropertyRelative(DocumentFieldNames.ModifierData).managedReferenceValue =
+                CameraModifierDataBase.Copy(
+                    source.FindPropertyRelative(DocumentFieldNames.ModifierData).managedReferenceValue
+                        as CameraModifierDataBase);
+
+        /// <summary>新建 Clip 默认使用 FOV 修饰。</summary>
+        protected override void InitializeSpecificFields(SerializedProperty item) =>
+            item.FindPropertyRelative(DocumentFieldNames.ModifierData).managedReferenceValue =
+                CameraModifierDataBase.Create(CameraModifierType.Fov);
+    }
+
+    /// <summary>
     /// 提供轨道序列化结构与公共 Item 初始化流程，具体字段和业务编辑由派生 Handler 完成。
     /// </summary>
     internal abstract class TrackDocumentHandler : ITrackDocumentHandler

@@ -21,6 +21,8 @@ namespace RPG.SkillSystem.Editor
         private ObjectField previewSceneField;
         private ObjectField previewActorField;
         private Toggle rootMotionToggle;
+        private ObjectField gameplayCameraField;
+        private Toggle cameraModifierPreviewToggle;
         private IntegerField frameRateField;
         private IntegerField durationField;
         private IntegerField currentFrameField;
@@ -75,6 +77,8 @@ namespace RPG.SkillSystem.Editor
             previewSceneField.UnregisterValueChangedCallback(OnPreviewSceneChanged);
             previewActorField.UnregisterValueChangedCallback(OnPreviewActorChanged);
             rootMotionToggle.UnregisterValueChangedCallback(OnRootMotionChanged);
+            gameplayCameraField.UnregisterValueChangedCallback(OnGameplayCameraChanged);
+            cameraModifierPreviewToggle.UnregisterValueChangedCallback(OnCameraModifierPreviewChanged);
             frameRateField.UnregisterValueChangedCallback(OnFrameRateChanged);
             durationField.UnregisterValueChangedCallback(OnDurationChanged);
             currentFrameField.UnregisterValueChangedCallback(OnCurrentFrameChanged);
@@ -100,6 +104,8 @@ namespace RPG.SkillSystem.Editor
             previewSceneField = root.Q<ObjectField>("PreviewSceneField");
             previewActorField = root.Q<ObjectField>("PreviewActorField");
             rootMotionToggle = root.Q<Toggle>("RootMotionToggle");
+            gameplayCameraField = root.Q<ObjectField>("GameplayCameraField");
+            cameraModifierPreviewToggle = root.Q<Toggle>("CameraModifierPreviewToggle");
             frameRateField = root.Q<IntegerField>("FrameRateField");
             durationField = root.Q<IntegerField>("DurationField");
             currentFrameField = root.Q<IntegerField>("CurrentFrameField");
@@ -125,6 +131,8 @@ namespace RPG.SkillSystem.Editor
             previewSceneField.allowSceneObjects = false;
             previewActorField.objectType = typeof(GameObject);
             previewActorField.allowSceneObjects = true;
+            gameplayCameraField.objectType = typeof(GameObject);
+            gameplayCameraField.allowSceneObjects = false;
         }
 
         // 注册工具栏控件及 ViewModel 的状态变更回调。
@@ -134,6 +142,8 @@ namespace RPG.SkillSystem.Editor
             previewSceneField.RegisterValueChangedCallback(OnPreviewSceneChanged);
             previewActorField.RegisterValueChangedCallback(OnPreviewActorChanged);
             rootMotionToggle.RegisterValueChangedCallback(OnRootMotionChanged);
+            gameplayCameraField.RegisterValueChangedCallback(OnGameplayCameraChanged);
+            cameraModifierPreviewToggle.RegisterValueChangedCallback(OnCameraModifierPreviewChanged);
             frameRateField.RegisterValueChangedCallback(OnFrameRateChanged);
             durationField.RegisterValueChangedCallback(OnDurationChanged);
             currentFrameField.RegisterValueChangedCallback(OnCurrentFrameChanged);
@@ -201,6 +211,8 @@ namespace RPG.SkillSystem.Editor
             previewSceneField.SetValueWithoutNotify(viewModel.PreviewScene);
             previewActorField.SetValueWithoutNotify(viewModel.PreviewActor);
             rootMotionToggle.SetValueWithoutNotify(viewModel.PreviewApplyRootMotion);
+            gameplayCameraField.SetValueWithoutNotify(viewModel.GameplayCameraPrefab);
+            cameraModifierPreviewToggle.SetValueWithoutNotify(viewModel.PreviewCameraModifier);
         }
         // 缩放变化后同步 Slider，避免状态刷新反向触发输入回调。
         private void RefreshZoom() => zoomSlider.SetValueWithoutNotify(canvasModel.PixelsPerFrame);
@@ -239,6 +251,12 @@ namespace RPG.SkillSystem.Editor
         // 把 Root Motion Toggle 转换为项目级预览设置并立即重采样当前帧。
         private void OnRootMotionChanged(ChangeEvent<bool> evt) =>
             viewModel.SetPreviewApplyRootMotion(evt.newValue);
+        /// <summary>保存 Gameplay VCam Prefab。</summary>
+        private void OnGameplayCameraChanged(ChangeEvent<UnityEngine.Object> evt) =>
+            viewModel.SetGameplayCameraPrefab(evt.newValue as GameObject);
+        /// <summary>切换摄像机修饰预览。</summary>
+        private void OnCameraModifierPreviewChanged(ChangeEvent<bool> evt) =>
+            viewModel.SetPreviewCameraModifier(evt.newValue);
 
         // 把帧率输入转换为保持实际时间的重采样请求。
         private void OnFrameRateChanged(ChangeEvent<int> evt) => viewModel.ChangeFrameRate(evt.newValue);

@@ -4,6 +4,19 @@ using RPG.SkillSystem;
 
 namespace RPG.SkillSystem.Editor
 {
+    /// <summary>组合摄像机修饰轨道的编辑与预览能力。</summary>
+    internal sealed class CameraModifierModuleDefinition : TrackModuleDefinition
+    {
+        public override Type TrackType => typeof(CameraModifierTrackConfig);
+        public override Type ItemType => typeof(CameraModifierSkillClipConfig);
+
+        /// <summary>创建摄像机修饰模块。</summary>
+        public override TrackModule Create(EditorConfig config, TimelineTrackAttribute metadata) =>
+            new(TrackType, ItemType, metadata, new CameraModifierDocumentHandler(), null,
+                new CameraModifierItemFactory(), new CameraModifierInspectorDrawer(),
+                new CameraModifierPreviewFactory());
+    }
+
     /// <summary>
     /// 组合动作阶段轨道的配置编辑、时间轴显示和 Inspector 能力。
     /// </summary>

@@ -15,3 +15,5 @@ MonoBehaviour:
   previewSceneGuid: d09c3d8c5c214a942bedb2612b34ffbc
   previewActorGlobalObjectId: GlobalObjectId_V1-2-d09c3d8c5c214a942bedb2612b34ffbc-919132148298918320-0
   previewApplyRootMotion: 1
+  gameplayCameraPrefabGuid: e43c9fe6f909474438d9d3f9eef44f8f
+  previewCameraModifier: 1

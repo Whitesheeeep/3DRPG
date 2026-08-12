@@ -1,5 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
-    <ui:Label name="VfxClipRoot" class="timeline-item vfx-clip-item">
+    <ui:Label name="TimelineItemRoot" class="timeline-item">
         <ui:VisualElement name="ResizeLeft" class="timeline-resize-handle timeline-resize-left" />
         <ui:VisualElement name="ResizeRight" class="timeline-resize-handle timeline-resize-right" />
     </ui:Label>

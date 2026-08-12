@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEngine;
+using Cinemachine;
 
 namespace RPG.SkillSystem.Editor
 {
@@ -13,6 +14,8 @@ namespace RPG.SkillSystem.Editor
         [SerializeField] private string previewSceneGuid = string.Empty;
         [SerializeField] private string previewActorGlobalObjectId = string.Empty;
         [SerializeField] private bool previewApplyRootMotion;
+        [SerializeField] private string gameplayCameraPrefabGuid = string.Empty;
+        [SerializeField] private bool previewCameraModifier;
 
         public SceneAsset PreviewScene
         {
@@ -24,6 +27,27 @@ namespace RPG.SkillSystem.Editor
         }
 
         public bool PreviewApplyRootMotion => previewApplyRootMotion;
+        public bool PreviewCameraModifier => previewCameraModifier;
+        public GameObject GameplayCameraPrefab
+        {
+            get
+            {
+                string path = AssetDatabase.GUIDToAssetPath(gameplayCameraPrefabGuid);
+                return string.IsNullOrEmpty(path) ? null : AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            }
+        }
+
+        /// <summary>读取 Gameplay VCam Prefab 的唯一标准虚拟摄像机参考 FOV。</summary>
+        public bool TryGetGameplayReferenceFov(out float fieldOfView)
+        {
+            fieldOfView = 0f;
+            GameObject prefab = GameplayCameraPrefab;
+            if (prefab == null) return false;
+            CinemachineVirtualCamera[] cameras = prefab.GetComponentsInChildren<CinemachineVirtualCamera>(true);
+            if (cameras.Length != 1) return false;
+            fieldOfView = cameras[0].m_Lens.FieldOfView;
+            return fieldOfView > 0f;
+        }
 
         public GameObject PreviewActor
         {
@@ -63,6 +87,22 @@ namespace RPG.SkillSystem.Editor
         {
             if (previewApplyRootMotion == value) return;
             previewApplyRootMotion = value;
+            Save(true);
+        }
+
+        /// <summary>保存用于 FOV 换算的 Gameplay VCam Project Prefab。</summary>
+        public void SetGameplayCameraPrefab(GameObject prefab)
+        {
+            string path = prefab != null ? AssetDatabase.GetAssetPath(prefab) : string.Empty;
+            gameplayCameraPrefabGuid = string.IsNullOrEmpty(path) ? string.Empty : AssetDatabase.AssetPathToGUID(path);
+            Save(true);
+        }
+
+        /// <summary>保存 Scene View 是否启用摄像机修饰预览。</summary>
+        public void SetPreviewCameraModifier(bool value)
+        {
+            if (previewCameraModifier == value) return;
+            previewCameraModifier = value;
             Save(true);
         }
     }

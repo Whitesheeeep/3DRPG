@@ -1,3 +1,0 @@
-<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
-    <ui:Label name="EventMarkerRoot" text="◆" class="timeline-item event-marker-item" />
-</ui:UXML>

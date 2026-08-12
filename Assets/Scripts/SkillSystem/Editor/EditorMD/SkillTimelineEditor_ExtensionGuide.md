@@ -1,5 +1,7 @@
 # 技能时间轴编辑器扩展指南
 
+摄像机修饰轨道的配置、运行时流转和使用方式见 [CameraModifierSystem.md](CameraModifierSystem.md)。
+
 ## 1. 当前架构
 
 技能资产采用“根资产 + 有序 Track 子资产”结构：
@@ -181,7 +183,7 @@ Editor Preview 和 Scrub 不发布业务事件，避免编辑操作产生运行�
 2. 新增 `StateItemConfig : TimelineItemConfigBase`，保留稳定 ID 与帧语义。
 3. 新增类型化 Create/Edit Request。
 4. 新增 `StateDocumentHandler`，声明 Track 类型、Item 列表字段、帧字段、初始化、复制和编辑规则；不得缓存 `SerializedProperty`。
-5. 新增 `StateItemFactory`、Item UXML/USS 与具体 ItemView。
+5. 新增 `StateItemFactory`、具体 Item USS 与 ItemView；Factory 通过 `ElementFactory.CreateItem(styleClass)` 复用统一 `SkillTimelineItem.uxml`，不新增类型 UXML。
 6. 新增 `StateInspectorDrawer`；字段提交经 ViewModel 和 Document。
 7. 如支持 Project 素材拖入，新增 `StateDropHandler`；否则 Module 的 Drop 传空。
 8. 如需要预览，新增 `StatePreviewFactory/Handler`。

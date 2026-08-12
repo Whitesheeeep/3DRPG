@@ -38,20 +38,10 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsGASLightTagSystemEditorStyleGameplayTagTreeRow = "Assets/GAS_Light/TagSystem/Editor/Style/GameplayTagTreeRow.uxml";
             /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/EditorWindowStyle/SkillTimelineEditorWindow.uxml</summary>
             public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowEditorWindowStyleSkillTimelineEditorWindow = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/EditorWindowStyle/SkillTimelineEditorWindow.uxml";
-            /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/Item/SkillTimelineActionPhaseClipItem.uxml</summary>
-            public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowTemplatesItemSkillTimelineActionPhaseClipItem = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/Item/SkillTimelineActionPhaseClipItem.uxml";
-            /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/Item/SkillTimelineAnimationClipItem.uxml</summary>
-            public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowTemplatesItemSkillTimelineAnimationClipItem = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/Item/SkillTimelineAnimationClipItem.uxml";
-            /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/Item/SkillTimelineAttackDetectionClipItem.uxml</summary>
-            public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowTemplatesItemSkillTimelineAttackDetectionClipItem = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/Item/SkillTimelineAttackDetectionClipItem.uxml";
-            /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/Item/SkillTimelineAudioClipItem.uxml</summary>
-            public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowTemplatesItemSkillTimelineAudioClipItem = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/Item/SkillTimelineAudioClipItem.uxml";
-            /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/Item/SkillTimelineEventMarkerItem.uxml</summary>
-            public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowTemplatesItemSkillTimelineEventMarkerItem = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/Item/SkillTimelineEventMarkerItem.uxml";
+            /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/Item/SkillTimelineItem.uxml</summary>
+            public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowTemplatesItemSkillTimelineItem = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/Item/SkillTimelineItem.uxml";
             /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/Item/SkillTimelineLaneItemRow.uxml</summary>
             public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowTemplatesItemSkillTimelineLaneItemRow = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/Item/SkillTimelineLaneItemRow.uxml";
-            /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/Item/SkillTimelineVfxClipItem.uxml</summary>
-            public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowTemplatesItemSkillTimelineVfxClipItem = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/Item/SkillTimelineVfxClipItem.uxml";
             /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/TimelineRow/SkillTimelineLaneBackgroundRow.uxml</summary>
             public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowTemplatesTimelineRowSkillTimelineLaneBackgroundRow = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/TimelineRow/SkillTimelineLaneBackgroundRow.uxml";
             /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/TimelineRow/SkillTimelineTrackHeaderRow.uxml</summary>
@@ -118,4 +108,3 @@ namespace WS_Modules.UIModule.Editor
         }
     }
 }
-

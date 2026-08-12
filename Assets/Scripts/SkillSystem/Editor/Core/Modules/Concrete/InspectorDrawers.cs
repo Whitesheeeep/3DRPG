@@ -52,6 +52,127 @@ namespace RPG.SkillSystem.Editor
     #endregion
 
     #region Concrete drawers
+    /// <summary>绘制 Camera Modifier 区间、类型以及 FOV/Shake 参数。</summary>
+    internal sealed class CameraModifierInspectorDrawer : InspectorDrawer, IInspectorDrawer
+    {
+        /// <summary>绘制实际配置，并只把 Scale 写回 SkillConfig。</summary>
+        public void Draw(VisualElement container, object data, EditorViewModel viewModel,
+            InspectorFieldCommitController fieldCommitController)
+        {
+            if (data is not CameraModifierSkillClipConfig clip) return;
+            AddTitle(container, clip.ModifierType.ToString());
+            IntegerField start = AddField(container, new IntegerField("起始帧") { value = clip.StartFrame });
+            IntegerField duration = AddField(container, new IntegerField("持续帧") { value = clip.DurationFrames });
+            EnumField type = AddField(container, new EnumField("类型", clip.ModifierType));
+            EnumField blend = AddField(container, new EnumField("叠加模式",
+                clip.ModifierData?.BlendMode ?? CameraModifierBlendMode.Additive));
+
+            start.isDelayed = true;
+            duration.isDelayed = true;
+            if (clip.ModifierData is FovCameraModifierData fov)
+                DrawFov(container, viewModel, clip, start, duration, type, blend, fov,
+                    fieldCommitController);
+            else if (clip.ModifierData is ShakeCameraModifierData shake)
+                DrawShake(container, viewModel, clip, start, duration, type, blend, shake,
+                    fieldCommitController);
+
+            // 类型是离散替换操作，立即创建全新默认配置。
+            type.RegisterValueChangedCallback(evt => viewModel.EditItem(viewModel.SelectedTrack, clip,
+                new CameraModifierEditRequest(start.value, duration.value,
+                    CameraModifierDataBase.Create((CameraModifierType)evt.newValue))));
+            AddItemActions(container, viewModel);
+        }
+
+        /// <summary>绘制 Value/Scale 联动与权重曲线。</summary>
+        private static void DrawFov(VisualElement container, EditorViewModel viewModel,
+            CameraModifierSkillClipConfig clip, IntegerField start, IntegerField duration,
+            EnumField type, EnumField blend, FovCameraModifierData data,
+            InspectorFieldCommitController controller)
+        {
+            FloatField scale = AddField(container, new FloatField("Scale") { value = data.TargetScale });
+            FloatField value = AddField(container, new FloatField("Value"));
+            CurveField curve = AddField(container, new CurveField("权重曲线") { value = data.WeightCurve });
+            bool hasReference = EditorSettings.instance.TryGetGameplayReferenceFov(out float referenceFov);
+            value.SetEnabled(hasReference);
+            value.tooltip = hasReference
+                ? "Value 是 Gameplay VCam 参考 FOV 与 Scale 的换算结果，不会序列化。"
+                : "请在时间轴工具栏选择包含唯一 CinemachineVirtualCamera 的 Gameplay Prefab。";
+            value.SetValueWithoutNotify(hasReference ? referenceFov * scale.value : 0f);
+
+            void SynchronizeFromScale()
+            {
+                if (hasReference) value.SetValueWithoutNotify(referenceFov * scale.value);
+            }
+            void SynchronizeFromValue()
+            {
+                if (hasReference) scale.SetValueWithoutNotify(value.value / referenceFov);
+            }
+            void Submit()
+            {
+                FovCameraModifierData snapshot = new(scale.value, curve.value,
+                    (CameraModifierBlendMode)blend.value);
+                viewModel.ClearCameraModifierDraft(clip);
+                viewModel.EditItem(viewModel.SelectedTrack, clip,
+                    new CameraModifierEditRequest(start.value, duration.value, snapshot));
+            }
+
+            void Preview()
+            {
+                SynchronizeFromScale();
+                viewModel.PreviewCameraModifierDraft(clip, new FovCameraModifierData(
+                    scale.value, curve.value, (CameraModifierBlendMode)blend.value));
+            }
+            void PreviewFromValue()
+            {
+                SynchronizeFromValue();
+                viewModel.PreviewCameraModifierDraft(clip, new FovCameraModifierData(
+                    scale.value, curve.value, (CameraModifierBlendMode)blend.value));
+            }
+            controller.Bind(scale, Preview, Submit);
+            controller.Bind(value, PreviewFromValue, Submit);
+            controller.Bind(curve, Preview, Submit);
+            start.RegisterValueChangedCallback(_ => Submit());
+            duration.RegisterValueChangedCallback(_ => Submit());
+            blend.RegisterValueChangedCallback(_ => Submit());
+        }
+
+        /// <summary>绘制确定性 Shake 参数。</summary>
+        private static void DrawShake(VisualElement container, EditorViewModel viewModel,
+            CameraModifierSkillClipConfig clip, IntegerField start, IntegerField duration,
+            EnumField type, EnumField blend, ShakeCameraModifierData data,
+            InspectorFieldCommitController controller)
+        {
+            Vector3Field position = AddField(container,
+                new Vector3Field("局部位置振幅") { value = data.LocalPositionAmplitude });
+            Vector3Field rotation = AddField(container,
+                new Vector3Field("局部旋转振幅") { value = data.LocalRotationAmplitude });
+            FloatField frequency = AddField(container, new FloatField("频率") { value = data.Frequency });
+            IntegerField seed = AddField(container, new IntegerField("Seed") { value = data.Seed });
+            CurveField curve = AddField(container,
+                new CurveField("强度曲线") { value = data.IntensityCurve });
+
+            void Submit()
+            {
+                ShakeCameraModifierData snapshot = new(position.value, rotation.value,
+                    frequency.value, seed.value, curve.value, (CameraModifierBlendMode)blend.value);
+                viewModel.ClearCameraModifierDraft(clip);
+                viewModel.EditItem(viewModel.SelectedTrack, clip,
+                    new CameraModifierEditRequest(start.value, duration.value, snapshot));
+            }
+            void Preview() => viewModel.PreviewCameraModifierDraft(clip,
+                new ShakeCameraModifierData(position.value, rotation.value, frequency.value,
+                    seed.value, curve.value, (CameraModifierBlendMode)blend.value));
+            controller.Bind(position, Preview, Submit);
+            controller.Bind(rotation, Preview, Submit);
+            controller.Bind(frequency, Preview, Submit);
+            controller.Bind(seed, Preview, Submit);
+            controller.Bind(curve, Preview, Submit);
+            start.RegisterValueChangedCallback(_ => Submit());
+            duration.RegisterValueChangedCallback(_ => Submit());
+            blend.RegisterValueChangedCallback(_ => Submit());
+        }
+    }
+
     /// <summary>
     /// 绘制所有具体轨道共用的名称、静音、锁定和排序操作。
     /// </summary>

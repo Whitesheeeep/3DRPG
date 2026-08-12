@@ -102,6 +102,24 @@ namespace RPG.SkillSystem.Editor
 
     #region EditRequest
     /// <summary>
+    /// 描述摄像机修饰片段 Inspector 提交的完整区间与独立多态数据。
+    /// </summary>
+    internal readonly struct CameraModifierEditRequest : IItemEditRequest
+    {
+        public int StartFrame { get; }
+        public int DurationFrames { get; }
+        public CameraModifierDataBase ModifierData { get; }
+
+        /// <summary>创建隔离 Inspector 草稿的完整编辑快照。</summary>
+        internal CameraModifierEditRequest(int startFrame, int durationFrames,
+            CameraModifierDataBase modifierData)
+        {
+            StartFrame = startFrame;
+            DurationFrames = durationFrames;
+            ModifierData = CameraModifierDataBase.Copy(modifierData);
+        }
+    }
+    /// <summary>
     /// 描述动作阶段片段 Inspector 提交的一次完整区间、阶段和打断设置。
     /// </summary>
     internal readonly struct ActionPhaseEditRequest : IItemEditRequest
