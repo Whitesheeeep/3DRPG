@@ -18,6 +18,10 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private int abilityId = InvalidId;
         [SerializeField, TextArea, Tooltip("用于编辑器和日志显示的能力说明。")]
         private string description;
+        [SerializeField, Tooltip("当前 Ability 的分类标签，供其他 Ability 通过 Cancel Tags 匹配并取消。")]
+        private GameplayTag[] abilityTags = System.Array.Empty<GameplayTag>();
+        [SerializeField, Tooltip("当前 Ability 成功激活后，取消 Ability Tags 与任一标签层级匹配的 Active Ability。")]
+        private GameplayTag[] cancelTags = System.Array.Empty<GameplayTag>();
         [SerializeField, Tooltip("Source Tags 必须满足该查询才能激活能力；空查询表示不限制。")]
         private GameplayTagQuery activationTagQuery;
         [SerializeField, Tooltip("激活时应用到 Source 的 Instant Cost GE；可为空。")]
@@ -35,6 +39,10 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         public int AbilityId => abilityId;
         /// <summary>获取能力说明。</summary>
         public string Description => description;
+        /// <summary>获取表示当前 Ability 分类身份的标签。</summary>
+        public IReadOnlyList<GameplayTag> AbilityTags => abilityTags ?? System.Array.Empty<GameplayTag>();
+        /// <summary>获取当前 Ability 成功激活时用于取消其他 Active Ability 的标签。</summary>
+        public IReadOnlyList<GameplayTag> CancelTags => cancelTags ?? System.Array.Empty<GameplayTag>();
         /// <summary>获取 Source 在激活前必须满足的 Tag 查询。</summary>
         public GameplayTagQuery ActivationTagQuery => activationTagQuery;
         /// <summary>获取激活时应用到 Source 的 Cost GE。</summary>

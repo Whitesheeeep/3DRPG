@@ -36,9 +36,11 @@ namespace WS_Modules.GAS.Editor
         private readonly VisualTreeAsset rowTemplate;
         private readonly List<GameplayAbilityData> displayedAbilities = new();
         private readonly List<Type> creatableAbilityTypes = new();
+        private readonly List<GameplayAbilityValidationIssue> renderedValidationIssues = new();
         private IReadOnlyDictionary<GameplayAbilityData, GameplayAbilityValidationSeverity>
             validationStates = new Dictionary<GameplayAbilityData, GameplayAbilityValidationSeverity>();
         private GameplayAbilityData boundAbility;
+        private VisualElement serializedObjectTracker;
         private GameplayAbilityData pendingRenameAbility;
         private string pendingRenameText;
         private bool suppressSelection;
@@ -100,7 +102,6 @@ namespace WS_Modules.GAS.Editor
             deleteButton.clicked += OnDeleteClicked;
             searchField.RegisterValueChangedCallback(OnSearchChanged);
             abilityList.selectionChanged += OnSelectionChanged;
-            detailsRoot.RegisterCallback<SerializedPropertyChangeEvent>(OnSerializedPropertyChanged);
             BindAbility(null);
         }
 
@@ -116,8 +117,7 @@ namespace WS_Modules.GAS.Editor
             deleteButton.clicked -= OnDeleteClicked;
             searchField.UnregisterValueChangedCallback(OnSearchChanged);
             abilityList.selectionChanged -= OnSelectionChanged;
-            detailsRoot.UnregisterCallback<SerializedPropertyChangeEvent>(OnSerializedPropertyChanged);
-            detailsRoot.Unbind();
+            ReleaseAbilityBinding();
             subclassFieldsContainer.Clear();
             abilityList.itemsSource = null;
             displayedAbilities.Clear();
@@ -168,7 +168,7 @@ namespace WS_Modules.GAS.Editor
         /// <inheritdoc />
         public void BindAbility(GameplayAbilityData ability)
         {
-            detailsRoot.Unbind();
+            ReleaseAbilityBinding();
             subclassFieldsContainer.Clear();
             boundAbility = ability;
             bool hasAbility = ability != null;
@@ -186,12 +186,20 @@ namespace WS_Modules.GAS.Editor
             var serializedObject = new SerializedObject(ability);
             BuildSubclassFields(serializedObject);
             detailsRoot.Bind(serializedObject);
+            // 独立 Tracker 节点随目标切换直接移除，避免旧 SerializedObject 跟踪器继续存活。
+            serializedObjectTracker = new VisualElement { name = "AbilitySerializedObjectTracker" };
+            serializedObjectTracker.style.display = DisplayStyle.None;
+            detailsRoot.Add(serializedObjectTracker);
+            serializedObjectTracker.TrackSerializedObjectValue(serializedObject, OnSerializedObjectChanged);
             detailsRoot.schedule.Execute(ConfigureDelayedInputs);
         }
 
         /// <inheritdoc />
         public void RenderValidation(IReadOnlyList<GameplayAbilityValidationIssue> issues)
         {
+            if (HasSameValidationIssues(issues)) return;
+            renderedValidationIssues.Clear();
+            for (int i = 0; i < issues.Count; i++) renderedValidationIssues.Add(issues[i]);
             validationContainer.Clear();
             if (issues.Count == 0)
             {
@@ -217,6 +225,13 @@ namespace WS_Modules.GAS.Editor
         {
             validationStates = states ?? throw new ArgumentNullException(nameof(states));
             abilityList.RefreshItems();
+        }
+
+        /// <inheritdoc />
+        public void RefreshAbilityValidationState(GameplayAbilityData ability)
+        {
+            int index = displayedAbilities.IndexOf(ability);
+            if (index >= 0) abilityList.RefreshItem(index);
         }
 
         /// <inheritdoc />
@@ -288,9 +303,10 @@ namespace WS_Modules.GAS.Editor
         }
 
         // 原生序列化写回后通知 Controller 重新校验。
-        private void OnSerializedPropertyChanged(SerializedPropertyChangeEvent evt)
+        private void OnSerializedObjectChanged(SerializedObject serializedObject)
         {
-            if (boundAbility != null) AbilityChanged?.Invoke();
+            if (!disposed && boundAbility != null && serializedObject.targetObject == boundAbility)
+                AbilityChanged?.Invoke();
         }
         #endregion
 
@@ -406,12 +422,34 @@ namespace WS_Modules.GAS.Editor
             if (!EditorGUI.EndChangeCheck()) return;
 
             serializedObject.ApplyModifiedProperties();
-            AbilityChanged?.Invoke();
+        }
+
+        /// <summary>解除当前 GA 的原生绑定和 SerializedObject 跟踪。</summary>
+        private void ReleaseAbilityBinding()
+        {
+            detailsRoot.Unbind();
+            serializedObjectTracker?.RemoveFromHierarchy();
+            serializedObjectTracker = null;
+        }
+
+        /// <summary>判断新的校验内容是否与当前渲染结果完全一致。</summary>
+        /// <param name="issues">准备渲染的校验结果。</param>
+        /// <returns>严重程度和文本均相同时返回 true。</returns>
+        private bool HasSameValidationIssues(IReadOnlyList<GameplayAbilityValidationIssue> issues)
+        {
+            if (renderedValidationIssues.Count != issues.Count) return false;
+            for (int i = 0; i < issues.Count; i++)
+                if (renderedValidationIssues[i].Severity != issues[i].Severity ||
+                    renderedValidationIssues[i].Message != issues[i].Message)
+                    return false;
+            return true;
         }
         // 排除脚本引用和 GameplayAbilityData 的固定公共字段。
         private static bool IsCommonProperty(string propertyPath) =>
             propertyPath == "m_Script" ||
             propertyPath == "description" ||
+            propertyPath == "abilityTags" ||
+            propertyPath == "cancelTags" ||
             propertyPath == "activationTagQuery" ||
             propertyPath == "costEffect" ||
             propertyPath == "cooldownEffect" ||

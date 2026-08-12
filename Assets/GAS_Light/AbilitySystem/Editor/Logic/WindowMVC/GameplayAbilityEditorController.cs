@@ -19,6 +19,9 @@ namespace WS_Modules.GAS.Editor
         private GameplayAbilityDatabase database;
         private GameplayAbilityData currentAbility;
         private string search;
+        private ValidationRequestScope scheduledValidationScope;
+        private GameplayAbilityData pendingRefreshSelection;
+        private bool assetRefreshScheduled;
         private bool disposed;
         #endregion
 
@@ -30,11 +33,13 @@ namespace WS_Modules.GAS.Editor
             service = new GameplayAbilityEditorService();
             search = GameplayAbilityEditorSession.Search;
             database = service.ResolveDatabase();
+            RefreshTagDatabase();
             Subscribe();
             view.SetCreatableAbilityTypes(service.FindCreatableAbilityTypes());
             view.SetDatabase(database);
             view.SetSearch(search);
             RefreshAssets(GameplayAbilityEditorSession.GetAbility());
+            ScheduleValidation(ValidationRequestScope.All);
         }
 
         /// <summary>解除全部 View、Undo 和项目变化回调。</summary>
@@ -42,6 +47,8 @@ namespace WS_Modules.GAS.Editor
         {
             if (disposed) return;
             disposed = true;
+            CancelScheduledAssetRefresh();
+            CancelScheduledValidation();
             Unsubscribe();
         }
         #endregion
@@ -86,6 +93,7 @@ namespace WS_Modules.GAS.Editor
             view.AbilityChanged += OnAbilityChanged;
             Undo.undoRedoPerformed += OnUndoRedo;
             EditorApplication.projectChanged += OnProjectChanged;
+            GameplayTagEditorSession.DatabaseChanged += OnTagDatabaseChanged;
         }
 
         /// <summary>页面释放前解除外部事件，防止旧 Controller 继续刷新。</summary>
@@ -103,6 +111,7 @@ namespace WS_Modules.GAS.Editor
             view.AbilityChanged -= OnAbilityChanged;
             Undo.undoRedoPerformed -= OnUndoRedo;
             EditorApplication.projectChanged -= OnProjectChanged;
+            GameplayTagEditorSession.DatabaseChanged -= OnTagDatabaseChanged;
         }
         #endregion
 
@@ -193,18 +202,23 @@ namespace WS_Modules.GAS.Editor
         }
 
         // 原生 SerializedObject 写回后重新校验当前资产。
-        private void OnAbilityChanged() => RenderValidation();
+        private void OnAbilityChanged() => ScheduleValidation(ValidationRequestScope.Current);
 
         // Undo/Redo 后重新绑定，避免继续使用旧 SerializedProperty。
-        private void OnUndoRedo() => RefreshAssets(currentAbility);
+        private void OnUndoRedo() => ScheduleAssetRefresh(currentAbility);
 
         /// <summary>项目资产变化后重建列表、可创建类型和 Bake 状态。</summary>
         private void OnProjectChanged()
         {
-            if (database == null) SetDatabase(service.ResolveDatabase());
-            service.MarkBakeDirtyIfAssetSetChanged(database);
-            view.SetCreatableAbilityTypes(service.FindCreatableAbilityTypes());
-            RefreshAssets(currentAbility);
+            ScheduleAssetRefresh(currentAbility);
+        }
+
+        /// <summary>Tag Database 切换后更新层级匹配上下文并重新校验全部 GA。</summary>
+        /// <param name="value">Tag 页面新选择的数据库。</param>
+        private void OnTagDatabaseChanged(WS_Modules.GAS.TAG.GameplayTagDatabase value)
+        {
+            service.SetTagDatabase(value);
+            ScheduleValidation(ValidationRequestScope.All);
         }
         #endregion
 
@@ -221,7 +235,8 @@ namespace WS_Modules.GAS.Editor
             if (target != null && !allAbilities.Contains(target)) target = null;
             SelectAbility(target);
             view.RenderAbilities(filteredAbilities, currentAbility);
-            RefreshBakeStatus();
+            RefreshBakeStatus(allAbilities);
+            ScheduleValidation(ValidationRequestScope.All);
         }
 
         // Service 返回真实 Model 引用，Controller 不创建资产 ViewData。
@@ -229,7 +244,6 @@ namespace WS_Modules.GAS.Editor
         {
             allAbilities.Clear();
             allAbilities.AddRange(service.FindAllAbilities());
-            RefreshAllValidationStates();
         }
 
         // 搜索只匹配资产名与路径，并保持 Service 排序。
@@ -261,7 +275,7 @@ namespace WS_Modules.GAS.Editor
             currentAbility = ability;
             GameplayAbilityEditorSession.SetAbility(ability);
             view.BindAbility(ability);
-            RenderValidation();
+            ScheduleValidation(ValidationRequestScope.Current);
         }
 
         // 当前校验同时更新详情与列表背景缓存。
@@ -277,13 +291,15 @@ namespace WS_Modules.GAS.Editor
                     validationStates.Remove(currentAbility);
             }
 
-            view.RenderAbilityValidationStates(validationStates);
+            view.RefreshAbilityValidationState(currentAbility);
         }
 
         /// <summary>根据 Data、稳定 ID 历史与 Database 运行时索引的一致性渲染 Bake 摘要。</summary>
-        private void RefreshBakeStatus()
+        private void RefreshBakeStatus(IReadOnlyList<GameplayAbilityData> abilities = null)
         {
-            List<string> errors = service.ValidateBakeState(database);
+            List<string> errors = abilities == null
+                ? service.ValidateBakeState(database)
+                : service.ValidateBakeState(database, abilities);
             if (errors.Count > 0)
             {
                 view.RenderBakeStatus(errors[0], true);
@@ -298,13 +314,92 @@ namespace WS_Modules.GAS.Editor
         private void RefreshAllValidationStates()
         {
             validationStates.Clear();
+            List<GameplayAbilityValidationIssue> currentIssues = null;
             for (int i = 0; i < allAbilities.Count; i++)
             {
                 GameplayAbilityData ability = allAbilities[i];
-                if (ContainsError(service.Validate(ability)))
+                List<GameplayAbilityValidationIssue> issues = service.Validate(ability);
+                if (ContainsError(issues))
                     validationStates.Add(ability, GameplayAbilityValidationSeverity.Error);
+                if (ReferenceEquals(ability, currentAbility)) currentIssues = issues;
             }
+
+            view.RenderAbilityValidationStates(validationStates);
+            view.RenderValidation(currentIssues ?? service.Validate(currentAbility));
         }
+
+        /// <summary>合并同一 Editor 更新周期中的校验请求，All 优先于 Current。</summary>
+        /// <param name="scope">本次请求需要覆盖的校验范围。</param>
+        private void ScheduleValidation(ValidationRequestScope scope)
+        {
+            if (disposed || scope == ValidationRequestScope.None || scope <= scheduledValidationScope) return;
+            bool alreadyScheduled = scheduledValidationScope != ValidationRequestScope.None;
+            scheduledValidationScope = scope;
+            if (!alreadyScheduled) EditorApplication.delayCall += RunScheduledValidation;
+        }
+
+        /// <summary>在当前 UI 事件结束后消费一次合并校验请求。</summary>
+        private void RunScheduledValidation()
+        {
+            ValidationRequestScope scope = scheduledValidationScope;
+            scheduledValidationScope = ValidationRequestScope.None;
+            if (disposed) return;
+            if (scope == ValidationRequestScope.All) RefreshAllValidationStates();
+            else if (scope == ValidationRequestScope.Current) RenderValidation();
+        }
+
+        /// <summary>取消页面释放前尚未执行的校验回调。</summary>
+        private void CancelScheduledValidation()
+        {
+            if (scheduledValidationScope == ValidationRequestScope.None) return;
+            EditorApplication.delayCall -= RunScheduledValidation;
+            scheduledValidationScope = ValidationRequestScope.None;
+        }
+
+        /// <summary>合并项目变化和 Undo/Redo 引发的资产重扫与详情重绑。</summary>
+        /// <param name="preferred">刷新后优先恢复的 GA。</param>
+        private void ScheduleAssetRefresh(GameplayAbilityData preferred)
+        {
+            pendingRefreshSelection = preferred;
+            if (disposed || assetRefreshScheduled) return;
+            assetRefreshScheduled = true;
+            EditorApplication.delayCall += RunScheduledAssetRefresh;
+        }
+
+        /// <summary>执行一次合并后的项目资产刷新。</summary>
+        private void RunScheduledAssetRefresh()
+        {
+            assetRefreshScheduled = false;
+            if (disposed) return;
+            if (database == null) SetDatabase(service.ResolveDatabase());
+            RefreshTagDatabase();
+            RefreshAssetCache();
+            service.MarkBakeDirtyIfAssetSetChanged(database, allAbilities);
+            ApplyFilter();
+            GameplayAbilityData preferred = pendingRefreshSelection;
+            pendingRefreshSelection = null;
+            GameplayAbilityData target = preferred != null && allAbilities.Contains(preferred)
+                ? preferred
+                : GameplayAbilityEditorSession.GetAbility();
+            if (target != null && !allAbilities.Contains(target)) target = null;
+            SelectAbility(target);
+            view.RenderAbilities(filteredAbilities, currentAbility);
+            RefreshBakeStatus(allAbilities);
+            ScheduleValidation(ValidationRequestScope.All);
+        }
+
+        /// <summary>取消页面释放前尚未执行的资产刷新回调。</summary>
+        private void CancelScheduledAssetRefresh()
+        {
+            if (!assetRefreshScheduled) return;
+            EditorApplication.delayCall -= RunScheduledAssetRefresh;
+            assetRefreshScheduled = false;
+            pendingRefreshSelection = null;
+        }
+
+        /// <summary>按 Tag PropertyDrawer 的规则刷新 Editor 层级匹配数据库。</summary>
+        private void RefreshTagDatabase() =>
+            service.SetTagDatabase(GameplayTagEditorSession.ResolveSingleDatabase(out _));
 
         // Info 不改变列表背景，仅 Error 进入缓存。
         private static bool ContainsError(IReadOnlyList<GameplayAbilityValidationIssue> issues)
@@ -313,6 +408,17 @@ namespace WS_Modules.GAS.Editor
                 if (issues[i].Severity == GameplayAbilityValidationSeverity.Error)
                     return true;
             return false;
+        }
+
+        /// <summary>表示延迟校验请求覆盖的资产范围。</summary>
+        private enum ValidationRequestScope
+        {
+            /// <summary>当前没有等待执行的校验。</summary>
+            None,
+            /// <summary>只校验当前 GA。</summary>
+            Current,
+            /// <summary>校验项目中的全部 GA。</summary>
+            All
         }
         #endregion
     }

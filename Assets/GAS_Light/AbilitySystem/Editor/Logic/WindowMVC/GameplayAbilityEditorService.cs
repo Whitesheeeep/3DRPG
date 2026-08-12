@@ -7,6 +7,7 @@ using UnityEngine;
 using WS_Modules.GAS.GameplayAbilitySystem;
 using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.GameplayEffect;
+using WS_Modules.GAS.TAG;
 using WS_Modules.Pooling;
 
 namespace WS_Modules.GAS.Editor
@@ -14,6 +15,12 @@ namespace WS_Modules.GAS.Editor
     /// <summary>集中执行 GA 资产操作、具体类型发现与跨字段校验。</summary>
     public sealed class GameplayAbilityEditorService
     {
+        private GameplayTagDatabase tagDatabase;
+
+        /// <summary>设置 GA 跨字段校验使用的 Editor Tag Database 上下文。</summary>
+        /// <param name="database">与 GameplayTagPropertyDrawer 一致的当前数据库。</param>
+        public void SetTagDatabase(GameplayTagDatabase database) => tagDatabase = database;
+
         #region 资产与类型查询
         /// <summary>扫描项目中的全部 GameplayAbilityData 并建立稳定顺序。</summary>
         public List<GameplayAbilityData> FindAllAbilities()
@@ -76,6 +83,15 @@ namespace WS_Modules.GAS.Editor
         public List<string> ValidateBakeState(GameplayAbilityDatabase database) =>
             GameplayAbilityBaker.ValidateBakedState(database);
 
+        /// <summary>使用 Controller 已扫描的 GA 列表校验 Bake 状态，避免重复访问 AssetDatabase。</summary>
+        /// <param name="database">当前 GA Database。</param>
+        /// <param name="abilities">本轮资产刷新得到的完整 GA 列表。</param>
+        /// <returns>Bake 状态错误列表。</returns>
+        public List<string> ValidateBakeState(
+            GameplayAbilityDatabase database,
+            IReadOnlyList<GameplayAbilityData> abilities) =>
+            GameplayAbilityBaker.ValidateBakedState(database, abilities);
+
         /// <summary>校验 Database 是否具备 Bake 前置条件，允许当前 Data 尚未同步。</summary>
         /// <param name="database">当前 GA Editor 选择的 Database。</param>
         /// <returns>错误列表；空列表表示可开始 Bake。</returns>
@@ -113,6 +129,32 @@ namespace WS_Modules.GAS.Editor
                         same = false;
                         break;
                     }
+                if (same) return;
+            }
+
+            MarkBakeDirty(database);
+        }
+
+        /// <summary>使用已扫描 GA 列表检查资产 GUID 集合是否改变。</summary>
+        /// <param name="database">当前 GA Database。</param>
+        /// <param name="abilities">本轮资产刷新得到的完整 GA 列表。</param>
+        public void MarkBakeDirtyIfAssetSetChanged(
+            GameplayAbilityDatabase database,
+            IReadOnlyList<GameplayAbilityData> abilities)
+        {
+            if (database == null || database.BakeDirty) return;
+            if (abilities.Count == database.BakedIdHistory.Count)
+            {
+                bool same = true;
+                for (int i = 0; i < abilities.Count; i++)
+                {
+                    string path = AssetDatabase.GetAssetPath(abilities[i]);
+                    string guid = AssetDatabase.AssetPathToGUID(path);
+                    if (database.BakedIdHistory.ContainsKey(guid)) continue;
+                    same = false;
+                    break;
+                }
+
                 if (same) return;
             }
 
@@ -215,6 +257,9 @@ namespace WS_Modules.GAS.Editor
                     $"Cooldown GE '{GetAssetLabel(ability.CooldownEffect)}' 必须是 Duration 或 Infinite。"));
 
             ValidateEffectReferences(ability.Effects, issues);
+            ValidateAbilityTags(ability.AbilityTags, "AbilityTags", issues);
+            ValidateAbilityTags(ability.CancelTags, "CancelTags", issues);
+            ValidateAbilityTagConflicts(ability.AbilityTags, ability.CancelTags, tagDatabase, issues);
             ValidateCueTags(ability.CueTags, issues);
 
             if (ability is AsynchronousGameplayAbilityData asynchronous)
@@ -314,6 +359,55 @@ namespace WS_Modules.GAS.Editor
                 if (GameplayCueManager.Instance.IsInitialized &&
                     !GameplayCueManager.Instance.TryGetCue(tag, out _))
                     issues.Add(Error($"CueTags[{i}] 在当前 CueDatabase 中没有对应 CueData。"));
+            }
+        }
+
+        /// <summary>校验 Ability 分类或取消标签列表中是否存在重复项。</summary>
+        /// <param name="tags">待校验的 GameplayTag 列表。</param>
+        /// <param name="fieldName">用于错误定位的字段名称。</param>
+        /// <param name="issues">接收校验结果的集合。</param>
+        private static void ValidateAbilityTags(
+            IReadOnlyList<WS_Modules.GAS.TAG.GameplayTag> tags,
+            string fieldName,
+            ICollection<GameplayAbilityValidationIssue> issues)
+        {
+            if (tags == null) return;
+            var unique = new HashSet<WS_Modules.GAS.TAG.GameplayTag>();
+            for (int i = 0; i < tags.Count; i++)
+                if (!unique.Add(tags[i]))
+                    issues.Add(Error($"{fieldName}[{i}] 与前面的标签重复。"));
+        }
+
+        /// <summary>按 Runtime 的层级匹配方向校验 AbilityTags 与 CancelTags 是否冲突。</summary>
+        /// <param name="abilityTags">表示当前 Ability 分类身份的标签。</param>
+        /// <param name="cancelTags">当前 Ability 成功激活时发出的取消标签。</param>
+        /// <param name="issues">接收校验结果的集合。</param>
+        private static void ValidateAbilityTagConflicts(
+            IReadOnlyList<WS_Modules.GAS.TAG.GameplayTag> abilityTags,
+            IReadOnlyList<WS_Modules.GAS.TAG.GameplayTag> cancelTags,
+            GameplayTagDatabase database,
+            ICollection<GameplayAbilityValidationIssue> issues)
+        {
+            if (abilityTags == null || cancelTags == null) return;
+
+            // 使用与 Runtime 一致的 actual.MatchesTag(query) 方向，只报告真正会取消同类 Runtime 的配置。
+            for (int abilityIndex = 0; abilityIndex < abilityTags.Count; abilityIndex++)
+            {
+                WS_Modules.GAS.TAG.GameplayTag abilityTag = abilityTags[abilityIndex];
+                for (int cancelIndex = 0; cancelIndex < cancelTags.Count; cancelIndex++)
+                {
+                    WS_Modules.GAS.TAG.GameplayTag cancelTag = cancelTags[cancelIndex];
+                    // 精确 ID 冲突不依赖运行时 Manager；层级关系直接读取 Editor 当前数据库。
+                    bool conflicts = abilityTag == cancelTag;
+                    if (!conflicts && database != null &&
+                        database.TryGetNode(abilityTag, out GameplayTagNode node))
+                        conflicts = node.HasAncestor(cancelTag);
+                    if (!conflicts) continue;
+                    issues.Add(Error(
+                        $"AbilityTags[{abilityIndex}] (TagId={abilityTag.Id}) 与 " +
+                        $"CancelTags[{cancelIndex}] (TagId={cancelTag.Id}) 冲突：" +
+                        "当前 CancelTag 能匹配该 AbilityTag。"));
+                }
             }
         }
 

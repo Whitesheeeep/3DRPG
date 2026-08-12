@@ -140,6 +140,69 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             LogSummary();
         }
 
+        /// <summary>验证新 Ability 成功激活后使用 CancelTags 按层级匹配并取消旧 Active Ability。</summary>
+        [Button("测试 Ability Tags 取消")]
+        public void TestAbilityTagCancellation()
+        {
+            ResetTest();
+            if (!EnsureAttributesReady("Ability Tags 取消") ||
+                selfCastSkill == null || instantSkill == null)
+            {
+                Expect("SelfCast 与 Instant Skill SO 已配置",
+                    selfCastSkill != null && instantSkill != null);
+                LogSummary();
+                return;
+            }
+
+            GameplayAbilityHandle castHandle = source.GiveAbility(selfCastSkill, 1);
+            GameplayAbilityHandle instantHandle = source.GiveAbility(instantSkill, 1);
+            bool castActivated = source.TryActivateAbility(
+                castHandle, out GameplayAbilityRuntime castRuntime);
+            Expect("SelfCast 在取消测试前保持 Active",
+                castActivated && castRuntime.State == GameplayAbilityRuntimeState.Active);
+
+            var eventOrder = new List<string>();
+            source.Abilities.AbilityActivated += activeRuntime =>
+            {
+                if (ReferenceEquals(activeRuntime.Spec.Data, instantSkill))
+                    eventOrder.Add("Instant.Activated");
+            };
+            source.Abilities.AbilityCancelled += cancelledRuntime =>
+            {
+                if (ReferenceEquals(cancelledRuntime, castRuntime))
+                    eventOrder.Add("SelfCast.Cancelled");
+            };
+            source.Abilities.AbilityEnded += endedRuntime =>
+            {
+                if (ReferenceEquals(endedRuntime.Spec.Data, instantSkill))
+                    eventOrder.Add("Instant.Ended");
+            };
+
+            bool instantActivated = source.TryActivateAbility(
+                instantHandle, out GameplayAbilityRuntime instantRuntime);
+            Expect("Instant 成功激活并发出 CancelTags", instantActivated);
+            Expect("SelfCast 被父级 CancelTag 取消",
+                castRuntime.State == GameplayAbilityRuntimeState.Cancelled);
+            Expect("取消事件顺序为 Activated → Cancelled → Ended",
+                eventOrder.Count == 3 &&
+                eventOrder[0] == "Instant.Activated" &&
+                eventOrder[1] == "SelfCast.Cancelled" &&
+                eventOrder[2] == "Instant.Ended");
+
+            var castSequence = (SequenceGameplayAbilityTaskConfig)selfCastSkill.RootTask;
+            var castWait = (WaitDurationGameplayAbilityTaskConfig)castSequence.Children[0];
+            source.TryGetCurrentValue(GameplayAttributes.Attribute_Health, out float healthAfterInstant);
+            source.Tick(castWait.Duration);
+            source.TryGetCurrentValue(GameplayAttributes.Attribute_Health, out float healthAfterWait);
+            Expect("被取消 SelfCast 不会在等待后结算 Effects",
+                Mathf.Approximately(healthAfterWait, healthAfterInstant));
+            Expect("AbilityTags 与 CancelTags 不进入 ASC Owner Tags",
+                source.Tags.IsEmpty);
+            Expect("Instant Runtime 正常同步结束",
+                instantRuntime.State == GameplayAbilityRuntimeState.Ended);
+            LogSummary();
+        }
+
         /// <summary>验证 Passive Skill 保存并在 End 时精确移除本次 GE 句柄。</summary>
         [Button("测试 Passive Skill")]
         public void TestPassiveSkill()
@@ -501,6 +564,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         {
             TestStableAbilityId();
             TestInstantSkill();
+            TestAbilityTagCancellation();
             TestPassiveSkill();
             TestSphereProjectileSkill();
             TestCommonSelfAbilities();

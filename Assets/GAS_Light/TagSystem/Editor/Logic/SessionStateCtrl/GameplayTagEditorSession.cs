@@ -34,6 +34,32 @@ namespace WS_Modules.GAS.Editor
             return string.IsNullOrEmpty(path) ? null : AssetDatabase.LoadAssetAtPath<GameplayTagDatabase>(path);
         }
 
+        /// <summary>按 PropertyDrawer 的统一规则解析当前可明确使用的 Tag Database。</summary>
+        /// <param name="error">无法唯一确定数据库时返回用于 Editor 显示的原因。</param>
+        /// <returns>Session 中的数据库或项目内唯一数据库；无法确定时返回 null。</returns>
+        public static GameplayTagDatabase ResolveSingleDatabase(out string error)
+        {
+            GameplayTagDatabase sessionDatabase = GetDatabase();
+            if (sessionDatabase != null)
+            {
+                error = string.Empty;
+                return sessionDatabase;
+            }
+
+            string[] guids = AssetDatabase.FindAssets("t:GameplayTagDatabase");
+            if (guids.Length == 1)
+            {
+                error = string.Empty;
+                return AssetDatabase.LoadAssetAtPath<GameplayTagDatabase>(
+                    AssetDatabase.GUIDToAssetPath(guids[0]));
+            }
+
+            error = guids.Length == 0
+                ? "未找到 GameplayTagDatabase（点击打开窗口）"
+                : "存在多个数据库，请先在 Tag 窗口选择";
+            return null;
+        }
+
         /// <summary>记录当前作者节点 Guid。</summary>
         public static void SetSelectedNodeGuid(string guid) => SessionState.SetString(SelectedNodeGuidKey, guid ?? string.Empty);
         /// <summary>恢复作者节点 Guid。</summary>

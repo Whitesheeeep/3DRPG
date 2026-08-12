@@ -125,13 +125,21 @@ namespace WS_Modules.GAS.Editor
         /// <param name="database">待检查的 Database。</param>
         /// <returns>错误列表；空列表表示可直接运行。</returns>
         public static List<string> ValidateBakedState(GameplayAbilityDatabase database)
+            => ValidateBakedState(database, FindAllAbilities());
+
+        /// <summary>使用调用方已扫描的 GA 列表校验 Data、ID 历史和运行时索引。</summary>
+        /// <param name="database">待检查的 Database。</param>
+        /// <param name="abilities">项目当前完整的 GA 资产列表。</param>
+        /// <returns>错误列表；空列表表示可直接运行。</returns>
+        public static List<string> ValidateBakedState(
+            GameplayAbilityDatabase database,
+            IReadOnlyList<GameplayAbilityData> abilities)
         {
             List<string> errors = ValidateForBake(database);
             if (database == null) return errors;
             if (database.BakeDirty)
                 errors.Add("Gameplay Ability 资产集合已变化但尚未 Bake。");
 
-            List<GameplayAbilityData> abilities = FindAllAbilities();
             var current = new HashSet<GameplayAbilityData>();
             var currentIds = new HashSet<int>();
             for (int i = 0; i < abilities.Count; i++)

@@ -92,6 +92,9 @@ namespace WS_Modules.GAS.Editor
         /// <summary>渲染各 GA 资产在列表中的最高校验级别。</summary>
         void RenderAbilityValidationStates(
             IReadOnlyDictionary<GameplayAbilityData, GameplayAbilityValidationSeverity> states);
+        /// <summary>仅刷新指定 GA 对应的可见列表行校验状态。</summary>
+        /// <param name="ability">校验状态发生变化的 GA。</param>
+        void RefreshAbilityValidationState(GameplayAbilityData ability);
         /// <summary>显示 Editor 操作错误。</summary>
         void ShowError(string message);
         /// <summary>请求用户确认删除当前 GA。</summary>

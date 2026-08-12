@@ -24,6 +24,8 @@ classDiagram
 GameplayAbilityData 只保存所有技能共用的作者配置：
 
 - Description
+- AbilityTags
+- CancelTags
 - ActivationTagQuery
 - CostEffect
 - CooldownEffect
@@ -33,6 +35,10 @@ GameplayAbilityData 只保存所有技能共用的作者配置：
 `Effects` 是所有技能统一的结果 GE 配置。具体 Data 或 Task 决定何时、向谁提交；本阶段的自身技能只提交到 Source，投射物在物理命中其他 ASC 后提交。Target 快照、锁定目标和目标提交接口仍留给后续 Targeting 阶段。
 
 GameplayAbilitySpec 是 ASC 中长期存在的授予状态，保存 Handle、Data 和当前 Level。Runtime 激活时复制 Level 与 SetByCaller，之后修改 Spec Level 不影响已创建 Runtime。
+
+`AbilityTags` 表示 Ability 自身的分类身份，`CancelTags` 是一次成功激活发出的取消指令。两者都不写入 ASC Owner Tag 容器。任一实际 AbilityTag 可以匹配同名 CancelTag 或其祖先，例如 `Ability.Action.Cast.Recall` 可被 `Ability.Action.Cast` 取消，反向不匹配。`ActivationTagQuery.BanedTags` 仍只负责阻止当前 Owner 状态下的新激活。
+
+GA Editor 按相同匹配方向校验两组标签：完全相同，或 AbilityTag 是 CancelTag 的子标签时显示 Error，避免新激活取消同类旧 Runtime。CancelTag 是 AbilityTag 的子标签时不构成冲突，因为 Runtime 匹配方向不成立。校验只显示问题并使资产列表标红，不限制 GameplayTag PropertyDrawer 的选择。
 
 ## 3. 激活事务与事件顺序
 
@@ -48,9 +54,10 @@ flowchart TD
     Cooldown --> Cost["提交 Cost"]
     Cost --> Register["注册 Runtime 并进入 Active"]
     Register --> Activated["AbilityActivated"]
-    Activated --> Start["Runtime.Start"]
+    Activated --> Cancel["按 CancelTags 取消匹配的旧 Runtime"]
+    Cancel --> Start["Runtime.Start"]
 ```
-Cost 失败时精确移除本次刚创建的 Cooldown Runtime。Root Task 为空或 Task 配置非法时，必须在 Cost/Cooldown 副作用前拒绝；异步 Ability 由 Owner 主动调用 ASC.Tick 推进。
+Cost 失败时精确移除本次刚创建的 Cooldown Runtime。只有新 Runtime 成功进入 Active 且 `AbilityActivated` 回调后仍然 Active，才会用 `CancelTags` 取消旧 Runtime；事件顺序为新 Runtime `AbilityActivated` 后再发送旧 Runtime `AbilityCancelled`。Root Task 为空或 Task 配置非法时，必须在 Cost/Cooldown 副作用前拒绝；异步 Ability 由 Owner 主动调用 ASC.Tick 推进。
 
 ```mermaid
 sequenceDiagram
@@ -370,7 +377,25 @@ GE 快捷接口作用于当前 ASC 作为 Target：`TryApplyEffect` 接收显式
 
 具体 Projectile GA 可以直接读取 `runtime.Source.transform`。投射物的移动、碰撞与命中结算属于具体 GA 产生的投射物实例，不需要额外的 ASC Behaviour 包装或 Owner Context。
 
-`GameplayAbilitySystemComponentOdinTester` 专门验证 ASC 集成周期：它在 Play Mode 为每个技能分别创建 Source/Target Mono ASC，通过自身真实 `Update` 推进 Tick，并覆盖 Instant、Async、SelfCast、SelfChannel、Toggle、Passive/Cooldown、Sphere Projectile 和 Linear Projectile。每个技能均有独立 Odin 按钮；完整套件调用相同场景实现，但在场景之间重建 ASC。`GameplayAbilityOdinTester` 只保留 GA Data、Runtime、Task 与事件的隔离测试。
+`GameplayAbilitySystemComponentOdinTester` 专门验证 ASC 集成周期：它在 Play Mode 为每个技能分别创建 Source/Target Mono ASC，通过自身真实 `Update` 推进 Tick，并覆盖 Instant、Async、SelfCast、AbilityTags Cancel、SelfChannel、Toggle、Passive/Cooldown、Sphere Projectile 和 Linear Projectile。每个技能均有独立 Odin 按钮；完整套件调用相同场景实现，但在场景之间重建 ASC。`GameplayAbilityOdinTester` 只保留 GA Data、Runtime、Task 与事件的隔离测试。
+
+AbilityTags Cancel 场景同时从当前 Ability Database 授予 SelfCast 与 Instant，并初始化 GameplayTagDatabase 供运行时解析层级关系。当前测试夹具使用 `CueTest.GA.Instant` 作为 SelfCast 的 AbilityTag，使用其父级 `CueTest.GA` 作为 Instant 的 CancelTag。SelfCast 先跨帧保持 Active，观察窗口最多占真实 WaitDuration 的 25%，确保 Instant 激活前读条尚未完成；随后 Instant 成功提交 Cost/Cooldown、发送 Activated、取消 SelfCast 并同步结束自身。取消后继续使用真实 ASC Tick 超过原读条时间，确认 SelfCast 不会延迟结算 Effects 或 Cue。
+
+```mermaid
+sequenceDiagram
+    participant ASC
+    participant Cast as SelfCast
+    participant Instant
+
+    ASC->>Cast: Activate
+    ASC->>Instant: Activate
+    Instant-->>ASC: AbilityActivated
+    ASC->>Cast: CancelTags 匹配
+    Cast-->>ASC: AbilityCancelled
+    Instant-->>ASC: AbilityEnded
+```
+
+隔离的 `GameplayAbilityOdinTester` 用于验证 Controller 的匹配方向与事件规则；ASC Tester 则进一步覆盖真实 Mono ASC、真实 Tick、Attribute、Cue 和清理生命周期，二者不互相替代。
 
 ## ASC 真实周期可视化
 
@@ -393,3 +418,21 @@ flowchart LR
 池化 Linear Projectile 的生成 Pose 由 `GameplayAbilityProjectileBehaviour.Initialize` 统一提交。Data 只解析 Marker、位置偏移和旋转；Behaviour 在 `running = false` 时恢复 Prefab Scale，先同步写入 `Transform` 与 `Rigidbody` Pose，再清零旧速度，全部运行快照完成后才允许 FixedUpdate。`Transform` Pose 保证插值刚体在生成当帧就能正确显示和查询，`Rigidbody` Pose 则保证下一物理帧从同一位置开始碰撞与 `MovePosition`；两者不能只写其一。
 
 Linear Projectile 单项场景连续发射两次：第一次验证新实例，第二次验证对象池复用。Tester 记录 Transform/Rigidbody 初始位置、最后飞行位置、Target 位置、回收状态和 Prefab Scale；OnGUI 在投射物存续期间实时显示其世界位置。
+
+## Editor 校验与刷新
+
+GA Editor 的 Tag 冲突校验直接读取当前 `GameplayTagDatabase`，不依赖运行时
+`GameplayTagManager` 是否已初始化。相同 TagId 始终冲突；父级 `CancelTag` 能匹配
+子级 `AbilityTag` 时同样冲突。
+
+```mermaid
+flowchart LR
+    Field["SerializedObject 字段写回"] --> Merge["合并到下一次 Editor 更新"]
+    Merge --> Current["只校验当前 GA"]
+    Project["Project / Undo / Tag Database 变化"] --> All["延迟校验全部 GA"]
+    Current --> Row["刷新当前列表行与 Validation"]
+    All --> Rows["刷新全部校验背景"]
+```
+
+切换 GA 时必须先解除旧 `SerializedObject` 绑定和跟踪；页面释放时取消尚未执行的
+`delayCall`，避免旧页面继续刷新。静置页面不会执行 GA 校验或扫描项目资产。

@@ -190,6 +190,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             if (candidate == null)
                 throw new InvalidOperationException("GameplayAbilityData 不能返回空 Runtime。");
 
+            // 应用冷却效果
             GameEffectRuntime cooldownRuntime = null;
             if (cooldown != null &&
                 !Owner.GameEffectCtrl.TryApply(
@@ -210,6 +211,9 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             activeRuntimes.Add(runtime);
             runtime.Activate();
             AbilityActivated?.Invoke(runtime);
+            // Activated 回调可能已经取消新 Runtime；只有仍成立的激活才能发出取消指令。
+            if (runtime.State == GameplayAbilityRuntimeState.Active)
+                CancelAbilitiesMatching(runtime);
             if (runtime.State == GameplayAbilityRuntimeState.Active)
                 runtime.Start();
             return true;
@@ -281,6 +285,42 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 if (ReferenceEquals(activeRuntimes[i].Spec, spec))
                     return activeRuntimes[i];
             return null;
+        }
+
+        /// <summary>取消 AbilityTags 与新 Runtime CancelTags 层级匹配的其他 Active Runtime。</summary>
+        /// <param name="activatingRuntime">已发送 Activated 事件且仍处于 Active 的新 Runtime。</param>
+        private void CancelAbilitiesMatching(GameplayAbilityRuntime activatingRuntime)
+        {
+            IReadOnlyList<GameplayTag> cancelTags = activatingRuntime.Spec.Data.CancelTags;
+            if (cancelTags.Count == 0) return;
+
+            // 每次命令使用独立快照，允许 Cancelled 回调中重入激活其他 Ability。
+            var snapshot = new List<GameplayAbilityRuntime>(activeRuntimes);
+            for (int i = 0; i < snapshot.Count; i++)
+            {
+                GameplayAbilityRuntime candidate = snapshot[i];
+                if (ReferenceEquals(candidate, activatingRuntime) ||
+                    candidate.State != GameplayAbilityRuntimeState.Active ||
+                    !MatchesAnyAbilityTag(candidate.Spec.Data.AbilityTags, cancelTags))
+                    continue;
+
+                candidate.Cancel();
+            }
+        }
+
+        /// <summary>判断任一实际 AbilityTag 是否能匹配任一 CancelTag 或其子标签条件。</summary>
+        /// <param name="abilityTags">被检查 Ability 的实际分类标签。</param>
+        /// <param name="cancelTags">新 Ability 发出的取消查询标签。</param>
+        /// <returns>存在至少一组层级匹配时返回 true。</returns>
+        private static bool MatchesAnyAbilityTag(
+            IReadOnlyList<GameplayTag> abilityTags,
+            IReadOnlyList<GameplayTag> cancelTags)
+        {
+            for (int i = 0; i < abilityTags.Count; i++)
+                for (int j = 0; j < cancelTags.Count; j++)
+                    if (abilityTags[i].MatchesTag(cancelTags[j]))
+                        return true;
+            return false;
         }
 
         // 单调分配当前 Controller 内 Spec Handle。

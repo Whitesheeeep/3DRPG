@@ -9,6 +9,7 @@ using WS_Modules.GAS.AttributeSystem;
 using WS_Modules.GAS.GameplayAbilitySystem;
 using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.Generated;
+using WS_Modules.GAS.TAG;
 using WS_Modules.Pooling;
 
 namespace WS_Modules.GAS.AbilitySystemComponent
@@ -24,6 +25,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         [Title("ASC 初始化")]
         [SerializeField, AssetsOnly, Required, Tooltip("Source 与 Target 初始化时导入的全部 AttributeSet。")]
         private List<GameplayAttributeSet> attributeSets = new();
+
+        [SerializeField, AssetsOnly, Required, Tooltip("为 AbilityTags、CancelTags 与 Owner Tags 提供运行时层级关系。")]
+        private GameplayTagDatabase tagDatabase;
 
         [SerializeField, AssetsOnly, Required, Tooltip("为真实周期提供 AbilityId 到 Data 的运行时映射。")]
         private GameplayAbilityDatabase abilityDatabase;
@@ -99,6 +103,10 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         private GameplayAbilitySystemComponent lastCueTarget;
         private GameplayCueEventType lastCueEventType;
         private Vector3 lastCuePosition;
+        private readonly List<string> abilityEventOrder = new();
+        private Action<GameplayAbilityRuntime> abilityActivatedHandler;
+        private Action<GameplayAbilityRuntime> abilityCancelledHandler;
+        private Action<GameplayAbilityRuntime> abilityEndedHandler;
 
         #endregion
 
@@ -130,6 +138,11 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         /// <summary>独立测试 SelfCast 的读条、重复激活拒绝和完成结算。</summary>
         [Button("测试 SelfCast", ButtonSizes.Medium)]
         public void TestSelfCast() => StartSingleScenario(AbilityTestScenario.SelfCast);
+
+        /// <summary>独立测试 Instant 的 CancelTags 在真实 ASC 周期中取消正在读条的 SelfCast。</summary>
+        [Button("测试 AbilityTags 取消", ButtonSizes.Medium)]
+        public void TestAbilityTagsCancellation() =>
+            StartSingleScenario(AbilityTestScenario.AbilityTagsCancellation);
 
         /// <summary>独立测试 SelfChannel 的周期运行和结束。</summary>
         [Button("测试 SelfChannel", ButtonSizes.Medium)]
@@ -264,6 +277,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
                 case AbilityTestScenario.SelfCast:
                     yield return RunSelfCastScenario();
                     break;
+                case AbilityTestScenario.AbilityTagsCancellation:
+                    yield return RunAbilityTagsCancellationScenario();
+                    break;
                 case AbilityTestScenario.SelfChannel:
                     yield return RunSelfChannelScenario();
                     break;
@@ -363,6 +379,105 @@ namespace WS_Modules.GAS.AbilitySystemComponent
                 yield return null;
             Expect("SelfCast 由真实 Tick 完成", runtime.State == GameplayAbilityRuntimeState.Ended);
             ExpectCueObserved("SelfCast 完成 Cue 可视化回调", cueCountBefore, selfCastAbility);
+        }
+
+        /// <summary>验证成功激活 Instant 后按父级 CancelTag 取消 Active SelfCast 的完整 ASC 生命周期。</summary>
+        /// <returns>等待真实 Tick 超过 SelfCast 读条时间的协程枚举器。</returns>
+        private IEnumerator RunAbilityTagsCancellationScenario()
+        {
+            if (!TryGetSelfCastWaitDuration(out float waitDuration))
+            {
+                Expect("AbilityTags Cancel：SelfCast Root Task 包含首项 WaitDuration", false);
+                Debug.LogError(
+                    $"[ASCTest][AbilityTags Cancel] '{selfCastAbility.name}' 必须使用 " +
+                    "SequenceGameplayAbilityTaskConfig，且首项必须是 WaitDurationGameplayAbilityTaskConfig。",
+                    selfCastAbility);
+                yield break;
+            }
+
+            float observationDuration = Mathf.Min(stageHoldDuration, waitDuration * 0.25f);
+            SetStage("AbilityTags Cancel：SelfCast Active", observationDuration);
+            GameplayAbilityHandle castHandle = source.GiveAbility(selfCastAbility, 1);
+            GameplayAbilityHandle instantHandle = source.GiveAbility(instantAbility, 1);
+            Expect("AbilityTags Cancel：SelfCast 授予成功", castHandle.IsValid);
+            Expect("AbilityTags Cancel：Instant 授予成功", instantHandle.IsValid);
+
+            bool castActivated = source.TryActivateAbility(
+                castHandle,
+                out GameplayAbilityRuntime castRuntime);
+            Expect("AbilityTags Cancel：SelfCast 激活成功并保持 Active",
+                castActivated && castRuntime != null &&
+                castRuntime.State == GameplayAbilityRuntimeState.Active);
+            yield return null;
+            Expect("AbilityTags Cancel：SelfCast 至少跨一帧保持 Active",
+                castRuntime.State == GameplayAbilityRuntimeState.Active);
+            yield return HoldStage("AbilityTags Cancel：观察 SelfCast Active", observationDuration);
+            GameplayAbilityRuntimeState stateBeforeInstant = castRuntime.State;
+            Expect("AbilityTags Cancel：Instant 激活前 SelfCast 仍为 Active",
+                stateBeforeInstant == GameplayAbilityRuntimeState.Active);
+
+            float healthBeforeInstant = ReadCurrent(source, GameplayAttributes.Attribute_Health);
+            float mpBeforeInstant = ReadCurrent(source, GameplayAttributes.Attribute_MP);
+            int cueCountBeforeInstant = observedCueCount;
+            SubscribeAbilityCancellationEvents(castRuntime);
+
+            SetStage("AbilityTags Cancel：Instant 取消 SelfCast", stageHoldDuration);
+            bool instantActivated = source.TryActivateAbility(
+                instantHandle,
+                out GameplayAbilityRuntime instantRuntime);
+            Expect("AbilityTags Cancel：Instant 激活成功", instantActivated);
+            Expect("AbilityTags Cancel：SelfCast Runtime 进入 Cancelled",
+                castRuntime.State == GameplayAbilityRuntimeState.Cancelled);
+            Expect("AbilityTags Cancel：SelfCast 已从 ActiveAbilities 移除",
+                !ContainsRuntime(source.ActiveAbilities, castRuntime));
+            Expect("AbilityTags Cancel：Instant 返回时为 Ended",
+                instantRuntime != null && instantRuntime.State == GameplayAbilityRuntimeState.Ended);
+            Expect("AbilityTags Cancel：事件顺序为 Activated → Cancelled → Ended",
+                HasExpectedAbilityEventOrder());
+            ExpectCurrent("AbilityTags Cancel：Instant 正常扣除 MP",
+                source,
+                GameplayAttributes.Attribute_MP,
+                mpBeforeInstant - 10f);
+            ExpectCurrent("AbilityTags Cancel：Instant 正常结算 Health",
+                source,
+                GameplayAttributes.Attribute_Health,
+                healthBeforeInstant - 30f);
+            ExpectCueObserved(
+                "AbilityTags Cancel：Instant Execute Cue 可视化回调",
+                cueCountBeforeInstant,
+                instantAbility);
+            Expect("AbilityTags Cancel：分类标签未写入 ASC Owner Tags", source.Tags.IsEmpty);
+
+            float healthAfterInstant = ReadCurrent(source, GameplayAttributes.Attribute_Health);
+            int cuesAfterInstant = observedCueCount;
+            float deadline = Time.realtimeSinceStartup + waitDuration + 0.5f;
+            while (Time.realtimeSinceStartup < deadline) yield return null;
+
+            Expect("AbilityTags Cancel：取消后 SelfCast 不再结算 Effects",
+                Mathf.Approximately(
+                    ReadCurrent(source, GameplayAttributes.Attribute_Health),
+                    healthAfterInstant));
+            Expect("AbilityTags Cancel：取消后 SelfCast 不产生完成 Cue",
+                observedCueCount == cuesAfterInstant);
+            Expect("AbilityTags Cancel：场景结束时没有 Active Ability",
+                source.ActiveAbilities.Count == 0);
+            Expect("AbilityTags Cancel：场景结束时没有 Tick 注册",
+                source.TickRegistrationCount == 0);
+            Expect("AbilityTags Cancel：场景结束时没有 Active Cue",
+                source.Cues.ActiveCues.Count == 0);
+
+            Debug.Log(
+                $"[ASCTest][AbilityTags Cancel] Health={healthAfterInstant}, " +
+                $"MP={ReadCurrent(source, GameplayAttributes.Attribute_MP)}, " +
+                $"ActiveAbilities={source.ActiveAbilities.Count}, " +
+                $"CastStateBeforeInstant={stateBeforeInstant}, " +
+                $"CastStateAfterInstant={castRuntime.State}, " +
+                $"AbilityTag={FormatTags(selfCastAbility.AbilityTags)}, " +
+                $"CancelTag={FormatTags(instantAbility.CancelTags)}, " +
+                $"TagManagerInitialized={GameplayTagManager.Instance.IsInitialized}, " +
+                $"Events={string.Join(" -> ", abilityEventOrder)}",
+                this);
+            UnsubscribeAbilityCancellationEvents();
         }
 
         /// <summary>验证 SelfChannel 的重复激活策略和有限周期结束语义。</summary>
@@ -619,7 +734,8 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         /// <returns>全部测试资产均已配置时返回 true。</returns>
         private bool ValidateInputs()
         {
-            bool valid = abilityDatabase != null &&
+            bool valid = tagDatabase != null &&
+                         abilityDatabase != null &&
                          cueDatabase != null &&
                          attributeSets != null && attributeSets.Count > 0 &&
                          instantAbility != null &&
@@ -636,7 +752,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
 
             if (!valid)
                 Debug.LogError(
-                    "[ASCTest] 请配置 AbilityDatabase、CueDatabase、完整 AttributeSet 和八个 GA SO。",
+                    "[ASCTest] 请配置 TagDatabase、AbilityDatabase、CueDatabase、完整 AttributeSet 和八个 GA SO。",
                     this);
             return valid;
         }
@@ -654,6 +770,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             string runMode)
         {
             CleanupWorld();
+            GameplayTagManager.Instance.Initialize(tagDatabase);
             GameplayAbilityManager.Instance.Initialize(abilityDatabase);
             GameplayCueManager.Instance.Initialize(cueDatabase);
 
@@ -676,7 +793,16 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             target.Initialize(attributeSets);
 
             GameplayAbilityData ability = GetAbility(scenario);
-            if (!ValidateCueMappings(ability))
+            bool dependenciesValid = ValidateAbilityRegistration(ability) &&
+                                     ValidateCueMappings(ability);
+            if (scenario == AbilityTestScenario.AbilityTagsCancellation)
+            {
+                // 组合场景同时依赖 SelfCast 与 Instant，不能只校验主场景返回的 Instant。
+                dependenciesValid &= ValidateAbilityRegistration(selfCastAbility);
+                dependenciesValid &= ValidateCueMappings(selfCastAbility);
+            }
+
+            if (!dependenciesValid)
             {
                 CleanupWorld();
                 return false;
@@ -716,6 +842,26 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             }
 
             return valid;
+        }
+
+        /// <summary>验证测试 Ability 已完成稳定 ID Bake，且当前 Database 能按 ID 解析回同一资产。</summary>
+        /// <param name="ability">当前场景依赖的 Ability 资产。</param>
+        /// <returns>Database 注册项与传入资产一致时返回 true。</returns>
+        private bool ValidateAbilityRegistration(GameplayAbilityData ability)
+        {
+            bool registered = ability != null &&
+                              abilityDatabase.TryGetAbility(ability.AbilityId, out GameplayAbilityData registeredAbility) &&
+                              ReferenceEquals(registeredAbility, ability);
+            Expect($"{ability?.name ?? "未配置 Ability"} 已注册到 Ability Database", registered);
+            if (!registered)
+            {
+                Debug.LogError(
+                    $"[ASCTest] Ability '{ability?.name ?? "None"}' 未以 AbilityId={ability?.AbilityId ?? -1} " +
+                    $"注册到 '{abilityDatabase.name}'，请先在 GA Editor 中执行 Bake。",
+                    abilityDatabase);
+            }
+
+            return registered;
         }
 
         /// <summary>扫描投射物通道中的第三方 ASC，防止投射物先命中错误角色。</summary>
@@ -770,7 +916,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         /// <summary>清理当前技能场景，不改变完整套件的累计断言和运行标记。</summary>
         private void CleanupWorld()
         {
-            // 先 Clear ASC，使 Active Cue 走正式 Remove 路径，再解除测试观察事件。
+            // 先解除 Ability 观察，避免 Clear 产生的 Cancel 事件污染本场景已记录的严格顺序。
+            UnsubscribeAbilityCancellationEvents();
+            // 再 Clear ASC，使 Active Cue 走正式 Remove 路径，随后解除 Cue 观察事件。
             if (source != null) source.Clear();
             if (target != null) target.Clear();
             UnsubscribeCueEvents();
@@ -794,7 +942,115 @@ namespace WS_Modules.GAS.AbilitySystemComponent
                 visualizer.DetachActors();
             GameplayAbilityManager.Instance.Reset();
             GameplayCueManager.Instance.Reset();
+            GameplayTagManager.Instance.Reset();
         }
+
+        #endregion
+
+        #region Ability 生命周期观察
+
+        /// <summary>从 SelfCast 的固定 Sequence 配置读取真实等待时长，避免观察窗口耗尽读条。</summary>
+        /// <param name="duration">解析成功时返回首个 WaitDuration Task 的配置时长。</param>
+        /// <returns>Root Task 结构符合测试夹具契约且时长大于零时返回 true。</returns>
+        private bool TryGetSelfCastWaitDuration(out float duration)
+        {
+            if (selfCastAbility.RootTask is SequenceGameplayAbilityTaskConfig sequence &&
+                sequence.Children.Count > 0 &&
+                sequence.Children[0] is WaitDurationGameplayAbilityTaskConfig wait &&
+                !float.IsNaN(wait.Duration) &&
+                !float.IsInfinity(wait.Duration) &&
+                wait.Duration > 0f)
+            {
+                duration = wait.Duration;
+                return true;
+            }
+
+            duration = 0f;
+            return false;
+        }
+
+        /// <summary>将测试资产中的 TagId 列表格式化为诊断日志文本。</summary>
+        /// <param name="tags">需要输出的 AbilityTags 或 CancelTags。</param>
+        /// <returns>按数组顺序排列的 TagId 文本。</returns>
+        private static string FormatTags(IReadOnlyList<GameplayTag> tags)
+        {
+            if (tags.Count == 0) return "[]";
+
+            var values = new string[tags.Count];
+            for (int i = 0; i < tags.Count; i++)
+                values[i] = tags[i].Id.ToString();
+            return $"[{string.Join(", ", values)}]";
+        }
+
+        /// <summary>订阅组合场景所需的 Ability 生命周期事件，并只记录指定技能的事件。</summary>
+        /// <param name="castRuntime">本次应被 CancelTags 取消的 SelfCast Runtime。</param>
+        private void SubscribeAbilityCancellationEvents(GameplayAbilityRuntime castRuntime)
+        {
+            UnsubscribeAbilityCancellationEvents();
+            abilityEventOrder.Clear();
+
+            abilityActivatedHandler = runtime =>
+            {
+                if (ReferenceEquals(runtime.Spec.Data, instantAbility))
+                    abilityEventOrder.Add("Instant.Activated");
+            };
+            abilityCancelledHandler = runtime =>
+            {
+                if (ReferenceEquals(runtime, castRuntime))
+                    abilityEventOrder.Add("SelfCast.Cancelled");
+            };
+            abilityEndedHandler = runtime =>
+            {
+                if (ReferenceEquals(runtime.Spec.Data, instantAbility))
+                    abilityEventOrder.Add("Instant.Ended");
+            };
+
+            source.Abilities.AbilityActivated += abilityActivatedHandler;
+            source.Abilities.AbilityCancelled += abilityCancelledHandler;
+            source.Abilities.AbilityEnded += abilityEndedHandler;
+        }
+
+        /// <summary>解除组合场景的 Ability 生命周期观察，避免停止、清理或重复测试时累积回调。</summary>
+        private void UnsubscribeAbilityCancellationEvents()
+        {
+            if (source != null)
+            {
+                if (abilityActivatedHandler != null)
+                    source.Abilities.AbilityActivated -= abilityActivatedHandler;
+                if (abilityCancelledHandler != null)
+                    source.Abilities.AbilityCancelled -= abilityCancelledHandler;
+                if (abilityEndedHandler != null)
+                    source.Abilities.AbilityEnded -= abilityEndedHandler;
+            }
+
+            abilityActivatedHandler = null;
+            abilityCancelledHandler = null;
+            abilityEndedHandler = null;
+        }
+
+        /// <summary>检查 Runtime 是否仍存在于 ASC 暴露的只读 Active Runtime 列表中。</summary>
+        /// <param name="runtimes">ASC 当前 Active Runtime 列表。</param>
+        /// <param name="expected">需要按引用查找的 Runtime。</param>
+        /// <returns>列表包含同一 Runtime 实例时返回 true。</returns>
+        private static bool ContainsRuntime(
+            IReadOnlyList<GameplayAbilityRuntime> runtimes,
+            GameplayAbilityRuntime expected)
+        {
+            for (int i = 0; i < runtimes.Count; i++)
+            {
+                if (ReferenceEquals(runtimes[i], expected)) return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>验证新 Instant 激活、旧 SelfCast 取消和同步 Instant 结束的严格事件顺序。</summary>
+        /// <returns>事件数量及三项顺序完全符合运行时契约时返回 true。</returns>
+        private bool HasExpectedAbilityEventOrder() =>
+            abilityEventOrder.Count == 3 &&
+            abilityEventOrder[0] == "Instant.Activated" &&
+            abilityEventOrder[1] == "SelfCast.Cancelled" &&
+            abilityEventOrder[2] == "Instant.Ended";
 
         #endregion
 
@@ -963,6 +1219,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             AbilityTestScenario.Instant => instantAbility,
             AbilityTestScenario.Async => asynchronousAbility,
             AbilityTestScenario.SelfCast => selfCastAbility,
+            AbilityTestScenario.AbilityTagsCancellation => instantAbility,
             AbilityTestScenario.SelfChannel => selfChannelAbility,
             AbilityTestScenario.Toggle => toggleAbility,
             AbilityTestScenario.Passive => passiveAbility,
@@ -979,6 +1236,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             AbilityTestScenario.Instant => "Instant",
             AbilityTestScenario.Async => "Async",
             AbilityTestScenario.SelfCast => "SelfCast",
+            AbilityTestScenario.AbilityTagsCancellation => "AbilityTags Cancel",
             AbilityTestScenario.SelfChannel => "SelfChannel",
             AbilityTestScenario.Toggle => "Toggle",
             AbilityTestScenario.Passive => "Passive 与 Cooldown",
@@ -1000,6 +1258,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             Instant,
             Async,
             SelfCast,
+            AbilityTagsCancellation,
             SelfChannel,
             Toggle,
             Passive,

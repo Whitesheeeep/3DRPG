@@ -45,24 +45,7 @@ namespace WS_Modules.GAS.Editor
 
         // 优先会话数据库；否则仅在项目恰好存在一个数据库时自动使用。
         private static GameplayTagDatabase ResolveDatabase(out string error)
-        {
-            GameplayTagDatabase sessionDatabase = GameplayTagEditorSession.GetDatabase();
-            if (sessionDatabase != null)
-            {
-                error = string.Empty;
-                return sessionDatabase;
-            }
-
-            string[] guids = AssetDatabase.FindAssets("t:GameplayTagDatabase");
-            if (guids.Length == 1)
-            {
-                error = string.Empty;
-                return AssetDatabase.LoadAssetAtPath<GameplayTagDatabase>(AssetDatabase.GUIDToAssetPath(guids[0]));
-            }
-
-            error = guids.Length == 0 ? "未找到 GameplayTagDatabase（点击打开窗口）" : "存在多个数据库，请先在 Tag 窗口选择";
-            return null;
-        }
+            => GameplayTagEditorSession.ResolveSingleDatabase(out error);
 
         // 使用当前作者路径显示已烘焙标签，废弃或未知 ID 明确标记为失效。
         private static string BuildDisplay(GameplayTagDatabase database, GameplayTag tag, string error)

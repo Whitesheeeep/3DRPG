@@ -15,6 +15,8 @@ MonoBehaviour:
   abilityId: 2
   description: "\u4ECE Source \u524D\u65B9\u53D1\u5C04\u6C60\u5316\u53EF\u89C6\u6295\u5C04\u7269\uFF0C\u9996\u6B21\u547D\u4E2D\u5176\u4ED6
     ASC \u65F6\u7ED3\u7B97 Effects\u3002"
+  abilityTags: []
+  cancelTags: []
   activationTagQuery:
     allTags: []
     anyTags: []

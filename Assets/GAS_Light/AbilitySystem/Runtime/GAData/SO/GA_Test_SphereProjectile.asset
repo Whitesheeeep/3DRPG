@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   abilityId: 6
   description: Editor validation fixture for a Sphere Projectile Gameplay Ability.
+  abilityTags: []
+  cancelTags: []
   activationTagQuery:
     allTags: []
     anyTags: []
