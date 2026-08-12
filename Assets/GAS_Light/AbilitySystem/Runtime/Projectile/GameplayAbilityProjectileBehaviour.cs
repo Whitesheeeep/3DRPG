@@ -95,16 +95,16 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         protected override void OnSpawn()
         {
             running = false;
-            projectileBody.velocity = Vector3.zero;
-            projectileBody.angularVelocity = Vector3.zero;
+            // projectileBody.velocity = Vector3.zero;
+            // projectileBody.angularVelocity = Vector3.zero;
         }
 
         /// <summary>对象归还池前停止运行并释放本次 Ability 激活快照。</summary>
         protected override void OnDespawn()
         {
             running = false;
-            projectileBody.velocity = Vector3.zero;
-            projectileBody.angularVelocity = Vector3.zero;
+            // projectileBody.velocity = Vector3.zero;
+            //projectileBody.angularVelocity = Vector3.zero;
             source = null;
             effects = null;
             cueTags = null;
