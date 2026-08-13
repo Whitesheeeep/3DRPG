@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: af5f14d16d7aaea4e88e5559c737998b, type: 3}
+  m_Name: Shake_Running
+  m_EditorClassIdentifier: 
+  noiseSettings: {fileID: 11400000, guid: 4e2c2a5a314a9144da71460c7138c916, type: 2}
+  amplitudeGain: 0.35
+  frequencyGain: 1.15
+  lifetime: 1
+  duration: 0
+  fadeInDuration: 0.15
+  fadeOutDuration: 0.25
+  blendMode: 0

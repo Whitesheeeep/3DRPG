@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using WS_Modules.Pooling;
+using WS_Modules.Pooling.Editor;
 
 namespace WS_Modules
 {
@@ -35,6 +37,19 @@ namespace WS_Modules
         public List<PoolRowViewData> Rows = new List<PoolRowViewData>();
     }
 
+    /// <summary>
+    /// 描述一个 Class Pool Registry 生成文件及其当前可定位状态。
+    /// </summary>
+    [Serializable]
+    internal sealed class PoolRegistryGeneratedFileViewData
+    {
+        /// <summary>获取或设置 Unity 资源路径。</summary>
+        public string AssetPath;
+
+        /// <summary>获取或设置该路径当前是否存在可定位资源。</summary>
+        public bool Exists;
+    }
+
     internal sealed class PoolSystemViewModel
     {
         private const string EmptyStateText = "No pool data collected yet.";
@@ -43,8 +58,11 @@ namespace WS_Modules
         [SerializeField] private string searchKeyword = string.Empty;
         [SerializeField] private string summaryText = "Pools: 0 | Cached: 0 | Capacity: 0";
         [SerializeField] private string lastRefreshText = "Last refresh: -";
+        [SerializeField] private string registryStatusText = "Registry files not loaded.";
+        [SerializeField] private bool registryGenerationFailed;
         [SerializeField] private PoolSectionViewData gameObjectSection = new PoolSectionViewData();
         [SerializeField] private PoolSectionViewData classSection = new PoolSectionViewData();
+        [SerializeField] private List<PoolRegistryGeneratedFileViewData> registryGeneratedFiles = new();
 
         private IPoolStatsService _poolStatsService;
         private List<PoolRowViewData> _allGameObjectRows = new List<PoolRowViewData>();
@@ -61,12 +79,60 @@ namespace WS_Modules
         public PoolSectionViewData GameObjectSection => gameObjectSection;
         public PoolSectionViewData ClassSection => classSection;
         public string SearchKeyword => searchKeyword;
+        public string RegistryStatusText => registryStatusText;
+        public bool RegistryGenerationFailed => registryGenerationFailed;
+        public IReadOnlyList<PoolRegistryGeneratedFileViewData> RegistryGeneratedFiles => registryGeneratedFiles;
 
+        /// <summary>
+        /// 初始化对象池统计服务，并加载当前已存在的 Registry 生成文件路径。
+        /// </summary>
+        /// <param name="poolStatsService">Pool 面板使用的统计快照服务。</param>
         public void Initialize(IPoolStatsService poolStatsService)
         {
             _poolStatsService = poolStatsService;
             gameObjectSection = CreateEmptySection("GameObject Pools");
             classSection = CreateEmptySection("Class Pools");
+            RefreshRegistryGeneratedFiles(
+                ClassPoolPrewarmRegistryGenerator.GetGeneratedFilePaths(),
+                "Loaded existing Registry outputs");
+        }
+
+        /// <summary>
+        /// 执行统一的 Class Pool Registry 生成器，并刷新面板中的状态和实际输出路径。
+        /// </summary>
+        public void GenerateClassPoolPrewarmRegistry()
+        {
+            try
+            {
+                IReadOnlyList<string> paths = ClassPoolPrewarmRegistryGenerator.GenerateAndGetPaths();
+                RefreshRegistryGeneratedFiles(paths, "Generated Registry outputs");
+                registryGenerationFailed = false;
+            }
+            catch (Exception exception)
+            {
+                // 保留上一次有效路径列表，让生成失败后仍可定位和检查旧输出。
+                registryGenerationFailed = true;
+                registryStatusText = $"Generation failed: {exception.Message}";
+                Debug.LogException(exception);
+            }
+        }
+
+        /// <summary>
+        /// 在 Project 窗口中定位指定生成文件。
+        /// </summary>
+        /// <param name="assetPath">待定位的 Unity 资源路径。</param>
+        public void PingRegistryGeneratedFile(string assetPath)
+        {
+            UnityEngine.Object asset = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(assetPath);
+            if (asset == null)
+            {
+                registryGenerationFailed = true;
+                registryStatusText = $"Generated file is unavailable: {assetPath}";
+                return;
+            }
+
+            EditorGUIUtility.PingObject(asset);
+            Selection.activeObject = asset;
         }
 
         public void InitializePoolManager(PoolingSetting poolingSettings)
@@ -110,6 +176,24 @@ namespace WS_Modules
             gameObjectSection = BuildSection("GameObject Pools", gameObjectRows, _allGameObjectRows.Count, searchKeyword);
             classSection = BuildSection("Class Pools", classRows, _allClassRows.Count, searchKeyword);
             UpdateSummary();
+        }
+
+        /// <summary>
+        /// 将生成器返回的资源路径转换为面板可直接渲染的文件状态。
+        /// </summary>
+        /// <param name="paths">生成器返回的有序资源路径。</param>
+        /// <param name="statusPrefix">状态文本前缀。</param>
+        private void RefreshRegistryGeneratedFiles(IEnumerable<string> paths, string statusPrefix)
+        {
+            registryGeneratedFiles = paths
+                .Select(path => new PoolRegistryGeneratedFileViewData
+                {
+                    AssetPath = path,
+                    Exists = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path) != null,
+                })
+                .ToList();
+            registryGenerationFailed = false;
+            registryStatusText = $"{statusPrefix}: {registryGeneratedFiles.Count} file(s).";
         }
 
         private static List<PoolRowViewData> BuildRows(IReadOnlyList<PoolItemData> source)

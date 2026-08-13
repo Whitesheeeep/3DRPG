@@ -23,6 +23,8 @@ namespace WS_Modules
         private MultiColumnListView _classListView;
         private Label _summaryLabel;
         private Label _lastRefreshLabel;
+        private Label _registryStatusLabel;
+        private VisualElement _registryPathList;
         private Toggle _autoRefreshToggle;
         private TextField _searchField;
 
@@ -63,15 +65,22 @@ namespace WS_Modules
             }).Every(1000).Resume();
         }
 
+        /// <summary>
+        /// 绑定 Pool 面板的运行时监控操作、Registry 生成操作和搜索交互。
+        /// </summary>
+        /// <param name="wsFrameRoot">当前 FrameSetting 窗口根数据。</param>
         private void BindView(WSFrameRoot wsFrameRoot)
         {
             var initButton = _viewRoot.Q<Button>("InitButton");
             var refreshButton = _viewRoot.Q<Button>("RefreshButton");
             var clearSearchButton = _viewRoot.Q<Button>("ClearSearchButton");
+            var generateRegistryButton = _viewRoot.Q<Button>("GenerateRegistryButton");
             _autoRefreshToggle = _viewRoot.Q<Toggle>("AutoRefreshToggle");
             _searchField = _viewRoot.Q<TextField>("SearchField");
             _summaryLabel = _viewRoot.Q<Label>("SummaryLabel");
             _lastRefreshLabel = _viewRoot.Q<Label>("LastRefreshLabel");
+            _registryStatusLabel = _viewRoot.Q<Label>("RegistryStatusLabel");
+            _registryPathList = _viewRoot.Q<VisualElement>("RegistryPathList");
             _gameObjectSection = _viewRoot.Q<VisualElement>("GameObjectSection");
             _classSection = _viewRoot.Q<VisualElement>("ClassSection");
 
@@ -81,6 +90,11 @@ namespace WS_Modules
                 Refresh();
             });
             refreshButton?.RegisterCallback<ClickEvent>(_ => Refresh());
+            generateRegistryButton?.RegisterCallback<ClickEvent>(_ =>
+            {
+                _viewModel.GenerateClassPoolPrewarmRegistry();
+                DrawRegistryGenerator();
+            });
             _autoRefreshToggle?.RegisterValueChangedCallback(evt =>
             {
                 _viewModel.AutoRefresh = evt.newValue;
@@ -113,6 +127,9 @@ namespace WS_Modules
             DrawSection(_classSection, _viewModel.ClassSection);
         }
 
+        /// <summary>
+        /// 将 ViewModel 的监控字段和 Registry 生成状态同步到 UI Toolkit 控件。
+        /// </summary>
         private void SyncBoundFields()
         {
             // Label text binding is inconsistent across Unity 2022 patch versions, so keep explicit sync.
@@ -120,6 +137,48 @@ namespace WS_Modules
             if (_lastRefreshLabel != null) _lastRefreshLabel.text = _viewModel.LastRefreshText;
             _autoRefreshToggle?.SetValueWithoutNotify(_viewModel.AutoRefresh);
             _searchField?.SetValueWithoutNotify(_viewModel.SearchKeyword);
+            DrawRegistryGenerator();
+        }
+
+        /// <summary>
+        /// 刷新 Registry 生成状态，并把实际输出文件渲染为可在 Project 窗口定位的路径按钮。
+        /// </summary>
+        private void DrawRegistryGenerator()
+        {
+            if (_viewModel == null)
+            {
+                return;
+            }
+
+            if (_registryStatusLabel != null)
+            {
+                _registryStatusLabel.text = _viewModel.RegistryStatusText;
+                _registryStatusLabel.EnableInClassList(
+                    "pool-registry-status-error",
+                    _viewModel.RegistryGenerationFailed);
+            }
+
+            if (_registryPathList == null)
+            {
+                return;
+            }
+
+            _registryPathList.Clear();
+            foreach (PoolRegistryGeneratedFileViewData file in _viewModel.RegistryGeneratedFiles)
+            {
+                PoolRegistryGeneratedFileViewData capturedFile = file;
+                var pathButton = new Button(() => _viewModel.PingRegistryGeneratedFile(capturedFile.AssetPath))
+                {
+                    text = capturedFile.Exists ? capturedFile.AssetPath : $"Missing: {capturedFile.AssetPath}",
+                    tooltip = capturedFile.Exists
+                        ? $"在 Project 窗口中定位：{capturedFile.AssetPath}"
+                        : $"生成文件不存在：{capturedFile.AssetPath}",
+                };
+                pathButton.AddToClassList("pool-registry-path-button");
+                pathButton.SetEnabled(capturedFile.Exists);
+                pathButton.EnableInClassList("pool-registry-path-missing", !capturedFile.Exists);
+                _registryPathList.Add(pathButton);
+            }
         }
 
         private void DrawSection(VisualElement sectionRoot, PoolSectionViewData sectionData)
@@ -359,6 +418,9 @@ namespace WS_Modules
             return AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(path);
         }
 
+        /// <summary>
+        /// 清理面板引用，避免 UI 分离后继续持有旧的 ViewModel 和控件实例。
+        /// </summary>
         private void DisposeViewModel()
         {
             if (_viewModel == null) return;
@@ -366,6 +428,8 @@ namespace WS_Modules
             _viewModel = null;
             _gameObjectListView = null;
             _classListView = null;
+            _registryStatusLabel = null;
+            _registryPathList = null;
         }
     }
 }

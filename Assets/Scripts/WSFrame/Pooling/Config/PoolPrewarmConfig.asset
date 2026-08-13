@@ -20,6 +20,6 @@ MonoBehaviour:
   classPrewarmItems:
   - enable: 1
     classId: 1476317528
-    displayName: WS_Modules.Utilities.Timer (Assembly-CSharp)
+    displayName: WS_Modules.Utilities.Timer (WSFrame.Utilities)
     initCount: 10
     maxCapacity: 100
