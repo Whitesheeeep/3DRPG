@@ -220,7 +220,9 @@ namespace RPG.SkillSystem.Editor
             next ??= SelectionState.None;
             if (selection.Equals(next))
             {
+                // 重复点击仍要重新激活并刷新原生 Inspector，以恢复被外部选择覆盖后的显示。
                 SelectionActivated?.Invoke();
+                InspectorChanged?.Invoke();
                 return;
             }
             selection = next;

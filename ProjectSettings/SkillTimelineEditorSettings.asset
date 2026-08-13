@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9b24fd5aa186c2f4c95f93cdc9a8a1ed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  previewSceneGuid: d09c3d8c5c214a942bedb2612b34ffbc
-  previewActorGlobalObjectId: GlobalObjectId_V1-2-d09c3d8c5c214a942bedb2612b34ffbc-919132148298918320-0
+  previewSceneGuid: af1b3cdf9d35633408d003803adafde8
+  previewActorGlobalObjectId: GlobalObjectId_V1-2-af1b3cdf9d35633408d003803adafde8-919132149155446097-894948335
   previewApplyRootMotion: 1
   gameplayCameraPrefabGuid: e43c9fe6f909474438d9d3f9eef44f8f
   previewCameraModifier: 0

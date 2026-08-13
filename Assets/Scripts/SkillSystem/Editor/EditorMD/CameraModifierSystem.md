@@ -2,6 +2,14 @@
 
 Camera Modifier V1 只修改 Gameplay Brain 的最终输出，不负责切换镜头。
 
+持续 Shake 与单次 Impulse 的运行时 Manager、Profile 和测试方法见：
+
+```text
+Assets/Scripts/CameraSystem/CameraShakeSystem.md
+```
+
+当前时间轴中的 `ShakeCameraModifierData`仍使用旧的内嵌参数；在后续 Profile 接入完成前，不要让同一表现同时调用 Profile Shake，避免重复叠加。
+
 ```mermaid
 flowchart LR
     Config["CameraModifierTrackConfig"] --> Player["CameraModifierTimelinePlayer"]

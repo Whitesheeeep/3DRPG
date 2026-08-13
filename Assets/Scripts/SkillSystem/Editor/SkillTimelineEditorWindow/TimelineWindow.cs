@@ -46,7 +46,9 @@ namespace RPG.SkillSystem.Editor
             window.minSize = new Vector2(800, 600);
         }
 
-        // 加载纯编辑器配置与 UXML，再按固定顺序创建窗口组合对象。
+        /// <summary>
+        /// 加载纯编辑器配置与 UXML，再按固定顺序创建窗口组合对象并刷新原生 Inspector。
+        /// </summary>
         private void CreateGUI()
         {
             DisposeComposition();
@@ -79,18 +81,26 @@ namespace RPG.SkillSystem.Editor
             view.Bind(viewModel);
             viewModel.SelectionActivated += OnTimelineSelectionActivated;
             viewModel.InspectorChanged += OnInspectorChanged;
+
+            // Inspector Editor 可能跨本次内部组合重建继续存活，因此完成绑定后必须主动读取新组合。
+            NativeInspectorChanged?.Invoke();
         }
 
         // 窗口禁用时释放全部 Editor 事件和序列化文档引用。
         private void OnDisable() => DisposeComposition();
 
-        // 窗口销毁时移除原生 Inspector 对该 EditorWindow 的活动选择。
+        /// <summary>
+        /// 窗口真正销毁时移除活动选择，并结束原生 Inspector 桥接事件的生命周期。
+        /// </summary>
         private void OnDestroy()
         {
             if (Selection.activeObject == this) Selection.activeObject = null;
+            NativeInspectorChanged = null;
         }
 
-        // 按 View、ViewModel、控制器和 Document 的逆序释放组合对象。
+        /// <summary>
+        /// 按 View、ViewModel、控制器和 Document 的逆序释放可重建组合对象。
+        /// </summary>
         private void DisposeComposition()
         {
             if (viewModel != null)
@@ -110,7 +120,6 @@ namespace RPG.SkillSystem.Editor
             document = null;
             modules = null;
             editorConfig = null;
-            NativeInspectorChanged = null;
         }
 
         // 用户点击时间轴选择时才激活窗口 Inspector，普通刷新不会抢占 Project 或 Scene 选择。
