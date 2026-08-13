@@ -302,7 +302,7 @@ namespace RPG.SkillSystem.Editor
             speed.isDelayed = true;
             fadeDuration.isDelayed = true;
 
-            animation.RegisterValueChangedCallback(_ => Submit());
+            fieldCommitController.BindObjectField(animation, Submit);
             start.RegisterValueChangedCallback(_ => Submit());
             duration.RegisterValueChangedCallback(_ => Submit());
             sourceStart.RegisterValueChangedCallback(_ => Submit());
@@ -618,8 +618,8 @@ namespace RPG.SkillSystem.Editor
             scale.SetIsDelayed(true);
 
             playbackSpeed.isDelayed = true;
-            prefab.RegisterValueChangedCallback(_ => Submit());
-            marker.RegisterValueChangedCallback(_ => Submit());
+            fieldCommitController.BindObjectField(prefab, Submit);
+            fieldCommitController.BindObjectField(marker, Submit);
             start.RegisterValueChangedCallback(_ => Submit());
             duration.RegisterValueChangedCallback(_ => Submit());
             position.RegisterValueChangedCallback(_ => Submit());
@@ -687,7 +687,7 @@ namespace RPG.SkillSystem.Editor
             duration.isDelayed = true;
             pitch.isDelayed = true;
 
-            audio.RegisterValueChangedCallback(_ => Submit());
+            fieldCommitController.BindObjectField(audio, Submit);
             start.RegisterValueChangedCallback(_ => Submit());
             duration.RegisterValueChangedCallback(_ => Submit());
             volume.RegisterValueChangedCallback(_ => volumeChanged = true);
@@ -856,9 +856,9 @@ namespace RPG.SkillSystem.Editor
                         allowSceneObjects = false,
                         value = objectValue
                     });
-                    field.RegisterValueChangedCallback(evt =>
+                    fieldCommitController.BindObjectField(field, () =>
                     {
-                        objectValue = evt.newValue;
+                        objectValue = field.value;
                         submit();
                     });
                     break;

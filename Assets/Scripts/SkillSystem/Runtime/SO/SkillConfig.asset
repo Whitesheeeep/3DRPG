@@ -18,7 +18,7 @@ MonoBehaviour:
   editorLocked: 0
   markers:
   - id: d8c8df4a43244a639f3de94b676d17fc
-    frame: 9
+    frame: 8
     eventKey: 
     displayName: "\u4E8B\u4EF6"
     valueType: 0
@@ -29,6 +29,60 @@ MonoBehaviour:
     doubleValue: 0
     floatValue: 0
     objectValue: {fileID: 0}
+--- !u!114 &-4870491398056130807
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d42f03ec5e4bab4793b09d82c8b7b57, type: 3}
+  m_Name: "\u6444\u50CF\u673A\u4FEE\u9970\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 54744ac5531c490d85caa38060150f4b
+  muted: 0
+  displayName: "\u6444\u50CF\u673A\u4FEE\u9970\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: 01c1fe330860489fb3e95dbcb184a346
+    startFrame: 6
+    durationFrames: 16
+    modifierData:
+      rid: 3428733828919984142
+  references:
+    version: 2
+    RefIds:
+    - rid: 3428733828919984142
+      type: {class: FovCameraModifierData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        blendMode: 0
+        targetScale: 1
+        weightCurve:
+          serializedVersion: 2
+          m_Curve:
+          - serializedVersion: 3
+            time: 0
+            value: 0
+            inSlope: 0
+            outSlope: 1
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          - serializedVersion: 3
+            time: 1
+            value: 1
+            inSlope: 1
+            outSlope: 0
+            tangentMode: 0
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0
+          m_PreInfinity: 2
+          m_PostInfinity: 2
+          m_RotationOrder: 4
 --- !u!114 &-4210482925188201434
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -80,7 +134,7 @@ MonoBehaviour:
   clips:
   - id: 40cfe4b40ca54f3da679324623786f20
     audioClip: {fileID: 8300000, guid: 9ed4573abd1465749b538474846f4995, type: 3}
-    startFrame: 0
+    startFrame: 6
     durationFrames: 35
     volume: 1
     pitch: 1
@@ -98,7 +152,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: 7974b444431948668922d9f44910e9dc
   frameRate: 30
-  durationFrames: 35
+  durationFrames: 41
   tracks:
   - {fileID: -4210482925188201434}
   - {fileID: 2445572420126570095}
@@ -107,6 +161,7 @@ MonoBehaviour:
   - {fileID: 8092662235759112968}
   - {fileID: -1994680328166295026}
   - {fileID: -6094935103478630086}
+  - {fileID: -4870491398056130807}
 --- !u!114 &1472487350023512403
 MonoBehaviour:
   m_ObjectHideFlags: 1
