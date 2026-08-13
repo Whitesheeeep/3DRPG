@@ -125,7 +125,7 @@ MonoBehaviour:
   editorLocked: 0
   clips:
   - id: fa8c711639f24abea3279591a640c07f
-    startFrame: 6
+    startFrame: 7
     durationFrames: 7
     sampleIntervalFrames: 1
     detectionData:

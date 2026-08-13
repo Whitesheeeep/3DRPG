@@ -299,6 +299,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             for (int i = 0; i < snapshot.Count; i++)
             {
                 GameplayAbilityRuntime candidate = snapshot[i];
+                // 避免取消自身或已终态的 Runtime；仅 Active Runtime 才能被取消。
                 if (ReferenceEquals(candidate, activatingRuntime) ||
                     candidate.State != GameplayAbilityRuntimeState.Active ||
                     !MatchesAnyAbilityTag(candidate.Spec.Data.AbilityTags, cancelTags))

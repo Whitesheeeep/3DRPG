@@ -108,11 +108,11 @@ namespace WS_Modules.GAS.GameplayCue
         /// </summary>
         private void CreateExecute(GameplayCueData data, GameplayCueRequest request)
         {
-            GameplayCueRuntime runtime = CreateRuntime(data, request);
-            if (runtime == null) return;
-            runtime.Behaviour.InvokeCueSpawn(runtime);
-            if (!runtime.IsReleased) runtime.Behaviour.InvokeExecute(runtime);
-            if (!runtime.IsReleased) ReleaseRuntime(runtime, false);
+            GameplayCueRuntime cueRuntime = CreateRuntime(data, request);
+            if (cueRuntime == null) return;
+            cueRuntime.Behaviour.InvokeCueSpawn(cueRuntime);
+            if (!cueRuntime.IsReleased) cueRuntime.Behaviour.InvokeExecute(cueRuntime);
+            if (!cueRuntime.IsReleased) ReleaseRuntime(cueRuntime, false);
         }
 
         /// <summary>
