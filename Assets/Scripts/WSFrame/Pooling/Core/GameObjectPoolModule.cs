@@ -202,7 +202,11 @@ namespace WS_Modules.Pooling
 
             if (data.TryGet(out var go, parent))
             {
-                if (!TryGetPoolable(go, key, out IGameObjectPoolable poolable)) return null;
+                if (!TryGetPoolable(go, key, out IGameObjectPoolable poolable))
+                {
+                    WSLog.LogWarning($"Get: pooled object for key '{key}' is missing IGameObjectPoolable component.");
+                    return null;
+                }
                 poolable.Spawn();
                 return go;
             }

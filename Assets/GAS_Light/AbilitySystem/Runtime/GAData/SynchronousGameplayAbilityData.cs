@@ -14,22 +14,19 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         // 具体同步 Ability 在当前调用内完成同步业务。
         protected abstract void Execute(SynchronousGameplayAbilityRuntime runtime);
 
-        // 需要专用运行状态的同步 Ability 可覆盖该工厂。
-        protected virtual SynchronousGameplayAbilityRuntime CreateSynchronousRuntime(
+        /// <summary>创建默认同步 Runtime；具体 Data 可直接覆写该唯一工厂入口。</summary>
+        /// <param name="activationId">当前 Controller 分配的激活标识。</param>
+        /// <param name="spec">本次激活使用的 Ability Spec。</param>
+        /// <param name="source">释放 Ability 的 Source ASC。</param>
+        /// <param name="setByCaller">本次激活的动态数值快照。</param>
+        /// <returns>绑定当前 Data 的同步 Runtime。</returns>
+        protected override GameplayAbilityRuntime CreateRuntime(
             int activationId,
             GameplayAbilitySpec spec,
             GameplayAbilitySystemComponent source,
             IReadOnlyDictionary<GameplayTag, float> setByCaller) =>
             new SynchronousGameplayAbilityRuntime(
                 activationId, spec, source, setByCaller, this);
-
-        // 将公共多态工厂固定转发到同步 Runtime 工厂。
-        protected sealed override GameplayAbilityRuntime CreateRuntime(
-            int activationId,
-            GameplayAbilitySpec spec,
-            GameplayAbilitySystemComponent source,
-            IReadOnlyDictionary<GameplayTag, float> setByCaller) =>
-            CreateSynchronousRuntime(activationId, spec, source, setByCaller);
         #endregion
     }
 }

@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 92a3fd70e0644c4da339c935362b3d99, type: 3}
+  m_Name: GA_Test_SkillConfig
+  m_EditorClassIdentifier: 
+  abilityId: 8
+  description: GAS SkillRuntimeHost integration fixture using the existing 35-frame
+    SkillConfig.
+  abilityTags:
+  - id: 24
+  cancelTags:
+  - id: 24
+  activationTagQuery:
+    allTags: []
+    anyTags: []
+    banedTags:
+    - id: 36
+  costEffect: {fileID: 0}
+  cooldownEffect: {fileID: 0}
+  effects:
+  - {fileID: 11400000, guid: 6861f23c72baf27428de65bec7d0d062, type: 2}
+  cueTags:
+  - id: 21
+  rootTask:
+    rid: 8492673064478303488
+  references:
+    version: 2
+    RefIds:
+    - rid: 8492673064478303488
+      type: {class: PlaySkillConfigGameplayAbilityTaskConfig, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        skillConfig: {fileID: 11400000, guid: 335542837cf153a4aae423f0d0ffb3ee, type: 2}

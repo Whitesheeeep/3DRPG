@@ -64,8 +64,31 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         }
         #endregion
 
+        #region 阶段推进
+        /// <summary>在普通更新阶段推进仍处于 Running 的 Task。</summary>
+        /// <param name="deltaTime">普通更新阶段的秒数。</param>
+        internal void Tick(float deltaTime)
+        {
+            if (State == GameplayAbilityTaskState.Running) OnTick(deltaTime);
+        }
+
+        /// <summary>在固定更新阶段推进仍处于 Running 的 Task。</summary>
+        /// <param name="fixedDeltaTime">固定更新阶段的秒数。</param>
+        internal void FixedTick(float fixedDeltaTime)
+        {
+            if (State == GameplayAbilityTaskState.Running) OnFixedTick(fixedDeltaTime);
+        }
+
+        /// <summary>在延迟更新阶段推进仍处于 Running 的 Task。</summary>
+        /// <param name="deltaTime">延迟更新阶段使用的秒数。</param>
+        internal void LateTick(float deltaTime)
+        {
+            if (State == GameplayAbilityTaskState.Running) OnLateTick(deltaTime);
+        }
+        #endregion
+
         #region 子类业务逻辑
-        // 具体 Task 在这里启动同步逻辑或注册外部更新。
+        // 具体 Task 在这里启动同步逻辑或取得外部资源；逐帧逻辑由下方三个阶段钩子承载。
         protected abstract void OnStart();
 
         // 具体 Task 在正常提前结束时释放注册。
@@ -80,6 +103,24 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
 
         // 需要外部资源的 Task 在完成通知前释放资源。
         protected virtual void OnComplete()
+        {
+        }
+
+        /// <summary>按需处理普通更新阶段。</summary>
+        /// <param name="deltaTime">普通更新阶段的秒数。</param>
+        protected virtual void OnTick(float deltaTime)
+        {
+        }
+
+        /// <summary>按需处理固定更新阶段。</summary>
+        /// <param name="fixedDeltaTime">固定更新阶段的秒数。</param>
+        protected virtual void OnFixedTick(float fixedDeltaTime)
+        {
+        }
+
+        /// <summary>按需处理延迟更新阶段。</summary>
+        /// <param name="deltaTime">延迟更新阶段使用的秒数。</param>
+        protected virtual void OnLateTick(float deltaTime)
         {
         }
         #endregion

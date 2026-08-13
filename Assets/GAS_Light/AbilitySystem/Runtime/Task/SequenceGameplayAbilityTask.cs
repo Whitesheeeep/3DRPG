@@ -37,6 +37,20 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
 
         // 中断只取消当前仍在运行的子项。
         protected override void OnCancel() => CancelCurrent();
+
+        /// <summary>将普通更新阶段转发给当前 Running 子 Task。</summary>
+        /// <param name="deltaTime">普通更新阶段的秒数。</param>
+        protected override void OnTick(float deltaTime) => GetCurrentRunningTask()?.Tick(deltaTime);
+
+        /// <summary>将固定更新阶段转发给当前 Running 子 Task。</summary>
+        /// <param name="fixedDeltaTime">固定更新阶段的秒数。</param>
+        protected override void OnFixedTick(float fixedDeltaTime) =>
+            GetCurrentRunningTask()?.FixedTick(fixedDeltaTime);
+
+        /// <summary>将延迟更新阶段转发给当前 Running 子 Task。</summary>
+        /// <param name="deltaTime">延迟更新阶段使用的秒数。</param>
+        protected override void OnLateTick(float deltaTime) =>
+            GetCurrentRunningTask()?.LateTick(deltaTime);
         #endregion
 
         #region 推进
@@ -89,6 +103,15 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             GameplayAbilityTask child = children[currentIndex];
             child.Completed -= OnChildCompleted;
             child.Cancel();
+        }
+
+        /// <summary>获取当前仍在运行的子 Task。</summary>
+        /// <returns>存在 Running 子项时返回该 Task，否则返回 null。</returns>
+        private GameplayAbilityTask GetCurrentRunningTask()
+        {
+            if (currentIndex >= children.Count) return null;
+            GameplayAbilityTask child = children[currentIndex];
+            return child.State == GameplayAbilityTaskState.Running ? child : null;
         }
         #endregion
     }

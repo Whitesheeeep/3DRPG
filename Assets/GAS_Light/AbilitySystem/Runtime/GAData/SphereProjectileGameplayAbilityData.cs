@@ -31,7 +31,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         // 使用本次 Runtime 的 Source Transform 创建投射物；投射物后续生命周期不延长 GA Runtime。
         protected override void SpawnProjectile(SynchronousGameplayAbilityRuntime runtime)
         {
-            Transform sourceTransform = runtime.Source.transform;
+            Transform sourceTransform = runtime.SourceASC.transform;
             Vector3 direction = sourceTransform.forward.sqrMagnitude > 0f
                 ? sourceTransform.forward.normalized
                 : Vector3.forward;
@@ -57,7 +57,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 direction,
                 speed,
                 lifetime,
-                runtime.Source,
+                runtime.SourceASC,
                 runtime.Level,
                 runtime.SetByCaller,
                 Effects,

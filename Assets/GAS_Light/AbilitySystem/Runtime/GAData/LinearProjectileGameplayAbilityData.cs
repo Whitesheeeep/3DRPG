@@ -79,7 +79,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
 
             // 生成 Pose 与运行快照一次性交给刚体 Behaviour，避免池化 Rigidbody 继续使用旧位置。
             behaviour.Initialize(
-                runtime.Source,
+                runtime.SourceASC,
                 runtime.Level,
                 runtime.SetByCaller,
                 Effects,
@@ -109,16 +109,16 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <returns>用于生成投射物的 Transform。</returns>
         private Transform ResolveSpawnTransform(SynchronousGameplayAbilityRuntime runtime)
         {
-            Transform sourceTransform = runtime.Source.transform;
+            Transform sourceTransform = runtime.SourceASC.transform;
             if (spawnMarker == null) return sourceTransform;
 
-            IMarkerProvider provider = runtime.Source.GetComponent<IMarkerProvider>();
+            IMarkerProvider provider = runtime.SourceASC.GetComponent<IMarkerProvider>();
             if (provider != null && provider.TryGetMarker(spawnMarker, out Transform marker))
                 return marker;
 
             Debug.LogWarning(
-                $"Linear Projectile Ability '{name}' 无法在 Source '{runtime.Source.name}' 解析 Marker '{spawnMarker.name}'，将回退 Source Transform。",
-                runtime.Source);
+                $"Linear Projectile Ability '{name}' 无法在 Source '{runtime.SourceASC.name}' 解析 Marker '{spawnMarker.name}'，将回退 Source Transform。",
+                runtime.SourceASC);
             return sourceTransform;
         }
 

@@ -28,7 +28,7 @@ namespace WS_Modules
         private HelpBox _errorBox;
 
         #region Menu Items
-        [MenuItem("Tools/WSFrame/Rename Tool", priority = 2000)]
+        [MenuItem("WSFrame/Rename Tool", priority = 2000)]
         private static void ShowWindow()
         {
             var window = GetWindow<Rename>();

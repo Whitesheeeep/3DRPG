@@ -41,25 +41,25 @@ namespace WS_Modules.EditorTools
             "Assets/Scripts/WSFrame/Tests",
         };
 
-        [MenuItem("Tools/WSFrame/Export UnityPackage/Main")]
+        [MenuItem("WSFrame/Export UnityPackage/Main")]
         private static void ExportMainPackage()
         {
             ExportPackage(MainPackageAssets, MainPackagePath);
         }
 
-        [MenuItem("Tools/WSFrame/Export UnityPackage/Samples")]
+        [MenuItem("WSFrame/Export UnityPackage/Samples")]
         private static void ExportSamplesPackage()
         {
             ExportPackage(SamplesPackageAssets, SamplesPackagePath);
         }
 
-        [MenuItem("Tools/WSFrame/Export UnityPackage/Manual Tests")]
+        [MenuItem("WSFrame/Export UnityPackage/Manual Tests")]
         private static void ExportManualTestsPackage()
         {
             ExportPackage(ManualTestsPackageAssets, ManualTestsPackagePath);
         }
 
-        [MenuItem("Tools/WSFrame/Export UnityPackage/All")]
+        [MenuItem("WSFrame/Export UnityPackage/All")]
         private static void ExportAllPackages()
         {
             ExportMainPackage();

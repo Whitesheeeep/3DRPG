@@ -3,7 +3,7 @@ using WS_Modules.GAS.GameplayCue;
 namespace WS_Modules.GAS.GameplayAbilitySystem
 {
     /// <summary>通过 ASC Tick 在有限或无限时段内周期结算 Source Effects。</summary>
-    public sealed class PeriodicSelfEffectsGameplayAbilityTask : GameplayAbilityTickTask
+    public sealed class PeriodicSelfEffectsGameplayAbilityTask : GameplayAbilityTask
     {
         #region 字段
 
@@ -43,7 +43,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         #region 生命周期
 
         /// <summary>处理首次立即结算，并让零时长有限 Task 在当前调用内完成。</summary>
-        protected override void OnTickStarted()
+        protected override void OnStart()
         {
             if (executeOnStart) ApplyCycle();
             if (!infinite && duration <= 0f) Complete();
@@ -77,14 +77,14 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         {
             GameplayAbilityData data = Runtime.Data;
             data.ApplyConfiguredEffects(
-                Runtime.Source,
-                Runtime.Source,
+                Runtime.SourceASC,
+                Runtime.SourceASC,
                 Runtime.Level,
                 Runtime.SetByCaller);
             data.PublishConfiguredCues(
                 GameplayCueEventType.Execute,
-                Runtime.Source,
-                Runtime.Source,
+                Runtime.SourceASC,
+                Runtime.SourceASC,
                 abilityRuntime: Runtime);
         }
 

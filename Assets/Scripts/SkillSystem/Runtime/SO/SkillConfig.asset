@@ -286,7 +286,7 @@ MonoBehaviour:
   editorLocked: 0
   clips:
   - id: d80c230ac8fc4b2d91461ed4ed9b3a30
-    prefab: {fileID: 4214304940546854769, guid: 695ff324093e91743a8abf684fa028de, type: 3}
+    prefab: {fileID: 6477124811497415813, guid: 8effb495422ff804dba3eeb98bfda04c, type: 3}
     markerKey: {fileID: 0}
     startFrame: 6
     durationFrames: 23

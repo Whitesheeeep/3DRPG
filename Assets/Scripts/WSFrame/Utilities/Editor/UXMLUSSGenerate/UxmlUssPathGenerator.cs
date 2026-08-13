@@ -25,7 +25,7 @@ namespace WS_Modules.UIModule.Editor
         /// <summary>
         /// 扫描 Assets 中的 UXML 和 USS 资源，并刷新生成的路径常量文件。
         /// </summary>
-        [MenuItem("Tools/WSFrame/UI/Generate UXML USS Paths", priority = 2000)]
+        [MenuItem("WSFrame/UI/Generate UXML USS Paths", priority = 2000)]
         public static void Generate()
         {
             List<ResourceEntry> entries = FindResourceEntries();

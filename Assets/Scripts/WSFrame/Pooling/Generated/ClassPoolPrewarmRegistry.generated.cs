@@ -11,7 +11,6 @@ namespace WS_Modules.Pooling
     public enum ClassPoolPrewarmId
     {
         None = 0,
-        WS_Modules_Utilities_Timer_57FED158 = 1476317528,
     }
 
     public readonly struct ClassPoolPrewarmRegistryEntry
@@ -33,26 +32,21 @@ namespace WS_Modules.Pooling
 
     public static class ClassPoolPrewarmRegistry
     {
-        private static readonly List<ClassPoolPrewarmRegistryEntry> EntriesValue = new();
+        private static readonly ClassPoolPrewarmRegistryEntry[] EntriesValue =
+        {
+        };
+
         private static readonly Dictionary<ClassPoolPrewarmId, ClassPoolPrewarmRegistryEntry> EntryMap = new();
 
-        public static IReadOnlyList<ClassPoolPrewarmRegistryEntry> Entries => EntriesValue;
-
-        public static void Register(ClassPoolPrewarmRegistryEntry entry)
+        static ClassPoolPrewarmRegistry()
         {
-            if (entry.Id == ClassPoolPrewarmId.None)
+            foreach (var entry in EntriesValue)
             {
-                return;
+                EntryMap[entry.Id] = entry;
             }
-
-            if (EntryMap.ContainsKey(entry.Id))
-            {
-                return;
-            }
-
-            EntryMap[entry.Id] = entry;
-            EntriesValue.Add(entry);
         }
+
+        public static IReadOnlyList<ClassPoolPrewarmRegistryEntry> Entries => EntriesValue;
 
         public static bool TryGetEntry(ClassPoolPrewarmId id, out ClassPoolPrewarmRegistryEntry entry)
         {

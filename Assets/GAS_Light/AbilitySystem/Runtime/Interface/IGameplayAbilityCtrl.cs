@@ -65,6 +65,14 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <param name="deltaTime">本次推进的秒数，负数、NaN 和 Infinity 会被忽略。</param>
         void Tick(float deltaTime);
 
+        /// <summary>推进 Active Runtime 的固定更新阶段，不更新 GE。</summary>
+        /// <param name="fixedDeltaTime">固定更新的秒数。</param>
+        void FixedTick(float fixedDeltaTime);
+
+        /// <summary>推进 Active Runtime 的延迟更新阶段，不更新 GE。</summary>
+        /// <param name="deltaTime">延迟更新阶段使用的秒数。</param>
+        void LateTick(float deltaTime);
+
         /// <summary>正常结束属于当前 Controller 的 Active Runtime。</summary>
         /// <param name="runtime">要结束的 Runtime。</param>
         /// <returns>Runtime 属于当前 Controller 且成功从 Active 结束时返回 true。</returns>

@@ -20,6 +20,9 @@ namespace RPG.SkillSystem
         /// </summary>
         event Action<SkillCompletedEventArgs> Completed;
 
+        /// <summary>在整数逻辑帧切换动作阶段或可打断状态后触发。</summary>
+        event Action<SkillActionPhaseChangedEventArgs> ActionPhaseChanged;
+
         #endregion
 
         #region 状态查询

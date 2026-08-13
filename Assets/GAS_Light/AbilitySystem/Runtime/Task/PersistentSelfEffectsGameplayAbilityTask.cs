@@ -35,15 +35,15 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         {
             GameplayAbilityData data = Runtime.Data;
             data.ApplyConfiguredEffects(
-                Runtime.Source,
-                Runtime.Source,
+                Runtime.SourceASC,
+                Runtime.SourceASC,
                 Runtime.Level,
                 Runtime.SetByCaller,
                 appliedEffects);
             data.PublishConfiguredCues(
                 GameplayCueEventType.Active,
-                Runtime.Source,
-                Runtime.Source,
+                Runtime.SourceASC,
+                Runtime.SourceASC,
                 abilityRuntime: Runtime);
             cuesActive = true;
         }
@@ -62,14 +62,14 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private void RemoveOwnedState()
         {
             for (int i = appliedEffects.Count - 1; i >= 0; i--)
-                Runtime.Source.GameEffectCtrl.TryRemove(appliedEffects[i]);
+                Runtime.SourceASC.GameEffectCtrl.TryRemove(appliedEffects[i]);
             appliedEffects.Clear();
 
             if (!cuesActive) return;
             Runtime.Data.PublishConfiguredCues(
                 GameplayCueEventType.Remove,
-                Runtime.Source,
-                Runtime.Source,
+                Runtime.SourceASC,
+                Runtime.SourceASC,
                 abilityRuntime: Runtime);
             cuesActive = false;
         }

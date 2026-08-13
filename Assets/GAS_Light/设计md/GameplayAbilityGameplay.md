@@ -38,7 +38,7 @@ GameplayAbilitySpec 是 ASC 中长期存在的授予状态，保存 Handle、Dat
 
 `AbilityTags` 表示 Ability 自身的分类身份，`CancelTags` 是一次成功激活发出的取消指令。两者都不写入 ASC Owner Tag 容器。任一实际 AbilityTag 可以匹配同名 CancelTag 或其祖先，例如 `Ability.Action.Cast.Recall` 可被 `Ability.Action.Cast` 取消，反向不匹配。`ActivationTagQuery.BanedTags` 仍只负责阻止当前 Owner 状态下的新激活。
 
-GA Editor 按相同匹配方向校验两组标签：完全相同，或 AbilityTag 是 CancelTag 的子标签时显示 Error，避免新激活取消同类旧 Runtime。CancelTag 是 AbilityTag 的子标签时不构成冲突，因为 Runtime 匹配方向不成立。校验只显示问题并使资产列表标红，不限制 GameplayTag PropertyDrawer 的选择。
+GA Editor 分别校验 `AbilityTags` 与 `CancelTags` 列表内部是否重复，但允许两组之间有意匹配。SkillConfig 主动作可配置同一公共 AbilityTag 与 CancelTag，让新 Runtime 在启动时间轴前取消旧 Runtime；Controller 明确排除新 Runtime 自身。
 
 ## 3. 激活事务与事件顺序
 
@@ -165,7 +165,7 @@ source.Abilities.TryEnd(runtime);
 source.Abilities.TryCancel(runtime);
 ```
 
-`GameplayAbilityTickTask` 中三条路径都会注销 Tick 注册，因为无论是成功完成、正常提前结束还是被打断，都不能继续接收帧更新。这个共同清理行为不代表三者语义相同；具体 Task 仍可以分别实现 `OnComplete`、`OnStop` 和 `OnCancel`。
+Task 不再向 Controller 单独注册 Tick。ASC 从 Active Runtime 快照出发，经异步 Runtime、Root Task 和组合 Task 逐层推进；Task 完成、正常结束或取消后会离开 Running/Active 状态，因此后续阶段自然不再进入该 Task。
 
 例如一个由两个阶段组成的技能：
 
@@ -194,28 +194,28 @@ Sequence 按顺序启动子 Task：
 - Stop/Cancel 只传播给当前运行子项。
 - 推进标记用于处理 Start 内同步完成回调，避免递归重复推进。
 
-GameplayAbilityTickTask：
+GameplayAbilityTask 阶段钩子：
 
 - 启动时向所属 ASC 的 AbilityCtrl 注册 Tick 回调。
 - AbilityCtrl 返回 WSFrame 的 IUnRegister；Tick Task 持有该句柄，并在 Stop、Cancel 或 Complete 时调用 UnRegister。
 - IUnRegister 只负责 Task 从 AbilityCtrl 注销 Tick 回调，不改变 Runtime、ASC 或 GameObject 的生命周期。
 - 每次更新调用业务子类的 OnTick(deltaTime)。
 - 业务 Task 在 OnTick 中驱动动画进度、蓄力值、位移或持续输入，并在完成时调用 Complete()。
-- Stop、Cancel 和 Complete 都会在完成通知前释放 Tick 注册。
+- Stop、Cancel 和 Complete 都会在完成通知前停止 Task 树的阶段推进。
 - AbilityCtrl 每帧复用稳定快照推进回调：本帧注销且尚未执行的回调会跳过，本帧新增的回调从下一帧开始执行，因此回调修改注册表不会造成重复执行或漏执行。
 - Tick Task 不保存 Animator、AnimationClip、SkillConfig、Transform 或目标信息。
 
 WaitDuration：
 
-- WaitDuration 继承 GameplayAbilityTickTask。
+- WaitDuration 直接继承 GameplayAbilityTask，只覆写普通 Tick。
 - Duration 必须为有限值且不小于 0。
 - 0 秒在完成注册后立即完成。
 - 正数通过 Tick 累计时间，达到时长后完成。
 - Stop 与 Cancel 都释放注册，注册只释放一次。
 
-Odin Tester 中的 Tick Probe Task 按 ASC Tick 次数完成，用于验证“持续若干帧执行内容、达到条件后通知完成”的生命周期。未来动画 Task 可以直接继承 GameplayAbilityTickTask，不需要修改 Ability Runtime。
+Odin Tester 中的 Tick Probe Task 按 ASC 普通阶段次数完成，用于验证“持续若干帧执行内容、达到条件后通知完成”的生命周期。未来 Task 可按需覆写普通、固定或延迟阶段，不需要阶段专用基类。
 
-同步 Ability 不使用 Tick 注册；异步 Ability 由所属 ASC 的 AbilityCtrl 接收统一 Tick。
+同步 Ability 不进入阶段推进；异步 Ability 由所属 ASC 的 AbilityCtrl 推进 Active Runtime 与 Task 树。
 
 ```mermaid
 sequenceDiagram
@@ -223,7 +223,7 @@ sequenceDiagram
     participant ASC as GameplayAbilitySystemComponent
     participant GE as GameEffectCtrl
     participant GA as GameplayAbilityCtrl
-    participant Task as GameplayAbilityTickTask
+    participant Task as GameplayAbilityTask
     Owner->>ASC: Tick(deltaTime)
     ASC->>GE: Tick(deltaTime)
     ASC->>GA: Tick(deltaTime)
@@ -266,7 +266,7 @@ SelfCast 的等待正常完成后才进入 Apply Task。外部 `TryEnd` 会 Stop
 
 外部 Owner 负责主动调用 `GameplayAbilitySystemComponent.Tick(deltaTime)`，GAS 不自动绑定 Unity `Update`。ASC 内部固定先调用 `GameEffectCtrl.Tick(deltaTime)`，再调用 `GameplayAbilityCtrl.Tick(deltaTime)`，因此同一帧先推进 GE 的周期与到期，再推进 GA 的 Tick Task。`deltaTime` 为负数、NaN 或 Infinity 时会被安全忽略。
 
-同步 Ability 不使用 Tick 注册；异步 Ability 的 WaitDuration、动画、蓄力和其他持续 Task 都由所属 ASC 的 AbilityCtrl 接收 Tick。Task 持有的 `IUnRegister` 只管理这一个回调的注销，不承担外部对象或 ASC 的生命周期。Controller 遍历帧开始时的回调快照，同时以当前注册表判断该项是否仍有效；因此 Task 可以在 `OnTick` 中完成自身、取消其他 Ability 或启动新 Task，而不会破坏当前帧遍历。
+同步 Ability 不进入阶段推进；异步 Ability 的 WaitDuration、动画、蓄力和其他持续 Task 都由所属 ASC 的 AbilityCtrl 通过 Active Runtime 树推进。Controller 每个阶段遍历帧开始时的 Runtime 快照，并在调用前确认 Runtime 仍属于当前 Controller 且保持 Active，因此 Task 可以在阶段中完成自身、取消其他 Ability 或启动新 Runtime，而不会破坏当前遍历。
 
 ## 9. Editor
 
@@ -351,7 +351,7 @@ Database Inspector 中的 `Abilities By Id` 直接显示这份 Bake 生成的运
 
 ## ASC 初始化与多 Set
 
-`GameplayAbilitySystemComponent` 是挂载在角色 Owner 上的 MonoBehaviour 运行时组件。它不实现 `Update`，由 Owner 调用 `Initialize(attributeSets)`、每帧调用 `ASC.Tick(deltaTime)`，并在正常退场时调用 `ASC.Clear()`。组件 `OnDestroy` 会再次执行清理，确保 Task Tick 注册、Active GA 和 GE 不残留。
+`GameplayAbilitySystemComponent` 是挂载在角色 Owner 上的 MonoBehaviour 运行时组件。Owner 调用 `Initialize(attributeSets)`；ASC 自身通过 Unity `Update / FixedUpdate / LateUpdate` 推进 GE 与 GA，并在正常退场时调用 `ASC.Clear()`。组件 `OnDestroy` 会再次执行清理，确保 Active GA、Task 和 GE 不残留。
 
 多个 `GameplayAttributeSet` 会被 `GameplayAttributeContainer` 导入为同一个运行时 Attribute 集合。不同 Set 可以分别承载战斗、资源或移动属性；相同 `AttributeId` 在多个 Set 中出现时视为配置冲突，不会自动覆盖或合并 Definition。
 
@@ -373,11 +373,11 @@ GE 快捷接口作用于当前 ASC 作为 Target：`TryApplyEffect` 接收显式
 例如，普通技能代码可以写成 `target.TryApplyEffect(effect, source, level, setByCaller, out runtime)`，而需要监听 Ability 生命周期的系统仍直接订阅 `source.Abilities`。Tag、Attribute 和 Modifier 不提供 ASC 直接修改快捷入口。
 ## Mono ASC 与 Owner
 
-`GameplayAbilitySystemComponent` 直接继承 `MonoBehaviour`，不能使用 `new` 创建。角色 Owner 持有同一 GameObject 上的 ASC 组件，在自己的生命周期中负责导入多个 AttributeSet、主动 Tick 与正常 Clear；ASC 本身不抢占 Unity `Update`。
+`GameplayAbilitySystemComponent` 直接继承 `MonoBehaviour`，不能使用 `new` 创建。角色 Owner 持有同一 GameObject 上的 ASC 组件，在自己的生命周期中负责导入多个 AttributeSet 与正常 Clear；ASC 自身占用 Unity 三阶段生命周期。
 
 具体 Projectile GA 可以直接读取 `runtime.Source.transform`。投射物的移动、碰撞与命中结算属于具体 GA 产生的投射物实例，不需要额外的 ASC Behaviour 包装或 Owner Context。
 
-`GameplayAbilitySystemComponentOdinTester` 专门验证 ASC 集成周期：它在 Play Mode 为每个技能分别创建 Source/Target Mono ASC，通过自身真实 `Update` 推进 Tick，并覆盖 Instant、Async、SelfCast、AbilityTags Cancel、SelfChannel、Toggle、Passive/Cooldown、Sphere Projectile 和 Linear Projectile。每个技能均有独立 Odin 按钮；完整套件调用相同场景实现，但在场景之间重建 ASC。`GameplayAbilityOdinTester` 只保留 GA Data、Runtime、Task 与事件的隔离测试。
+`GameplayAbilitySystemComponentOdinTester` 专门验证 ASC 集成周期：它在 Play Mode 为每个技能分别创建 Source/Target Mono ASC，由临时 ASC 自身推进 Unity 三阶段，并覆盖既有 GA 与 SkillConfig 自然完成、End、Cancel、立即重播。每个技能均有独立 Odin 按钮；完整套件调用相同场景实现，但在场景之间重建 ASC。`GameplayAbilityOdinTester` 只保留 GA Data、Runtime、Task 与事件的隔离测试。
 
 AbilityTags Cancel 场景同时从当前 Ability Database 授予 SelfCast 与 Instant，并初始化 GameplayTagDatabase 供运行时解析层级关系。当前测试夹具使用 `CueTest.GA.Instant` 作为 SelfCast 的 AbilityTag，使用其父级 `CueTest.GA` 作为 Instant 的 CancelTag。SelfCast 先跨帧保持 Active，观察窗口最多占真实 WaitDuration 的 25%，确保 Instant 激活前读条尚未完成；随后 Instant 成功提交 Cost/Cooldown、发送 Activated、取消 SelfCast 并同步结束自身。取消后继续使用真实 ASC Tick 超过原读条时间，确认 SelfCast 不会延迟结算 Effects 或 Cue。
 
@@ -399,11 +399,11 @@ sequenceDiagram
 
 ## ASC 真实周期可视化
 
-`GameplayAbilitySystemComponentOdinTester` 在每个独立技能场景开始时创建蓝色 Source 和红色 Target，Target 默认位于 Source 前方三米。两者均使用真实 Mono ASC；Tester 的 `Update` 继续作为 Owner 调用 `Tick(Time.deltaTime)`。Coroutine 只等待与断言，不伪造 Tick。Attribute、Cooldown、Active GE/GA/Cue 和 Tick 注册不会跨技能场景保留。
+`GameplayAbilitySystemComponentOdinTester` 在每个独立技能场景开始时创建蓝色 Source 和红色 Target，Target 默认位于 Source 前方三米。两者均使用真实 Mono ASC；Coroutine 只等待与断言，不重复手动推进。Attribute、Cooldown、Active GE/GA/Cue 和 Runtime 不会跨技能场景保留。
 
 ```mermaid
 flowchart LR
-    Tester["ASC Odin Tester"] --> Tick["Update -> Source/Target ASC.Tick"]
+    Tester["ASC Odin Tester"] --> Tick["Source/Target ASC 自驱动三阶段"]
     Tick --> Runtime["真实 GA / GE / Cue"]
     Runtime --> Scene["场景 Actor、投射物、对象池 Cue"]
     Runtime --> Panel["OnGUI 阶段、数值、Runtime 与断言"]
@@ -421,9 +421,20 @@ Linear Projectile 单项场景连续发射两次：第一次验证新实例，�
 
 ## Editor 校验与刷新
 
-GA Editor 的 Tag 冲突校验直接读取当前 `GameplayTagDatabase`，不依赖运行时
-`GameplayTagManager` 是否已初始化。相同 TagId 始终冲突；父级 `CancelTag` 能匹配
-子级 `AbilityTag` 时同样冲突。
+GA Editor 的 Tag 字段与列表内部重复校验不依赖运行时 `GameplayTagManager`。
+`AbilityTags` 与 `CancelTags` 之间允许有意匹配，以支持 SkillConfig 主动作通过公共标签替换旧 Runtime。
+
+## Unity 三阶段与 SkillConfig
+
+ASC 默认在 `Update` 中先推进 GE、再推进 GA 普通阶段；`FixedUpdate` 与 `LateUpdate`
+只推进 GA。同步 Runtime 在激活调用栈内完成，异步 Runtime 才把三个阶段转发给 Root Task。
+
+SkillConfig 类型的异步 Task 从 Source 获取 `SkillRuntimeHost`。Host 为每个角色长期持有唯一
+
+SkillConfig 当前动作阶段通过 Task 写入 Source ASC：阶段使用 `State.Action.Skill.Phase.*`，打断状态使用 `State.Action.Skill.Interruptible/Uninterruptible`。所有 SkillConfig GA 的 ActivationTagQuery 禁止 `Uninterruptible`，使不可打断阶段在 Runtime 创建及 Cost/Cooldown 提交前拒绝新技能；可打断阶段仍由公共 `Ability.Action.Skill` CancelTag 替换旧 Runtime。Task 的全部终态都必须对称撤销其 Tag 计数。
+`SkillRuntimeModule`，自身不实现 Unity 更新；当前 Running Task 在普通阶段调用 `Tick`，在延迟阶段
+调用 `LateTick`。GAS 通过 AbilityTags、CancelTags 与 Runtime 生命周期决定替换和打断，Module 只负责
+时间轴、轨道命中和资源清理。
 
 ```mermaid
 flowchart LR

@@ -5,6 +5,8 @@ namespace RPG.SkillSystem
     /// </summary>
     internal sealed class ActionPhaseRuntimeHandler : TrackRuntimeHandler<ActionPhaseTrackConfig>, IActionPhaseRuntimeState
     {
+        private bool hasPublishedState;
+
         public ActionPhaseType CurrentPhase { get; private set; } = ActionPhaseType.None;
         public bool CanBeInterrupted { get; private set; }
 
@@ -14,8 +16,8 @@ namespace RPG.SkillSystem
         /// <param name="frame">当前整数帧。</param>
         public override void ProcessFrame(int frame)
         {
-            CurrentPhase = ActionPhaseType.None;
-            CanBeInterrupted = false;
+            ActionPhaseType nextPhase = ActionPhaseType.None;
+            bool nextCanBeInterrupted = false;
             for (int trackIndex = 0; trackIndex < Tracks.Count; trackIndex++)
             {
                 ActionPhaseTrackConfig track = Tracks[trackIndex];
@@ -25,11 +27,25 @@ namespace RPG.SkillSystem
                     if (frame < clip.StartFrame || frame >= clip.EndFrame) continue;
 
                     // 首个有效 Clip 按统一轨道物理顺序获得阶段查询优先权。
-                    CurrentPhase = clip.Phase;
-                    CanBeInterrupted = clip.CanBeInterrupted;
-                    return;
+                    nextPhase = clip.Phase;
+                    nextCanBeInterrupted = clip.CanBeInterrupted;
+                    trackIndex = Tracks.Count;
+                    break;
                 }
             }
+
+            if (hasPublishedState && CurrentPhase == nextPhase && CanBeInterrupted == nextCanBeInterrupted) return;
+            CurrentPhase = nextPhase;
+            CanBeInterrupted = nextCanBeInterrupted;
+            hasPublishedState = true;
+
+            // 阶段处理器位于管线首位，因此同帧后续动画、命中和事件回调都能观察到新状态。
+            Context.PhasePublisher?.Invoke(new SkillActionPhaseChangedEventArgs(
+                Context.ExecutionId,
+                Context.Request.Config,
+                frame,
+                CurrentPhase,
+                CanBeInterrupted));
         }
 
         /// <summary>
@@ -46,8 +62,16 @@ namespace RPG.SkillSystem
         /// <param name="reason">技能结束原因。</param>
         public override void Complete(SkillCompletionReason reason)
         {
+            if (!hasPublishedState) return;
             CurrentPhase = ActionPhaseType.None;
             CanBeInterrupted = false;
+            hasPublishedState = false;
+            Context.PhasePublisher?.Invoke(new SkillActionPhaseChangedEventArgs(
+                Context.ExecutionId,
+                Context.Request.Config,
+                -1,
+                CurrentPhase,
+                CanBeInterrupted));
         }
     }
 }

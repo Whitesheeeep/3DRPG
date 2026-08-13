@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -15,7 +16,6 @@ namespace WS_Modules.Pooling
         [SerializeField, Tooltip("对象所属对象池的稳定 Key，必须与 Get/Prewarm 使用的 Key 一致。")]
         private string key;
 
-        private bool lifecycleInitialized;
         private bool scaleInitialized;
         private bool spawned;
         private Vector3 initialLocalScale;
@@ -23,7 +23,7 @@ namespace WS_Modules.Pooling
         /// <summary>获取对象所属对象池的稳定 Key。</summary>
         public string Key => key;
         /// <summary>获取对象当前是否已经从池中取出。</summary>
-        public bool IsSpawned => lifecycleInitialized && spawned;
+        public bool IsSpawned => spawned;
 
         #endregion
 
@@ -36,6 +36,10 @@ namespace WS_Modules.Pooling
             scaleInitialized = true;
         }
 
+        private void OnValidate()
+        {
+            name = key;
+        }
         #endregion
 
         #region 池生命周期
@@ -47,7 +51,7 @@ namespace WS_Modules.Pooling
         /// <summary>恢复基础 Transform、激活对象并执行子类生成准备。</summary>
         public void Spawn()
         {
-            if (lifecycleInitialized && spawned) return;
+            if (spawned) return;
 
             // 非激活 Prefab 的 Awake 可能尚未执行，首次 Spawn 仍需从作者 Transform 捕获缩放。
             EnsureInitialScale();
@@ -58,14 +62,13 @@ namespace WS_Modules.Pooling
             gameObject.SetActive(true);
 
             OnSpawn();
-            lifecycleInitialized = true;
             spawned = true;
         }
 
         /// <summary>执行子类回收清理、恢复基础 Transform 并禁用对象。</summary>
         public void Despawn()
         {
-            if (lifecycleInitialized && !spawned) return;
+            if (!spawned) return;
 
             EnsureInitialScale();
             // 业务先清除本轮运行状态，再恢复基础 Transform 并禁用对象。
@@ -75,7 +78,6 @@ namespace WS_Modules.Pooling
             transform.localScale = initialLocalScale;
             gameObject.SetActive(false);
 
-            lifecycleInitialized = true;
             spawned = false;
         }
 

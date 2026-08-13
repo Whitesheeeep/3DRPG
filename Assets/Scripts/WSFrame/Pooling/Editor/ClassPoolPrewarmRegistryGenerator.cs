@@ -13,7 +13,7 @@ namespace WS_Modules.Pooling.Editor
         private const string GeneratedFilePath =
             "Assets/Scripts/WSFrame/Pooling/Generated/ClassPoolPrewarmRegistry.generated.cs";
 
-        [MenuItem("Tools/WSFrame/Pooling/Generate Class Pool Prewarm Registry", priority = 2000)]
+        [MenuItem("WSFrame/Pooling/Generate Class Pool Prewarm Registry", priority = 2000)]
         public static void Generate()
         {
             var candidates = TypeCache.GetTypesDerivedFrom<IPoolable>()

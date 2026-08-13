@@ -1,0 +1,160 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-5317881409916512482
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 166f8d5d2c664f2799bda1e1c4d8a430, type: 3}
+  m_Name: "\u7279\u6548\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: f2560c241e3242f9bca9432f17554ab0
+  muted: 0
+  displayName: "\u7279\u6548\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: c203c1e3825d438f89e9c023de00c557
+    prefab: {fileID: 8539520592621795659, guid: 9bbc998f32291cf44aff6f1a77fd4cda, type: 3}
+    markerKey: {fileID: 0}
+    startFrame: 8
+    durationFrames: 11
+    localPosition: {x: 8.876528e-12, y: 0.69, z: 0}
+    localEulerAngles: {x: 18.806738, y: 139.29536, z: 194.8538}
+    localScale: {x: 1, y: 0.9999999, z: 0.9999999}
+    playbackSpeed: 1
+    followMode: 0
+    stopMode: 0
+--- !u!114 &-4632458473308400165
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b7edf08181143d342b9c4e9e3e3e114c, type: 3}
+  m_Name: "\u52A8\u4F5C\u9636\u6BB5\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 9dc48ed41d1b4c168c0be3dc9f86d398
+  muted: 0
+  displayName: "\u52A8\u4F5C\u9636\u6BB5\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: d5244ba4e3434c2a869b0d1fe9d0e0b2
+    startFrame: 0
+    durationFrames: 8
+    phase: 1
+    canBeInterrupted: 0
+  - id: ac5d5c5d9d7e4d089a1ea2e389ed5d01
+    startFrame: 8
+    durationFrames: 6
+    phase: 2
+    canBeInterrupted: 0
+  - id: 787964fdf1344c1bac7f208eb9245693
+    startFrame: 14
+    durationFrames: 18
+    phase: 3
+    canBeInterrupted: 1
+--- !u!114 &-3908211605310873526
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e7d25faf1df4c8a8d184c88fdcb89d8, type: 3}
+  m_Name: "\u52A8\u753B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 5af185b5b6144bac9dc425e9a82ed4c9
+  muted: 0
+  displayName: "\u52A8\u753B\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: a089e90007394e79af6d7c93cacf08ef
+    animationClip: {fileID: 3094330708855449807, guid: 21d6b8f558c014046ae463be0828e850, type: 3}
+    startFrame: 0
+    durationFrames: 32
+    sourceStartFrame: 0
+    playbackSpeed: 1
+    fadeDuration: 0.1
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf2d0fbc1a23bf1499d50e84ac66304b, type: 3}
+  m_Name: Test_SkillConfig2
+  m_EditorClassIdentifier: 
+  id: 41fe1a3670c54b83b9dd8b90dd8abe64
+  frameRate: 30
+  durationFrames: 32
+  tracks:
+  - {fileID: -4632458473308400165}
+  - {fileID: -3908211605310873526}
+  - {fileID: 7191335171862691752}
+  - {fileID: -5317881409916512482}
+  - {fileID: 4201269787973365433}
+--- !u!114 &4201269787973365433
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70c14c030bc1459e93e059a6774ab2a6, type: 3}
+  m_Name: "\u97F3\u9891\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 72bb41e94a8f4c009f85c13b58a00646
+  muted: 0
+  displayName: "\u97F3\u9891\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: c10e462d375b4c42801942e4a9ea78c5
+    audioClip: {fileID: 8300000, guid: e354edf2516f59d44b7deb2e58061f3b, type: 3}
+    startFrame: 8
+    durationFrames: 8
+    volume: 1
+    pitch: 1
+--- !u!114 &7191335171862691752
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977a117e6397476dafe68fee63f8f607, type: 3}
+  m_Name: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 538d3fbc9f284508aa72e47b92c9c8a4
+  muted: 0
+  displayName: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: 40c6ce0fe96e4013a92bdd8306f7c6a3
+    startFrame: 8
+    durationFrames: 6
+    sampleIntervalFrames: 1
+    detectionData:
+      rid: 3428733855027953665
+  references:
+    version: 2
+    RefIds:
+    - rid: 3428733855027953665
+      type: {class: WeaponTraceAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        samplePointCount: 4

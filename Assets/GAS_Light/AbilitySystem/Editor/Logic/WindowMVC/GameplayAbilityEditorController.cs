@@ -33,7 +33,6 @@ namespace WS_Modules.GAS.Editor
             service = new GameplayAbilityEditorService();
             search = GameplayAbilityEditorSession.Search;
             database = service.ResolveDatabase();
-            RefreshTagDatabase();
             Subscribe();
             view.SetCreatableAbilityTypes(service.FindCreatableAbilityTypes());
             view.SetDatabase(database);
@@ -93,7 +92,6 @@ namespace WS_Modules.GAS.Editor
             view.AbilityChanged += OnAbilityChanged;
             Undo.undoRedoPerformed += OnUndoRedo;
             EditorApplication.projectChanged += OnProjectChanged;
-            GameplayTagEditorSession.DatabaseChanged += OnTagDatabaseChanged;
         }
 
         /// <summary>页面释放前解除外部事件，防止旧 Controller 继续刷新。</summary>
@@ -111,7 +109,6 @@ namespace WS_Modules.GAS.Editor
             view.AbilityChanged -= OnAbilityChanged;
             Undo.undoRedoPerformed -= OnUndoRedo;
             EditorApplication.projectChanged -= OnProjectChanged;
-            GameplayTagEditorSession.DatabaseChanged -= OnTagDatabaseChanged;
         }
         #endregion
 
@@ -213,13 +210,6 @@ namespace WS_Modules.GAS.Editor
             ScheduleAssetRefresh(currentAbility);
         }
 
-        /// <summary>Tag Database 切换后更新层级匹配上下文并重新校验全部 GA。</summary>
-        /// <param name="value">Tag 页面新选择的数据库。</param>
-        private void OnTagDatabaseChanged(WS_Modules.GAS.TAG.GameplayTagDatabase value)
-        {
-            service.SetTagDatabase(value);
-            ScheduleValidation(ValidationRequestScope.All);
-        }
         #endregion
 
         #region 状态刷新
@@ -372,7 +362,6 @@ namespace WS_Modules.GAS.Editor
             assetRefreshScheduled = false;
             if (disposed) return;
             if (database == null) SetDatabase(service.ResolveDatabase());
-            RefreshTagDatabase();
             RefreshAssetCache();
             service.MarkBakeDirtyIfAssetSetChanged(database, allAbilities);
             ApplyFilter();
@@ -396,10 +385,6 @@ namespace WS_Modules.GAS.Editor
             assetRefreshScheduled = false;
             pendingRefreshSelection = null;
         }
-
-        /// <summary>按 Tag PropertyDrawer 的规则刷新 Editor 层级匹配数据库。</summary>
-        private void RefreshTagDatabase() =>
-            service.SetTagDatabase(GameplayTagEditorSession.ResolveSingleDatabase(out _));
 
         // Info 不改变列表背景，仅 Error 进入缓存。
         private static bool ContainsError(IReadOnlyList<GameplayAbilityValidationIssue> issues)

@@ -26,6 +26,9 @@ namespace RPG.SkillSystem
         /// <inheritdoc />
         public event Action<SkillCompletedEventArgs> Completed;
 
+        /// <inheritdoc />
+        public event Action<SkillActionPhaseChangedEventArgs> ActionPhaseChanged;
+
         #endregion
 
         #region 状态查询
@@ -90,7 +93,13 @@ namespace RPG.SkillSystem
                 return SkillStartResult.Failure("SkillConfig 的 FPS 与总帧必须大于零。");
 
             ulong executionId = ++nextExecutionId;
-            SkillRuntimeContext context = new(executionId, actorContext, request, attackSettings, PublishHit);
+            SkillRuntimeContext context = new(
+                executionId,
+                actorContext,
+                request,
+                attackSettings,
+                PublishHit,
+                PublishActionPhaseChanged);
             execution = new SkillExecution(context);
 
             // 必须先保存当前引用再处理第 0 帧，使帧零回调可以同步 Stop 或 Cancel。
@@ -154,6 +163,13 @@ namespace RPG.SkillSystem
         private void PublishHit(SkillHitEventArgs args)
         {
             HitDetected?.Invoke(args);
+        }
+
+        /// <summary>将当前执行同帧生效的动作阶段快照发送给 Module 监听者。</summary>
+        /// <param name="args">阶段、帧和可打断状态快照。</param>
+        private void PublishActionPhaseChanged(SkillActionPhaseChangedEventArgs args)
+        {
+            ActionPhaseChanged?.Invoke(args);
         }
 
         /// <summary>

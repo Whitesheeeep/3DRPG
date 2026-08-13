@@ -21,7 +21,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <summary>获取创建该 Runtime 的长期 Ability Spec。</summary>
         public GameplayAbilitySpec Spec { get; }
         /// <summary>获取释放本次 Ability 的 ASC。</summary>
-        public GameplayAbilitySystemComponent Source { get; }
+        public GameplayAbilitySystemComponent SourceASC { get; }
         /// <summary>获取激活时从 Spec 复制的等级快照。</summary>
         public int Level { get; }
         /// <summary>获取当前生命周期状态。</summary>
@@ -41,7 +41,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         {
             ActivationId = activationId;
             Spec = spec ?? throw new ArgumentNullException(nameof(spec));
-            Source = source ?? throw new ArgumentNullException(nameof(source));
+            SourceASC = source ?? throw new ArgumentNullException(nameof(source));
             Level = spec.Level;
             State = GameplayAbilityRuntimeState.Created;
             setByCaller = CopyValues(values);
@@ -81,6 +81,18 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
 
         // 具体同步执行或 Root Task 完成时复用正常结束路径。
         protected bool Complete() => End();
+
+        /// <summary>按需处理普通更新阶段；同步 Runtime 默认不需要逐帧推进。</summary>
+        /// <param name="deltaTime">普通更新阶段的秒数。</param>
+        internal virtual void Tick(float deltaTime) { }
+
+        /// <summary>按需处理固定更新阶段。</summary>
+        /// <param name="fixedDeltaTime">固定更新阶段的秒数。</param>
+        internal virtual void FixedTick(float fixedDeltaTime) { }
+
+        /// <summary>按需处理延迟更新阶段。</summary>
+        /// <param name="deltaTime">延迟更新阶段使用的秒数。</param>
+        internal virtual void LateTick(float deltaTime) { }
 
         // 子类实现同步逻辑或启动 Root Task。
         protected abstract void OnStart();

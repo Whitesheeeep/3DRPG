@@ -6,6 +6,12 @@ namespace WS_Modules.GAS.Generated
     /// <summary>由 Gameplay Tag 烘焙器生成的稳定标签常量。</summary>
     public static class GameplayTags
     {
+        /// <summary>Ability</summary>
+        public static readonly GameplayTag Tag_Ability = new GameplayTag(25);
+        /// <summary>Ability.Action</summary>
+        public static readonly GameplayTag Tag_Ability_Action = new GameplayTag(26);
+        /// <summary>Ability.Action.Skill</summary>
+        public static readonly GameplayTag Tag_Ability_Action_Skill = new GameplayTag(24);
         /// <summary>CueTest</summary>
         public static readonly GameplayTag Tag_CueTest = new GameplayTag(10);
         /// <summary>CueTest.Cue_Follow</summary>
@@ -44,6 +50,26 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_NewTag_NewTag1 = new GameplayTag(3);
         /// <summary>NewTag.NewTag1.NewTag6</summary>
         public static readonly GameplayTag Tag_NewTag_NewTag1_NewTag6 = new GameplayTag(4);
+        /// <summary>State</summary>
+        public static readonly GameplayTag Tag_State = new GameplayTag(27);
+        /// <summary>State.Action</summary>
+        public static readonly GameplayTag Tag_State_Action = new GameplayTag(28);
+        /// <summary>State.Action.Skill</summary>
+        public static readonly GameplayTag Tag_State_Action_Skill = new GameplayTag(29);
+        /// <summary>State.Action.Skill.Interruptible</summary>
+        public static readonly GameplayTag Tag_State_Action_Skill_Interruptible = new GameplayTag(35);
+        /// <summary>State.Action.Skill.Phase</summary>
+        public static readonly GameplayTag Tag_State_Action_Skill_Phase = new GameplayTag(30);
+        /// <summary>State.Action.Skill.Phase.Active</summary>
+        public static readonly GameplayTag Tag_State_Action_Skill_Phase_Active = new GameplayTag(33);
+        /// <summary>State.Action.Skill.Phase.None</summary>
+        public static readonly GameplayTag Tag_State_Action_Skill_Phase_None = new GameplayTag(31);
+        /// <summary>State.Action.Skill.Phase.Recovery</summary>
+        public static readonly GameplayTag Tag_State_Action_Skill_Phase_Recovery = new GameplayTag(34);
+        /// <summary>State.Action.Skill.Phase.StartUp</summary>
+        public static readonly GameplayTag Tag_State_Action_Skill_Phase_StartUp = new GameplayTag(32);
+        /// <summary>State.Action.Skill.Uninterruptible</summary>
+        public static readonly GameplayTag Tag_State_Action_Skill_Uninterruptible = new GameplayTag(36);
         /// <summary>Test</summary>
         public static readonly GameplayTag Tag_Test = new GameplayTag(5);
         /// <summary>Test.GE</summary>

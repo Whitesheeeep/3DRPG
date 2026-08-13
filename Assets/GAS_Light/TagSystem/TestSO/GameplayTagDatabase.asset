@@ -35,7 +35,7 @@ MonoBehaviour:
       Data: 
     - Name: 
       Entry: 12
-      Data: 24
+      Data: 37
     - Name: 
       Entry: 7
       Data: 
@@ -1504,6 +1504,930 @@ MonoBehaviour:
       Entry: 8
       Data: 
     - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 24
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: $v
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTagNode, Assembly-CSharp
+    - Name: tag
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 24
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: parent
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 26
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: ancestors
+      Entry: 7
+      Data: 23|WS_Modules.GAS.TAG.GameplayTag[], Assembly-CSharp
+    - Name: 
+      Entry: 12
+      Data: 2
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 26
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 25
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 25
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: $v
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTagNode, Assembly-CSharp
+    - Name: tag
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 25
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: parent
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: -1
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: ancestors
+      Entry: 9
+      Data: 2
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 26
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: $v
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTagNode, Assembly-CSharp
+    - Name: tag
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 26
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: parent
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 25
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: ancestors
+      Entry: 7
+      Data: 24|WS_Modules.GAS.TAG.GameplayTag[], Assembly-CSharp
+    - Name: 
+      Entry: 12
+      Data: 1
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 25
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 27
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: $v
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTagNode, Assembly-CSharp
+    - Name: tag
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 27
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: parent
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: -1
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: ancestors
+      Entry: 9
+      Data: 2
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 28
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: $v
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTagNode, Assembly-CSharp
+    - Name: tag
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 28
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: parent
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 27
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: ancestors
+      Entry: 7
+      Data: 25|WS_Modules.GAS.TAG.GameplayTag[], Assembly-CSharp
+    - Name: 
+      Entry: 12
+      Data: 1
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 27
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 29
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: $v
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTagNode, Assembly-CSharp
+    - Name: tag
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 29
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: parent
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 28
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: ancestors
+      Entry: 7
+      Data: 26|WS_Modules.GAS.TAG.GameplayTag[], Assembly-CSharp
+    - Name: 
+      Entry: 12
+      Data: 2
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 28
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 27
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 30
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: $v
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTagNode, Assembly-CSharp
+    - Name: tag
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 30
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: parent
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 29
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: ancestors
+      Entry: 7
+      Data: 27|WS_Modules.GAS.TAG.GameplayTag[], Assembly-CSharp
+    - Name: 
+      Entry: 12
+      Data: 3
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 29
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 28
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 27
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 31
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: $v
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTagNode, Assembly-CSharp
+    - Name: tag
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 31
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: parent
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 30
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: ancestors
+      Entry: 7
+      Data: 28|WS_Modules.GAS.TAG.GameplayTag[], Assembly-CSharp
+    - Name: 
+      Entry: 12
+      Data: 4
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 30
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 29
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 28
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 27
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 32
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: $v
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTagNode, Assembly-CSharp
+    - Name: tag
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 32
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: parent
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 30
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: ancestors
+      Entry: 7
+      Data: 29|WS_Modules.GAS.TAG.GameplayTag[], Assembly-CSharp
+    - Name: 
+      Entry: 12
+      Data: 4
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 30
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 29
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 28
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 27
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 33
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: $v
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTagNode, Assembly-CSharp
+    - Name: tag
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 33
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: parent
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 30
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: ancestors
+      Entry: 7
+      Data: 30|WS_Modules.GAS.TAG.GameplayTag[], Assembly-CSharp
+    - Name: 
+      Entry: 12
+      Data: 4
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 30
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 29
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 28
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 27
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 34
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: $v
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTagNode, Assembly-CSharp
+    - Name: tag
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 34
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: parent
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 30
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: ancestors
+      Entry: 7
+      Data: 31|WS_Modules.GAS.TAG.GameplayTag[], Assembly-CSharp
+    - Name: 
+      Entry: 12
+      Data: 4
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 30
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 29
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 28
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 27
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 35
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: $v
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTagNode, Assembly-CSharp
+    - Name: tag
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 35
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: parent
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 29
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: ancestors
+      Entry: 7
+      Data: 32|WS_Modules.GAS.TAG.GameplayTag[], Assembly-CSharp
+    - Name: 
+      Entry: 12
+      Data: 3
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 29
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 28
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 27
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 36
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: $v
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTagNode, Assembly-CSharp
+    - Name: tag
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 36
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: parent
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 29
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: ancestors
+      Entry: 7
+      Data: 33|WS_Modules.GAS.TAG.GameplayTag[], Assembly-CSharp
+    - Name: 
+      Entry: 12
+      Data: 3
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 29
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 28
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 27
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
       Entry: 13
       Data: 
     - Name: 
@@ -1511,18 +2435,18 @@ MonoBehaviour:
       Data: 
     - Name: bakedIdHistory
       Entry: 7
-      Data: 23|System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Int32,
+      Data: 34|System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Int32,
         mscorlib]], mscorlib
     - Name: comparer
       Entry: 7
-      Data: 24|System.Collections.Generic.GenericEqualityComparer`1[[System.String,
+      Data: 35|System.Collections.Generic.GenericEqualityComparer`1[[System.String,
         mscorlib]], mscorlib
     - Name: 
       Entry: 8
       Data: 
     - Name: 
       Entry: 12
-      Data: 24
+      Data: 37
     - Name: 
       Entry: 7
       Data: 
@@ -1812,6 +2736,162 @@ MonoBehaviour:
       Entry: 8
       Data: 
     - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 1
+      Data: e94da156039642949baf88857957bad5
+    - Name: $v
+      Entry: 3
+      Data: 24
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 1
+      Data: cf1d23d5565d482d81f908f88ffb11ba
+    - Name: $v
+      Entry: 3
+      Data: 25
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 1
+      Data: ced17d98961e47308e8b99257d02ab6e
+    - Name: $v
+      Entry: 3
+      Data: 26
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 1
+      Data: 87d27f94de1742028bcf63ce15bb96f7
+    - Name: $v
+      Entry: 3
+      Data: 27
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 1
+      Data: 38718c779c064531bfb16061e82c9623
+    - Name: $v
+      Entry: 3
+      Data: 28
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 1
+      Data: 66d93feabf064c6693c5ba1ba8057390
+    - Name: $v
+      Entry: 3
+      Data: 29
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 1
+      Data: c4b941e05a25432b82b31341358397f4
+    - Name: $v
+      Entry: 3
+      Data: 30
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 1
+      Data: 76f845ad23734daabb3d9f992ab439c7
+    - Name: $v
+      Entry: 3
+      Data: 31
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 1
+      Data: fb516158e10143bbb59ca86e191f1d81
+    - Name: $v
+      Entry: 3
+      Data: 32
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 1
+      Data: 920486390c234bb4a3302de31cf17ddd
+    - Name: $v
+      Entry: 3
+      Data: 33
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 1
+      Data: c99e747b3d6a4123bd6cb513f254994e
+    - Name: $v
+      Entry: 3
+      Data: 34
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 1
+      Data: 8ff902eb2d5f4b86928d0a6524c44230
+    - Name: $v
+      Entry: 3
+      Data: 35
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 1
+      Data: 50234e7842ec40858a31b30e2ec3add4
+    - Name: $v
+      Entry: 3
+      Data: 36
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
       Entry: 13
       Data: 
     - Name: 
@@ -1914,6 +2994,59 @@ MonoBehaviour:
     name: Projectile
     description: 
     parentGuid: 90dd4178ebee4d80a58322067347e4f6
+  - guid: e94da156039642949baf88857957bad5
+    name: Skill
+    description: "GAS SkillConfig \u934F\uE100\u53E1\u6D93\u8BF2\u59E9\u6D63\u6EC3\u578E\u7EEB\u4F19\u7D1D\u9422\u3124\u7C2C\u93B6\u20AC\u9473\u6212\u7C30\u93C2\u30E5\u5F47\u5A11\u581B\u20AC?
+      parentGuid: retiredTagIds: nextTagId: 25 bakeDirty: 0 "
+    parentGuid: ced17d98961e47308e8b99257d02ab6e
+  - guid: cf1d23d5565d482d81f908f88ffb11ba
+    name: Ability
+    description: 
+    parentGuid: 
+  - guid: ced17d98961e47308e8b99257d02ab6e
+    name: Action
+    description: 
+    parentGuid: cf1d23d5565d482d81f908f88ffb11ba
+  - guid: 87d27f94de1742028bcf63ce15bb96f7
+    name: State
+    description: 
+    parentGuid: 
+  - guid: 38718c779c064531bfb16061e82c9623
+    name: Action
+    description: 
+    parentGuid: 87d27f94de1742028bcf63ce15bb96f7
+  - guid: 66d93feabf064c6693c5ba1ba8057390
+    name: Skill
+    description: 
+    parentGuid: 38718c779c064531bfb16061e82c9623
+  - guid: c4b941e05a25432b82b31341358397f4
+    name: Phase
+    description: 
+    parentGuid: 66d93feabf064c6693c5ba1ba8057390
+  - guid: 76f845ad23734daabb3d9f992ab439c7
+    name: None
+    description: 
+    parentGuid: c4b941e05a25432b82b31341358397f4
+  - guid: fb516158e10143bbb59ca86e191f1d81
+    name: StartUp
+    description: 
+    parentGuid: c4b941e05a25432b82b31341358397f4
+  - guid: 920486390c234bb4a3302de31cf17ddd
+    name: Active
+    description: 
+    parentGuid: c4b941e05a25432b82b31341358397f4
+  - guid: c99e747b3d6a4123bd6cb513f254994e
+    name: Recovery
+    description: 
+    parentGuid: c4b941e05a25432b82b31341358397f4
+  - guid: 8ff902eb2d5f4b86928d0a6524c44230
+    name: Interruptible
+    description: 
+    parentGuid: 66d93feabf064c6693c5ba1ba8057390
+  - guid: 50234e7842ec40858a31b30e2ec3add4
+    name: Uninterruptible
+    description: 
+    parentGuid: 66d93feabf064c6693c5ba1ba8057390
   retiredTagIds: 
-  nextTagId: 24
+  nextTagId: 37
   bakeDirty: 0

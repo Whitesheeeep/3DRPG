@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using WS_Modules.CustomEventSystem;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.GameplayEffect;
 using WS_Modules.GAS.TAG;
@@ -14,9 +13,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private readonly List<GameplayAbilitySpec> grantedAbilities = new();
         // 运行时激活的技能
         private readonly List<GameplayAbilityRuntime> activeRuntimes = new();
-        private readonly List<Action<float>> tickCallbacks = new();
-        // Tick 期间使用稳定快照，避免回调注销自身或其他回调时破坏当前遍历。
-        private readonly List<Action<float>> tickSnapshot = new();
+        // 三个 Unity 阶段复用稳定快照，避免 Runtime 在回调中结束或激活时破坏当前遍历。
+        private readonly List<GameplayAbilityRuntime> runtimeSnapshot = new();
         private int nextHandleId = 1;
         private int nextActivationId = 1;
         #endregion
@@ -117,40 +115,30 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         #endregion
 
         #region Tick 推进
-        /// <summary>推进当前 Controller 注册的 Ability Tick 回调。</summary>
+        /// <summary>推进当前 Controller 的 Active Runtime 普通更新阶段。</summary>
         /// <param name="deltaTime">本次推进的秒数。</param>
         public void Tick(float deltaTime)
         {
-            if (float.IsNaN(deltaTime) || float.IsInfinity(deltaTime) || deltaTime < 0f)
-                return;
+            if (!IsValidDeltaTime(deltaTime)) return;
 
-            // 复制当前帧边界；本次 Tick 中新注册的回调从下一帧开始执行。
-            tickSnapshot.Clear();
-            tickSnapshot.AddRange(tickCallbacks);
-            for (int i = tickSnapshot.Count - 1; i >= 0; i--)
-            {
-                Action<float> callback = tickSnapshot[i];
-                // 其他回调可能已经注销该项，尚未执行的已注销回调必须在本帧跳过。
-                if (tickCallbacks.Contains(callback)) callback(deltaTime);
-            }
+            AdvanceRuntimes(runtime => runtime.Tick(deltaTime));
         }
 
-        /// <summary>获取当前仍注册在 Controller 中的 Tick 回调数量，仅供测试和诊断使用。</summary>
-        internal int TickRegistrationCount => tickCallbacks.Count;
-
-        /// <summary>注册由当前 Controller 推进的 Ability Tick 回调。</summary>
-        /// <param name="callback">每次有效 ASC Tick 时执行的回调。</param>
-        /// <returns>负责解除本次注册的 WSFrame 生命周期句柄。</returns>
-        internal IUnRegister RegisterTick(Action<float> callback)
+        /// <summary>推进当前 Controller 的 Active Runtime 固定更新阶段。</summary>
+        /// <param name="fixedDeltaTime">本次固定更新的秒数。</param>
+        public void FixedTick(float fixedDeltaTime)
         {
-            if (callback == null) throw new ArgumentNullException(nameof(callback));
-            tickCallbacks.Add(callback);
-            return new CustomUnRegister(() => UnRegisterTick(callback));
+            if (!IsValidDeltaTime(fixedDeltaTime)) return;
+            AdvanceRuntimes(runtime => runtime.FixedTick(fixedDeltaTime));
         }
 
-        /// <summary>解除指定 Tick 回调；在当前 Tick 中尚未执行的回调会被快照遍历跳过。</summary>
-        /// <param name="callback">需要解除的回调。</param>
-        private void UnRegisterTick(Action<float> callback) => tickCallbacks.Remove(callback);
+        /// <summary>推进当前 Controller 的 Active Runtime 延迟更新阶段。</summary>
+        /// <param name="deltaTime">本次延迟更新使用的秒数。</param>
+        public void LateTick(float deltaTime)
+        {
+            if (!IsValidDeltaTime(deltaTime)) return;
+            AdvanceRuntimes(runtime => runtime.LateTick(deltaTime));
+        }
         #endregion
 
         #region 激活
@@ -234,8 +222,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         {
             while (activeRuntimes.Count > 0)
                 activeRuntimes[activeRuntimes.Count - 1].Cancel();
-            tickCallbacks.Clear();
-            tickSnapshot.Clear();
+            runtimeSnapshot.Clear();
             grantedAbilities.Clear();
         }
 
@@ -265,7 +252,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private bool OwnsActiveRuntime(GameplayAbilityRuntime runtime) =>
             runtime != null &&
             runtime.State == GameplayAbilityRuntimeState.Active &&
-            ReferenceEquals(runtime.Source, Owner) &&
+            ReferenceEquals(runtime.SourceASC, Owner) &&
             activeRuntimes.Contains(runtime);
 
         /// <summary>判断指定 Spec 是否仍有激活实例。</summary>
@@ -323,6 +310,26 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                         return true;
             return false;
         }
+
+        /// <summary>使用阶段开始时的稳定快照推进仍属于当前 Controller 的 Active Runtime。</summary>
+        /// <param name="advance">当前 Unity 阶段的 Runtime 推进操作。</param>
+        private void AdvanceRuntimes(Action<GameplayAbilityRuntime> advance)
+        {
+            runtimeSnapshot.Clear();
+            runtimeSnapshot.AddRange(activeRuntimes);
+            for (int i = runtimeSnapshot.Count - 1; i >= 0; i--)
+            {
+                GameplayAbilityRuntime runtime = runtimeSnapshot[i];
+                // 较早回调可能结束其他 Runtime；失去所有权的项不得在本阶段继续执行。
+                if (OwnsActiveRuntime(runtime)) advance(runtime);
+            }
+        }
+
+        /// <summary>判断阶段推进使用的时间增量是否合法。</summary>
+        /// <param name="deltaTime">待检查的时间秒数。</param>
+        /// <returns>非负有限值返回 true。</returns>
+        private static bool IsValidDeltaTime(float deltaTime) =>
+            !float.IsNaN(deltaTime) && !float.IsInfinity(deltaTime) && deltaTime >= 0f;
 
         // 单调分配当前 Controller 内 Spec Handle。
         private int AllocateHandleId()

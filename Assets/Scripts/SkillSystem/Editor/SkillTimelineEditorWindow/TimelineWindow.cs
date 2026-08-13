@@ -37,7 +37,7 @@ namespace RPG.SkillSystem.Editor
 
         #region Window 生命周期
         // 打开或聚焦窗口；实际最小尺寸在 Editor Config 加载后应用。
-        [MenuItem("Tools/RPG/Skill Timeline Editor")]
+        [MenuItem("WSFrame/Skill Timeline Editor", priority = 100)]
         private static void ShowWindow()
         {
             TimelineWindow window = GetWindow<TimelineWindow>();

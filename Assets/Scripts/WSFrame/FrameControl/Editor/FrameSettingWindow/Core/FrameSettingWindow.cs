@@ -9,7 +9,7 @@ namespace WS_Modules
 {
     public partial class FrameSettingWindow : EditorWindow
     {
-        [MenuItem("Tools/WSFrame/Global Setting %#W")]
+        [MenuItem("WSFrame/Global Setting %#W")]
         private static void ShowWindow()
         {
             var window = GetWindow<FrameSettingWindow>();

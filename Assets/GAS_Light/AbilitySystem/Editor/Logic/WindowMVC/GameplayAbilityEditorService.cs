@@ -15,11 +15,9 @@ namespace WS_Modules.GAS.Editor
     /// <summary>集中执行 GA 资产操作、具体类型发现与跨字段校验。</summary>
     public sealed class GameplayAbilityEditorService
     {
-        private GameplayTagDatabase tagDatabase;
 
         /// <summary>设置 GA 跨字段校验使用的 Editor Tag Database 上下文。</summary>
         /// <param name="database">与 GameplayTagPropertyDrawer 一致的当前数据库。</param>
-        public void SetTagDatabase(GameplayTagDatabase database) => tagDatabase = database;
 
         #region 资产与类型查询
         /// <summary>扫描项目中的全部 GameplayAbilityData 并建立稳定顺序。</summary>
@@ -259,7 +257,6 @@ namespace WS_Modules.GAS.Editor
             ValidateEffectReferences(ability.Effects, issues);
             ValidateAbilityTags(ability.AbilityTags, "AbilityTags", issues);
             ValidateAbilityTags(ability.CancelTags, "CancelTags", issues);
-            ValidateAbilityTagConflicts(ability.AbilityTags, ability.CancelTags, tagDatabase, issues);
             ValidateCueTags(ability.CueTags, issues);
 
             if (ability is AsynchronousGameplayAbilityData asynchronous)
@@ -378,39 +375,6 @@ namespace WS_Modules.GAS.Editor
                     issues.Add(Error($"{fieldName}[{i}] 与前面的标签重复。"));
         }
 
-        /// <summary>按 Runtime 的层级匹配方向校验 AbilityTags 与 CancelTags 是否冲突。</summary>
-        /// <param name="abilityTags">表示当前 Ability 分类身份的标签。</param>
-        /// <param name="cancelTags">当前 Ability 成功激活时发出的取消标签。</param>
-        /// <param name="issues">接收校验结果的集合。</param>
-        private static void ValidateAbilityTagConflicts(
-            IReadOnlyList<WS_Modules.GAS.TAG.GameplayTag> abilityTags,
-            IReadOnlyList<WS_Modules.GAS.TAG.GameplayTag> cancelTags,
-            GameplayTagDatabase database,
-            ICollection<GameplayAbilityValidationIssue> issues)
-        {
-            if (abilityTags == null || cancelTags == null) return;
-
-            // 使用与 Runtime 一致的 actual.MatchesTag(query) 方向，只报告真正会取消同类 Runtime 的配置。
-            for (int abilityIndex = 0; abilityIndex < abilityTags.Count; abilityIndex++)
-            {
-                WS_Modules.GAS.TAG.GameplayTag abilityTag = abilityTags[abilityIndex];
-                for (int cancelIndex = 0; cancelIndex < cancelTags.Count; cancelIndex++)
-                {
-                    WS_Modules.GAS.TAG.GameplayTag cancelTag = cancelTags[cancelIndex];
-                    // 精确 ID 冲突不依赖运行时 Manager；层级关系直接读取 Editor 当前数据库。
-                    bool conflicts = abilityTag == cancelTag;
-                    if (!conflicts && database != null &&
-                        database.TryGetNode(abilityTag, out GameplayTagNode node))
-                        conflicts = node.HasAncestor(cancelTag);
-                    if (!conflicts) continue;
-                    issues.Add(Error(
-                        $"AbilityTags[{abilityIndex}] (TagId={abilityTag.Id}) 与 " +
-                        $"CancelTags[{cancelIndex}] (TagId={cancelTag.Id}) 冲突：" +
-                        "当前 CancelTag 能匹配该 AbilityTag。"));
-                }
-            }
-        }
-
         /// <summary>校验指定 Ability 的 Effects 是否全部为 Instant GE。</summary>
         /// <param name="effects">待校验的 Effects 列表。</param>
         /// <param name="issues">接收校验结果的集合。</param>
@@ -516,6 +480,20 @@ namespace WS_Modules.GAS.Editor
             string path,
             ICollection<GameplayAbilityValidationIssue> issues)
         {
+            if (config is RPG.SkillSystem.PlaySkillConfigGameplayAbilityTaskConfig playSkill)
+            {
+                if (playSkill.SkillConfig == null)
+                    issues.Add(Error($"{path} 的 SkillConfig 不能为空。"));
+                else
+                {
+                    if (playSkill.SkillConfig.FrameRate <= 0)
+                        issues.Add(Error($"{path} 的 SkillConfig FPS 必须大于 0。"));
+                    if (playSkill.SkillConfig.DurationFrames <= 0)
+                        issues.Add(Error($"{path} 的 SkillConfig 总帧必须大于 0。"));
+                }
+                return;
+            }
+
             if (config is WaitDurationGameplayAbilityTaskConfig wait)
             {
                 if (wait.Duration < 0f || float.IsNaN(wait.Duration) || float.IsInfinity(wait.Duration))

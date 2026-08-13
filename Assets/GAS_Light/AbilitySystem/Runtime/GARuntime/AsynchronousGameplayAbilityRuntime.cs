@@ -50,6 +50,18 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             RootTask.Cancel();
         }
 
+        /// <summary>将普通更新阶段转发给 Root Task。</summary>
+        /// <param name="deltaTime">普通更新阶段的秒数。</param>
+        internal override void Tick(float deltaTime) => RootTask.Tick(deltaTime);
+
+        /// <summary>将固定更新阶段转发给 Root Task。</summary>
+        /// <param name="fixedDeltaTime">固定更新阶段的秒数。</param>
+        internal override void FixedTick(float fixedDeltaTime) => RootTask.FixedTick(fixedDeltaTime);
+
+        /// <summary>将延迟更新阶段转发给 Root Task。</summary>
+        /// <param name="deltaTime">延迟更新阶段使用的秒数。</param>
+        internal override void LateTick(float deltaTime) => RootTask.LateTick(deltaTime);
+
         // Root 正常完成后解除订阅并结束 Runtime。
         private void OnRootTaskCompleted(GameplayAbilityTask task)
         {

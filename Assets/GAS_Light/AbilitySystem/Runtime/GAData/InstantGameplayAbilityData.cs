@@ -40,14 +40,14 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         protected override void Execute(SynchronousGameplayAbilityRuntime runtime)
         {
             ApplyConfiguredEffects(
-                runtime.Source,
-                runtime.Source,
+                runtime.SourceASC,
+                runtime.SourceASC,
                 runtime.Level,
                 runtime.SetByCaller);
             PublishConfiguredCues(
                 GameplayCueEventType.Execute,
-                runtime.Source,
-                runtime.Source,
+                runtime.SourceASC,
+                runtime.SourceASC,
                 abilityRuntime: runtime);
         }
         #endregion

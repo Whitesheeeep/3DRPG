@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using RPG.Markers;
+using RPG.SkillSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using WS_Modules.GAS.AttributeSystem;
@@ -60,6 +61,19 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         [SerializeField, AssetsOnly, Required]
         private ToggleGameplayAbilityData toggleAbility;
 
+        [SerializeField, AssetsOnly, Required, Tooltip("使用现有 35 帧 SkillConfig 的 GAS 集成测试 Ability。")]
+        private AsyncGameplayAbilityData skillConfigAbility;
+
+        [SerializeField, AssetsOnly, Tooltip("可选的第二个 SkillConfig GA；配置后启用互相打断测试。")]
+        private AsyncGameplayAbilityData secondSkillConfigAbility;
+
+        [Title("真实角色 SkillConfig")]
+        [SerializeField, Required, Tooltip("GASTest 场景中承载动画、Marker、Host 与 ASC 的真实角色。")]
+        private GameplayAbilitySystemComponent realCharacterAsc;
+
+        [SerializeField, Required, Tooltip("与真实角色 ASC 同对象的共享 SkillRuntimeHost。")]
+        private SkillRuntimeHost realCharacterHost;
+
         [Title("可视化与测试通道")]
         [SerializeField, Tooltip("相对 Tester 的测试世界偏移，用于避开场景中已有的 Actor。")]
         private Vector3 testWorldOffset = new(-3f, 0f, 0f);
@@ -98,6 +112,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         private GameplayAbilitySystemComponent source;
         private GameplayAbilitySystemComponent target;
         private GameplayAbilitySystemComponentTestVisualizer visualizer;
+        private SkillRuntimeHost skillRuntimeHost;
         private bool cueEventSubscribed;
         private int observedCueCount;
         private GameplayAbilitySystemComponent lastCueTarget;
@@ -107,18 +122,12 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         private Action<GameplayAbilityRuntime> abilityActivatedHandler;
         private Action<GameplayAbilityRuntime> abilityCancelledHandler;
         private Action<GameplayAbilityRuntime> abilityEndedHandler;
+        private GameplayAbilityHandle realFirstSkillHandle;
+        private GameplayAbilityHandle realSecondSkillHandle;
 
         #endregion
 
         #region Unity 生命周期
-
-        /// <summary>作为测试 Owner 在真实 Unity Update 中推进当前场景的两个 ASC。</summary>
-        private void Update()
-        {
-            if (!running || source == null || target == null) return;
-            source.Tick(Time.deltaTime);
-            target.Tick(Time.deltaTime);
-        }
 
         /// <summary>测试组件销毁时停止协程并清理临时 ASC、Cue 与投射物。</summary>
         private void OnDestroy() => StopAndCleanup();
@@ -164,6 +173,79 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         [Button("测试 Linear Projectile", ButtonSizes.Medium)]
         public void TestLinearProjectile() => StartSingleScenario(AbilityTestScenario.LinearProjectile);
 
+        /// <summary>使用现有 35 帧 SkillConfig 验证 Host、Module、命中、Cue 与自然完成。</summary>
+        [Button("测试 SkillConfig 自然完成", ButtonSizes.Medium)]
+        public void TestSkillConfigNatural() =>
+            StartSingleScenario(AbilityTestScenario.SkillConfigNatural);
+
+        /// <summary>验证外部 End 将 SkillConfig Task 停止并立即释放共享 Module。</summary>
+        [Button("测试 SkillConfig End", ButtonSizes.Medium)]
+        public void TestSkillConfigEnd() => StartSingleScenario(AbilityTestScenario.SkillConfigEnd);
+
+        /// <summary>验证外部 Cancel 后共享 Module 可立即被同一 GA 再次占用。</summary>
+        [Button("测试 SkillConfig Cancel 与重播", ButtonSizes.Medium)]
+        public void TestSkillConfigCancel() =>
+            StartSingleScenario(AbilityTestScenario.SkillConfigCancel);
+
+        /// <summary>在配置第二个 SkillConfig GA 后验证公共 CancelTag 的接管顺序。</summary>
+        [Button("测试两个 SkillConfig 互相打断", ButtonSizes.Medium)]
+        public void TestSkillConfigInterruption()
+        {
+            if (secondSkillConfigAbility == null)
+            {
+                Debug.Log("[ASCTest][SKIP] 尚未配置第二个 SkillConfig GA，跳过互相打断测试。", this);
+                return;
+            }
+            StartSingleScenario(AbilityTestScenario.SkillConfigInterruption);
+        }
+
+        /// <summary>初始化 GASTest 真实角色 ASC，并授予两个 SkillConfig GA。</summary>
+        [Button("初始化真实角色技能", ButtonSizes.Medium)]
+        public void InitializeRealCharacterSkills()
+        {
+            if (!ValidateRealCharacterInputs()) return;
+            GameplayTagManager.Instance.Initialize(tagDatabase);
+            GameplayAbilityManager.Instance.Initialize(abilityDatabase);
+            GameplayCueManager.Instance.Initialize(cueDatabase);
+            realCharacterAsc.Clear();
+            realCharacterAsc.Initialize(attributeSets);
+            realFirstSkillHandle = realCharacterAsc.GiveAbility(skillConfigAbility, 1);
+            realSecondSkillHandle = realCharacterAsc.GiveAbility(secondSkillConfigAbility, 1);
+            Debug.Log($"[ASCTest][RealCharacter] Initialized first={realFirstSkillHandle.IsValid}, " +
+                      $"second={realSecondSkillHandle.IsValid}.", realCharacterAsc);
+        }
+
+        /// <summary>在真实角色 ASC 上激活第一个 SkillConfig GA。</summary>
+        [Button("真实角色播放技能 1", ButtonSizes.Medium)]
+        public void PlayRealCharacterSkill1() => ActivateRealCharacterSkill(realFirstSkillHandle, "Skill1");
+
+        /// <summary>在真实角色 ASC 上激活第二个 SkillConfig GA。</summary>
+        [Button("真实角色播放技能 2", ButtonSizes.Medium)]
+        public void PlayRealCharacterSkill2() => ActivateRealCharacterSkill(realSecondSkillHandle, "Skill2");
+
+        /// <summary>输出真实角色当前时间轴帧、动作阶段、可打断状态和 ASC 阶段 Tag。</summary>
+        [Button("输出真实角色技能状态")]
+        public void LogRealCharacterSkillState()
+        {
+            if (!ValidateRealCharacterInputs()) return;
+            Debug.Log($"[ASCTest][RealCharacter] Playing={realCharacterHost.IsPlaying}, " +
+                      $"Frame={realCharacterHost.CurrentFrame}, Phase={realCharacterHost.CurrentPhase}, " +
+                      $"Interruptible={realCharacterHost.CanBeInterrupted}, " +
+                      $"PhaseTag={FormatRealCharacterPhaseTag()}, " +
+                      $"StateTag={FormatRealCharacterInterruptTag()}.", realCharacterAsc);
+        }
+
+        /// <summary>取消真实角色全部 Ability、GE 与阶段 Tag，并重新导入测试 AttributeSet。</summary>
+        [Button("清理真实角色技能状态")]
+        public void ClearRealCharacterSkills()
+        {
+            if (realCharacterAsc == null) return;
+            realCharacterAsc.Clear();
+            realFirstSkillHandle = default;
+            realSecondSkillHandle = default;
+            Debug.Log("[ASCTest][RealCharacter] Cleared.", realCharacterAsc);
+        }
+
         /// <summary>依次执行全部独立技能场景，每项之间重建 Source、Target 和所有 ASC 状态。</summary>
         [Button("执行全部独立 ASC 测试", ButtonSizes.Large)]
         public void RunAllScenarios()
@@ -190,6 +272,64 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         {
             if (!TryBeginRun()) return;
             cycle = StartCoroutine(RunSingleScenarioCycle(scenario));
+        }
+
+        /// <summary>检查真实角色、数据库、AttributeSet 与两个 SkillConfig GA 是否均已绑定。</summary>
+        /// <returns>全部真实角色测试输入可用时返回 true。</returns>
+        private bool ValidateRealCharacterInputs()
+        {
+            bool valid = realCharacterAsc != null &&
+                         realCharacterHost != null &&
+                         tagDatabase != null &&
+                         abilityDatabase != null &&
+                         cueDatabase != null &&
+                         attributeSets != null && attributeSets.Count > 0 &&
+                         skillConfigAbility != null &&
+                         secondSkillConfigAbility != null;
+            if (!valid)
+                Debug.LogError("[ASCTest][RealCharacter] 请绑定真实角色 ASC/Host、数据库、AttributeSet 与两个 SkillConfig GA。", this);
+            return valid;
+        }
+
+        /// <summary>使用已授予 Handle 激活真实角色技能，并输出阶段 Tag 与激活结果。</summary>
+        /// <param name="handle">初始化真实角色技能时保存的授予 Handle。</param>
+        /// <param name="label">日志使用的技能标识。</param>
+        private void ActivateRealCharacterSkill(GameplayAbilityHandle handle, string label)
+        {
+            if (!ValidateRealCharacterInputs()) return;
+            if (!handle.IsValid)
+            {
+                Debug.LogError("[ASCTest][RealCharacter] 请先点击“初始化真实角色技能”。", this);
+                return;
+            }
+
+            bool activated = realCharacterAsc.TryActivateAbility(handle, out GameplayAbilityRuntime runtime);
+            Debug.Log($"[ASCTest][RealCharacter] {label} Activated={activated}, " +
+                      $"Runtime={runtime?.State.ToString() ?? "null"}, " +
+                      $"Frame={realCharacterHost.CurrentFrame}, Phase={realCharacterHost.CurrentPhase}, " +
+                      $"Interruptible={realCharacterHost.CanBeInterrupted}.", realCharacterAsc);
+        }
+
+        /// <summary>格式化真实角色当前显式拥有的动作阶段 Tag。</summary>
+        /// <returns>当前阶段 Tag 名称；无匹配时返回 Missing。</returns>
+        private string FormatRealCharacterPhaseTag()
+        {
+            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Action_Skill_Phase_None)) return "None";
+            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Action_Skill_Phase_StartUp)) return "StartUp";
+            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Action_Skill_Phase_Active)) return "Active";
+            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Action_Skill_Phase_Recovery)) return "Recovery";
+            return "Missing";
+        }
+
+        /// <summary>格式化真实角色当前显式拥有的可打断状态 Tag。</summary>
+        /// <returns>Interruptible、Uninterruptible 或 Missing。</returns>
+        private string FormatRealCharacterInterruptTag()
+        {
+            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Action_Skill_Interruptible))
+                return "Interruptible";
+            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Action_Skill_Uninterruptible))
+                return "Uninterruptible";
+            return "Missing";
         }
 
         /// <summary>检查运行条件并初始化本轮汇总。</summary>
@@ -294,6 +434,18 @@ namespace WS_Modules.GAS.AbilitySystemComponent
                     break;
                 case AbilityTestScenario.LinearProjectile:
                     yield return RunLinearProjectileScenario();
+                    break;
+                case AbilityTestScenario.SkillConfigNatural:
+                    yield return RunSkillConfigNaturalScenario();
+                    break;
+                case AbilityTestScenario.SkillConfigEnd:
+                    yield return RunSkillConfigTerminationScenario(cancel: false);
+                    break;
+                case AbilityTestScenario.SkillConfigCancel:
+                    yield return RunSkillConfigTerminationScenario(cancel: true);
+                    break;
+                case AbilityTestScenario.SkillConfigInterruption:
+                    yield return RunSkillConfigInterruptionScenario();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(scenario), scenario, null);
@@ -461,8 +613,8 @@ namespace WS_Modules.GAS.AbilitySystemComponent
                 observedCueCount == cuesAfterInstant);
             Expect("AbilityTags Cancel：场景结束时没有 Active Ability",
                 source.ActiveAbilities.Count == 0);
-            Expect("AbilityTags Cancel：场景结束时没有 Tick 注册",
-                source.TickRegistrationCount == 0);
+            Expect("AbilityTags Cancel：场景结束时没有待推进 Runtime",
+                source.ActiveAbilities.Count == 0);
             Expect("AbilityTags Cancel：场景结束时没有 Active Cue",
                 source.Cues.ActiveCues.Count == 0);
 
@@ -591,6 +743,108 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             yield return RunLinearProjectileShot(handle, "首次获取", 70f);
             yield return HoldStage("Linear Projectile：准备复用池中实例", 0.5f);
             yield return RunLinearProjectileShot(handle, "对象池复用", 40f);
+        }
+
+        /// <summary>验证 SkillConfig 通过 ASC 自动三阶段驱动完成、命中并发布 Cue。</summary>
+        /// <returns>等待真实 Unity 帧直到时间轴自然结束。</returns>
+        private IEnumerator RunSkillConfigNaturalScenario()
+        {
+            SetStage("SkillConfig：自然完成、命中与 Cue", 2f);
+            float healthBefore = ReadCurrent(target, GameplayAttributes.Attribute_Health);
+            int cueCountBefore = observedCueCount;
+            GameplayAbilityHandle handle = source.GiveAbility(skillConfigAbility, 1);
+            bool activated = source.TryActivateAbility(handle, out GameplayAbilityRuntime runtime);
+            Expect("SkillConfig GA 激活成功", activated);
+            Expect("SkillConfig Runtime 激活后保持 Active",
+                runtime != null && runtime.State == GameplayAbilityRuntimeState.Active);
+            Expect("SkillRuntimeHost 已占用共享 Module", skillRuntimeHost.IsPlaying);
+
+            float deadline = Time.realtimeSinceStartup + 3f;
+            while (runtime.State == GameplayAbilityRuntimeState.Active &&
+                   Time.realtimeSinceStartup < deadline)
+                yield return null;
+
+            Expect("SkillConfig 在最终 LateUpdate 后自然 Ended",
+                runtime.State == GameplayAbilityRuntimeState.Ended);
+            Expect("自然完成后共享 Module 空闲", !skillRuntimeHost.IsPlaying);
+            Expect("扇形攻击只对 Target 结算一次 Effect",
+                Mathf.Approximately(ReadCurrent(target, GameplayAttributes.Attribute_Health),
+                    healthBefore - 30f));
+            Expect("Skill 命中发布 Effect 与 GA Execute Cue",
+                observedCueCount >= cueCountBefore + 2 &&
+                ReferenceEquals(lastCueTarget, target) &&
+                lastCueEventType == GameplayCueEventType.Execute);
+            Expect("Execute Cue 使用命中点",
+                Vector3.Distance(lastCuePosition, target.transform.position) < 1.5f);
+        }
+
+        /// <summary>验证 End 与 Cancel 的 Task 终态、Module 释放及后续帧无结算。</summary>
+        /// <param name="cancel">为 true 时执行 Cancel，否则执行 End。</param>
+        /// <returns>跨帧确认清理结果的协程枚举器。</returns>
+        private IEnumerator RunSkillConfigTerminationScenario(bool cancel)
+        {
+            SetStage(cancel ? "SkillConfig：Cancel 与重播" : "SkillConfig：End", 1f);
+            GameplayAbilityHandle handle = source.GiveAbility(skillConfigAbility, 1);
+            bool activated = source.TryActivateAbility(handle, out GameplayAbilityRuntime runtime);
+            Expect("终止场景 SkillConfig 激活成功", activated && skillRuntimeHost.IsPlaying);
+            yield return null;
+
+            bool terminated = cancel
+                ? source.TryCancelAbility(runtime)
+                : source.TryEndAbility(runtime);
+            GameplayAbilityTaskState expectedTaskState = cancel
+                ? GameplayAbilityTaskState.Cancelled
+                : GameplayAbilityTaskState.Stopped;
+            Expect(cancel ? "外部 Cancel 成功" : "外部 End 成功", terminated);
+            Expect("Root Task 进入对应终态",
+                ((AsynchronousGameplayAbilityRuntime)runtime).RootTask.State == expectedTaskState);
+            Expect("外部终止后 Module 立即释放", !skillRuntimeHost.IsPlaying);
+
+            float healthAfterTermination = ReadCurrent(target, GameplayAttributes.Attribute_Health);
+            int cuesAfterTermination = observedCueCount;
+            yield return new WaitForSecondsRealtime(1.3f);
+            Expect("终止后不再结算 Effect",
+                Mathf.Approximately(ReadCurrent(target, GameplayAttributes.Attribute_Health),
+                    healthAfterTermination));
+            Expect("终止后不再发布 Cue", observedCueCount == cuesAfterTermination);
+
+            if (!cancel) yield break;
+            bool replayed = source.TryActivateAbility(handle, out GameplayAbilityRuntime replayRuntime);
+            Expect("Cancel 后同一 GA 可立即重播",
+                replayed && replayRuntime.State == GameplayAbilityRuntimeState.Active &&
+                skillRuntimeHost.IsPlaying);
+            source.TryCancelAbility(replayRuntime);
+        }
+
+        /// <summary>验证公共动作 Tag 先取消旧 Runtime，再由新 Task 占用共享 Module。</summary>
+        /// <returns>等待激活事件完整发送的协程枚举器。</returns>
+        private IEnumerator RunSkillConfigInterruptionScenario()
+        {
+            GameplayAbilityHandle firstHandle = source.GiveAbility(skillConfigAbility, 1);
+            GameplayAbilityHandle secondHandle = source.GiveAbility(secondSkillConfigAbility, 1);
+            source.TryActivateAbility(firstHandle, out GameplayAbilityRuntime firstRuntime);
+            Expect("旧 SkillConfig 已占用 Module", firstRuntime != null && skillRuntimeHost.IsPlaying);
+            Expect("可打断阶段写入 Interruptible Tag",
+                source.HasTagExact(GameplayTags.Tag_State_Action_Skill_Interruptible));
+
+            bool activated = source.TryActivateAbility(secondHandle, out GameplayAbilityRuntime secondRuntime);
+            Expect("新 SkillConfig 激活成功", activated);
+            Expect("旧 Runtime 被公共 CancelTag 取消",
+                firstRuntime.State == GameplayAbilityRuntimeState.Cancelled);
+            Expect("新 Runtime 在 Module 释放后保持 Active",
+                secondRuntime.State == GameplayAbilityRuntimeState.Active && skillRuntimeHost.IsPlaying);
+            Expect("第二技能不可打断阶段写入 Uninterruptible Tag",
+                source.HasTagExact(GameplayTags.Tag_State_Action_Skill_Uninterruptible));
+
+            bool rejected = !source.TryActivateAbility(firstHandle, out GameplayAbilityRuntime rejectedRuntime);
+            Expect("不可打断阶段在提交前拒绝其他 SkillConfig GA",
+                rejected && rejectedRuntime == null && secondRuntime.State == GameplayAbilityRuntimeState.Active);
+            yield return null;
+            source.TryCancelAbility(secondRuntime);
+            Expect("取消后清除阶段与打断状态 Tag",
+                !source.HasTag(GameplayTags.Tag_State_Action_Skill_Phase) &&
+                !source.HasTag(GameplayTags.Tag_State_Action_Skill_Interruptible) &&
+                !source.HasTag(GameplayTags.Tag_State_Action_Skill_Uninterruptible));
         }
 
         /// <summary>执行一次 Linear Projectile 发射，并记录池化 Rigidbody 的生成 Pose 与飞行轨迹。</summary>
@@ -745,14 +999,15 @@ namespace WS_Modules.GAS.AbilitySystemComponent
                          linearProjectileAbility != null &&
                          selfCastAbility != null &&
                          selfChannelAbility != null &&
-                         toggleAbility != null;
+                         toggleAbility != null &&
+                         skillConfigAbility != null;
             if (valid)
                 for (int i = 0; i < attributeSets.Count; i++)
                     valid &= attributeSets[i] != null;
 
             if (!valid)
                 Debug.LogError(
-                    "[ASCTest] 请配置 TagDatabase、AbilityDatabase、CueDatabase、完整 AttributeSet 和八个 GA SO。",
+                    "[ASCTest] 请配置 TagDatabase、AbilityDatabase、CueDatabase、完整 AttributeSet 和全部必需 GA SO。",
                     this);
             return valid;
         }
@@ -781,13 +1036,16 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             Collider sourceCollider = sourceObject.GetComponent<Collider>();
             if (sourceCollider != null)
                 sourceCollider.enabled = false;
+            if (IsSkillConfigScenario(scenario))
+                skillRuntimeHost = sourceObject.AddComponent<SkillRuntimeHost>();
             source = sourceObject.AddComponent<GameplayAbilitySystemComponent>();
             source.Initialize(attributeSets);
 
             targetObject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             targetObject.name = $"ASC Test Target - {currentScenario}";
             targetObject.transform.SetPositionAndRotation(
-                sourcePosition + transform.forward * targetDistance,
+                sourcePosition + transform.forward *
+                (IsSkillConfigScenario(scenario) ? 2f : targetDistance),
                 transform.rotation);
             target = targetObject.AddComponent<GameplayAbilitySystemComponent>();
             target.Initialize(attributeSets);
@@ -800,6 +1058,11 @@ namespace WS_Modules.GAS.AbilitySystemComponent
                 // 组合场景同时依赖 SelfCast 与 Instant，不能只校验主场景返回的 Instant。
                 dependenciesValid &= ValidateAbilityRegistration(selfCastAbility);
                 dependenciesValid &= ValidateCueMappings(selfCastAbility);
+            }
+            else if (scenario == AbilityTestScenario.SkillConfigInterruption)
+            {
+                dependenciesValid &= ValidateAbilityRegistration(secondSkillConfigAbility);
+                dependenciesValid &= ValidateCueMappings(secondSkillConfigAbility);
             }
 
             if (!dependenciesValid)
@@ -937,6 +1200,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             target = null;
             sourceObject = null;
             targetObject = null;
+            skillRuntimeHost = null;
             lastCueTarget = null;
             if (visualizer != null)
                 visualizer.DetachActors();
@@ -1209,7 +1473,21 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         /// <summary>取得完整套件的固定场景顺序。</summary>
         /// <returns>八个彼此隔离的技能场景。</returns>
         private static AbilityTestScenario[] GetAllScenarios() =>
-            (AbilityTestScenario[])Enum.GetValues(typeof(AbilityTestScenario));
+            new[]
+            {
+                AbilityTestScenario.Instant,
+                AbilityTestScenario.Async,
+                AbilityTestScenario.SelfCast,
+                AbilityTestScenario.AbilityTagsCancellation,
+                AbilityTestScenario.SelfChannel,
+                AbilityTestScenario.Toggle,
+                AbilityTestScenario.Passive,
+                AbilityTestScenario.SphereProjectile,
+                AbilityTestScenario.LinearProjectile,
+                AbilityTestScenario.SkillConfigNatural,
+                AbilityTestScenario.SkillConfigEnd,
+                AbilityTestScenario.SkillConfigCancel
+            };
 
         /// <summary>取得场景对应的 Ability Data。</summary>
         /// <param name="scenario">技能场景。</param>
@@ -1225,6 +1503,10 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             AbilityTestScenario.Passive => passiveAbility,
             AbilityTestScenario.SphereProjectile => projectileAbility,
             AbilityTestScenario.LinearProjectile => linearProjectileAbility,
+            AbilityTestScenario.SkillConfigNatural => skillConfigAbility,
+            AbilityTestScenario.SkillConfigEnd => skillConfigAbility,
+            AbilityTestScenario.SkillConfigCancel => skillConfigAbility,
+            AbilityTestScenario.SkillConfigInterruption => secondSkillConfigAbility,
             _ => throw new ArgumentOutOfRangeException(nameof(scenario), scenario, null)
         };
 
@@ -1242,6 +1524,10 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             AbilityTestScenario.Passive => "Passive 与 Cooldown",
             AbilityTestScenario.SphereProjectile => "Sphere Projectile",
             AbilityTestScenario.LinearProjectile => "Linear Projectile",
+            AbilityTestScenario.SkillConfigNatural => "SkillConfig Natural",
+            AbilityTestScenario.SkillConfigEnd => "SkillConfig End",
+            AbilityTestScenario.SkillConfigCancel => "SkillConfig Cancel",
+            AbilityTestScenario.SkillConfigInterruption => "SkillConfig Interruption",
             _ => throw new ArgumentOutOfRangeException(nameof(scenario), scenario, null)
         };
 
@@ -1251,6 +1537,15 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         private static bool IsProjectileScenario(AbilityTestScenario scenario) =>
             scenario == AbilityTestScenario.SphereProjectile ||
             scenario == AbilityTestScenario.LinearProjectile;
+
+        /// <summary>判断场景是否需要在 Source 上创建共享 SkillRuntimeHost。</summary>
+        /// <param name="scenario">当前测试场景。</param>
+        /// <returns>SkillConfig 生命周期场景返回 true。</returns>
+        private static bool IsSkillConfigScenario(AbilityTestScenario scenario) =>
+            scenario == AbilityTestScenario.SkillConfigNatural ||
+            scenario == AbilityTestScenario.SkillConfigEnd ||
+            scenario == AbilityTestScenario.SkillConfigCancel ||
+            scenario == AbilityTestScenario.SkillConfigInterruption;
 
         /// <summary>定义 ASC Tester 支持的独立技能场景。</summary>
         private enum AbilityTestScenario
@@ -1263,7 +1558,11 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             Toggle,
             Passive,
             SphereProjectile,
-            LinearProjectile
+            LinearProjectile,
+            SkillConfigNatural,
+            SkillConfigEnd,
+            SkillConfigCancel,
+            SkillConfigInterruption
         }
 
         #endregion

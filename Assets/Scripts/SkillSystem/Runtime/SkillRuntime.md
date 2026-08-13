@@ -4,8 +4,9 @@
 
 ```mermaid
 flowchart LR
-    StateMachine["外部状态机 / GAS"] --> Runner["SkillRunner 自动驱动适配器"]
-    AbilityTask["未来 AbilityTask 手动驱动"] --> Module["SkillRuntimeModule"]
+    StateMachine["非 GAS 状态机"] --> Runner["SkillRunner 自动驱动适配器"]
+    AbilityTask["PlaySkillConfig AbilityTask"] --> Host["角色 SkillRuntimeHost"]
+    Host --> Module["共享 SkillRuntimeModule"]
     Runner -->|"Tick / LateTick"| Module
     Module --> Execution["SkillExecution"]
     Execution --> Registry["SkillRuntimeRegistry 创建固定处理管线"]
@@ -54,21 +55,20 @@ Module 同一时间只允许一个活动执行。装备系统负责选择当前�
 
 ## 手动驱动接入
 
-未来 AbilitySystem 可以为每个角色执行通道持有一个 Module，并由自己的 Task 生命周期驱动：
+GAS 角色通过 `SkillRuntimeHost` 长期持有一个共享 Module，并由当前 Running Task 生命周期驱动：
 
 ```csharp
-ISkillRuntimeModule skillModule = new SkillRuntimeModule();
-skillModule.Initialize(actor, attack);
-skillModule.TryPlay(new SkillPlayRequest(skillConfig, weaponRoot, weaponTip));
+SkillRuntimeHost host = source.GetComponent<SkillRuntimeHost>();
+host.TryPlay(skillConfig);
 
 // AbilityTask 的普通更新阶段。
-skillModule.Tick(deltaTime);
+host.Tick(deltaTime);
 
 // AbilityTask 的 Late 更新阶段；最终帧攻击检测和自然结束在这里完成。
-skillModule.LateTick();
+host.LateTick();
 ```
 
-Module 常驻，但每次播放仍创建独立的 `SkillExecution`和六类 Handler。AbilityTask 应使用 AbilitySystem 所属的角色 Module，不应为每个 Task 创建可以并行驱动的执行通道。
+Module 常驻，但每次播放仍创建独立的 `SkillExecution`和六类 Handler。一个角色同一时刻只执行一个 SkillConfig 主动作；AbilityTask 必须使用 Source 上的共享 Host，不为每次激活创建并行 Module。`SkillRunner` 继续服务非 GAS 场景，不能与 Host 驱动同一个 Module。
 
 ## 结束语义
 
@@ -95,6 +95,20 @@ LayerMask → 排除 Owner 层级 → ISkillAttackTargetFilter → Clip 内目�
 LayerMask 负责 Physics 层粗筛选；`ISkillAttackTargetFilter`负责阵营、死亡、无敌或 GameplayTag 等业务规则。同一目标在一个 AttackDetection Clip 内只发布一次，新 Clip 可以再次命中。
 
 ## Odin 手动测试
+
+GAS 集成基准使用现有 30 FPS、35 帧 `SkillConfig.asset`。ASC Tester 验证自然完成、End、Cancel、
+立即重播、命中 Effect 与命中点 Execute Cue。占用共享 Host 的主动技能统一配置
+`Ability.Action.Skill` 到 `AbilityTags` 与 `CancelTags`；配置第二个 SkillConfig GA 后可执行互相打断测试。
+
+阶段 Handler 会在普通逻辑帧中先发布动作阶段变化，`PlaySkillConfigGameplayAbilityTask` 再将它投影为 Source ASC 的 `State.Action.Skill.Phase.*` 与 `Interruptible/Uninterruptible` 引用计数 Tag。SkillConfig GA 禁止在 `Uninterruptible` 存在时激活，因此拒绝发生在 Cost/Cooldown 提交前；Natural、End、Cancel 和 Clear 都会对称撤销阶段 Tag。
+
+```mermaid
+flowchart LR
+    ASC["ASC 三阶段"] --> Task["PlaySkillConfig Task"]
+    Task --> Host["SkillRuntimeHost"]
+    Host --> Module["共享 SkillRuntimeModule"]
+    Module --> Result["命中 / Cue / Natural Completed"]
+```
 
 在场景对象上挂载 `SkillRuntimeOdinTester`，配置 Runner、Owner、Origin、Animancer、SkillConfig 和可选武器节点，然后依次使用：
 

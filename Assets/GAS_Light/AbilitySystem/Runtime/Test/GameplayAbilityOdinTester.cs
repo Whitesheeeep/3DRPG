@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using RPG.SkillSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using WS_Modules.CustomEventSystem;
@@ -52,12 +53,16 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 new TickProbeGameplayAbilityTask(runtime, requiredTicks);
         }
         /// <summary>记录每次 ASC Tick 推进并在达到次数后完成的测试 Task。</summary>
-        private sealed class TickProbeGameplayAbilityTask : GameplayAbilityTickTask
+        private sealed class TickProbeGameplayAbilityTask : GameplayAbilityTask
         {
             private readonly int requiredTicks;
 
             /// <summary>获取已经收到的 ASC Tick 数量。</summary>
             internal int TickCount { get; private set; }
+            /// <summary>获取已经收到的 ASC FixedTick 数量。</summary>
+            internal int FixedTickCount { get; private set; }
+            /// <summary>获取已经收到的 ASC LateTick 数量。</summary>
+            internal int LateTickCount { get; private set; }
 
             // 保存本次 Runtime 独立的完成阈值。
             internal TickProbeGameplayAbilityTask(
@@ -68,11 +73,69 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 this.requiredTicks = requiredTicks;
             }
 
-            // 每个 ASC Tick 增加计数，达到阈值后通知完成。
+            /// <summary>Probe 启动时不产生同步副作用，等待后续普通阶段推进。</summary>
+            protected override void OnStart()
+            {
+            }
+
+            /// <summary>每个 ASC 普通阶段增加计数，达到阈值后通知完成。</summary>
+            /// <param name="deltaTime">本帧普通更新时间。</param>
             protected override void OnTick(float deltaTime)
             {
                 TickCount++;
                 if (TickCount >= requiredTicks) Complete();
+            }
+
+            /// <summary>记录固定更新阶段，验证该阶段不会冒充普通 Tick。</summary>
+            /// <param name="fixedDeltaTime">本次固定更新时间。</param>
+            protected override void OnFixedTick(float fixedDeltaTime) => FixedTickCount++;
+
+            /// <summary>记录延迟更新阶段，验证该阶段不会冒充普通 Tick。</summary>
+            /// <param name="deltaTime">本次延迟更新时间。</param>
+            protected override void OnLateTick(float deltaTime) => LateTickCount++;
+        }
+
+        /// <summary>配置一个只接收 LateUpdate 的测试 Task，验证单阶段覆写契约。</summary>
+        private sealed class LateOnlyProbeGameplayAbilityTaskConfig : GameplayAbilityTaskConfig
+        {
+            /// <summary>获取最近一次由测试配置创建的 Task。</summary>
+            internal LateOnlyProbeGameplayAbilityTask LastCreated { get; private set; }
+
+            /// <summary>为当前 Runtime 创建只实现 LateUpdate 的测试 Task。</summary>
+            /// <param name="runtime">拥有该 Task 的异步 Runtime。</param>
+            /// <returns>新的单阶段测试 Task。</returns>
+            protected override GameplayAbilityTask CreateTask(
+                AsynchronousGameplayAbilityRuntime runtime)
+            {
+                LastCreated = new LateOnlyProbeGameplayAbilityTask(runtime);
+                return LastCreated;
+            }
+        }
+
+        /// <summary>仅覆写 LateUpdate，并在第一次调用时完成。</summary>
+        private sealed class LateOnlyProbeGameplayAbilityTask : GameplayAbilityTask
+        {
+            /// <summary>获取收到的 LateUpdate 次数。</summary>
+            internal int LateTickCount { get; private set; }
+
+            /// <summary>创建等待第一次 LateUpdate 的测试 Task。</summary>
+            /// <param name="runtime">拥有该 Task 的异步 Runtime。</param>
+            internal LateOnlyProbeGameplayAbilityTask(AsynchronousGameplayAbilityRuntime runtime)
+                : base(runtime)
+            {
+            }
+
+            /// <summary>启动后保持 Running，等待 LateUpdate。</summary>
+            protected override void OnStart()
+            {
+            }
+
+            /// <summary>记录 LateUpdate 并立即完成，用于验证终态阶段保护。</summary>
+            /// <param name="deltaTime">本次延迟阶段的秒数。</param>
+            protected override void OnLateTick(float deltaTime)
+            {
+                LateTickCount++;
+                Complete();
             }
         }
         #endregion
@@ -336,7 +399,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 source.Tick(periodic.Duration);
             Expect("SelfChannel 完成或结束后不再 Active",
                 channelRuntime.State == GameplayAbilityRuntimeState.Ended);
-            Expect("SelfChannel 结束后释放 Tick 注册", source.TickRegistrationCount == 0);
+            Expect("SelfChannel 结束后移出 Active Runtime", !ContainsActiveRuntime(channelRuntime));
 
             GameplayAbilityHandle toggleHandle = source.GiveAbility(toggleSkill, 1);
             int effectsBeforeToggle = source.ActiveEffects.Count;
@@ -442,9 +505,9 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             LogSummary();
         }
 
-        /// <summary>验证通用 Tick Task 每帧执行、完成通知和 ASC Tick 注销。</summary>
-        [Button("测试 Tick Task")]
-        public void TestTickTask()
+        /// <summary>验证通用 Task 通过 Active Runtime 树逐帧执行并在完成后停止推进。</summary>
+        [Button("测试三阶段 Task")]
+        public void TestThreePhaseTask()
         {
             ResetTest();
             var data = ScriptableObject.CreateInstance<TestAsynchronousAbilityData>();
@@ -453,7 +516,6 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
 
             bool activated = source.TryActivateAbility(handle, null, out runtime);
             Expect("Tick Ability 激活成功", activated);
-            Expect("激活后 ASC Tick 注册一次", source.TickRegistrationCount == 1);
             if (!activated)
             {
                 DestroyImmediate(data);
@@ -463,6 +525,10 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
 
             var asyncRuntime = (AsynchronousGameplayAbilityRuntime)runtime;
             var probe = (TickProbeGameplayAbilityTask)asyncRuntime.RootTask;
+            source.FixedTick(0.02f);
+            source.LateTick(0.1f);
+            Expect("FixedTick 只进入固定阶段", probe.FixedTickCount == 1 && probe.TickCount == 0);
+            Expect("LateTick 只进入延迟阶段", probe.LateTickCount == 1 && probe.TickCount == 0);
             source.Tick(0.1f);
             Expect("第一次 Tick 被接收", probe.TickCount == 1);
             Expect("未完成前 Runtime 保持 Active",
@@ -474,54 +540,81 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 probe.State == GameplayAbilityTaskState.Completed);
             Expect("Root 完成后 Runtime Ended",
                 runtime.State == GameplayAbilityRuntimeState.Ended);
-            Expect("完成后 ASC Tick 注册归零", source.TickRegistrationCount == 0);
             Expect("完成后 Runtime 移出 Active",
                 source.ActiveAbilities.Count == 0);
 
             int finalTickCount = probe.TickCount;
+            int finalFixedTickCount = probe.FixedTickCount;
+            int finalLateTickCount = probe.LateTickCount;
             source.Tick(0.1f);
+            source.FixedTick(0.02f);
+            source.LateTick(0.1f);
             Expect("完成后 ASC 不再发送 Tick",
-                probe.TickCount == finalTickCount);
+                probe.TickCount == finalTickCount &&
+                probe.FixedTickCount == finalFixedTickCount &&
+                probe.LateTickCount == finalLateTickCount);
 
             DestroyImmediate(data);
             LogSummary();
         }
 
-        /// <summary>验证 Tick 回调注销其他回调和注册新回调时不会重复执行、漏执行或提前执行。</summary>
-        [Button("测试 Tick 回调修改安全")]
-        public void TestTickMutationSafety()
+        /// <summary>验证单阶段 Task 与 Sequence 只推进当前 Running 子 Task。</summary>
+        [Button("测试单阶段与 Sequence 转发")]
+        public void TestSinglePhaseAndSequence()
         {
             ResetTest();
-            int removedCallbackCount = 0;
-            int controllerCallbackCount = 0;
-            int nextFrameCallbackCount = 0;
-            bool nextFrameRegistered = false;
-            IUnRegister nextFrameRegistration = null;
-            IUnRegister removedRegistration = source.RegisterAbilityTick(
-                _ => removedCallbackCount++);
-            IUnRegister controllerRegistration = source.RegisterAbilityTick(_ =>
-            {
-                controllerCallbackCount++;
-                removedRegistration.UnRegister();
-                if (nextFrameRegistered) return;
-                nextFrameRegistered = true;
-                nextFrameRegistration = source.RegisterAbilityTick(
-                    _ => nextFrameCallbackCount++);
-            });
+            var data = ScriptableObject.CreateInstance<TestAsynchronousAbilityData>();
+            var lateConfig = new LateOnlyProbeGameplayAbilityTaskConfig();
+            var tickConfig = new TickProbeGameplayAbilityTaskConfig(1);
+            data.Initialize(new SequenceGameplayAbilityTaskConfig(
+                new GameplayAbilityTaskConfig[]
+                {
+                    lateConfig,
+                    tickConfig
+                }));
+            GameplayAbilityHandle handle = source.GiveAbility(data, 1);
 
-            // 倒序执行的 Controller 回调先注销前一项，并在当前帧注册第三项。
+            bool activated = source.TryActivateAbility(handle, null, out runtime);
+            Expect("单阶段 Sequence 激活成功", activated);
+            var lateOnly = lateConfig.LastCreated;
             source.Tick(0.1f);
-            Expect("被其他回调注销后本帧不再执行", removedCallbackCount == 0);
-            Expect("修改注册表的回调本帧只执行一次", controllerCallbackCount == 1);
-            Expect("Tick 中新增回调不在当前帧执行", nextFrameCallbackCount == 0);
+            source.FixedTick(0.02f);
+            Expect("LateOnly 不接收未覆写阶段", lateOnly.LateTickCount == 0 &&
+                runtime.State == GameplayAbilityRuntimeState.Active);
+            source.LateTick(0.1f);
+            Expect("LateOnly 只接收一次 LateUpdate", lateOnly.LateTickCount == 1);
 
+            Expect("Sequence 完成前一项后才启动下一项",
+                runtime.State == GameplayAbilityRuntimeState.Active);
             source.Tick(0.1f);
-            Expect("下一帧继续执行原回调一次", controllerCallbackCount == 2);
-            Expect("新增回调从下一帧开始执行", nextFrameCallbackCount == 1);
+            Expect("当前 Tick 子 Task 完成后 Runtime Ended",
+                runtime.State == GameplayAbilityRuntimeState.Ended);
+            int finalLateCount = lateOnly.LateTickCount;
+            source.LateTick(0.1f);
+            Expect("终态 Runtime 不再接收后续阶段", lateOnly.LateTickCount == finalLateCount);
 
-            controllerRegistration.UnRegister();
-            nextFrameRegistration?.UnRegister();
-            Expect("测试结束后 Tick 注册全部释放", source.TickRegistrationCount == 0);
+            DestroyImmediate(data);
+            LogSummary();
+        }
+
+        /// <summary>验证 SkillConfig Task 缐少 Host 时明确结束且不残留 Active Runtime。</summary>
+        [Button("测试 SkillConfig 缺少 Host")]
+        public void TestSkillConfigMissingHost()
+        {
+            ResetTest();
+            var config = ScriptableObject.CreateInstance<SkillConfig>();
+            var data = ScriptableObject.CreateInstance<TestAsynchronousAbilityData>();
+            data.Initialize(new PlaySkillConfigGameplayAbilityTaskConfig(config));
+            GameplayAbilityHandle handle = source.GiveAbility(data, 1);
+
+            bool activated = source.TryActivateAbility(handle, null, out runtime);
+            Expect("缺少 Host 时激活流程已经提交", activated);
+            Expect("缺少 Host 时 Task 立即完成",
+                runtime != null && runtime.State == GameplayAbilityRuntimeState.Ended);
+            Expect("缺少 Host 时不残留 Active Runtime", source.ActiveAbilities.Count == 0);
+
+            DestroyImmediate(data);
+            DestroyImmediate(config);
             LogSummary();
         }
 
@@ -570,8 +663,9 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             TestCommonSelfAbilities();
             TestSynchronousAbility();
             TestAsynchronousSequence();
-            TestTickTask();
-            TestTickMutationSafety();
+            TestThreePhaseTask();
+            TestSinglePhaseAndSequence();
+            TestSkillConfigMissingHost();
             TestAsynchronousTermination();
         }
         #endregion
@@ -580,6 +674,16 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private void OnDestroy() => CleanupSource();
 
         #region 内部辅助
+        /// <summary>判断当前 ASC 的 Active Runtime 列表是否仍包含指定实例。</summary>
+        /// <param name="candidate">待查询的 Runtime。</param>
+        /// <returns>仍存在相同引用时返回 true。</returns>
+        private bool ContainsActiveRuntime(GameplayAbilityRuntime candidate)
+        {
+            for (int i = 0; i < source.ActiveAbilities.Count; i++)
+                if (ReferenceEquals(source.ActiveAbilities[i], candidate)) return true;
+            return false;
+        }
+
         /// <summary>为每个场景创建独立 ASC 并初始化 Ability Database，避免运行时状态相互污染。</summary>
         private void ResetTest()
         {

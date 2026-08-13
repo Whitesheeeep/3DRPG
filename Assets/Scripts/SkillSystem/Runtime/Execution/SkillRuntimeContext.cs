@@ -48,6 +48,7 @@ namespace RPG.SkillSystem
         public SkillAttackSettings AttackSettings { get; }
         public PhysicsAttackDetectionService AttackDetectionServices { get; }
         public Action<SkillHitEventArgs> HitPublisher { get; }
+        public Action<SkillActionPhaseChangedEventArgs> PhasePublisher { get; }
 
         /// <summary>
         /// 创建一次执行期间共享的运行时上下文。
@@ -57,14 +58,17 @@ namespace RPG.SkillSystem
         /// <param name="request">本次播放动态输入。</param>
         /// <param name="attackSettings">开始执行时冻结的攻击设置快照。</param>
         /// <param name="hitPublisher">将去重后的命中发布给所属运行时 Module 的回调。</param>
+        /// <param name="phasePublisher">将同帧生效的动作阶段状态发布给所属 Module 的回调。</param>
         public SkillRuntimeContext(ulong executionId, SkillActorContext actor, SkillPlayRequest request,
-            SkillAttackSettings attackSettings, Action<SkillHitEventArgs> hitPublisher)
+            SkillAttackSettings attackSettings, Action<SkillHitEventArgs> hitPublisher,
+            Action<SkillActionPhaseChangedEventArgs> phasePublisher)
         {
             ExecutionId = executionId;
             Actor = actor;
             Request = request;
             AttackSettings = attackSettings;
             HitPublisher = hitPublisher;
+            PhasePublisher = phasePublisher;
             AttackDetectionServices = new PhysicsAttackDetectionService(this);
         }
 

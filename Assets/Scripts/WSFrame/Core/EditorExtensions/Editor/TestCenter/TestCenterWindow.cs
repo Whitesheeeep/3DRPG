@@ -12,7 +12,7 @@ namespace WS_Modules.EditorExtensions
         private TestCenterViewModel viewModel;
         private TestCenterView view;
 
-        [MenuItem("Tools/WSFrame/总测试窗口 %#T")]
+        [MenuItem("WSFrame/总测试窗口 %#T")]
         private static void ShowWindow()
         {
             TestCenterWindow window = GetWindow<TestCenterWindow>();

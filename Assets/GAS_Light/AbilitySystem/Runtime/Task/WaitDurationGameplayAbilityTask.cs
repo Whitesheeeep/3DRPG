@@ -3,7 +3,7 @@ using System;
 namespace WS_Modules.GAS.GameplayAbilitySystem
 {
     /// <summary>通过 ASC Tick 累计有限秒数后完成的 Ability Task。</summary>
-    public sealed class WaitDurationGameplayAbilityTask : GameplayAbilityTickTask
+    public sealed class WaitDurationGameplayAbilityTask : GameplayAbilityTask
     {
         #region 字段
         private readonly float duration;
@@ -24,15 +24,16 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         #endregion
 
         #region 生命周期
-        // 0 秒在 Tick 注册完成后立即结束；正数等待 ASC Tick 推进。
-        protected override void OnTickStarted()
+        /// <summary>零时长等待在启动调用内立即完成。</summary>
+        protected override void OnStart()
         {
             if (duration <= 0f) Complete();
         }
         #endregion
 
         #region Tick 更新
-        // 累计 ASC Tick 提供的 deltaTime，达到时长后完成并自动注销。
+        /// <summary>累计 ASC 普通更新阶段提供的时间，达到时长后完成。</summary>
+        /// <param name="deltaTime">本帧普通更新时间。</param>
         protected override void OnTick(float deltaTime)
         {
             elapsed += deltaTime;

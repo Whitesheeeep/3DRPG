@@ -12,7 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a99622f9b8d9440d8ded51e60080c091, type: 3}
   m_Name: PoolPrewarmConfig
   m_EditorClassIdentifier: 
-  gameObjectPrewarmItems: []
+  gameObjectPrewarmItems:
+  - enable: 1
+    key: Cube
+    initCount: 1
+    maxCapacity: 5
   classPrewarmItems:
   - enable: 1
     classId: 1476317528

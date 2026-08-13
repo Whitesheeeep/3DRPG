@@ -53,6 +53,13 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         // GE Controller 需要通过 ASC 取得可变容器，但外部业务只能看到只读接口。
         internal GameplayTagCountContainer MutableTags { get; private set; }
 
+        /// <summary>由同程序集 Runtime 对称增加或移除短生命周期状态 Tag 引用计数。</summary>
+        /// <param name="tag">需要更新的已 Bake GameplayTag。</param>
+        /// <param name="delta">本次引用计数增量，运行时使用正负一。</param>
+        /// <returns>计数更新成功时返回 true。</returns>
+        internal bool UpdateRuntimeTagCount(GameplayTag tag, int delta) =>
+            MutableTags.UpdateTagCount(tag, delta);
+
         // Attribute 结算必须绕过只读门面，由 ASC 内部统一持有可变实例。
         internal GameplayAttributeContainer MutableAttributes { get; private set; }
 
@@ -74,6 +81,15 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             cueController = new GameplayCueCtrl(this);
             Cues = cueController;
         }
+
+        /// <summary>使用 Unity 普通帧推进 GE 与 GA 普通阶段。</summary>
+        private void Update() => Tick(Time.deltaTime);
+
+        /// <summary>使用 Unity 固定帧推进 GA 固定阶段；GE 不在此重复计时。</summary>
+        private void FixedUpdate() => FixedTick(Time.fixedDeltaTime);
+
+        /// <summary>在动画姿态稳定后推进 GA 延迟阶段。</summary>
+        private void LateUpdate() => LateTick(Time.deltaTime);
 
         // 组件销毁时释放 Tick 注册、Active GA、GE 和容器运行状态。
         private void OnDestroy()
@@ -124,6 +140,14 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             GameEffectCtrl.Tick(deltaTime);
             abilityController.Tick(deltaTime);
         }
+
+        /// <summary>推进当前 ASC 的 GA 固定更新阶段，不更新 GE。</summary>
+        /// <param name="fixedDeltaTime">本次固定更新的秒数。</param>
+        public void FixedTick(float fixedDeltaTime) => abilityController.FixedTick(fixedDeltaTime);
+
+        /// <summary>推进当前 ASC 的 GA 延迟更新阶段，不更新 GE。</summary>
+        /// <param name="deltaTime">本次延迟更新使用的秒数。</param>
+        public void LateTick(float deltaTime) => abilityController.LateTick(deltaTime);
         #endregion
 
         #region 只读快捷查询
@@ -253,14 +277,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             abilityController.TryCancel(runtime);
         #endregion
 
-        #region Ability Tick 内部入口
-        /// <summary>获取当前 Ability Controller 的 Tick 注册数量，仅供测试和诊断使用。</summary>
-        internal int TickRegistrationCount => abilityController.TickRegistrationCount;
-
-        // TickTask 通过 ASC 注册到所属 Ability Controller，避免依赖外部调度器实现。
-        internal IUnRegister RegisterAbilityTick(Action<float> callback) =>
-            abilityController.RegisterTick(callback);
-
+        #region Ability 内部入口
         // 仅允许当前 ASC 内部发布 Cue 请求，Controller 负责消费和对象池生命周期。
         internal void PublishGameplayCue(GameplayCueRequest request) => CueRequested?.Invoke(request);
         #endregion

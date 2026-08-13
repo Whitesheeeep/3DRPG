@@ -23,14 +23,14 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         {
             GameplayAbilityData data = Runtime.Data;
             data.ApplyConfiguredEffects(
-                Runtime.Source,
-                Runtime.Source,
+                Runtime.SourceASC,
+                Runtime.SourceASC,
                 Runtime.Level,
                 Runtime.SetByCaller);
             data.PublishConfiguredCues(
                 GameplayCueEventType.Execute,
-                Runtime.Source,
-                Runtime.Source,
+                Runtime.SourceASC,
+                Runtime.SourceASC,
                 abilityRuntime: Runtime);
             Complete();
         }

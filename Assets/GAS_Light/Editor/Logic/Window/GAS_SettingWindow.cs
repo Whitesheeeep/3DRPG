@@ -56,7 +56,7 @@ namespace WS_Modules.GAS.Editor
         #region 公开入口
 
         /// <summary>打开或聚焦 GAS 设置窗口，并恢复上次选项卡。</summary>
-        [MenuItem("WSFrame/GAS/Settings")]
+        [MenuItem("WSFrame/GAS/Settings", priority = 100)]
         public static void ShowWindow()
         {
             GAS_SettingWindow window = GetConfiguredWindow();
