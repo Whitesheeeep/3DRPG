@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using RPG.SkillSystem;
 
 namespace RPG.CameraSystem
 {
@@ -8,10 +9,11 @@ namespace RPG.CameraSystem
     internal sealed class CameraModifierMixer
     {
         /// <summary>合成请求；输入顺序必须由早到晚。</summary>
-        internal CameraModifierState Mix(IReadOnlyList<CameraModifierRequest> requests)
+        internal CameraModifierState Mix(IReadOnlyList<CameraModifierRequest> requests,
+            IReadOnlyList<CameraShakeRuntime> shakes, double time)
         {
             long lensBarrier = FindBarrier(requests, CameraModifierChannel.Lens);
-            long shakeBarrier = FindBarrier(requests, CameraModifierChannel.Shake);
+            long shakeBarrier = FindShakeBarrier(requests, shakes);
             float fov = 1f;
             UnityEngine.Vector3 position = UnityEngine.Vector3.zero;
             UnityEngine.Vector3 rotation = UnityEngine.Vector3.zero;
@@ -34,6 +36,16 @@ namespace RPG.CameraSystem
                     affected |= CameraModifierChannel.Shake;
                 }
             }
+
+            foreach (CameraShakeRuntime shake in shakes)
+            {
+                if (shake.Sequence < shakeBarrier) continue;
+                shake.Sample(time, out UnityEngine.Vector3 shakePosition,
+                    out UnityEngine.Vector3 shakeRotation);
+                position += shakePosition;
+                rotation += shakeRotation;
+                affected |= CameraModifierChannel.Shake;
+            }
             return new CameraModifierState(affected, CameraModifierChannel.None, fov, position, rotation);
         }
 
@@ -46,6 +58,24 @@ namespace RPG.CameraSystem
             {
                 if (request.Active && (request.State.ExclusiveChannels & channel) != 0)
                     result = request.Sequence;
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 在时间轴 Modifier 与 Profile Shake 中查找最后创建的 Exclusive 屏障。
+        /// </summary>
+        /// <param name="requests">按创建顺序保存的 Modifier 请求。</param>
+        /// <param name="shakes">按创建顺序保存的 Profile Shake 请求。</param>
+        /// <returns>Shake 通道最后一个 Exclusive 请求的创建序号。</returns>
+        private static long FindShakeBarrier(IReadOnlyList<CameraModifierRequest> requests,
+            IReadOnlyList<CameraShakeRuntime> shakes)
+        {
+            long result = FindBarrier(requests, CameraModifierChannel.Shake);
+            foreach (CameraShakeRuntime shake in shakes)
+            {
+                if (shake.BlendMode == CameraModifierBlendMode.Exclusive)
+                    result = System.Math.Max(result, shake.Sequence);
             }
             return result;
         }

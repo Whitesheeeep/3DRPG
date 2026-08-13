@@ -58,21 +58,6 @@ namespace WS_Modules.Pooling
         }
 
         /// <summary>
-        /// 添加 class 对象池预热项。Processor 会用 Type 指针从生成表中查找强类型预热委托。
-        /// </summary>
-        public void Class(Type type, int initCount, int maxCapacity)
-        {
-            if (type == null) return;
-
-            _classItems.Add(new ClassPoolPrewarmRequest
-            {
-                Type = type,
-                InitCount = initCount,
-                MaxCapacity = maxCapacity,
-            });
-        }
-
-        /// <summary>
         /// 添加 class 对象池预热项。该重载直接保存编译期强类型预热委托。
         /// </summary>
         public void Class<T>(int initCount, int maxCapacity) where T : class, IPoolable, new()

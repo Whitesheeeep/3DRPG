@@ -11,6 +11,14 @@
             <ui:Toggle name="AutoRefreshToggle" label="自动刷新" binding-path="autoRefresh" class="pool-toggle" />
             <ui:Label name="LastRefreshLabel" text="Last refresh: -" binding-path="lastRefreshText" class="pool-last-refresh" />
         </ui:VisualElement>
+        <ui:VisualElement name="RegistryGeneratorSection" class="pool-registry-generator">
+            <ui:VisualElement class="pool-registry-header">
+                <ui:Label text="Class Pool Registry Generator" class="pool-registry-title" />
+                <ui:Button name="GenerateRegistryButton" text="Generate Class Pool Prewarm Registry" class="pool-button pool-button-primary pool-registry-generate-button" />
+            </ui:VisualElement>
+            <ui:Label name="RegistryStatusLabel" text="Registry files not loaded." class="pool-registry-status" />
+            <ui:VisualElement name="RegistryPathList" class="pool-registry-path-list" />
+        </ui:VisualElement>
         <ui:VisualElement name="PoolSearchRow" class="pool-search-row">
             <ui:TextField name="SearchField" label="Search" class="pool-search-field" />
             <ui:Button name="ClearSearchButton" text="Clear" class="pool-button pool-button-neutral pool-clear-search-button" />
