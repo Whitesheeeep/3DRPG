@@ -32,6 +32,10 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsGASLightGameEffectSystemEditorStyleGameplayEffectEditor = "Assets/GAS_Light/GameEffectSystem/Editor/Style/GameplayEffectEditor.uxml";
             /// <summary>资源路径：Assets/GAS_Light/GameEffectSystem/Editor/Style/GameplayEffectModifierRow.uxml</summary>
             public const string AssetsGASLightGameEffectSystemEditorStyleGameplayEffectModifierRow = "Assets/GAS_Light/GameEffectSystem/Editor/Style/GameplayEffectModifierRow.uxml";
+            /// <summary>资源路径：Assets/GAS_Light/GameplayCueSystem/Editor/Style/GameplayCueEditor.uxml</summary>
+            public const string AssetsGASLightGameplayCueSystemEditorStyleGameplayCueEditor = "Assets/GAS_Light/GameplayCueSystem/Editor/Style/GameplayCueEditor.uxml";
+            /// <summary>资源路径：Assets/GAS_Light/GameplayCueSystem/Editor/Style/GameplayCueRow.uxml</summary>
+            public const string AssetsGASLightGameplayCueSystemEditorStyleGameplayCueRow = "Assets/GAS_Light/GameplayCueSystem/Editor/Style/GameplayCueRow.uxml";
             /// <summary>资源路径：Assets/GAS_Light/TagSystem/Editor/Style/GameplayTagEditor.uxml</summary>
             public const string AssetsGASLightTagSystemEditorStyleGameplayTagEditor = "Assets/GAS_Light/TagSystem/Editor/Style/GameplayTagEditor.uxml";
             /// <summary>资源路径：Assets/GAS_Light/TagSystem/Editor/Style/GameplayTagTreeRow.uxml</summary>
@@ -61,7 +65,6 @@ namespace WS_Modules.UIModule.Editor
             /// <summary>资源路径：Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/UISystemView/UISystemView.uxml</summary>
             public const string AssetsScriptsWSFrameFrameControlEditorFrameSettingWindowUISystemViewUISystemView = "Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/UISystemView/UISystemView.uxml";
         }
-
         /// <summary>所有 Uss 资源路径。</summary>
         public static class Uss
         {
@@ -73,6 +76,8 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsGASLightEditorStyleGASSettingWindow = "Assets/GAS_Light/Editor/Style/GASSettingWindow.uss";
             /// <summary>资源路径：Assets/GAS_Light/GameEffectSystem/Editor/Style/GameplayEffectEditor.uss</summary>
             public const string AssetsGASLightGameEffectSystemEditorStyleGameplayEffectEditor = "Assets/GAS_Light/GameEffectSystem/Editor/Style/GameplayEffectEditor.uss";
+            /// <summary>资源路径：Assets/GAS_Light/GameplayCueSystem/Editor/Style/GameplayCueEditor.uss</summary>
+            public const string AssetsGASLightGameplayCueSystemEditorStyleGameplayCueEditor = "Assets/GAS_Light/GameplayCueSystem/Editor/Style/GameplayCueEditor.uss";
             /// <summary>资源路径：Assets/GAS_Light/TagSystem/Editor/Style/GameplayTagEditor.uss</summary>
             public const string AssetsGASLightTagSystemEditorStyleGameplayTagEditor = "Assets/GAS_Light/TagSystem/Editor/Style/GameplayTagEditor.uss";
             /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/EditorWindowStyle/SkillTimelineEditorWindow.uss</summary>
@@ -85,6 +90,8 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowStylesSkillTimelineAttackDetectionClipItem = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineAttackDetectionClipItem.uss";
             /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineAudioClipItem.uss</summary>
             public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowStylesSkillTimelineAudioClipItem = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineAudioClipItem.uss";
+            /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineCameraModifierClipItem.uss</summary>
+            public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowStylesSkillTimelineCameraModifierClipItem = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineCameraModifierClipItem.uss";
             /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineEventMarkerItem.uss</summary>
             public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowStylesSkillTimelineEventMarkerItem = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineEventMarkerItem.uss";
             /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineItemCommon.uss</summary>
@@ -105,6 +112,10 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsScriptsWSFrameFrameControlEditorFrameSettingWindowUISystemViewUISystemView = "Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/UISystemView/UISystemView.uss";
             /// <summary>资源路径：Assets/Scripts/WSFrame/UIToolkitExtensions/Editor/GeneralLabel.uss</summary>
             public const string AssetsScriptsWSFrameUIToolkitExtensionsEditorGeneralLabel = "Assets/Scripts/WSFrame/UIToolkitExtensions/Editor/GeneralLabel.uss";
+            /// <summary>资源路径：Assets/Scripts/WSFrame/UIToolkitExtensions/Editor/GraphView/Samples/GraphViewFrameworkSampleNode.uss</summary>
+            public const string AssetsScriptsWSFrameUIToolkitExtensionsEditorGraphViewSamplesGraphViewFrameworkSampleNode = "Assets/Scripts/WSFrame/UIToolkitExtensions/Editor/GraphView/Samples/GraphViewFrameworkSampleNode.uss";
+            /// <summary>资源路径：Assets/Scripts/WSFrame/UIToolkitExtensions/Editor/GraphView/WSGraphNode.uss</summary>
+            public const string AssetsScriptsWSFrameUIToolkitExtensionsEditorGraphViewWSGraphNode = "Assets/Scripts/WSFrame/UIToolkitExtensions/Editor/GraphView/WSGraphNode.uss";
         }
     }
 }

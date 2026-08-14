@@ -1,0 +1,15 @@
+.ws-graph-node {
+    min-width: 220px;
+}
+
+.ws-graph-node__content {
+    padding-top: 6px;
+    padding-right: 8px;
+    padding-bottom: 6px;
+    padding-left: 8px;
+}
+
+.ws-graph-node__content > * {
+    margin-top: 2px;
+    margin-bottom: 2px;
+}

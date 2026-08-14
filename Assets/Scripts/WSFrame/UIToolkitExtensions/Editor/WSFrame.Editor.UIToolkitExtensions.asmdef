@@ -1,26 +1,19 @@
-﻿{
-    "name":  "WSFrame.Editor.UIToolkitExtensions",
-    "rootNamespace":  "",
-    "references":  [
-                       "GUID:da1903d9b92d4121b535484fbe214808"
-                   ],
-    "includePlatforms":  [
-                             "Editor"
-                         ],
-    "excludePlatforms":  [
-
-                         ],
-    "allowUnsafeCode":  false,
-    "overrideReferences":  false,
-    "precompiledReferences":  [
-
-                              ],
-    "autoReferenced":  true,
-    "defineConstraints":  [
-
-                          ],
-    "versionDefines":  [
-
-                       ],
-    "noEngineReferences":  false
+{
+    "name": "WSFrame.Editor.UIToolkitExtensions",
+    "rootNamespace": "",
+    "references": [
+        "GUID:da1903d9b92d4121b535484fbe214808",
+        "GUID:0f13e3497fcd4445ab83b04dc83c5f03"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }
