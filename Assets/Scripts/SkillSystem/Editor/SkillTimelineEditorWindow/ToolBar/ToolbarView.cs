@@ -177,7 +177,7 @@ namespace RPG.SkillSystem.Editor
             RefreshZoom();
         }
 
-        // 刷新当前配置、帧率和总帧数字段。
+        /// <summary>刷新当前配置、帧率、总帧数与配置级根运动字段。</summary>
         private void RefreshConfig()
         {
             SkillConfig config = viewModel.CurrentConfig;
@@ -193,6 +193,8 @@ namespace RPG.SkillSystem.Editor
             stopButton.SetEnabled(enabled);
             previousFrameButton.SetEnabled(enabled);
             nextFrameButton.SetEnabled(enabled);
+            rootMotionToggle.SetEnabled(enabled);
+            rootMotionToggle.SetValueWithoutNotify(enabled && config.IsRootMotion);
         }
 
         // 刷新贯穿时间轴的播放头位置。
@@ -205,12 +207,11 @@ namespace RPG.SkillSystem.Editor
             loopButton.EnableInClassList("loop-button--active", viewModel.IsLooping);
         }
 
-        // 刷新固定预览场景和演示角色字段。
+        /// <summary>刷新项目级预览场景、演示角色与摄像机字段。</summary>
         private void RefreshSettings()
         {
             previewSceneField.SetValueWithoutNotify(viewModel.PreviewScene);
             previewActorField.SetValueWithoutNotify(viewModel.PreviewActor);
-            rootMotionToggle.SetValueWithoutNotify(viewModel.PreviewApplyRootMotion);
             gameplayCameraField.SetValueWithoutNotify(viewModel.GameplayCameraPrefab);
             cameraModifierPreviewToggle.SetValueWithoutNotify(viewModel.PreviewCameraModifier);
         }
@@ -248,9 +249,10 @@ namespace RPG.SkillSystem.Editor
         // 把演示角色字段变化写入固定编辑器设置。
         private void OnPreviewActorChanged(ChangeEvent<UnityEngine.Object> evt) => viewModel.SetPreviewActor(evt.newValue as GameObject);
 
-        // 把 Root Motion Toggle 转换为项目级预览设置并立即重采样当前帧。
+        /// <summary>将 Root Motion 输入提交给 Document，以统一处理 Undo 和预览刷新。</summary>
+        /// <param name="evt">包含配置级根运动目标值的 UI 变化事件。</param>
         private void OnRootMotionChanged(ChangeEvent<bool> evt) =>
-            viewModel.SetPreviewApplyRootMotion(evt.newValue);
+            viewModel.SetRootMotion(evt.newValue);
         /// <summary>保存 Gameplay VCam Prefab。</summary>
         private void OnGameplayCameraChanged(ChangeEvent<UnityEngine.Object> evt) =>
             viewModel.SetGameplayCameraPrefab(evt.newValue as GameObject);

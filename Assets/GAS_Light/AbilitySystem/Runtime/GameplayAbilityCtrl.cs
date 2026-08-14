@@ -139,6 +139,10 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             if (!IsValidDeltaTime(deltaTime)) return;
             AdvanceRuntimes(runtime => runtime.LateTick(deltaTime));
         }
+
+        /// <summary>推进当前 Controller 的 Active Runtime 动画根运动阶段。</summary>
+        public void UpdateAnimationMove() =>
+            AdvanceRuntimes(runtime => runtime.UpdateAnimationMove());
         #endregion
 
         #region 激活

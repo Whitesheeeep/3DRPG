@@ -8,25 +8,23 @@ using WS_Modules.ResLoadModule;
 namespace WS_Modules.Pooling
 {
     /// <summary>
-    /// 娓告垙瀵硅薄姹犳ā鍧楋細鎻愪緵鍩轰簬棰勫埗浣撶殑瀵硅薄姹犲姛鑳斤紝鏀寔鍚屾鍜屽紓姝ヨ幏鍙栦笌鍥炴敹锛岄鐑姛鑳斤紝浠ュ強姹犲閲忕鐞嗐€?
-    /// - 涓嶅叧蹇冩娊灞夌殑瀹炵幇缁嗚妭锛屼笓娉ㄤ簬瀵硅薄姹犵殑鏍稿績鍔熻兘鍜屾帴鍙ｈ璁★紝鏂逛究鍚庣画鏇挎崲鎶藉眽瀹炵幇鎴栨墿灞曞叾浠栫被鍨嬬殑姹犳暟鎹粨鏋勩€?
-    /// - 涓嶅叧蹇冭祫婧愬姞杞界殑瀹炵幇缁嗚妭锛岄€氳繃 IResLoad 鎺ュ彛鎶借薄璧勬簮鍔犺浇閫昏緫锛屾柟渚垮悗缁浛鎹㈣祫婧愬姞杞界郴缁熸垨鏀寔涓嶅悓绫诲瀷鐨勮祫婧愬姞杞介渶姹傘€?
-    /// - 闇€瑕佽嚜琛屼紶鍏ュ璞＄殑 key, initCount 鍜?maxCapacity 鏉ラ鐑睜瀛愶紝棰勭儹鏃朵細鑷姩鍒涘缓涓€涓柊鐨勬睜瀛愬苟鍔犺浇鎸囧畾鏁伴噺鐨勫璞″疄渚嬪埌姹犱腑锛屾柟渚垮悗缁幏鍙栨椂鐩存帴澶嶇敤銆?
+    /// 管理基于 Prefab 的 GameObject 对象池，支持同步与异步获取、回收、预热和容量限制。
+    /// 资源加载由 IResLoad 抽象提供，池数据与加载实现彼此独立。
     /// </summary>
     public class GameObjectPoolModule
     {
-        // 鏁翠釜瀵硅薄姹犵殑鏍瑰璞?
+        // 全部池抽屉共享的根节点。
         private Transform poolRootTransform;
-        // 瀛樺偍鎵€鏈夋睜瀛愮殑鏁版嵁缁撴瀯
+        // 按稳定 Key 保存各 GameObject 池的数据。
         private Dictionary<string, GameObjectPoolData> PoolDic = new();
-        // 鐢ㄤ簬鍒涘缓瀵硅薄鐨勫伐鍘傦紝閬垮厤鐩存帴渚濊禆璧勬簮鍔犺浇绯荤粺锛屾柟渚垮悗缁浛鎹㈠拰鎵╁睍
+        // 通过资源加载接口取得 Key 对应的 Prefab，避免绑定具体资源系统。
         private IResLoad<string> gameObjectResLoader;
 
         /// <summary>
-        /// 鏋勯€犲嚱鏁帮紝鎺ュ彈涓€涓?Transform 浣滀负瀵硅薄姹犵殑鏍硅妭鐐癸紝浠ュ強涓€涓?IResLoad 璧勬簮鍔犺浇鍣ㄦ潵鍔犺浇棰勫埗浣撹祫婧愶紝纭繚瀵硅薄姹犳ā鍧楃殑鐙珛鎬у拰鍙浛鎹㈡€с€?
+        /// 创建 GameObject 对象池模块，并配置池根节点与 Prefab 资源加载器。
         /// </summary>
-        /// <param name="poolRootTransform">璇ユ睜瀛愭ā鍧楃殑鏍硅妭鐐?/param>
-        /// <param name="gameObjectResLoader"></param>
+        /// <param name="poolRootTransform">全部池抽屉的根节点；为空时自动创建。</param>
+        /// <param name="gameObjectResLoader">按字符串 Key 加载 Prefab 的资源加载器。</param>
         public GameObjectPoolModule(Transform poolRootTransform, IResLoad<string> gameObjectResLoader)
         {
             this.poolRootTransform = poolRootTransform ?? new GameObject("ObjectPoolRoot").transform;
@@ -55,12 +53,11 @@ namespace WS_Modules.Pooling
         }
 
         /// <summary>
-        /// 瀵硅薄姹犻鐑細鎻愬墠鍒涘缓涓€瀹氭暟閲忕殑瀵硅薄瀹炰緥骞舵斁鍏ユ睜涓紝鍑忓皯鍚庣画鑾峰彇鏃剁殑鎬ц兘寮€閿€锛岄€傜敤浜庨渶瑕佸湪娓告垙寮€濮嬫椂灏卞噯澶囧ソ涓€瀹氭暟閲忓璞＄殑鎯呭喌锛岄伩鍏嶅湪娓告垙杩囩▼涓绻佸姞杞借祫婧愬拰瀹炰緥鍖栧璞″鑷寸殑鎬ц兘闂銆?
-        /// 棰勭儹鏃朵細鑷姩鍒涘缓涓€涓柊鐨勬睜瀛愬苟鍔犺浇鎸囧畾鏁伴噺鐨勫璞″疄渚嬪埌姹犱腑锛屾柟渚垮悗缁幏鍙栨椂鐩存帴澶嶇敤銆傝姹傞鐑殑瀵硅薄鍚嶇О key銆佸垵濮嬫暟閲?initCount 鍜屾渶澶у閲?maxCapacity 鍙傛暟蹇呴』鏈夋晥锛屽惁鍒欓鐑細澶辫触骞惰緭鍑鸿鍛婃棩蹇椼€?
-        /// 棰勭儹瀹屾垚鍚庯紝姹犲瓙涓細鏈?initCount 涓璞″疄渚嬪彲渚涜幏鍙栵紝姹犲瓙鐨勬渶澶у閲忎负 maxCapacity锛岃秴杩囧閲忛檺鍒剁殑瀵硅薄鍦ㄥ洖鏀舵椂浼氳涓㈠純鑰屼笉鏄斁鍏ユ睜涓€?
-        /// </summary> <param name="key">瀵硅薄鍚嶇О key</param>
-        /// <param name="initCount">鍒濆鏁伴噺</param>
-        /// <param name="maxCapacity">鏈€澶у閲?/param>
+        /// 按资源 Key 同步加载 Prefab，并预先创建指定数量的可用对象。
+        /// </summary>
+        /// <param name="key">Prefab 资源 Key，同时也是对象池的稳定 Key。</param>
+        /// <param name="initCount">预热后池内至少应有的可用对象数量。</param>
+        /// <param name="maxCapacity">池允许保留的最大对象数量。</param>
         public void Prewarm(string key, int initCount, int maxCapacity)
         {
             if (!CheckPrewarmValid(key, initCount, maxCapacity)) return;
@@ -81,14 +78,12 @@ namespace WS_Modules.Pooling
         }
 
         /// <summary>
-        /// 瀵硅薄姹犻鐑殑寮傛鐗堟湰锛岄€傜敤浜庨渶瑕佷粠杩滅▼鎴栧紓姝ヨ祫婧愮郴缁熷姞杞介鍒朵綋鐨勬儏鍐碉紝閬垮厤鍦ㄤ富绾跨▼绛夊緟璧勬簮鍔犺浇瀹屾垚銆?
-        /// 鍙互鐩存帴浣跨敤 async/await 鏉ヨ皟鐢ㄨ繖涓柟娉曪紝鎴栬€呬娇鐢ㄥ洖璋冩帴鍙ｆ潵鑾峰彇棰勭儹瀹屾垚鐨勯€氱煡銆?
-        /// 涔熷彲浠ョ洿鎺ョ敤 Forget() 瀹炵幇涓€鍙戝嵆寮冪殑棰勭儹璋冪敤锛岄€傜敤浜庝笉鍏冲績棰勭儹瀹屾垚鏃舵満鐨勬儏鍐点€?
+        /// 异步加载资源并预热对象池；完成后通过回调报告本次预热是否成功。
         /// </summary>
-        /// <param name="key">瀵硅薄鍚嶇О key</param>
-        /// <param name="initCount">鍒濆鏁伴噺</param>
-        /// <param name="maxCapacity">鏈€澶у閲?/param>
-        /// <param name="onComplete">寮傛鐗堟湰棰勭儹瀹屾垚鍚庣殑鍥炶皟锛岃繑鍥炰竴涓猙ool琛ㄧず棰勭儹鏄惁鎴愬姛</param>
+        /// <param name="key">Prefab 资源 Key，同时也是对象池的稳定 Key。</param>
+        /// <param name="initCount">预热后池内至少应有的可用对象数量。</param>
+        /// <param name="maxCapacity">池允许保留的最大对象数量。</param>
+        /// <param name="onComplete">预热结束回调，参数表示本次操作是否成功。</param>
         public async UniTask PrewarmAsync(string key, int initCount, int maxCapacity,
             UnityAction<bool> onComplete = null)
         {
@@ -126,28 +121,30 @@ namespace WS_Modules.Pooling
 
 
         /// <summary>
-        /// 璇ユ柟娉曟彁渚涗簡涓€涓畝鍖栫殑鎺ュ彛锛屽厑璁歌皟鐢ㄦ柟鐩存帴閫氳繃绫诲瀷鍙傛暟鏉ヨ幏鍙栧璞″疄渚嬶紝鍐呴儴浼氫娇鐢ㄧ被鍨嬪悕绉颁綔涓?key 鏉ョ鐞嗘睜瀛愶紝閫傜敤浜庢瘡涓被鍨嬪搴斾竴涓鍒朵綋鐨勫父瑙佹儏鍐点€?
-        /// 瑕佹眰锛?c>蹇呴』鏄祫婧愪笌瀵瑰簲鐨勭被涓€鑷村悕绉?/c>
+        /// 使用类型名作为资源 Key 同步获取对象；资源 Key 必须与类型名一致。
         /// </summary>
+        /// <typeparam name="T">提供资源 Key 的池化对象类型。</typeparam>
+        /// <param name="parent">对象生成后的父节点。</param>
+        /// <returns>取得或新建的对象；校验或加载失败时返回 null。</returns>
         public GameObject Get<T>(Transform parent = null) where T : IGameObjectPoolable
         {
             return Get(typeof(T).Name, parent);
         }
 
         /// <summary>
-        /// 鍚屾鍔犺浇瀵硅薄锛屽鏋滄睜涓病鏈夊彲鐢ㄥ璞★紝鍒欏皾璇曚粠椤圭洰璧勬簮绯荤粺鍔犺浇棰勫埗浣撳苟瀹炰緥鍖栵紝杩斿洖瀹炰緥瀵硅薄銆?
+        /// 按稳定 Key 同步获取对象；池为空时加载并实例化对应 Prefab。
         /// </summary>
-        /// <param name="key"></param>
-        /// <param name="parent"></param>
-        /// <returns></returns>
+        /// <param name="key">Prefab 资源 Key，同时也是对象池的稳定 Key。</param>
+        /// <param name="parent">对象生成后的父节点。</param>
+        /// <returns>取得或新建的对象；校验或加载失败时返回 null。</returns>
         public GameObject Get(string key, Transform parent = null)
         {
             if (!CheckKeyAndResLoadValid(key)) return null;
 
             if (!PoolDic.TryGetValue(key, out var data))
             {
-                // 鑷姩鍒涘缓涓€涓棤闄愬閲忕殑姹犮€?
-                WSLog.Log("鍒涘缓鏂扮殑瀵硅薄姹? " + key + ", 榛樿鏃犻檺瀹归噺锛屽鏋滈渶瑕佸閲忛檺鍒惰棰勫厛璋冪敤 Prewarm 鏂规硶璁剧疆瀹归噺锛屽悓鏃跺缓璁鐑睜瀛愪互閬垮厤鍚庣画鑾峰彇鏃剁殑鎬ц兘闂");
+                // 首次直接获取会创建无限容量池；容量限制必须在首次获取前通过预热确定。
+                WSLog.Log("创建新的对象池 " + key + "，默认容量无限；如需限制容量，请先调用 Prewarm，并建议预热以减少首次加载和实例化开销。");
                 data = new GameObjectPoolData(poolRootTransform, -1, $"Pool_{key}");
                 PoolDic[key] = data;
             }
@@ -194,8 +191,8 @@ namespace WS_Modules.Pooling
 
             if (!PoolDic.TryGetValue(key, out var data))
             {
-                // 鐩翠紶 prefab 鑾峰彇鏃惰嚜鍔ㄥ垱寤烘棤闄愬閲忔睜锛屽悗缁洖鏀跺彲浠ュ鐢ㄣ€?
-                WSLog.Log("鍒涘缓鏂扮殑瀵硅薄姹? " + key + ", 榛樿鏃犻檺瀹归噺锛屽鏋滈渶瑕佸閲忛檺鍒惰棰勫厛璋冪敤 Prewarm 鏂规硶璁剧疆瀹归噺锛屽悓鏃跺缓璁鐑睜瀛愪互閬垮厤鍚庣画鑾峰彇鏃剁殑鎬ц兘闂");
+                // 直接传入 Prefab 时也建立可供后续回收复用的无限容量池。
+                WSLog.Log("创建新的对象池 " + key + "，默认容量无限；如需限制容量，请先调用 Prewarm，并建议预热以减少首次加载和实例化开销。");
                 data = new GameObjectPoolData(poolRootTransform, -1, $"Pool_{key}");
                 PoolDic[key] = data;
             }
@@ -229,7 +226,7 @@ namespace WS_Modules.Pooling
 
             if (!PoolDic.TryGetValue(key, out var data))
             {
-                WSLog.Log("鍒涘缓鏂扮殑瀵硅薄姹? " + key + ", 榛樿鏃犻檺瀹归噺锛屽鏋滈渶瑕佸閲忛檺鍒惰棰勫厛璋冪敤 Prewarm 鏂规硶璁剧疆瀹归噺锛屽悓鏃跺缓璁鐑睜瀛愪互閬垮厤鍚庣画鑾峰彇鏃剁殑鎬ц兘闂");
+                WSLog.Log("创建新的对象池 " + key + "，默认容量无限；如需限制容量，请先调用 Prewarm，并建议预热以减少首次加载和实例化开销。");
                 data = new GameObjectPoolData(poolRootTransform, -1, $"Pool_{key}");
                 PoolDic[key] = data;
             }
@@ -288,8 +285,8 @@ namespace WS_Modules.Pooling
 
             if (!PoolDic.TryGetValue(key, out var data))
             {
-                // 鐩翠紶 prefab 鎵归噺鑾峰彇鏃惰嚜鍔ㄥ垱寤烘棤闄愬閲忔睜锛屽悗缁洖鏀跺彲浠ュ鐢ㄣ€?
-                WSLog.Log("鍒涘缓鏂扮殑瀵硅薄姹? " + key + ", 榛樿鏃犻檺瀹归噺锛屽鏋滈渶瑕佸閲忛檺鍒惰棰勫厛璋冪敤 Prewarm 鏂规硶璁剧疆瀹归噺锛屽悓鏃跺缓璁鐑睜瀛愪互閬垮厤鍚庣画鑾峰彇鏃剁殑鎬ц兘闂");
+                // 直接传入 Prefab 批量获取时也建立可供后续回收复用的无限容量池。
+                WSLog.Log("创建新的对象池 " + key + "，默认容量无限；如需限制容量，请先调用 Prewarm，并建议预热以减少首次加载和实例化开销。");
                 data = new GameObjectPoolData(poolRootTransform, -1, $"Pool_{key}");
                 PoolDic[key] = data;
             }
@@ -318,11 +315,11 @@ namespace WS_Modules.Pooling
             return instList;
         }
         /// <summary>
-        /// 杩斿洖 UniTask&lt;GameObject&gt;鐗堟湰鐨?Get 鏂规硶锛岄€傜敤浜庨渶瑕佷粠杩滅▼鎴栧紓姝ヨ祫婧愮郴缁熷姞杞介鍒朵綋鐨勬儏鍐碉紝閬垮厤鍦ㄤ富绾跨▼绛夊緟璧勬簮鍔犺浇瀹屾垚銆?
+        /// 使用类型名作为资源 Key 异步获取对象。
         /// </summary>
-        /// <param name="parent"></param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
+        /// <typeparam name="T">提供资源 Key 的池化对象类型。</typeparam>
+        /// <param name="parent">对象生成后的父节点。</param>
+        /// <returns>异步返回取得或新建的对象；校验或加载失败时返回 null。</returns>
         public async UniTask<GameObject> GetAsync<T>(Transform parent = null)
             where T : IGameObjectPoolable
         {
@@ -339,7 +336,7 @@ namespace WS_Modules.Pooling
 
             if (!PoolDic.TryGetValue(key, out var data))
             {
-                WSLog.Log("鍒涘缓鏂扮殑瀵硅薄姹? " + key + ", 榛樿鏃犻檺瀹归噺锛屽鏋滈渶瑕佸閲忛檺鍒惰棰勫厛璋冪敤 Prewarm 鏂规硶璁剧疆瀹归噺锛屽悓鏃跺缓璁鐑睜瀛愪互閬垮厤鍚庣画鑾峰彇鏃剁殑鎬ц兘闂");
+                WSLog.Log("创建新的对象池 " + key + "，默认容量无限；如需限制容量，请先调用 Prewarm，并建议预热以减少首次加载和实例化开销。");
                 data = new GameObjectPoolData(poolRootTransform, -1, $"Pool_{key}");
                 PoolDic[key] = data;
             }
@@ -351,7 +348,7 @@ namespace WS_Modules.Pooling
                 return go;
             }
 
-            // 浣跨敤 IResLoad 鐨?LoadAsync 鏂规硶鏉ュ姞杞借祫婧愶紝鍔犺浇瀹屾垚鍚庡疄渚嬪寲骞惰繑鍥?
+            // 等待资源加载完成后再实例化，保持异步加载过程不阻塞调用方。
             var prefab = await gameObjectResLoader.LoadAsync<GameObject>(key);
 
             if (prefab is null)
@@ -390,7 +387,7 @@ namespace WS_Modules.Pooling
 
             if (!PoolDic.TryGetValue(key, out var data))
             {
-                WSLog.Log("鍒涘缓鏂扮殑瀵硅薄姹? " + key + ", 榛樿鏃犻檺瀹归噺锛屽鏋滈渶瑕佸閲忛檺鍒惰棰勫厛璋冪敤 Prewarm 鏂规硶璁剧疆瀹归噺锛屽悓鏃跺缓璁鐑睜瀛愪互閬垮厤鍚庣画鑾峰彇鏃剁殑鎬ц兘闂");
+                WSLog.Log("创建新的对象池 " + key + "，默认容量无限；如需限制容量，请先调用 Prewarm，并建议预热以减少首次加载和实例化开销。");
                 data = new GameObjectPoolData(poolRootTransform, -1, $"Pool_{key}");
                 PoolDic[key] = data;
             }
@@ -407,7 +404,7 @@ namespace WS_Modules.Pooling
                 return;
             }
 
-            // 浣跨敤 IResLoad 鐨?LoadAsync 鍥炶皟鎺ュ彛鏉ュ姞杞借祫婧愶紝鍔犺浇瀹屾垚鍚庡湪鍥炶皟涓疄渚嬪寲骞惰繑鍥?
+            // 资源加载完成后在回调中完成身份校验、实例化与 Spawn，再通知调用方。
             gameObjectResLoader.LoadAsync<GameObject>(key, prefab =>
             {
                 if (prefab == null)
@@ -436,8 +433,10 @@ namespace WS_Modules.Pooling
         }
 
         /// <summary>
-        /// 鍥炴敹瀵硅薄鍒板搴旂殑姹犱腑锛屽鏋滄睜涓嶅瓨鍦ㄥ垯浼氬垱寤轰竴涓柊鐨勬睜锛屽鏋滄睜涓嶅瓨鍦ㄥ氨鐩存帴涓㈠純瀵硅薄锛岄€傜敤浜庨渶瑕佹墜鍔ㄦ寚瀹氬洖鏀跺璞℃墍灞炴睜鐨勬儏鍐点€?
+        /// 校验对象身份后回收到指定 Key 的已有池；池不存在时记录错误并拒绝回收。
         /// </summary>
+        /// <param name="key">目标对象池的稳定 Key。</param>
+        /// <param name="go">需要回收的池化对象。</param>
         public void Recycle(string key, GameObject go)
         {
             if (string.IsNullOrEmpty(key) || go == null) return;
@@ -559,7 +558,7 @@ namespace WS_Modules.Pooling
             }
         }
 
-        #region 璇ョ被鐨勫悎鐞嗘€ф楠?
+        #region 参数与身份校验
         /// <summary>校验预热 Key、资源加载器和容量参数。</summary>
         private bool CheckPrewarmValid(string key, int initCount, int maxCapacity, bool requireResLoader = true)
         {

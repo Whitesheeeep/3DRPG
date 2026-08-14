@@ -94,6 +94,9 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <param name="deltaTime">延迟更新阶段使用的秒数。</param>
         internal virtual void LateTick(float deltaTime) { }
 
+        /// <summary>按需处理 Animator 求值后的根运动阶段。</summary>
+        internal virtual void UpdateAnimationMove() { }
+
         // 子类实现同步逻辑或启动 Root Task。
         protected abstract void OnStart();
 

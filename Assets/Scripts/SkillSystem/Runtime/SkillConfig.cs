@@ -19,12 +19,16 @@ namespace RPG.SkillSystem
         private int frameRate = 30;
         [SerializeField, ReadOnly, Min(1), LabelText("总帧")]
         private int durationFrames = 1;
+        [SerializeField, ReadOnly, LabelText("应用根运动")]
+        private bool isRootMotion;
         [SerializeField, ReadOnly, LabelText("轨道")]
         private List<TrackConfigBase> tracks = new();
 
         public string Id => id;
         public int FrameRate => frameRate;
         public int DurationFrames => durationFrames;
+        /// <summary>获取该时间轴播放时是否消费 Animator 根位移和根旋转。</summary>
+        public bool IsRootMotion => isRootMotion;
         public IReadOnlyList<TrackConfigBase> Tracks => tracks;
     }
 }

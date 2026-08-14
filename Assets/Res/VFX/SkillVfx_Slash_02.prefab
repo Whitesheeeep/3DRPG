@@ -98,6 +98,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: FX_slash_02
       objectReference: {fileID: 0}
+    - target: {fileID: 8049695313088817489, guid: 82f717fbf9bbd57439863c36b801fff0, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

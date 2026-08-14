@@ -21,6 +21,7 @@ namespace RPG.SkillSystem.Editor
         private Document document;
         private PreviewSceneService previewSceneService;
         private PlaybackController playback;
+        private SkillConfig pendingConfig;
         // 对数据层的通信
         private EditorViewModel viewModel;
 
@@ -40,10 +41,21 @@ namespace RPG.SkillSystem.Editor
         [MenuItem("WSFrame/Skill Timeline Editor", priority = 100)]
         private static void ShowWindow()
         {
+            Open(null);
+        }
+
+        /// <summary>
+        /// 打开或聚焦唯一的技能时间轴窗口，并在窗口组合完成后载入指定配置。
+        /// </summary>
+        /// <param name="config">需要载入的 SkillConfig；为空时仅打开窗口。</param>
+        internal static void Open(SkillConfig config)
+        {
             TimelineWindow window = GetWindow<TimelineWindow>();
             window.titleContent = new GUIContent("技能时间轴");
-            window.Show();
             window.minSize = new Vector2(800, 600);
+            window.Show();
+            window.Focus();
+            window.OpenConfig(config);
         }
 
         /// <summary>
@@ -81,6 +93,14 @@ namespace RPG.SkillSystem.Editor
             view.Bind(viewModel);
             viewModel.SelectionActivated += OnTimelineSelectionActivated;
             viewModel.InspectorChanged += OnInspectorChanged;
+
+            // 首次双击资产时 CreateGUI 可能晚于打开入口，因此在组合完成后再消费待打开配置。
+            if (pendingConfig != null)
+            {
+                SkillConfig config = pendingConfig;
+                pendingConfig = null;
+                viewModel.OpenConfig(config);
+            }
 
             // Inspector Editor 可能跨本次内部组合重建继续存活，因此完成绑定后必须主动读取新组合。
             NativeInspectorChanged?.Invoke();
@@ -130,6 +150,23 @@ namespace RPG.SkillSystem.Editor
 
         // 将 ViewModel 的稳定 Inspector 刷新事件转发给 Unity 原生 Inspector。
         private void OnInspectorChanged() => NativeInspectorChanged?.Invoke();
+
+        /// <summary>
+        /// 立即载入配置；窗口尚未完成 UI 组合时暂存到 CreateGUI 阶段处理。
+        /// </summary>
+        /// <param name="config">需要显示的 SkillConfig；为空时保持当前文档不变。</param>
+        private void OpenConfig(SkillConfig config)
+        {
+            if (config == null) return;
+            if (viewModel == null)
+            {
+                pendingConfig = config;
+                return;
+            }
+
+            pendingConfig = null;
+            viewModel.OpenConfig(config);
+        }
         #endregion
     }
 }

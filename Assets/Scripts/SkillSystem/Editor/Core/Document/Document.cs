@@ -123,6 +123,18 @@ namespace RPG.SkillSystem.Editor
             return EditResult.Success();
         }
 
+        /// <summary>修改当前技能是否应用根运动，并纳入 Unity Undo。</summary>
+        /// <param name="value">需要写入配置的根运动开关。</param>
+        /// <returns>存在当前配置并完成写入时返回成功。</returns>
+        public EditResult SetRootMotion(bool value)
+        {
+            if (!HasConfig) return EditResult.Failure("请先选择 SkillConfig。");
+            if (CurrentConfig.IsRootMotion == value) return EditResult.Success();
+            MutateRoot("修改技能根运动",
+                () => serializedObject.FindProperty(DocumentFieldNames.IsRootMotion).boolValue = value);
+            return EditResult.Success();
+        }
+
         /// <summary>
         /// 将总帧裁剪到最后内容的排他结束帧。
         /// </summary>

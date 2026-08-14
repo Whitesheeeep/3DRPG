@@ -12,6 +12,8 @@ namespace RPG.SkillSystem.Editor
         internal const string FrameRate = "frameRate";
         /// <summary>技能配置或区间内容的持续帧数。</summary>
         internal const string DurationFrames = "durationFrames";
+        /// <summary>技能配置是否在运行时消费动画根运动。</summary>
+        internal const string IsRootMotion = "isRootMotion";
         /// <summary>技能配置中按物理行排序的 Track 子资产引用列表。</summary>
         internal const string Tracks = "tracks";
         /// <summary>Track 子资产或事件标记的显示名称。</summary>

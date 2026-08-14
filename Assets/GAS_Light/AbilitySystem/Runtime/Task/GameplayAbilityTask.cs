@@ -85,10 +85,16 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         {
             if (State == GameplayAbilityTaskState.Running) OnLateTick(deltaTime);
         }
+
+        /// <summary>在 Animator 求值后推进仍处于 Running 的 Task。</summary>
+        internal void UpdateAnimationMove()
+        {
+            if (State == GameplayAbilityTaskState.Running) OnUpdateAnimationMove();
+        }
         #endregion
 
         #region 子类业务逻辑
-        // 具体 Task 在这里启动同步逻辑或取得外部资源；逐帧逻辑由下方三个阶段钩子承载。
+        // 具体 Task 在这里启动同步逻辑或取得外部资源；逐帧逻辑由下方各阶段钩子承载。
         protected abstract void OnStart();
 
         // 具体 Task 在正常提前结束时释放注册。
@@ -121,6 +127,11 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <summary>按需处理延迟更新阶段。</summary>
         /// <param name="deltaTime">延迟更新阶段使用的秒数。</param>
         protected virtual void OnLateTick(float deltaTime)
+        {
+        }
+
+        /// <summary>按需处理 Animator 求值后的根运动阶段。</summary>
+        protected virtual void OnUpdateAnimationMove()
         {
         }
         #endregion

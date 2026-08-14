@@ -447,3 +447,16 @@ flowchart LR
 
 切换 GA 时必须先解除旧 `SerializedObject` 绑定和跟踪；页面释放时取消尚未执行的
 `delayCall`，避免旧页面继续刷新。静置页面不会执行 GA 校验或扫描项目资产。
+## 外部时序与技能根运动
+
+ASC 不再实现 Unity `Update`、`FixedUpdate` 或 `LateUpdate`，正式角色由 `PlayerController` 统一推进普通、固定、动画根运动和延迟阶段。`UpdateAnimationMove` 与其他 GA 阶段一样沿 Active Runtime 和当前 Running Task 转发，但不推进 GE。
+
+```mermaid
+flowchart LR
+    P["PlayerController.OnAnimatorMove"] --> A["ASC.UpdateAnimationMove"]
+    A --> R["Active Async Runtime"]
+    R --> T["当前 Running Task"]
+    T --> M["MotionDriver"]
+```
+
+`SkillConfig.IsRootMotion` 是单个技能的作者配置。`PlaySkillConfigGameplayAbilityTask` 仅在该配置启用时直接调用角色 `MotionDriver.UpdateAnimationMove`；`SkillRuntimeHost` 仍只负责时间轴 Module，不参与角色移动。

@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using RPG.Character;
 using RPG.Markers;
 using RPG.SkillSystem;
 using Sirenix.OdinInspector;
@@ -111,6 +112,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         private GameObject targetObject;
         private GameplayAbilitySystemComponent source;
         private GameplayAbilitySystemComponent target;
+        private PlayerController sourcePlayerController;
         private GameplayAbilitySystemComponentTestVisualizer visualizer;
         private SkillRuntimeHost skillRuntimeHost;
         private bool cueEventSubscribed;
@@ -128,6 +130,30 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         #endregion
 
         #region Unity 生命周期
+
+        /// <summary>由 Tester 作为临时 Source 与 Target 的外部时序拥有者推进普通阶段。</summary>
+        private void Update()
+        {
+            if (!running) return;
+            if (sourcePlayerController == null) source?.Tick(Time.deltaTime);
+            target?.Tick(Time.deltaTime);
+        }
+
+        /// <summary>由 Tester 推进临时 ASC 的固定阶段。</summary>
+        private void FixedUpdate()
+        {
+            if (!running) return;
+            if (sourcePlayerController == null) source?.FixedTick(Time.fixedDeltaTime);
+            target?.FixedTick(Time.fixedDeltaTime);
+        }
+
+        /// <summary>由 Tester 在当前帧末尾推进临时 ASC 的延迟阶段。</summary>
+        private void LateUpdate()
+        {
+            if (!running) return;
+            if (sourcePlayerController == null) source?.LateTick(Time.deltaTime);
+            target?.LateTick(Time.deltaTime);
+        }
 
         /// <summary>测试组件销毁时停止协程并清理临时 ASC、Cue 与投射物。</summary>
         private void OnDestroy() => StopAndCleanup();
@@ -1040,6 +1066,8 @@ namespace WS_Modules.GAS.AbilitySystemComponent
                 skillRuntimeHost = sourceObject.AddComponent<SkillRuntimeHost>();
             source = sourceObject.AddComponent<GameplayAbilitySystemComponent>();
             source.Initialize(attributeSets);
+            if (IsSkillConfigScenario(scenario))
+                sourcePlayerController = sourceObject.AddComponent<PlayerController>();
 
             targetObject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             targetObject.name = $"ASC Test Target - {currentScenario}";
@@ -1198,6 +1226,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             if (targetObject != null) Destroy(targetObject);
             source = null;
             target = null;
+            sourcePlayerController = null;
             sourceObject = null;
             targetObject = null;
             skillRuntimeHost = null;
