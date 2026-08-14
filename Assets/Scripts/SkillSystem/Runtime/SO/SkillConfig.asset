@@ -135,7 +135,7 @@ MonoBehaviour:
   - id: 40cfe4b40ca54f3da679324623786f20
     audioClip: {fileID: 8300000, guid: 9ed4573abd1465749b538474846f4995, type: 3}
     startFrame: 6
-    durationFrames: 35
+    durationFrames: 14
     volume: 1
     pitch: 1
 --- !u!114 &11400000
@@ -152,7 +152,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: 7974b444431948668922d9f44910e9dc
   frameRate: 30
-  durationFrames: 41
+  durationFrames: 35
+  isRootMotion: 0
   tracks:
   - {fileID: -4210482925188201434}
   - {fileID: 2445572420126570095}
@@ -286,10 +287,10 @@ MonoBehaviour:
   editorLocked: 0
   clips:
   - id: d80c230ac8fc4b2d91461ed4ed9b3a30
-    prefab: {fileID: 6477124811497415813, guid: 8effb495422ff804dba3eeb98bfda04c, type: 3}
+    prefab: {fileID: 7422412387733305100, guid: ece7090725c7485ba3a2d426f56e1bfb, type: 3}
     markerKey: {fileID: 0}
     startFrame: 6
-    durationFrames: 23
+    durationFrames: 14
     localPosition: {x: 9.24949e-12, y: 0.719, z: 0.23418072}
     localEulerAngles: {x: 0.119004205, y: 170, z: 180}
     localScale: {x: 1.0000001, y: 1, z: 1}

@@ -21,13 +21,13 @@ MonoBehaviour:
     prefab: {fileID: 8539520592621795659, guid: 9bbc998f32291cf44aff6f1a77fd4cda, type: 3}
     markerKey: {fileID: 0}
     startFrame: 8
-    durationFrames: 11
+    durationFrames: 12
     localPosition: {x: 8.876528e-12, y: 0.69, z: 0}
     localEulerAngles: {x: 18.806738, y: 139.29536, z: 194.8538}
     localScale: {x: 1, y: 0.9999999, z: 0.9999999}
     playbackSpeed: 1
     followMode: 0
-    stopMode: 0
+    stopMode: 2
 --- !u!114 &-4632458473308400165
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -77,10 +77,17 @@ MonoBehaviour:
   displayName: "\u52A8\u753B\u8F68\u9053"
   editorLocked: 0
   clips:
-  - id: a089e90007394e79af6d7c93cacf08ef
-    animationClip: {fileID: 3094330708855449807, guid: 21d6b8f558c014046ae463be0828e850, type: 3}
+  - id: b24956a4874f415b8c9eb6c084218729
+    animationClip: {fileID: 3094330708855449807, guid: d24257a25dfa2414a9a3f69a32eb313d, type: 3}
     startFrame: 0
-    durationFrames: 32
+    durationFrames: 19
+    sourceStartFrame: 0
+    playbackSpeed: 1
+    fadeDuration: 0.1
+  - id: 084407d25d1d41fcb802c0c879218be8
+    animationClip: {fileID: 7400154, guid: dd4bc59541169e34ead96f0310ddc7bd, type: 3}
+    startFrame: 19
+    durationFrames: 23
     sourceStartFrame: 0
     playbackSpeed: 1
     fadeDuration: 0.1
@@ -98,7 +105,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: 41fe1a3670c54b83b9dd8b90dd8abe64
   frameRate: 30
-  durationFrames: 32
+  durationFrames: 43
+  isRootMotion: 0
   tracks:
   - {fileID: -4632458473308400165}
   - {fileID: -3908211605310873526}

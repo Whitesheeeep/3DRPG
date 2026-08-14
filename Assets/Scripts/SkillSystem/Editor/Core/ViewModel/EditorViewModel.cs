@@ -47,7 +47,7 @@ namespace RPG.SkillSystem.Editor
         public bool IsLooping => playback.IsLooping;
         public SceneAsset PreviewScene => previewSceneService.PreviewScene;
         public GameObject PreviewActor => previewSceneService.PreviewActor;
-        public bool PreviewApplyRootMotion => previewSceneService.ApplyRootMotion;
+        public bool IsRootMotion => CurrentConfig != null && CurrentConfig.IsRootMotion;
         public GameObject GameplayCameraPrefab => previewSceneService.GameplayCameraPrefab;
         public bool PreviewCameraModifier => previewSceneService.PreviewCameraModifier;
         public string StatusMessage { get; private set; } = "请选择或新建 SkillConfig。";
@@ -84,7 +84,7 @@ namespace RPG.SkillSystem.Editor
             playback.PreviewStatusChanged += OnPreviewStatusChanged;
             previewSceneService.SettingsChanged += OnSettingsChanged;
             playback.SetPreviewActor(previewSceneService.PreviewActor);
-            playback.SetApplyRootMotion(previewSceneService.ApplyRootMotion);
+            playback.SetApplyRootMotion(false);
         }
 
         /// <summary>
@@ -113,24 +113,26 @@ namespace RPG.SkillSystem.Editor
         #endregion
 
         #region 模型同步
-        // Config 切换时清空稳定选择并重置播放上下文。
+        /// <summary>Config 切换时清空稳定选择，并按作者配置重置播放与根运动上下文。</summary>
         private void OnConfigChanged()
         {
             selection = SelectionState.None;
             SynchronizeAttackDetectionSelection();
             playback.SetSkillConfig(document.CurrentConfig);
+            playback.SetApplyRootMotion(IsRootMotion);
             TimelineChanged?.Invoke();
             SelectionChanged?.Invoke();
             InspectorChanged?.Invoke();
             PlayheadChanged?.Invoke();
         }
 
-        // 内容变化后按 GUID 恢复直接引用选择并刷新 Preview。
+        /// <summary>内容变化后按 GUID 恢复选择，并将当前根运动配置同步到 Preview。</summary>
         private void OnDocumentContentChanged()
         {
             RestoreSelection();
             SynchronizeAttackDetectionSelection();
             playback.InvalidatePreviewContent();
+            playback.SetApplyRootMotion(IsRootMotion);
             playback.ClampToDuration();
             TimelineChanged?.Invoke();
             SelectionChanged?.Invoke();
@@ -143,12 +145,12 @@ namespace RPG.SkillSystem.Editor
         // 转发播放状态变化。
         private void OnPlaybackChanged() => PlaybackChanged?.Invoke();
 
-        // EditorSettings 变化后重建 Preview 上下文。
+        /// <summary>EditorSettings 变化后重建 Preview，并保留当前 Config 的根运动语义。</summary>
         private void OnSettingsChanged()
         {
             playback.ClearPreview();
             playback.SetPreviewActor(previewSceneService.PreviewActor);
-            playback.SetApplyRootMotion(previewSceneService.ApplyRootMotion);
+            playback.SetApplyRootMotion(IsRootMotion);
             playback.RefreshPreview();
             SettingsChanged?.Invoke();
         }
@@ -278,8 +280,9 @@ namespace RPG.SkillSystem.Editor
         public void SetPreviewScene(SceneAsset scene) => previewSceneService.SetPreviewScene(scene);
         /// <summary>设置预览角色。</summary>
         public void SetPreviewActor(GameObject actor) => previewSceneService.SetPreviewActor(actor);
-        /// <summary>设置预览 Root Motion。</summary>
-        public void SetPreviewApplyRootMotion(bool value) => previewSceneService.SetApplyRootMotion(value);
+        /// <summary>修改当前 SkillConfig 的 Root Motion，并同步预览采样。</summary>
+        /// <param name="value">当前配置是否应用根运动。</param>
+        public void SetRootMotion(bool value) => Report(document.SetRootMotion(value));
         /// <summary>保存用于 FOV Value 换算的 Gameplay VCam Prefab。</summary>
         public void SetGameplayCameraPrefab(GameObject prefab) => previewSceneService.SetGameplayCameraPrefab(prefab);
         /// <summary>切换 Scene View 摄像机修饰预览。</summary>

@@ -118,3 +118,13 @@ flowchart LR
 4. `Stop 技能`或`Cancel 技能`
 
 测试组件整体由 `#if UNITY_EDITOR`包裹，不进入 Player 构建。
+## GAS 根运动边界
+
+SkillConfig 通过 `IsRootMotion` 声明是否消费动画根运动。GAS 集成路径由 `PlaySkillConfigGameplayAbilityTask` 在 `UpdateAnimationMove` 阶段直接调用角色 `MotionDriver`，不会经过 `SkillRuntimeHost`。Host 与 Module 只负责时间轴执行、命中、表现和完成事件。
+
+```mermaid
+flowchart LR
+    Task["PlaySkillConfig Task"] --> Check{"IsRootMotion"}
+    Check -->|true| Driver["MotionDriver.UpdateAnimationMove"]
+    Check -->|false| Skip["不消费 Animator Delta"]
+```

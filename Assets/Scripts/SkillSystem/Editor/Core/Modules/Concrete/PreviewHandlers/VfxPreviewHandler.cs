@@ -314,7 +314,12 @@ namespace RPG.SkillSystem.Editor
 
         #region 创建与生命周期
 
-        // 创建不可保存 Prefab 克隆并关闭业务脚本，只保留静态层级和 ParticleSystem 供编辑器采样。
+        /// <summary>
+        /// 创建不可保存的 Prefab 克隆，并缓存粒子作者状态以供确定性预览采样。
+        /// </summary>
+        /// <param name="stableId">用于生成稳定随机种子的 Clip 标识。</param>
+        /// <param name="prefab">预览来源 Prefab。</param>
+        /// <param name="instance">已创建的预览实例根节点。</param>
         private VfxPreviewInstance(string stableId, GameObject prefab, GameObject instance)
         {
             this.prefab = prefab;
@@ -333,14 +338,20 @@ namespace RPG.SkillSystem.Editor
             {
                 ParticleSystem particle = particleSystems[index];
                 ParticleSystem.MainModule main = particle.main;
+                bool authoredPlayOnAwake = main.playOnAwake;
                 main.playOnAwake = false;
                 particle.useAutoRandomSeed = false;
                 particle.randomSeed = seed + (uint)(index * 16777619);
-                emissionStates[index] = new ParticleEmissionState(particle.emission.enabled);
+                emissionStates[index] = new ParticleEmissionState(
+                    particle.emission.enabled,
+                    authoredPlayOnAwake);
             }
 
             instance.SetActive(true);
-            ResetParticles();
+            foreach (ParticleSystem root in rootParticleSystems)
+                root.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            // 克隆激活后立即压制自动播放，只有显式采样期间才临时恢复作者配置。
+            SuppressAutoPlay();
         }
 
         // 在指定预览场景创建隐藏克隆；失败时返回 null 且不留下半初始化对象。
@@ -463,18 +474,23 @@ namespace RPG.SkillSystem.Editor
             target.localScale = scale;
         }
 
-        // 从起点重启全部粒子并推进到指定绝对时间，随后暂停以阻止 Editor 自行累积。
+        /// <summary>
+        /// 从已恢复的作者播放状态推进到指定绝对时间，随后暂停以阻止 Editor 自行累积。
+        /// </summary>
+        /// <param name="elapsed">从 Clip 起点开始计算的预览秒数。</param>
         private void SimulateFromStart(float elapsed)
         {
             ResetParticles();
             foreach (ParticleSystem root in rootParticleSystems)
-            {
                 root.Simulate(elapsed, true, true, false);
-                root.Pause(true);
-            }
+            Pause();
         }
 
-        // 先带发射模拟到 Clip 结束，再关闭发射并仅推进已有粒子尾迹。
+        /// <summary>
+        /// 先带发射模拟到 Clip 结束，再关闭发射并仅推进已有粒子尾迹。
+        /// </summary>
+        /// <param name="duration">保持发射的 Clip 持续秒数。</param>
+        /// <param name="tailTime">关闭发射后继续推进尾迹的秒数。</param>
         private void SimulateStoppedEmission(float duration, float tailTime)
         {
             ResetParticles();
@@ -482,23 +498,38 @@ namespace RPG.SkillSystem.Editor
                 root.Simulate(duration, true, true, false);
             SetEmissionEnabled(false);
             foreach (ParticleSystem root in rootParticleSystems)
-            {
                 root.Simulate(tailTime, true, false, false);
-                root.Pause(true);
+            Pause();
+        }
+
+        /// <summary>
+        /// 清空旧粒子并临时恢复 Prefab 作者配置，使根节点重启能够按原始层级启动全部子系统。
+        /// </summary>
+        private void ResetParticles()
+        {
+            foreach (ParticleSystem root in rootParticleSystems)
+                root.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+            for (int index = 0; index < particleSystems.Length; index++)
+            {
+                ParticleSystem particle = particleSystems[index];
+                ParticleSystem.EmissionModule emission = particle.emission;
+                emission.enabled = emissionStates[index].Enabled;
+                ParticleSystem.MainModule main = particle.main;
+                main.playOnAwake = emissionStates[index].PlayOnAwake;
             }
         }
 
-        // 清空旧粒子并恢复 Prefab 原始发射开关，保证不同采样顺序得到相同结果。
-        private void ResetParticles()
+        /// <summary>
+        /// 在完成同步采样后关闭全部自动播放，避免隐藏实例随 Editor Repaint 自行推进。
+        /// </summary>
+        private void SuppressAutoPlay()
         {
-            for (int index = 0; index < particleSystems.Length; index++)
+            foreach (ParticleSystem particle in particleSystems)
             {
-                ParticleSystem.EmissionModule emission = particleSystems[index].emission;
-                emission.enabled = emissionStates[index].Enabled;
+                ParticleSystem.MainModule main = particle.main;
+                main.playOnAwake = false;
             }
-
-            foreach (ParticleSystem root in rootParticleSystems)
-                root.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         }
 
         // 同步修改所有子粒子的发射模块，StopEmission 模式仍保留已经生成的粒子。
@@ -511,12 +542,15 @@ namespace RPG.SkillSystem.Editor
             }
         }
 
-        // 暂停全部根粒子并保留当前画面。
+        /// <summary>
+        /// 暂停全部根粒子并保留当前画面，同时关闭后续 Editor 自动播放。
+        /// </summary>
         internal void Pause()
         {
             if (disposed) return;
             foreach (ParticleSystem root in rootParticleSystems)
                 root.Pause(true);
+            SuppressAutoPlay();
         }
 
         #endregion
@@ -526,9 +560,11 @@ namespace RPG.SkillSystem.Editor
         // 只对没有 ParticleSystem 祖先的系统执行 withChildren 采样，避免子系统被重复推进。
         private static ParticleSystem[] FindRootParticleSystems(ParticleSystem[] particles)
         {
+            HashSet<ParticleSystem> subEmitterTargets = CollectSubEmitterTargets(particles);
             List<ParticleSystem> roots = new();
             foreach (ParticleSystem particle in particles)
             {
+                if (subEmitterTargets.Contains(particle)) continue;
                 Transform parent = particle.transform.parent;
                 bool hasParticleAncestor = false;
                 while (parent != null)
@@ -544,6 +580,24 @@ namespace RPG.SkillSystem.Editor
                 if (!hasParticleAncestor) roots.Add(particle);
             }
             return roots.ToArray();
+        }
+
+        // SubEmitter 目标可能与发射器同级；若作为独立 root 重置会清空已触发粒子。
+        private static HashSet<ParticleSystem> CollectSubEmitterTargets(IEnumerable<ParticleSystem> particles)
+        {
+            HashSet<ParticleSystem> targets = new();
+            foreach (ParticleSystem particle in particles)
+            {
+                ParticleSystem.SubEmittersModule subEmitters = particle.subEmitters;
+                int count = subEmitters.subEmittersCount;
+                for (int index = 0; index < count; index++)
+                {
+                    ParticleSystem target = subEmitters.GetSubEmitterSystem(index);
+                    if (target != null) targets.Add(target);
+                }
+            }
+
+            return targets;
         }
 
         // 使用 FNV-1a 生成跨刷新稳定的非零粒子随机种子，不依赖进程随机化的 string.GetHashCode。
@@ -670,16 +724,29 @@ namespace RPG.SkillSystem.Editor
         #endregion
     }
     /// <summary>
-    /// 保存 Prefab 中一个 ParticleSystem 原始的发射启用状态。
+    /// 保存 Prefab 中一个 ParticleSystem 原始的发射与自动播放状态。
     /// </summary>
     internal readonly struct ParticleEmissionState
     {
+        /// <summary>
+        /// 获取 Prefab 作者配置的发射模块启用状态。
+        /// </summary>
         public bool Enabled { get; }
 
-        // 创建不可变的发射状态快照。
-        internal ParticleEmissionState(bool enabled)
+        /// <summary>
+        /// 获取 Prefab 作者配置的自动播放状态。
+        /// </summary>
+        public bool PlayOnAwake { get; }
+
+        /// <summary>
+        /// 创建粒子发射与自动播放状态的不可变快照。
+        /// </summary>
+        /// <param name="enabled">发射模块是否启用。</param>
+        /// <param name="playOnAwake">粒子系统是否由作者配置为自动播放。</param>
+        internal ParticleEmissionState(bool enabled, bool playOnAwake)
         {
             Enabled = enabled;
+            PlayOnAwake = playOnAwake;
         }
     }
 }

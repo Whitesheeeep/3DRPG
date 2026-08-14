@@ -62,6 +62,9 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <param name="deltaTime">延迟更新阶段使用的秒数。</param>
         internal override void LateTick(float deltaTime) => RootTask.LateTick(deltaTime);
 
+        /// <summary>将动画根运动阶段转发给 Root Task。</summary>
+        internal override void UpdateAnimationMove() => RootTask.UpdateAnimationMove();
+
         // Root 正常完成后解除订阅并结束 Runtime。
         private void OnRootTaskCompleted(GameplayAbilityTask task)
         {

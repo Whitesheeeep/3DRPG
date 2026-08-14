@@ -8,7 +8,8 @@ namespace RPG.Character.DirectionalLocomotion
 {
     /// <summary>驱动 UnifiedFSM，并提供方向移动状态所需的输入、动画和运动能力。</summary>
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(CharacterController), typeof(Animator), typeof(AnimancerComponent))]
+    [RequireComponent(typeof(PlayerController), typeof(CharacterController), typeof(Animator))]
+    [RequireComponent(typeof(AnimancerComponent))]
     public sealed class DirectionalLocomotionController : MonoBehaviour
     {
         [Header("引用")]
@@ -17,6 +18,7 @@ namespace RPG.Character.DirectionalLocomotion
         [SerializeField] private InputActionReference moveAction;
 
         private CharacterController _characterController;
+        private IMotionDriver _motionDriver;
         private Animator _animator;
         private AnimancerComponent _animancer;
         private StateMachine<DirectionalLocomotionStateId, DirectionalLocomotionController> _stateMachine;
@@ -61,9 +63,6 @@ namespace RPG.Character.DirectionalLocomotion
         [ShowInInspector, ReadOnly, LabelText("实际 Y 变化")]
         public float GravityActualDeltaY { get; private set; }
 
-        [ShowInInspector, ReadOnly, LabelText("碰撞标记")]
-        public CollisionFlags GravityCollisionFlags { get; private set; }
-
         [ShowInInspector, ReadOnly, LabelText("是否接地")]
         public bool IsGrounded => _characterController != null && _characterController.isGrounded;
 
@@ -79,9 +78,6 @@ namespace RPG.Character.DirectionalLocomotion
 
         [ShowInInspector, ReadOnly, LabelText("水平 Move 实际 Y 变化")]
         public float HorizontalActualDeltaY { get; internal set; }
-
-        [ShowInInspector, ReadOnly, LabelText("水平移动碰撞标记")]
-        public CollisionFlags HorizontalCollisionFlags { get; internal set; }
 
         [Title("MoveStart 根运动诊断")]
         [ShowInInspector, ReadOnly, LabelText("原始 Animator Delta")]
@@ -99,16 +95,16 @@ namespace RPG.Character.DirectionalLocomotion
         [ShowInInspector, ReadOnly, LabelText("根运动实际 Y 变化")]
         public float RootMotionActualDeltaY { get; internal set; }
 
-        [ShowInInspector, ReadOnly, LabelText("根运动碰撞标记")]
-        public CollisionFlags RootMotionCollisionFlags { get; internal set; }
         internal Animator Animator => _animator;
-        internal CharacterController CharacterController => _characterController;
+        internal IMotionDriver MotionDriver => _motionDriver;
         internal DirectionalLocomotionSetting Setting => setting;
         internal AnimancerComponent Animancer => _animancer;
 
+        /// <summary>缓存方向移动依赖，并构建仅负责输入和动画状态的 Locomotion 状态机。</summary>
         private void Awake()
         {
             _characterController = GetComponent<CharacterController>();
+            _motionDriver = GetComponent<PlayerController>().MotionDriver;
             _animator = GetComponent<Animator>();
             _animancer = GetComponent<AnimancerComponent>();
             if (_animancer == null)
@@ -216,9 +212,11 @@ namespace RPG.Character.DirectionalLocomotion
             _moveInput = Vector2.ClampMagnitude(_moveInput, 1f);
         }
 
+        /// <summary>将当前输入和 ASC 水平移动许可合并为本帧移动意图。</summary>
         private void UpdateMoveIntent()
         {
-            IsMoving = _moveInput.sqrMagnitude >= setting.inputDeadZone * setting.inputDeadZone;
+            IsMoving = _motionDriver.CanMoveHorizontally &&
+                       _moveInput.sqrMagnitude >= setting.inputDeadZone * setting.inputDeadZone;
             if (IsMoving)
             {
                 bool inputChanged = (_moveInput - _lastDirectionInput).sqrMagnitude >=
@@ -241,6 +239,8 @@ namespace RPG.Character.DirectionalLocomotion
             return (forward * input.y + right * input.x).normalized;
         }
 
+        /// <summary>计算重力位移并交给移动驱动应用，使全部冻结 Tag 可以阻止垂直移动。</summary>
+        /// <param name="deltaTime">本帧普通更新的秒数。</param>
         private void UpdateGravity(float deltaTime)
         {
             if (!_characterController.enabled)
@@ -253,7 +253,7 @@ namespace RPG.Character.DirectionalLocomotion
 
             GravityMoveY = _verticalSpeed * deltaTime;
             GravityBeforeY = transform.position.y;
-            GravityCollisionFlags = _characterController.Move(Vector3.up * GravityMoveY);
+            _motionDriver.FixedUpdateMove(Vector3.up * GravityMoveY);
             GravityAfterY = transform.position.y;
             GravityActualDeltaY = GravityAfterY - GravityBeforeY;
         }

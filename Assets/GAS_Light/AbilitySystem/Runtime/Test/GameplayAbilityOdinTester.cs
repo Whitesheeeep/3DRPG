@@ -63,6 +63,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             internal int FixedTickCount { get; private set; }
             /// <summary>获取已经收到的 ASC LateTick 数量。</summary>
             internal int LateTickCount { get; private set; }
+            /// <summary>获取已经收到的动画根运动阶段数量。</summary>
+            internal int AnimationMoveCount { get; private set; }
 
             // 保存本次 Runtime 独立的完成阈值。
             internal TickProbeGameplayAbilityTask(
@@ -93,6 +95,9 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             /// <summary>记录延迟更新阶段，验证该阶段不会冒充普通 Tick。</summary>
             /// <param name="deltaTime">本次延迟更新时间。</param>
             protected override void OnLateTick(float deltaTime) => LateTickCount++;
+
+            /// <summary>记录动画根运动阶段，验证其不会冒充其他更新阶段。</summary>
+            protected override void OnUpdateAnimationMove() => AnimationMoveCount++;
         }
 
         /// <summary>配置一个只接收 LateUpdate 的测试 Task，验证单阶段覆写契约。</summary>
@@ -137,6 +142,47 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 LateTickCount++;
                 Complete();
             }
+        }
+
+        /// <summary>配置一个在 AnimationMove 阶段完成的 Task，用于验证后续 LateTick 截止。</summary>
+        private sealed class AnimationMoveCompleteTaskConfig : GameplayAbilityTaskConfig
+        {
+            /// <summary>获取最近一次创建的测试 Task。</summary>
+            internal AnimationMoveCompleteTask LastCreated { get; private set; }
+
+            /// <summary>创建单次 AnimationMove 完成 Task。</summary>
+            /// <param name="runtime">拥有该 Task 的异步 Runtime。</param>
+            /// <returns>新的阶段截止测试 Task。</returns>
+            protected override GameplayAbilityTask CreateTask(AsynchronousGameplayAbilityRuntime runtime)
+            {
+                LastCreated = new AnimationMoveCompleteTask(runtime);
+                return LastCreated;
+            }
+        }
+
+        /// <summary>在 AnimationMove 中完成，并记录是否错误收到后续 LateTick。</summary>
+        private sealed class AnimationMoveCompleteTask : GameplayAbilityTask
+        {
+            /// <summary>获取完成后收到的延迟阶段次数。</summary>
+            internal int LateTickCount { get; private set; }
+
+            /// <summary>创建尚未启动的阶段截止测试 Task。</summary>
+            /// <param name="runtime">拥有该 Task 的异步 Runtime。</param>
+            internal AnimationMoveCompleteTask(AsynchronousGameplayAbilityRuntime runtime) : base(runtime)
+            {
+            }
+
+            /// <summary>启动后等待 AnimationMove。</summary>
+            protected override void OnStart()
+            {
+            }
+
+            /// <summary>在动画阶段立即完成当前 Task。</summary>
+            protected override void OnUpdateAnimationMove() => Complete();
+
+            /// <summary>记录任何不应发生的终态后 LateTick。</summary>
+            /// <param name="deltaTime">延迟阶段秒数。</param>
+            protected override void OnLateTick(float deltaTime) => LateTickCount++;
         }
         #endregion
 
@@ -526,9 +572,11 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             var asyncRuntime = (AsynchronousGameplayAbilityRuntime)runtime;
             var probe = (TickProbeGameplayAbilityTask)asyncRuntime.RootTask;
             source.FixedTick(0.02f);
+            source.UpdateAnimationMove();
             source.LateTick(0.1f);
             Expect("FixedTick 只进入固定阶段", probe.FixedTickCount == 1 && probe.TickCount == 0);
             Expect("LateTick 只进入延迟阶段", probe.LateTickCount == 1 && probe.TickCount == 0);
+            Expect("AnimationMove 只进入动画阶段", probe.AnimationMoveCount == 1 && probe.TickCount == 0);
             source.Tick(0.1f);
             Expect("第一次 Tick 被接收", probe.TickCount == 1);
             Expect("未完成前 Runtime 保持 Active",
@@ -546,15 +594,31 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             int finalTickCount = probe.TickCount;
             int finalFixedTickCount = probe.FixedTickCount;
             int finalLateTickCount = probe.LateTickCount;
+            int finalAnimationMoveCount = probe.AnimationMoveCount;
             source.Tick(0.1f);
             source.FixedTick(0.02f);
+            source.UpdateAnimationMove();
             source.LateTick(0.1f);
             Expect("完成后 ASC 不再发送 Tick",
                 probe.TickCount == finalTickCount &&
                 probe.FixedTickCount == finalFixedTickCount &&
-                probe.LateTickCount == finalLateTickCount);
+                probe.LateTickCount == finalLateTickCount &&
+                probe.AnimationMoveCount == finalAnimationMoveCount);
+
+            var animationConfig = new AnimationMoveCompleteTaskConfig();
+            var animationData = ScriptableObject.CreateInstance<TestAsynchronousAbilityData>();
+            animationData.Initialize(animationConfig);
+            GameplayAbilityHandle animationHandle = source.GiveAbility(animationData, 1);
+            Expect("AnimationMove 完成 Task 激活成功",
+                source.TryActivateAbility(animationHandle, out GameplayAbilityRuntime animationRuntime));
+            source.UpdateAnimationMove();
+            source.LateTick(0.1f);
+            Expect("AnimationMove 中完成后不再接收 LateTick",
+                animationRuntime.State == GameplayAbilityRuntimeState.Ended &&
+                animationConfig.LastCreated.LateTickCount == 0);
 
             DestroyImmediate(data);
+            DestroyImmediate(animationData);
             LogSummary();
         }
 

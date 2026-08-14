@@ -1,9 +1,5 @@
 fileFormatVersion: 2
-<<<<<<<< HEAD:Assets/Scripts/SkillSystem/Runtime/Execution/SkillRuntimeHost.cs.meta
-guid: c3ec84d0eb58d7e4c8971f4ab6210043
-========
 guid: e0187daec5428d243b24235c7f96c2c9
->>>>>>>> main:Assets/Scripts/WSFrame/Pooling/Editor/ClassPoolPrewarmRegistryEditorBootstrap.cs.meta
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2

@@ -1,4 +1,5 @@
 using System;
+using RPG.Character;
 using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.GameplayAbilitySystem;
@@ -15,6 +16,7 @@ namespace RPG.SkillSystem
 
         private readonly SkillConfig skillConfig;
         private SkillRuntimeHost host;
+        private IMotionDriver motionDriver;
         private bool subscribed;
         private GameplayTag appliedPhaseTag;
         private GameplayTag appliedInterruptTag;
@@ -51,6 +53,22 @@ namespace RPG.SkillSystem
                     Runtime.SourceASC);
                 Complete();
                 return;
+            }
+
+            if (skillConfig.IsRootMotion)
+            {
+                PlayerController playerController = Runtime.SourceASC.GetComponent<PlayerController>();
+                if (playerController == null || playerController.MotionDriver == null)
+                {
+                    Debug.LogError(
+                        $"Ability '{Runtime.Data.name}' 的 RootMotion SkillConfig 需要已初始化的 PlayerController。",
+                        Runtime.SourceASC);
+                    Complete();
+                    return;
+                }
+
+                // Task 直接缓存角色移动服务；SkillRuntimeHost 只保留时间轴执行职责。
+                motionDriver = playerController.MotionDriver;
             }
 
             Subscribe();
@@ -94,6 +112,12 @@ namespace RPG.SkillSystem
         /// <summary>在动画姿态稳定后处理挂点、攻击检测和自然结束。</summary>
         /// <param name="deltaTime">本帧延迟更新的时间，仅用于保持阶段接口一致。</param>
         protected override void OnLateTick(float deltaTime) => host.LateTick();
+
+        /// <summary>仅为启用根运动的 SkillConfig 消费 Animator 当前帧位移与旋转。</summary>
+        protected override void OnUpdateAnimationMove()
+        {
+            if (skillConfig.IsRootMotion) motionDriver.UpdateAnimationMove();
+        }
 
         #endregion
 

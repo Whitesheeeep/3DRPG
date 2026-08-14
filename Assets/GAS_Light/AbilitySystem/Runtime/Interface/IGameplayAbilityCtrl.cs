@@ -61,7 +61,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             IReadOnlyDictionary<GameplayTag, float> setByCaller,
             out GameplayAbilityRuntime runtime);
 
-        /// <summary>推进该 Controller 当前注册的 Ability Tick Task。</summary>
+        /// <summary>推进该 Controller 当前 Active Runtime 的普通更新阶段。</summary>
         /// <param name="deltaTime">本次推进的秒数，负数、NaN 和 Infinity 会被忽略。</param>
         void Tick(float deltaTime);
 
@@ -72,6 +72,9 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <summary>推进 Active Runtime 的延迟更新阶段，不更新 GE。</summary>
         /// <param name="deltaTime">延迟更新阶段使用的秒数。</param>
         void LateTick(float deltaTime);
+
+        /// <summary>推进 Active Runtime 的动画根运动阶段，不更新 GE。</summary>
+        void UpdateAnimationMove();
 
         /// <summary>正常结束属于当前 Controller 的 Active Runtime。</summary>
         /// <param name="runtime">要结束的 Runtime。</param>

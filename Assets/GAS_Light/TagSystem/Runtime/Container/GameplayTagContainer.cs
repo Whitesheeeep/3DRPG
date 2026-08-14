@@ -2,7 +2,7 @@
 
 namespace WS_Modules.GAS.TAG
 {
-    /// <summary>保存显式 Gameplay Tag，并缓存由其派生的全部祖先标签。</summary>
+    /// <summary>保存显式 Gameplay Tag，并缓存由其派生的全部祖先标签。不存在 Tag Count 属性。</summary>
     public sealed class GameplayTagContainer : IGameplayTagContainer
     {
         #region 字段与属性

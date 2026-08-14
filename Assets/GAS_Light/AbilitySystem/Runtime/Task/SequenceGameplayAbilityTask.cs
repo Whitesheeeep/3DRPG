@@ -51,6 +51,10 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <param name="deltaTime">延迟更新阶段使用的秒数。</param>
         protected override void OnLateTick(float deltaTime) =>
             GetCurrentRunningTask()?.LateTick(deltaTime);
+
+        /// <summary>将动画根运动阶段转发给当前 Running 子 Task。</summary>
+        protected override void OnUpdateAnimationMove() =>
+            GetCurrentRunningTask()?.UpdateAnimationMove();
         #endregion
 
         #region 推进

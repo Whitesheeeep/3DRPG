@@ -7,7 +7,7 @@ using UnityEngine.SceneManagement;
 namespace RPG.SkillSystem.Editor
 {
     /// <summary>
-    /// 管理预览场景、演示角色与 Root Motion 设置，并提供打开预览场景的功能。
+    /// 管理预览场景、演示角色与摄像机设置，并提供打开预览场景的功能。
     /// </summary>
     internal sealed class PreviewSceneService : System.IDisposable
     {
@@ -17,7 +17,6 @@ namespace RPG.SkillSystem.Editor
 
         public SceneAsset PreviewScene => settings.PreviewScene;
         public GameObject PreviewActor => settings.PreviewActor;
-        public bool ApplyRootMotion => settings.PreviewApplyRootMotion;
         public GameObject GameplayCameraPrefab => settings.GameplayCameraPrefab;
         public bool PreviewCameraModifier => settings.PreviewCameraModifier;
         public bool IsPreviewSceneLoaded
@@ -61,15 +60,6 @@ namespace RPG.SkillSystem.Editor
         public void SetPreviewActor(GameObject actor)
         {
             settings.SetPreviewActor(actor);
-            SettingsChanged?.Invoke();
-        }
-
-        /// <summary>
-        /// 保存动画预览的 Root Motion 开关。
-        /// </summary>
-        public void SetApplyRootMotion(bool value)
-        {
-            settings.SetPreviewApplyRootMotion(value);
             SettingsChanged?.Invoke();
         }
 

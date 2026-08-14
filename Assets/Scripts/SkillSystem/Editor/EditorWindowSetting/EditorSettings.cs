@@ -6,14 +6,13 @@ using Cinemachine;
 namespace RPG.SkillSystem.Editor
 {
     /// <summary>
-    /// 保存技能时间轴编辑器的固定预览场景、演示角色和 Root Motion 设置。
+    /// 保存技能时间轴编辑器的固定预览场景、演示角色和摄像机预览设置。
     /// </summary>
     [FilePath("ProjectSettings/SkillTimelineEditorSettings.asset", FilePathAttribute.Location.ProjectFolder)]
     internal sealed class EditorSettings : ScriptableSingleton<EditorSettings>
     {
         [SerializeField] private string previewSceneGuid = string.Empty;
         [SerializeField] private string previewActorGlobalObjectId = string.Empty;
-        [SerializeField] private bool previewApplyRootMotion;
         [SerializeField] private string gameplayCameraPrefabGuid = string.Empty;
         [SerializeField] private bool previewCameraModifier;
 
@@ -26,7 +25,6 @@ namespace RPG.SkillSystem.Editor
             }
         }
 
-        public bool PreviewApplyRootMotion => previewApplyRootMotion;
         public bool PreviewCameraModifier => previewCameraModifier;
         public GameObject GameplayCameraPrefab
         {
@@ -77,16 +75,6 @@ namespace RPG.SkillSystem.Editor
             previewActorGlobalObjectId = actor != null
                 ? GlobalObjectId.GetGlobalObjectIdSlow(actor).ToString()
                 : string.Empty;
-            Save(true);
-        }
-
-        /// <summary>
-        /// 保存动画预览是否应用绝对帧 Root Motion。
-        /// </summary>
-        public void SetPreviewApplyRootMotion(bool value)
-        {
-            if (previewApplyRootMotion == value) return;
-            previewApplyRootMotion = value;
             Save(true);
         }
 

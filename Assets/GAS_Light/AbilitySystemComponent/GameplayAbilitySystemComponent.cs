@@ -82,15 +82,6 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             Cues = cueController;
         }
 
-        /// <summary>使用 Unity 普通帧推进 GE 与 GA 普通阶段。</summary>
-        private void Update() => Tick(Time.deltaTime);
-
-        /// <summary>使用 Unity 固定帧推进 GA 固定阶段；GE 不在此重复计时。</summary>
-        private void FixedUpdate() => FixedTick(Time.fixedDeltaTime);
-
-        /// <summary>在动画姿态稳定后推进 GA 延迟阶段。</summary>
-        private void LateUpdate() => LateTick(Time.deltaTime);
-
         // 组件销毁时释放 Tick 注册、Active GA、GE 和容器运行状态。
         private void OnDestroy()
         {
@@ -148,6 +139,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         /// <summary>推进当前 ASC 的 GA 延迟更新阶段，不更新 GE。</summary>
         /// <param name="deltaTime">本次延迟更新使用的秒数。</param>
         public void LateTick(float deltaTime) => abilityController.LateTick(deltaTime);
+
+        /// <summary>在 Animator 完成当前帧求值后，将根运动处理阶段转发给 Active GA。</summary>
+        public void UpdateAnimationMove() => abilityController.UpdateAnimationMove();
         #endregion
 
         #region 只读快捷查询
