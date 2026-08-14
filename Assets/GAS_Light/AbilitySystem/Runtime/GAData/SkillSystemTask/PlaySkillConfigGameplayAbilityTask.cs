@@ -16,7 +16,7 @@ namespace RPG.SkillSystem
 
         private readonly SkillConfig skillConfig;
         private SkillRuntimeHost host;
-        private MotionDriver motionDriver;
+        private IMotionDriver motionDriver;
         private bool subscribed;
         private GameplayTag appliedPhaseTag;
         private GameplayTag appliedInterruptTag;

@@ -14,9 +14,10 @@ namespace RPG.Character
         [SerializeField] private GameplayAbilitySystemComponent abilitySystemComponent;
         [SerializeField] private Animator animator;
         [SerializeField] private CharacterController characterController;
+        [SerializeField] private MotionDriver motionDriver = new();
 
         /// <summary>获取由当前角色长期持有的移动驱动。</summary>
-        public MotionDriver MotionDriver { get; private set; }
+        public IMotionDriver MotionDriver => motionDriver;
 
         #endregion
 
@@ -35,14 +36,17 @@ namespace RPG.Character
                 throw new InvalidOperationException(
                     $"PlayerController '{name}' 必须配置 ASC、Animator 和 CharacterController。");
 
-            MotionDriver = new MotionDriver(animator, characterController);
+            motionDriver.Initialize(animator, characterController, abilitySystemComponent);
         }
 
         /// <summary>按角色控制器定义的顺序推进 ASC 普通阶段。</summary>
         private void Update() => abilitySystemComponent.Tick(Time.deltaTime);
 
-        /// <summary>推进 ASC 固定阶段。</summary>
-        private void FixedUpdate() => abilitySystemComponent.FixedTick(Time.fixedDeltaTime);
+        /// <summary>先推进 ASC 固定状态，再为后续 Locomotion 推进移动驱动固定阶段。</summary>
+        private void FixedUpdate()
+        {
+            abilitySystemComponent.FixedTick(Time.fixedDeltaTime);
+        }
 
         /// <summary>在 Animator 求值完成后让当前 Active Ability 决定是否消费根运动。</summary>
         private void OnAnimatorMove() => abilitySystemComponent.UpdateAnimationMove();
