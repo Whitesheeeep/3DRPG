@@ -49,7 +49,7 @@ namespace Sirenix.OdinInspector
     /// <seealso cref="DisallowAddressableSubAssetFieldAttribute" />
     [Conditional("UNITY_EDITOR")]
     [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
-    public class RegisterAssetReferenceAttributeForwardToChildAttribute : Attribute // TODO: Should this be a global attribute?
+    public class RegisterAssetReferenceAttributeForwardToChildAttribute : Attribute
     {
         /// <summary>
         /// The type of the attribute to forward.
@@ -1410,7 +1410,7 @@ namespace Sirenix.OdinInspector.Modules.Addressables.Editor
         {
             attributes.Add(new DoNotDrawAsReferenceAttribute());
             attributes.Add(new HideReferenceObjectPickerAttribute());
-            attributes.Add(new SuppressInvalidAttributeErrorAttribute()); // TODO: Remove this with proper attribute forwarding support.
+            attributes.Add(new SuppressInvalidAttributeErrorAttribute());
         }
     }
 
