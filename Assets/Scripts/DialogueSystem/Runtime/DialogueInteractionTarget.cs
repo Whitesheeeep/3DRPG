@@ -96,8 +96,8 @@ namespace RPG.DialogueSystem
         /// <summary>确保项目架构已初始化，并绑定架构中唯一的 DialogueSystem。</summary>
         private void Awake()
         {
-            if (!GameArchitecture.IsInitialized) GameArchitecture.InitArchitecture();
-            System = GameArchitecture.Interface.GetSystem<DialogueSystem>();
+            if (GameArchitecture.Interface == null) GameArchitecture.InitArchitecture();
+            System = GameArchitecture.Interface!.GetSystem<DialogueSystem>();
         }
 
         #endregion

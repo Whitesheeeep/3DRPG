@@ -64,9 +64,9 @@ namespace RPG.SaveSystem.Tests
         /// </summary>
         private void OnDestroy()
         {
-            if (TestArchitecture.IsInitialized)
+            if (TestArchitecture.Interface != null)
             {
-                TestArchitecture.DeinitArchitecture();
+                TestArchitecture.Interface.Deinit();
             }
 
             testArchitecture = null;
@@ -571,7 +571,7 @@ namespace RPG.SaveSystem.Tests
             /// <param name="directory">测试存档目录。</param>
             internal static void Configure(string directory)
             {
-                if (IsInitialized)
+                if (Interface != null)
                 {
                     return;
                 }

@@ -56,7 +56,7 @@ namespace RPG.Game
                 return;
             }
 
-            GameArchitecture.DeinitArchitecture();
+            GameArchitecture.Interface.Deinit();
             architectureStarted = false;
         }
     }
