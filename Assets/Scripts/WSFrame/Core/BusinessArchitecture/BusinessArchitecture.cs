@@ -82,14 +82,6 @@ namespace WS_Modules.BusinessArchitecture
             architecture.inited = true;
         }
 
-        /// <summary>
-        /// 注销当前具体架构；未创建架构时不触发隐式初始化。
-        /// </summary>
-        public static void DeinitArchitecture()
-        {
-            architecture?.Deinit();
-        }
-
         protected abstract void Init();
 
         public void Deinit()
