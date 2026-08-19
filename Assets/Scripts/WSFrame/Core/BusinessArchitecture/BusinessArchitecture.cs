@@ -53,11 +53,6 @@ namespace WS_Modules.BusinessArchitecture
             }
         }
 
-        /// <summary>
-        /// 获取当前具体架构是否已经创建。
-        /// </summary>
-        public static bool IsInitialized => architecture != null;
-
         public static void InitArchitecture()
         {
             if (architecture != null)
