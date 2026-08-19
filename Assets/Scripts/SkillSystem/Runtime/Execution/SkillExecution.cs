@@ -17,6 +17,7 @@ namespace RPG.SkillSystem
         // 状态
         private IActionPhaseRuntimeState actionPhaseState;
         private float elapsedSeconds;
+        private float playbackSpeed = 1f;
         private int nextFrame;
         private bool reachedDurationBoundary;
         private bool completed;
@@ -37,7 +38,8 @@ namespace RPG.SkillSystem
         /// 创建执行对象，并按固定类型顺序初始化本次执行独占的聚合轨道处理器。
         /// </summary>
         /// <param name="context">本次执行共享上下文。</param>
-        public SkillExecution(SkillRuntimeContext context)
+        /// <param name="playbackSpeed">本次执行开始时采用的全局播放倍率。</param>
+        public SkillExecution(SkillRuntimeContext context, float playbackSpeed)
         {
             this.context = context;
             IReadOnlyList<ISkillTrackRuntimeHandler> createdHandlers = SkillRuntimeRegistry.CreateHandlers();
@@ -49,6 +51,9 @@ namespace RPG.SkillSystem
                 handlers.Add(handler);
                 actionPhaseState ??= handler as IActionPhaseRuntimeState;
             }
+
+            // 在处理第 0 帧之前同步倍率，使首帧创建的动画与 VFX 使用正确速度。
+            SetPlaybackSpeed(playbackSpeed);
         }
 
         #endregion
@@ -67,12 +72,12 @@ namespace RPG.SkillSystem
         /// <summary>
         /// 按缩放时间推进并依次消费所有跨过的整数帧。
         /// </summary>
-        /// <param name="deltaTime">本帧 Time.deltaTime。</param>
+        /// <param name="deltaTime">外部驱动者提供的未缩放帧间隔；方法内部再乘以全局播放倍率。</param>
         public void Advance(float deltaTime)
         {
             if (completed || reachedDurationBoundary) return;
 
-            elapsedSeconds += Mathf.Max(0f, deltaTime);
+            elapsedSeconds += Mathf.Max(0f, deltaTime) * playbackSpeed;
             int targetFrame = Mathf.FloorToInt(elapsedSeconds * Config.FrameRate);
             int lastValidFrame = Config.DurationFrames - 1;
             while (!completed && nextFrame <= targetFrame && nextFrame <= lastValidFrame)
@@ -82,6 +87,17 @@ namespace RPG.SkillSystem
             }
 
             reachedDurationBoundary = targetFrame >= Config.DurationFrames;
+        }
+
+        /// <summary>
+        /// 将通道倍率同步给本次执行的全部处理器，以立即更新动画和活动粒子。
+        /// </summary>
+        /// <param name="playbackSpeed">已经由 Module 校验的 0 到 2 倍率。</param>
+        public void SetPlaybackSpeed(float playbackSpeed)
+        {
+            this.playbackSpeed = playbackSpeed;
+            for (int index = 0; index < handlers.Count; index++)
+                handlers[index].SetPlaybackSpeed(playbackSpeed);
         }
 
         /// <summary>

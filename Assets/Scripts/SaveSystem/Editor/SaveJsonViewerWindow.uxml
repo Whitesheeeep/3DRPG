@@ -1,0 +1,21 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:VisualElement name="SaveJsonViewerRoot" class="save-json-viewer-root">
+        <ui:VisualElement class="toolbar">
+            <ui:Button name="RefreshButton" text="刷新槽位" class="toolbar-button primary-button" />
+            <ui:Button name="ReadButton" text="读取 JSON" class="toolbar-button" />
+            <ui:Label name="StatusLabel" text="未读取存档列表" class="status-label" />
+        </ui:VisualElement>
+        <ui:VisualElement class="main-layout">
+            <ui:VisualElement class="slot-panel">
+                <ui:Label text="正式存档槽位" class="panel-title" />
+                <ui:ListView name="SlotList" class="slot-list" />
+            </ui:VisualElement>
+            <ui:VisualElement class="payload-panel">
+                <ui:Label name="MetadataLabel" text="未选择存档" class="metadata-label" />
+                <ui:ScrollView name="PayloadScroll" class="payload-scroll">
+                    <ui:TextField name="JsonText" multiline="true" class="json-text" />
+                </ui:ScrollView>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

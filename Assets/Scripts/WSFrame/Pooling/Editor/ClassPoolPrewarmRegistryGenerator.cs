@@ -30,7 +30,7 @@ namespace WS_Modules.Pooling.Editor
         /// <summary>
         /// 扫描所有可用的运行时程序集并重新生成 Class Pool 预热 Registry。
         /// </summary>
-        [MenuItem("Tools/WSFrame/Pooling/Generate Class Pool Prewarm Registry", priority = 2000)]
+        [MenuItem("WSFrame/Pooling/Generate Class Pool Prewarm Registry", priority = 2000)]
         public static void Generate()
         {
             GenerateAndGetPaths();

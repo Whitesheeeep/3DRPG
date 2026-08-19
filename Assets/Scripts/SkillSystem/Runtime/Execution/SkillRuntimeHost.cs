@@ -38,6 +38,8 @@ namespace RPG.SkillSystem
         public ActionPhaseType CurrentPhase => module.CurrentPhase;
         /// <summary>获取当前阶段是否允许外部技能打断。</summary>
         public bool CanBeInterrupted => module.CanBeInterrupted;
+        /// <summary>获取共享技能通道的全局播放倍率。</summary>
+        public float PlaybackSpeed => module.PlaybackSpeed;
 
         #endregion
 
@@ -112,6 +114,15 @@ namespace RPG.SkillSystem
         {
             weaponRoot = root;
             weaponTip = tip;
+        }
+
+        /// <summary>
+        /// 设置共享通道及后续技能使用的全局播放倍率。
+        /// </summary>
+        /// <param name="playbackSpeed">范围为 0 到 2；0 表示冻结时间轴、动画和粒子。</param>
+        public void SetPlaybackSpeed(float playbackSpeed)
+        {
+            module.SetPlaybackSpeed(playbackSpeed);
         }
 
         /// <summary>使用当前角色上下文和武器节点尝试播放指定 SkillConfig。</summary>

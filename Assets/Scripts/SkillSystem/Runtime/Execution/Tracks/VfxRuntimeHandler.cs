@@ -14,10 +14,22 @@ namespace RPG.SkillSystem
         #region 运行时状态
 
         private readonly List<VfxRuntimeInstance> instances = new();
+        private float globalPlaybackSpeed = 1f;
 
         #endregion
 
         #region 处理器契约
+
+        /// <summary>
+        /// 立即更新当前执行仍持有的全部粒子实例，并保存给后续新实例使用。
+        /// </summary>
+        /// <param name="playbackSpeed">当前 Module 的 0 到 2 倍率。</param>
+        public override void SetPlaybackSpeed(float playbackSpeed)
+        {
+            globalPlaybackSpeed = playbackSpeed;
+            for (int index = 0; index < instances.Count; index++)
+                instances[index].SetPlaybackSpeed(playbackSpeed);
+        }
 
         /// <summary>
         /// 在 Clip 起始帧创建实例，并在排他结束帧执行对应 StopMode。
@@ -92,7 +104,7 @@ namespace RPG.SkillSystem
             }
 
             VfxRuntimeInstance instance = new(clip, gameObject);
-            instance.Play(clip.PlaybackSpeed);
+            instance.Play(globalPlaybackSpeed);
             instances.Add(instance);
         }
 
@@ -184,17 +196,25 @@ namespace RPG.SkillSystem
             /// <summary>
             /// 从缓存的原始速度计算本次实例速度并重新播放粒子系统。
             /// </summary>
-            /// <param name="playbackSpeed">Clip 独立播放倍率。</param>
-            public void Play(float playbackSpeed)
+            /// <param name="globalPlaybackSpeed">当前 Module 的全局倍率。</param>
+            public void Play(float globalPlaybackSpeed)
+            {
+                SetPlaybackSpeed(globalPlaybackSpeed);
+                for (int index = 0; index < particles.Length; index++) particles[index].Clear(true);
+                for (int index = 0; index < particles.Length; index++) particles[index].Play(true);
+            }
+
+            /// <summary>
+            /// 从 Prefab 原始值重新计算全部粒子速度，避免多次倍率变化发生累计乘法。
+            /// </summary>
+            /// <param name="globalPlaybackSpeed">当前 Module 的全局倍率。</param>
+            public void SetPlaybackSpeed(float globalPlaybackSpeed)
             {
                 for (int index = 0; index < particles.Length; index++)
                 {
-                    ParticleSystem particle = particles[index];
-                    ParticleSystem.MainModule main = particle.main;
-                    main.simulationSpeed = originalSpeeds[index] * playbackSpeed;
-                    particle.Clear(true);
+                    ParticleSystem.MainModule main = particles[index].main;
+                    main.simulationSpeed = originalSpeeds[index] * Clip.PlaybackSpeed * globalPlaybackSpeed;
                 }
-                for (int index = 0; index < particles.Length; index++) particles[index].Play(true);
             }
 
             /// <summary>
@@ -235,6 +255,8 @@ namespace RPG.SkillSystem
             /// <param name="stopEmission">交接前是否停止全部粒子发射。</param>
             public void ReleaseToTail(bool stopEmission)
             {
+                // 尾迹脱离 SkillExecution 后不再接收全局倍率，先恢复为 Clip 自身速度以避免 0 倍率永久冻结。
+                SetPlaybackSpeed(1f);
                 VfxTailRecycler recycler = gameObject.GetComponent<VfxTailRecycler>();
                 if (recycler == null) recycler = gameObject.AddComponent<VfxTailRecycler>();
                 recycler.Begin(particles, originalSpeeds, stopEmission);

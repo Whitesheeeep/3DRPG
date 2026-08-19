@@ -55,6 +55,14 @@ namespace RPG.SkillSystem
         {
         }
 
+        /// <summary>
+        /// 接收全局播放倍率；仅需立即控制外部自主时间源的处理器覆盖该方法。
+        /// </summary>
+        /// <param name="playbackSpeed">已经由 Module 校验的 0 到 2 倍率。</param>
+        public virtual void SetPlaybackSpeed(float playbackSpeed)
+        {
+        }
+
         #endregion
 
         #region 帧处理契约

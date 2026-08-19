@@ -13,6 +13,12 @@ namespace RPG.SkillSystem
         void Initialize(SkillRuntimeContext context, SkillConfig config);
 
         /// <summary>
+        /// 接收当前执行的全局播放倍率；不需要单独响应的处理器可使用基类空实现。
+        /// </summary>
+        /// <param name="playbackSpeed">已经由 Module 校验的 0 到 2 倍率。</param>
+        void SetPlaybackSpeed(float playbackSpeed);
+
+        /// <summary>
         /// 按顺序处理一个已经到达的整数逻辑帧；该阶段不依赖 Animator 本帧最终姿态。
         /// </summary>
         /// <param name="frame">当前整数帧。</param>

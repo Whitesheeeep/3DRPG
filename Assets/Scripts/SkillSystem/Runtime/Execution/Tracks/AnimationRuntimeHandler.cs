@@ -9,6 +9,19 @@ namespace RPG.SkillSystem
     internal sealed class AnimationRuntimeHandler : TrackRuntimeHandler<AnimationTrackConfig>
     {
         private AnimationSkillClipConfig currentClip;
+        private AnimancerState currentState;
+        private float globalPlaybackSpeed = 1f;
+
+        /// <summary>
+        /// 立即把全局倍率应用到当前 AnimancerState，并保存给后续新 Clip 使用。
+        /// </summary>
+        /// <param name="playbackSpeed">当前 Module 的 0 到 2 倍率。</param>
+        public override void SetPlaybackSpeed(float playbackSpeed)
+        {
+            globalPlaybackSpeed = playbackSpeed;
+            if (currentState != null && currentClip != null)
+                currentState.Speed = currentClip.PlaybackSpeed * globalPlaybackSpeed;
+        }
 
         /// <summary>
         /// 按轨道物理顺序选择当前帧最上方有效 Clip；权威 Clip 变化时从正确源时间播放并淡入。
@@ -35,7 +48,8 @@ namespace RPG.SkillSystem
                                  (double)Context.Request.Config.FrameRate;
             // 切换到已开始的下层 Clip 时，直接定位到其权威时间，避免只从素材开头重新播放。
             state.TimeD = sourceStartTime + elapsedTime * selected.PlaybackSpeed;
-            state.Speed = selected.PlaybackSpeed;
+            state.Speed = selected.PlaybackSpeed * globalPlaybackSpeed;
+            currentState = state;
         }
 
         /// <summary>
@@ -73,7 +87,11 @@ namespace RPG.SkillSystem
         /// <param name="reason">技能结束原因。</param>
         public override void Complete(SkillCompletionReason reason)
         {
+            // 动画退出仍由外部状态机负责，但执行结束后不能让通道倍率泄漏到遗留 State。
+            if (currentState != null && currentClip != null)
+                currentState.Speed = currentClip.PlaybackSpeed;
             currentClip = null;
+            currentState = null;
         }
     }
 }

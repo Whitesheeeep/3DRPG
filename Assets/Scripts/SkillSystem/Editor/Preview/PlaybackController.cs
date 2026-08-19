@@ -12,6 +12,8 @@ namespace RPG.SkillSystem.Editor
     {
         #region Clock state and events
 
+        private const float MinimumPlaybackSpeed = 0.1f;
+        private const float MaximumPlaybackSpeed = 2f;
         private readonly IPreview preview;
         private SkillConfig config;
         private double lastUpdateTime;
@@ -25,6 +27,7 @@ namespace RPG.SkillSystem.Editor
         public int CurrentFrame { get; private set; }
         public bool IsPlaying { get; private set; }
         public bool IsLooping { get; private set; }
+        public float PlaybackSpeed { get; private set; } = 1f;
 
         #endregion
 
@@ -117,6 +120,21 @@ namespace RPG.SkillSystem.Editor
         }
 
         /// <summary>
+        /// 设置窗口预览时钟倍率；该状态不写入技能资产或 Undo。
+        /// </summary>
+        /// <param name="value">目标倍率，最终夹紧到 0.1 至 2。</param>
+        public void SetPlaybackSpeed(float value)
+        {
+            value = Mathf.Clamp(value, MinimumPlaybackSpeed, MaximumPlaybackSpeed);
+            if (Mathf.Approximately(PlaybackSpeed, value)) return;
+
+            PlaybackSpeed = value;
+            // 播放中切换倍率时从当前时刻继续累计，避免旧倍率区间被新倍率重复计算。
+            if (IsPlaying) lastUpdateTime = EditorApplication.timeSinceStartup;
+            PlaybackChanged?.Invoke();
+        }
+
+        /// <summary>
         /// 有技能时按技能末帧夹紧；空技能时保存非负虚拟帧且不触发 Preview。
         /// </summary>
         public void Seek(int frame)
@@ -193,14 +211,16 @@ namespace RPG.SkillSystem.Editor
         #endregion
 
         #region Editor clock
-        // 根据编辑器时钟推进整数帧；循环时完整显示末帧，并在下一次越界推进时取模回到开头。
+        /// <summary>
+        /// 根据编辑器时钟和窗口播放倍率推进整数帧；循环时完整显示末帧，并在下一次越界推进时回到开头。
+        /// </summary>
         private void OnEditorUpdate()
         {
             if (!IsPlaying || config == null) return;
             double now = EditorApplication.timeSinceStartup;
             double delta = Math.Max(0d, now - lastUpdateTime);
             lastUpdateTime = now;
-            accumulatedFrames += delta * config.FrameRate;
+            accumulatedFrames += delta * config.FrameRate * PlaybackSpeed;
             int advance = (int)Math.Floor(accumulatedFrames);
             if (advance <= 0) return;
             accumulatedFrames -= advance;

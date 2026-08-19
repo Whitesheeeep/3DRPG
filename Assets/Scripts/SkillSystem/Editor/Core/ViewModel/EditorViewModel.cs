@@ -45,6 +45,7 @@ namespace RPG.SkillSystem.Editor
         public int CurrentFrame => playback.CurrentFrame;
         public bool IsPlaying => playback.IsPlaying;
         public bool IsLooping => playback.IsLooping;
+        public float PlaybackSpeed => playback.PlaybackSpeed;
         public SceneAsset PreviewScene => previewSceneService.PreviewScene;
         public GameObject PreviewActor => previewSceneService.PreviewActor;
         public bool IsRootMotion => CurrentConfig != null && CurrentConfig.IsRootMotion;
@@ -272,6 +273,9 @@ namespace RPG.SkillSystem.Editor
         public void Stop() => playback.Stop();
         /// <summary>设置全技能循环播放。</summary>
         public void SetLooping(bool value) => playback.SetLooping(value);
+        /// <summary>设置窗口预览播放倍率，不修改 SkillConfig。</summary>
+        /// <param name="value">范围为 0.1 到 2 的目标倍率。</param>
+        public void SetPlaybackSpeed(float value) => playback.SetPlaybackSpeed(value);
         /// <summary>后退一帧。</summary>
         public void StepPreviousFrame() => playback.StepPreviousFrame();
         /// <summary>前进一帧。</summary>

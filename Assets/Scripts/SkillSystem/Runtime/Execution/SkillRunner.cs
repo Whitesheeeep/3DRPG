@@ -39,6 +39,8 @@ namespace RPG.SkillSystem
         public int CurrentFrame => module.CurrentFrame;
         public ActionPhaseType CurrentPhase => module.CurrentPhase;
         public bool CanBeInterrupted => module.CanBeInterrupted;
+        /// <summary>获取当前技能通道的全局播放倍率。</summary>
+        public float PlaybackSpeed => module.PlaybackSpeed;
 
         #endregion
 
@@ -98,6 +100,15 @@ namespace RPG.SkillSystem
         public void SetAttackLayerMask(LayerMask layerMask)
         {
             module.SetAttackLayerMask(layerMask);
+        }
+
+        /// <summary>
+        /// 设置当前通道及后续技能使用的全局播放倍率。
+        /// </summary>
+        /// <param name="playbackSpeed">范围为 0 到 2；0 表示冻结时间轴、动画和粒子。</param>
+        public void SetPlaybackSpeed(float playbackSpeed)
+        {
+            module.SetPlaybackSpeed(playbackSpeed);
         }
 
         /// <summary>

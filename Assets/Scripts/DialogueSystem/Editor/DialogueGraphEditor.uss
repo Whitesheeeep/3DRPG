@@ -1,0 +1,360 @@
+.dialogue-editor-root {
+    flex-grow: 1;
+    min-width: 980px;
+    min-height: 640px;
+    background-color: rgb(37, 37, 37);
+    color: rgb(214, 214, 214);
+}
+
+.dialogue-editor-toolbar {
+    min-height: 36px;
+    flex-direction: row;
+    align-items: center;
+    padding-left: 6px;
+    padding-right: 6px;
+    background-color: rgb(32, 32, 32);
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(17, 17, 17);
+}
+
+.dialogue-editor-toolbar__label {
+    min-width: 170px;
+    margin-left: 6px;
+    margin-right: 10px;
+    color: rgb(216, 216, 216);
+    -unity-font-style: bold;
+}
+
+.dialogue-editor-asset-field {
+    min-width: 220px;
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin-right: 8px;
+}
+
+.dialogue-editor-toolbar__actions {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.dialogue-editor-toolbar__button {
+    min-width: 68px;
+    height: 28px;
+    margin-left: 4px;
+}
+
+.dialogue-editor-toolbar__button--primary {
+    background-color: rgb(52, 93, 135);
+}
+
+.dialogue-editor-main-split {
+    flex-grow: 1;
+    min-width: 0;
+    min-height: 360px;
+}
+
+.dialogue-editor-content-split {
+    flex-grow: 1;
+    min-width: 0;
+    min-height: 360px;
+}
+
+.dialogue-editor-navigation-panel {
+    min-width: 0;
+    flex-direction: column;
+    background-color: rgb(41, 41, 41);
+}
+
+.dialogue-editor-inspector-panel {
+    min-width: 0;
+    flex-direction: column;
+    background-color: rgb(41, 41, 41);
+}
+
+.dialogue-editor-panel__header {
+    min-height: 38px;
+    padding-left: 10px;
+    padding-right: 10px;
+    color: rgb(216, 216, 216);
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(21, 21, 21);
+}
+
+.dialogue-editor-node-list {
+    min-height: 0;
+    flex-grow: 1;
+    background-color: rgb(41, 41, 41);
+}
+
+.dialogue-editor-details {
+    min-height: 0;
+    flex-grow: 1;
+    background-color: rgb(41, 41, 41);
+}
+
+.dialogue-editor-speaker-section {
+    min-height: 190px;
+    height: 230px;
+    flex-shrink: 0;
+    padding: 8px;
+    border-top-width: 1px;
+    border-top-color: rgb(21, 21, 21);
+}
+
+.dialogue-editor-section__header {
+    min-height: 26px;
+    color: rgb(184, 184, 184);
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+}
+
+.dialogue-editor-bottom-panel__header {
+    min-height: 26px;
+    color: rgb(184, 184, 184);
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+}
+
+.dialogue-editor-speaker-list {
+    min-height: 0;
+    flex-grow: 1;
+    background-color: rgb(36, 36, 36);
+    border-width: 1px;
+    border-color: rgb(21, 21, 21);
+}
+
+.dialogue-editor-graph-container {
+    min-width: 320px;
+    flex-grow: 1;
+    background-color: rgb(31, 31, 31);
+    border-right-width: 1px;
+    border-right-color: rgb(17, 17, 17);
+}
+
+.dialogue-graph-view {
+    flex-grow: 1;
+    min-width: 320px;
+    min-height: 360px;
+}
+
+.dialogue-editor-details-panel {
+    min-width: 0;
+    flex-grow: 1;
+    flex-direction: column;
+    background-color: rgb(41, 41, 41);
+}
+
+.dialogue-editor-details {
+    padding: 10px;
+}
+
+.dialogue-editor-bottom-panel {
+    height: 112px;
+    min-height: 112px;
+    flex-shrink: 1;
+    flex-direction: column;
+    border-top-width: 1px;
+    border-top-color: rgb(17, 17, 17);
+    background-color: rgb(32, 32, 32);
+    flex-grow: 0;
+}
+
+.dialogue-editor-validation {
+    min-width: 0;
+    min-height: 0;
+    padding: 8px 12px;
+    overflow: hidden;
+}
+
+.dialogue-editor-status {
+    min-width: 0;
+    min-height: 0;
+    padding: 8px 12px;
+    overflow: hidden;
+}
+
+.dialogue-editor-validation {
+    flex-grow: 1;
+}
+
+.dialogue-editor-status {
+    width: 320px;
+    flex-shrink: 0;
+    border-left-width: 1px;
+    border-left-color: rgb(21, 21, 21);
+}
+
+.dialogue-editor-validation__text {
+    white-space: normal;
+    color: rgb(184, 184, 184);
+}
+
+.dialogue-editor-status__text {
+    white-space: normal;
+    color: rgb(184, 184, 184);
+}
+
+.dialogue-editor-validation--error {
+    color: rgb(216, 90, 90);
+}
+
+.dialogue-editor-validation--warning {
+    color: rgb(214, 173, 69);
+}
+
+.dialogue-editor-validation--ok {
+    color: rgb(134, 189, 137);
+}
+
+.dialogue-editor-node-row {
+    min-height: 28px;
+    margin-bottom: 2px;
+    padding-left: 7px;
+    padding-right: 7px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    border-radius: 3px;
+    color: rgb(200, 200, 200);
+}
+
+.dialogue-editor-speaker-row {
+    min-height: 28px;
+    margin-bottom: 2px;
+    padding-left: 7px;
+    padding-right: 7px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    border-radius: 3px;
+    color: rgb(200, 200, 200);
+}
+
+.dialogue-editor-node-row:hover {
+    background-color: rgb(49, 95, 147);
+    color: rgb(240, 240, 240);
+}
+
+.dialogue-editor-speaker-row:hover {
+    background-color: rgb(49, 95, 147);
+    color: rgb(240, 240, 240);
+}
+
+.dialogue-editor-speaker-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.dialogue-editor-speaker-row Button {
+    min-width: 24px;
+    margin-left: 4px;
+}
+
+.ws-graph-node {
+    min-width: 190px;
+    background-color: rgb(32, 32, 32);
+}
+
+/* 根节点的外框宽度必须在普通、Hover 和选中状态保持不变，避免命中区域变化造成闪烁。 */
+.ws-graph-node,
+.ws-graph-node:hover,
+.ws-graph-node.selected,
+.ws-graph-node--selected {
+    border-left-width: 4px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+}
+
+.ws-graph-node {
+    border-color: rgb(59, 59, 59);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    overflow: hidden;
+}
+
+.ws-graph-node__main {
+    min-width: 0;
+    flex-shrink: 1;
+    background-color: rgb(32, 32, 32);
+}
+
+.ws-graph-node__content {
+    min-width: 0;
+    flex-shrink: 1;
+    background-color: rgb(32, 32, 32);
+}
+
+.ws-graph-node__title {
+    min-height: 28px;
+    padding-left: 8px;
+    padding-right: 8px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    color: rgb(240, 240, 240);
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+    background-color: rgb(48, 48, 48);
+}
+
+.ws-graph-node__input {
+    min-height: 30px;
+    background-color: rgb(37, 37, 37);
+}
+
+.ws-graph-node__output {
+    min-height: 30px;
+    background-color: rgb(37, 37, 37);
+}
+
+.ws-graph-node__content {
+    padding: 8px;
+}
+
+.ws-graph-node--selected {
+    border-color: rgb(242, 255, 0);
+    background-color: rgb(58, 58, 58);
+}
+
+.ws-graph-node--selected .ws-graph-node__main {
+    background-color: rgb(48, 48, 48);
+}
+
+.ws-graph-node--selected .ws-graph-node__content {
+    background-color: rgb(48, 48, 48);
+}
+
+.dialogue-node--entrynode {
+    border-color: rgb(67, 179, 106);
+}
+
+.dialogue-node--entrynode .ws-graph-node__title {
+    background-color: rgb(47, 125, 77);
+}
+
+.dialogue-node--speechnode {
+    border-color: rgb(77, 143, 219);
+}
+
+.dialogue-node--speechnode .ws-graph-node__title {
+    background-color: rgb(49, 95, 147);
+}
+
+.dialogue-node--choicenode {
+    border-color: rgb(214, 173, 69);
+}
+
+.dialogue-node--choicenode .ws-graph-node__title {
+    background-color: rgb(138, 106, 36);
+}
+
+.dialogue-node--endnode {
+    border-color: rgb(216, 90, 90);
+}
+
+.dialogue-node--endnode .ws-graph-node__title {
+    background-color: rgb(143, 58, 58);
+}
