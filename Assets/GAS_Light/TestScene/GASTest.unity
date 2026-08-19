@@ -4228,6 +4228,7 @@ GameObject:
   - component: {fileID: 502244388}
   - component: {fileID: 502244387}
   - component: {fileID: 502244386}
+  - component: {fileID: 502244392}
   - component: {fileID: 502244385}
   - component: {fileID: 502244391}
   - component: {fileID: 502244390}
@@ -4364,6 +4365,18 @@ CapsuleCollider:
   m_Height: 1
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &502244392
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 502244384}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7f3d9c6a1b44e4fb0c5d8a7f2e91b63, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &507917008
 GameObject:
   m_ObjectHideFlags: 0
@@ -10320,6 +10333,7 @@ GameObject:
   - component: {fileID: 1203861538}
   - component: {fileID: 1203861537}
   - component: {fileID: 1203861536}
+  - component: {fileID: 1203861539}
   - component: {fileID: 1203861535}
   - component: {fileID: 1203861534}
   - component: {fileID: 1203861533}
@@ -10456,6 +10470,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1203861539
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1203861531}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7f3d9c6a1b44e4fb0c5d8a7f2e91b63, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1208242094
 GameObject:
   m_ObjectHideFlags: 0
@@ -14476,6 +14502,82 @@ MonoBehaviour:
   boneID: 263
   ikEnabled: 0
   ikWeight: 1
+--- !u!114 &1733374002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1733374008}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b8e8ac1b7a7499ab14c21d19b143eda, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  tagDatabase: {fileID: 11400000, guid: 44d0d73125b5f0d4d82269bceac4ca8c, type: 2}
+  pressIntentTag:
+    id: 5
+  releaseIntentTag:
+    id: 6
+  consumeMode: 0
+  consumeInterval: 1
+  heldThreshold: 0.5
+  showOnGui: 0
+  lastConfirmationResult: "\u5C1A\u672A\u786E\u8BA4 Intent"
+  lastPublicationResult: "\u5C1A\u672A\u5C1D\u8BD5\u53D1\u5E03 Intent"
+  lastPressConfirmationResult: "\u5C1A\u672A\u786E\u8BA4 Press Intent"
+  lastReleaseConfirmationResult: "\u5C1A\u672A\u786E\u8BA4 Release Intent"
+--- !u!114 &1733374004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1733374008}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e94126f49984bb69432cfc6a091aaba, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  defaultPressBufferDuration: 0.2
+  defaultReleaseBufferDuration: 0.1
+  bindings:
+  - action: {fileID: 1120369429361536294, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    inputType: 0
+    pressBufferDuration: 2
+    releaseBufferDuration: 2
+  - action: {fileID: 5122240510681039964, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    inputType: 1
+    pressBufferDuration: 2
+    releaseBufferDuration: 2
+  - action: {fileID: 8930928410849445186, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    inputType: 2
+    pressBufferDuration: 2
+    releaseBufferDuration: 2
+  - action: {fileID: 169093821141886694, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    inputType: 3
+    pressBufferDuration: 2
+    releaseBufferDuration: 2
+  - action: {fileID: 1957224943341489001, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    inputType: 4
+    pressBufferDuration: 2
+    releaseBufferDuration: 2
+  - action: {fileID: -7925555515064521012, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    inputType: 5
+    pressBufferDuration: 2
+    releaseBufferDuration: 2
+  - action: {fileID: -2099379676528639254, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    inputType: 6
+    pressBufferDuration: 2
+    releaseBufferDuration: 2
+  - action: {fileID: 7040659881675835329, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    inputType: 7
+    pressBufferDuration: 2
+    releaseBufferDuration: 2
+  - action: {fileID: 1781555164194001046, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    inputType: 8
+    pressBufferDuration: 2
+    releaseBufferDuration: 2
 --- !u!114 &1733374005
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14491,6 +14593,11 @@ MonoBehaviour:
   abilitySystemComponent: {fileID: 1733374007}
   animator: {fileID: 1733374015}
   characterController: {fileID: 1733374006}
+  inputController: {fileID: 1733374004}
+  skillRuntimeHost: {fileID: 0}
+  motionDriver:
+    horizontalMovementBlockedTags: []
+    allMovementBlockedTags: []
 --- !u!143 &1733374006
 CharacterController:
   m_ObjectHideFlags: 0
@@ -14541,13 +14648,15 @@ GameObject:
   - component: {fileID: 1733374015}
   - component: {fileID: 1733374014}
   - component: {fileID: 1733374013}
+  - component: {fileID: 1733374006}
   - component: {fileID: 1733374012}
   - component: {fileID: 1733374011}
   - component: {fileID: 1733374010}
   - component: {fileID: 1733374009}
   - component: {fileID: 1733374007}
-  - component: {fileID: 1733374006}
   - component: {fileID: 1733374005}
+  - component: {fileID: 1733374004}
+  - component: {fileID: 1733374002}
   m_Layer: 0
   m_Name: "\u660E\u65E5\u99991.0 (1)"
   m_TagString: Untagged

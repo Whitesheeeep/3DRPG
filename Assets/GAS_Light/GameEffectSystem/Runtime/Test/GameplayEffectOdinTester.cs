@@ -581,6 +581,7 @@ namespace WS_Modules.GAS.GameplayEffect
             {
                 hideFlags = HideFlags.HideAndDontSave
             };
+            owner.AddComponent<GameplayAbilitySystemTestOwner>();
             return owner.AddComponent<GameplayAbilitySystemComponent>();
         }
 

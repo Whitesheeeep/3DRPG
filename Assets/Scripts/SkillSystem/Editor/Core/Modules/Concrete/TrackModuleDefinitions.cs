@@ -118,5 +118,21 @@ namespace RPG.SkillSystem.Editor
             new(TrackType, ItemType, metadata, new EventDocumentHandler(),
                 null, new EventItemFactory(), new EventInspectorDrawer());
     }
+
+    /// <summary>组合 Projectile 轨道的单帧编辑和 Inspector 能力。</summary>
+    internal sealed class ProjectileModuleDefinition : TrackModuleDefinition
+    {
+        /// <inheritdoc />
+        public override Type TrackType => typeof(ProjectileTrackConfig);
+
+        /// <inheritdoc />
+        public override Type ItemType => typeof(ProjectileSkillClipConfig);
+
+        /// <inheritdoc />
+        public override TrackModule Create(EditorConfig config, TimelineTrackAttribute metadata) =>
+            new(TrackType, ItemType, metadata, new ProjectileDocumentHandler(), null,
+                new ProjectileItemFactory(), new ProjectileInspectorDrawer(),
+                new ProjectilePreviewFactory());
+    }
 }
 #endif

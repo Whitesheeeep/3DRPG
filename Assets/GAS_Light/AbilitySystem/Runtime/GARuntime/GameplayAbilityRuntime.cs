@@ -22,6 +22,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         public GameplayAbilitySpec Spec { get; }
         /// <summary>获取释放本次 Ability 的 ASC。</summary>
         public GameplayAbilitySystemComponent SourceASC { get; }
+        /// <summary>获取释放本次 Ability 的稳定宿主接口。</summary>
+        public IGameplayAbilitySystemOwner SourceOwner => SourceASC.Owner;
         /// <summary>获取激活时从 Spec 复制的等级快照。</summary>
         public int Level { get; }
         /// <summary>获取当前生命周期状态。</summary>

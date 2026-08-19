@@ -6,6 +6,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using WS_Modules.MVVM;
+using WS_Modules.GAS.GameplayAbilitySystem;
 using WS_Modules.UIToolkitExtensions.Editor;
 
 namespace RPG.SkillSystem.Editor
@@ -704,6 +705,64 @@ namespace RPG.SkillSystem.Editor
                 Submit();
             });
             pitch.RegisterValueChangedCallback(_ => Submit());
+            AddItemActions(container, viewModel);
+        }
+    }
+
+    /// <summary>绘制 Projectile Clip 的单帧位置与统一 Spawn 配置。</summary>
+    internal sealed class ProjectileInspectorDrawer : InspectorDrawer, IInspectorDrawer
+    {
+        /// <inheritdoc />
+        public void Draw(VisualElement container, object data, EditorViewModel viewModel,
+            InspectorFieldCommitController fieldCommitController)
+        {
+            if (data is not ProjectileSkillClipConfig clip) return;
+            ProjectileSpawnConfig config = clip.SpawnConfig;
+            AddTitle(container, config.FallbackPrefab != null ? config.FallbackPrefab.name : "Projectile");
+            IntegerField frame = AddField(container, new IntegerField("发射帧") { value = clip.StartFrame });
+            TextField addressableKey = AddField(container,
+                new TextField("Addressable Key") { value = config.AddressableKey });
+            ObjectField prefab = AddField(container, new ObjectField("Fallback Prefab")
+            {
+                objectType = typeof(GameObject), allowSceneObjects = false, value = config.FallbackPrefab
+            });
+            ObjectField marker = AddField(container, new ObjectField("挂点")
+            {
+                objectType = typeof(MarkerKey), allowSceneObjects = false, value = config.MarkerKey
+            });
+            Vector3Field position = AddField(container, new Vector3Field("局部位置") { value = config.LocalPosition });
+            Vector3Field rotation = AddField(container, new Vector3Field("局部旋转") { value = config.LocalEulerAngles });
+            FloatField spread = AddField(container, new FloatField("总扇形角") { value = config.SpreadAngle });
+            IntegerField count = AddField(container, new IntegerField("发射数量") { value = config.ProjectileCount });
+            FloatField speed = AddField(container, new FloatField("速度") { value = config.Speed });
+            FloatField lifetime = AddField(container, new FloatField("存活秒数") { value = config.Lifetime });
+            LayerMaskField targetLayerMask = AddField(container,
+                new LayerMaskField("目标 LayerMask", config.TargetLayerMask));
+
+            void Submit() => viewModel.EditItem(viewModel.SelectedTrack, clip, new ProjectileEditRequest(
+                frame.value, addressableKey.value, prefab.value as GameObject, marker.value as MarkerKey,
+                position.value, rotation.value, spread.value, count.value, speed.value, lifetime.value,
+                targetLayerMask.value));
+
+            frame.isDelayed = true;
+            addressableKey.isDelayed = true;
+            position.SetIsDelayed(true);
+            rotation.SetIsDelayed(true);
+            spread.isDelayed = true;
+            count.isDelayed = true;
+            speed.isDelayed = true;
+            lifetime.isDelayed = true;
+            fieldCommitController.BindObjectField(prefab, Submit);
+            fieldCommitController.BindObjectField(marker, Submit);
+            frame.RegisterValueChangedCallback(_ => Submit());
+            addressableKey.RegisterValueChangedCallback(_ => Submit());
+            position.RegisterValueChangedCallback(_ => Submit());
+            rotation.RegisterValueChangedCallback(_ => Submit());
+            spread.RegisterValueChangedCallback(_ => Submit());
+            count.RegisterValueChangedCallback(_ => Submit());
+            speed.RegisterValueChangedCallback(_ => Submit());
+            lifetime.RegisterValueChangedCallback(_ => Submit());
+            targetLayerMask.RegisterValueChangedCallback(_ => Submit());
             AddItemActions(container, viewModel);
         }
     }

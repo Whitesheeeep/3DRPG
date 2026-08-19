@@ -23,6 +23,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         #endregion
 
         #region 属性
+        /// <summary>获取为当前 ASC 提供角色空间和扩展能力的稳定宿主。</summary>
+        public IGameplayAbilitySystemOwner Owner { get; private set; }
+
         /// <summary>获取 ASC 是否已经成功导入 AttributeSet。</summary>
         public bool IsInitialized => initialized;
 
@@ -71,6 +74,12 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         // 创建运行时容器与 Controller，但不导入任何作者配置。
         private void Awake()
         {
+            // Owner 必须在 ASC 建立 Controller 前解析，后续 Ability 与 Cue 只能通过该契约访问宿主。
+            Owner = GetComponent<IGameplayAbilitySystemOwner>();
+            if (Owner == null)
+                throw new InvalidOperationException(
+                    $"ASC '{name}' 必须挂载实现 IGameplayAbilitySystemOwner 的宿主组件。");
+
             MutableTags = new GameplayTagCountContainer();
             Tags = MutableTags;
             MutableAttributes = new GameplayAttributeContainer();

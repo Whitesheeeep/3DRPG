@@ -230,7 +230,7 @@ namespace WS_Modules.GAS.GameplayCue
         }
 
         /// <summary>
-        /// 根据 DefaultAnchor 选择 Source 或 Target ASC，并在其根节点查找 Marker；Marker 不可用时回退到同一 ASC Transform。
+        /// 根据 DefaultAnchor 选择 Source 或 Target ASC，并通过其 Owner 查找 Marker；Marker 不可用时回退到 Owner 根 Transform。
         /// </summary>
         private Transform ResolveDefaultAnchor(GameplayCueData data, GameplayCueRequest request)
         {
@@ -241,16 +241,16 @@ namespace WS_Modules.GAS.GameplayCue
                 : request.Target;
             if (anchorAsc == null) return null;
 
-            if (data.MarkerKey == null) return anchorAsc.transform;
+            if (data.MarkerKey == null) return anchorAsc.Owner.RootTransform;
 
-            IMarkerProvider provider = anchorAsc.GetComponent<IMarkerProvider>();
+            IMarkerProvider provider = anchorAsc.Owner.MarkerProvider;
             if (provider != null && provider.TryGetMarker(data.MarkerKey, out Transform marker))
                 return marker;
 
             Debug.LogWarning(
-                $"GameplayCueData '{data.name}' 无法在 ASC '{anchorAsc.name}' 解析 MarkerKey '{data.MarkerKey.name}'，将回退到 ASC Transform。",
+                $"GameplayCueData '{data.name}' 无法在 ASC '{anchorAsc.name}' 的 Owner 中解析 MarkerKey '{data.MarkerKey.name}'，将回退到 Owner RootTransform。",
                 anchorAsc);
-            return anchorAsc.transform;
+            return anchorAsc.Owner.RootTransform;
         }
 
         /// <summary>

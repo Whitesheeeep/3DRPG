@@ -315,9 +315,9 @@ namespace WS_Modules.GAS.Editor
                 return;
             }
 
-            if (ability is LinearProjectileGameplayAbilityData projectile)
+            if (ability is ProjectileGameplayAbilityData projectile)
             {
-                ValidateLinearProjectile(projectile, issues);
+                ValidateProjectile(projectile, issues);
                 return;
             }
 
@@ -416,28 +416,33 @@ namespace WS_Modules.GAS.Editor
             }
         }
 
-        /// <summary>校验线性投射物的对象池资源入口与 Fallback Prefab 组件契约。</summary>
+        /// <summary>校验 Projectile 的对象池资源入口、Spawn 参数与 Fallback Prefab 组件契约。</summary>
         /// <param name="projectile">待校验的投射物 Ability。</param>
         /// <param name="issues">接收校验结果的集合。</param>
-        private static void ValidateLinearProjectile(
-            LinearProjectileGameplayAbilityData projectile,
+        private static void ValidateProjectile(
+            ProjectileGameplayAbilityData projectile,
             ICollection<GameplayAbilityValidationIssue> issues)
         {
+            if (projectile.ProjectileCount < 1)
+                issues.Add(Error("Projectile ProjectileCount 必须至少为 1。"));
+            if (projectile.SpreadAngle < 0f || projectile.SpreadAngle > 360f ||
+                float.IsNaN(projectile.SpreadAngle) || float.IsInfinity(projectile.SpreadAngle))
+                issues.Add(Error("Projectile SpreadAngle 必须在 0 到 360 度之间。"));
             if (projectile.Speed < 0f || float.IsNaN(projectile.Speed) || float.IsInfinity(projectile.Speed))
-                issues.Add(Error("LinearProjectile Speed 必须是大于等于 0 的有限值。"));
+                issues.Add(Error("Projectile Speed 必须是大于等于 0 的有限值。"));
             if (projectile.Lifetime <= 0f || float.IsNaN(projectile.Lifetime) || float.IsInfinity(projectile.Lifetime))
-                issues.Add(Error("LinearProjectile Lifetime 必须是大于 0 的有限值。"));
+                issues.Add(Error("Projectile Lifetime 必须是大于 0 的有限值。"));
 
             if (string.IsNullOrWhiteSpace(projectile.AddressableKey) && projectile.FallbackPrefab == null)
             {
-                issues.Add(Error("LinearProjectile 必须配置 Addressable Key 或 Fallback Prefab。"));
+                issues.Add(Error("Projectile 必须配置 Addressable Key 或 Fallback Prefab。"));
                 return;
             }
 
             GameObject prefab = projectile.FallbackPrefab;
             if (prefab == null)
             {
-                issues.Add(Info("LinearProjectile 只配置了 Addressable Key，资源组件将在运行时验证。"));
+                issues.Add(Info("Projectile 只配置了 Addressable Key，资源组件将在运行时验证。"));
                 return;
             }
 

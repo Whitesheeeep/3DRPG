@@ -9,7 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 62e3216d7f3810b48bab3f786c24a91d, type: 3}
+  m_Script: {fileID: 11500000, guid: c23c6121c3abe6e46a227028f6ee2a77, type: 3}
   m_Name: GA_Test_LinearProjectile
   m_EditorClassIdentifier: 
   abilityId: 2
@@ -27,10 +27,14 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 6861f23c72baf27428de65bec7d0d062, type: 2}
   cueTags:
   - id: 23
-  addressableKey: 
-  fallbackPrefab: {fileID: 100000, guid: 6fdae0aae4594fa396c5bb6c568bbdc4, type: 3}
-  spawnMarker: {fileID: 0}
-  localPosition: {x: 0, y: 0.5, z: 0.5}
-  localEulerAngles: {x: 0, y: 0, z: 0}
-  speed: 5
-  lifetime: 3
+  spawnConfig:
+    addressableKey:
+    fallbackPrefab: {fileID: 100000, guid: 6fdae0aae4594fa396c5bb6c568bbdc4, type: 3}
+    spawnMarker: {fileID: 0}
+    localPosition: {x: 0, y: 0.5, z: 0.5}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+    spreadAngle: 30
+    projectileCount: 3
+    speed: 5
+    lifetime: 3
+    targetLayerMask: -1

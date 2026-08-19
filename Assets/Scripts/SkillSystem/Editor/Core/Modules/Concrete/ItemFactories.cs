@@ -127,5 +127,19 @@ namespace RPG.SkillSystem.Editor
                 elements.CreateItem("event-marker-item"), mapper);
         }
     }
+
+    /// <summary>使用单帧标记模板创建 Projectile 发射内容视图。</summary>
+    internal sealed class ProjectileItemFactory : IItemViewFactory
+    {
+        /// <inheritdoc />
+        public ItemView Create(TrackConfigBase track, TimelineItemConfigBase item,
+            ElementFactory elements, CoordinateMapper mapper)
+        {
+            if (item is not ProjectileSkillClipConfig projectile)
+                throw new ArgumentException("投射物 ItemFactory 收到不匹配的 Item Config。", nameof(item));
+            return new ProjectileMarkerView(track, projectile,
+                elements.CreateItem("event-marker-item"), mapper);
+        }
+    }
 }
 #endif

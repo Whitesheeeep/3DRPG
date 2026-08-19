@@ -286,6 +286,49 @@ namespace RPG.SkillSystem.Editor
         }
     }
 
+    /// <summary>描述 Projectile Clip Inspector 提交的一次完整发射配置编辑请求。</summary>
+    internal readonly struct ProjectileEditRequest : IItemEditRequest
+    {
+        public int Frame { get; }
+        public string AddressableKey { get; }
+        public GameObject FallbackPrefab { get; }
+        public MarkerKey SpawnMarker { get; }
+        public Vector3 LocalPosition { get; }
+        public Vector3 LocalEulerAngles { get; }
+        public float SpreadAngle { get; }
+        public int ProjectileCount { get; }
+        public float Speed { get; }
+        public float Lifetime { get; }
+        public LayerMask TargetLayerMask { get; }
+
+        /// <summary>创建包含单帧位置和全部 Projectile Spawn 字段的编辑快照。</summary>
+        public ProjectileEditRequest(
+            int frame,
+            string addressableKey,
+            GameObject fallbackPrefab,
+            MarkerKey spawnMarker,
+            Vector3 localPosition,
+            Vector3 localEulerAngles,
+            float spreadAngle,
+            int projectileCount,
+            float speed,
+            float lifetime,
+            LayerMask targetLayerMask)
+        {
+            Frame = frame;
+            AddressableKey = addressableKey;
+            FallbackPrefab = fallbackPrefab;
+            SpawnMarker = spawnMarker;
+            LocalPosition = localPosition;
+            LocalEulerAngles = localEulerAngles;
+            SpreadAngle = spreadAngle;
+            ProjectileCount = projectileCount;
+            Speed = speed;
+            Lifetime = lifetime;
+            TargetLayerMask = targetLayerMask;
+        }
+    }
+
     /// <summary>
     /// 描述音频片段 Inspector 提交的一次完整字段编辑请求。
     /// </summary>

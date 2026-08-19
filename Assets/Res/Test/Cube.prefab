@@ -117,9 +117,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 26d222b2e7f9ac749a68dd2b862f0c30, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   key: Cube
+  spawnColor: {r: 1, g: 1, b: 1, a: 1}
+  executeColor: {r: 0, g: 1, b: 1, a: 1}
+  activeColor: {r: 0, g: 1, b: 0, a: 1}
+  removeColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+  executeScale: {x: 1, y: 1, z: 1}
+  activeScale: {x: 1.25, y: 1.25, z: 1.25}
 --- !u!114 &377105785251165576
 MonoBehaviour:
   m_ObjectHideFlags: 0

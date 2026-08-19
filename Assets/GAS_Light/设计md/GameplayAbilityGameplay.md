@@ -91,8 +91,8 @@ SynchronousGameplayAbilityData 直接覆盖 Execute。执行返回后 Runtime �
 同步实现不得注册持续更新或等待外部事件；需要等待时应改为异步 Ability。当前同步技能包括：
 
 - `InstantGameplayAbilityData` 保存多个 Instant GE。激活时按列表顺序逐个提交；某一项 GE 被目标拒绝只记录失败，不回滚已成功项，也不阻止后续项。
-- `ProjectileGameplayAbilityData` 在同步入口中创建投射物，GA Runtime 随即 Ended。Sphere 示例从 Source ASC 的 Transform 生成球体，投射物通过 Rigidbody 与 Trigger 独立移动和命中，并在首次有效命中时应用统一 Effects；通用阵营、LayerMask、范围和 Targeting 仍由后续业务层扩展。
-- `LinearProjectileGameplayAbilityData` 从 Source Marker 或 Transform 沿前方向对象池发射投射物。Addressable Key 优先，Prefab 作为回退；命中或超时后统一回收，不直接 `Instantiate` 或 `Destroy`。
+- `ProjectileGameplayAbilityData` 是唯一的同步 Projectile GA。它从 Source Marker 或 Transform 计算批量扇形 Pose，再从对象池生成投射物；Linear 和 Sphere 只通过不同 Prefab 区分外观与碰撞。GA Runtime 随即 Ended，投射物通过统一 Behaviour 独立移动、命中并应用 Effects。
+- `ProjectileSpawnConfig` 保存总扇形角、发射数量、局部位置、速度和寿命。同步 Projectile GA 直接在激活调用内发射；SkillConfig 使用 Projectile Clip 的 `StartFrame` 作为唯一延迟时机。
 
 上述配置均可作为 ScriptableObject 在 GA Editor 中创建和检查。Odin Tester 使用 SO 引用而不是每次按钮点击临时创建 Ability Data，便于检查多态字段和 Validation。 测试夹具位于 Assets/GAS_Light/AbilitySystem/Runtime/GAData/SO/，可直接拖到 GameplayAbilityOdinTester 的 Skill 测试 SO 字段。
 GA Odin 测试器还需要配置 `Assets/GAS_Light/AttributeSystem/Editor/TestAssets/GameplayAttributeTestSet.asset`。每次重置测试时，Tester 会将该 Set 导入新的 ASC；否则依赖 Attribute 的 Cost GE 无法提交。该 Set 只用于测试夹具，不是 GA Runtime 的必需依赖。
@@ -351,7 +351,7 @@ Database Inspector 中的 `Abilities By Id` 直接显示这份 Bake 生成的运
 
 ## ASC 初始化与多 Set
 
-`GameplayAbilitySystemComponent` 是挂载在角色 Owner 上的 MonoBehaviour 运行时组件。Owner 调用 `Initialize(attributeSets)`；ASC 自身通过 Unity `Update / FixedUpdate / LateUpdate` 推进 GE 与 GA，并在正常退场时调用 `ASC.Clear()`。组件 `OnDestroy` 会再次执行清理，确保 Active GA、Task 和 GE 不残留。
+`GameplayAbilitySystemComponent` 是挂载在角色 Owner 上的 MonoBehaviour 运行时组件。ASC 在 `Awake` 中只查找一次同节点的 `IGameplayAbilitySystemOwner` 并保存为 `Owner`；缺失宿主会立即抛出配置错误。Owner 调用 `Initialize(attributeSets)`；ASC 不自行绑定 Unity 更新，正式角色负责推进 GE 与 GA，并在正常退场时调用 `ASC.Clear()`。组件 `OnDestroy` 会再次执行清理，确保 Active GA、Task 和 GE 不残留。
 
 多个 `GameplayAttributeSet` 会被 `GameplayAttributeContainer` 导入为同一个运行时 Attribute 集合。不同 Set 可以分别承载战斗、资源或移动属性；相同 `AttributeId` 在多个 Set 中出现时视为配置冲突，不会自动覆盖或合并 Definition。
 
@@ -371,11 +371,22 @@ ASC 成功初始化后再次调用 `Initialize` 直接返回。初始化失败�
 GE 快捷接口作用于当前 ASC 作为 Target：`TryApplyEffect` 接收显式 Source、Level 和 SetByCaller，简化重载默认 Level 为 1 且不携带 SetByCaller；`TryRemoveEffect` 只接受属于当前 Target 的 Runtime。`ActiveEffects` 与 `HasActiveEffect` 直接转发目标 `GameEffectCtrl`，不复制叠层、计时或 Modifier 状态。
 
 例如，普通技能代码可以写成 `target.TryApplyEffect(effect, source, level, setByCaller, out runtime)`，而需要监听 Ability 生命周期的系统仍直接订阅 `source.Abilities`。Tag、Attribute 和 Modifier 不提供 ASC 直接修改快捷入口。
-## Mono ASC 与 Owner
+## ASC Owner 接口
 
-`GameplayAbilitySystemComponent` 直接继承 `MonoBehaviour`，不能使用 `new` 创建。角色 Owner 持有同一 GameObject 上的 ASC 组件，在自己的生命周期中负责导入多个 AttributeSet 与正常 Clear；ASC 自身占用 Unity 三阶段生命周期。
+`GameplayAbilitySystemComponent` 直接继承 `MonoBehaviour`，不能使用 `new` 创建。角色宿主实现 `IGameplayAbilitySystemOwner`，提供根 Transform 与可选的根 MarkerProvider。`PlayerController` 进一步实现 `ISkillGameplayAbilitySystemOwner`，向 SkillConfig Task 提供 `ISkillRuntimeHost` 与 `IMotionDriver`。Skill Task、Projectile 和 Cue 只依赖这些接口，不再从 ASC 反复 `GetComponent` 查询稳定角色能力。
 
-具体 Projectile GA 可以直接读取 `runtime.Source.transform`。投射物的移动、碰撞与命中结算属于具体 GA 产生的投射物实例，不需要额外的 ASC Behaviour 包装或 Owner Context。
+```mermaid
+flowchart LR
+    Actor["PlayerController"] --> Owner["IGameplayAbilitySystemOwner"]
+    Owner --> ASC["GameplayAbilitySystemComponent.Owner"]
+    Actor --> SkillOwner["ISkillGameplayAbilitySystemOwner"]
+    SkillOwner --> Task["PlaySkillConfigGameplayAbilityTask"]
+    SkillOwner --> Motion["IMotionDriver"]
+```
+
+动态命中目标仍允许通过碰撞对象查找目标 ASC，因为目标对象在碰撞发生前并不是当前技能的稳定宿主依赖。纯 GAS 测试对象使用 `GameplayAbilitySystemTestOwner` 提供最小宿主；它不提供 SkillRuntimeHost，因此不能伪装成 SkillConfig 角色。
+
+具体 Projectile GA 通过 `runtime.SourceOwner.RootTransform` 和 `runtime.SourceOwner.MarkerProvider` 解析生成位置。投射物的移动、碰撞与命中结算属于具体 GA 产生的投射物实例，不需要额外的 ASC Behaviour 包装或重复查询角色组件。
 
 `GameplayAbilitySystemComponentOdinTester` 专门验证 ASC 集成周期：它在 Play Mode 为每个技能分别创建 Source/Target Mono ASC，由临时 ASC 自身推进 Unity 三阶段，并覆盖既有 GA 与 SkillConfig 自然完成、End、Cancel、立即重播。每个技能均有独立 Odin 按钮；完整套件调用相同场景实现，但在场景之间重建 ASC。`GameplayAbilityOdinTester` 只保留 GA Data、Runtime、Task 与事件的隔离测试。
 
@@ -429,7 +440,7 @@ GA Editor 的 Tag 字段与列表内部重复校验不依赖运行时 `GameplayT
 ASC 默认在 `Update` 中先推进 GE、再推进 GA 普通阶段；`FixedUpdate` 与 `LateUpdate`
 只推进 GA。同步 Runtime 在激活调用栈内完成，异步 Runtime 才把三个阶段转发给 Root Task。
 
-SkillConfig 类型的异步 Task 从 Source 获取 `SkillRuntimeHost`。Host 为每个角色长期持有唯一
+SkillConfig 类型的异步 Task 从 `Runtime.SourceOwner` 获取 `ISkillRuntimeHost`。Host 为每个角色长期持有唯一
 
 SkillConfig 当前动作阶段通过 Task 写入 Source ASC：阶段使用 `State.Action.Skill.Phase.*`，打断状态使用 `State.Action.Skill.Interruptible/Uninterruptible`。所有 SkillConfig GA 的 ActivationTagQuery 禁止 `Uninterruptible`，使不可打断阶段在 Runtime 创建及 Cost/Cooldown 提交前拒绝新技能；可打断阶段仍由公共 `Ability.Action.Skill` CancelTag 替换旧 Runtime。Task 的全部终态都必须对称撤销其 Tag 计数。
 `SkillRuntimeModule`，自身不实现 Unity 更新；当前 Running Task 在普通阶段调用 `Tick`，在延迟阶段

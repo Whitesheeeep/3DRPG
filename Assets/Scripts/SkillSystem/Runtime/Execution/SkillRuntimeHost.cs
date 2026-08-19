@@ -7,7 +7,7 @@ namespace RPG.SkillSystem
 {
     /// <summary>为角色长期持有唯一 SkillRuntimeModule，并向 GAS Task 提供受控执行入口。</summary>
     [DisallowMultipleComponent]
-    public sealed class SkillRuntimeHost : MonoBehaviour
+    public sealed class SkillRuntimeHost : MonoBehaviour, ISkillRuntimeHost
     {
         #region 配置与状态
 
@@ -62,6 +62,13 @@ namespace RPG.SkillSystem
         {
             add => module.ActionPhaseChanged += value;
             remove => module.ActionPhaseChanged -= value;
+        }
+
+        /// <summary>在当前 SkillConfig 到达 Projectile 发射帧时转发。</summary>
+        public event Action<SkillProjectileSpawnEventArgs> ProjectileSpawnRequested
+        {
+            add => module.ProjectileSpawnRequested += value;
+            remove => module.ProjectileSpawnRequested -= value;
         }
 
         #endregion

@@ -26,7 +26,7 @@ namespace RPG.SkillSystem
         /// <summary>
         /// 按固定类型顺序为一次技能执行创建完整且相互独立的处理器管线。
         /// </summary>
-        /// <returns>本次执行独占的六类轨道处理器。</returns>
+        /// <returns>本次执行独占的七类轨道处理器。</returns>
         public static IReadOnlyList<ISkillTrackRuntimeHandler> CreateHandlers()
         {
             // 不缓存有状态 Handler，确保不同角色与连续技能执行之间完全隔离。
@@ -34,6 +34,7 @@ namespace RPG.SkillSystem
             {
                 new ActionPhaseRuntimeHandler(),
                 new AnimationRuntimeHandler(),
+                new ProjectileRuntimeHandler(),
                 new AttackDetectionRuntimeHandler(),
                 new VfxRuntimeHandler(),
                 new AudioRuntimeHandler(),

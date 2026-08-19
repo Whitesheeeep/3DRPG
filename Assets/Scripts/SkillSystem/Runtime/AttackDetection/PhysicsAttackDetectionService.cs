@@ -185,12 +185,14 @@ namespace RPG.SkillSystem
             WeaponTraceAttackDetectionData data, Vector3 previousRoot, Vector3 previousTip,
             Vector3 currentRoot, Vector3 currentTip, bool hasPreviousPose, HashSet<int> hitTargets)
         {
+            // 检测刀身 的包围胶囊，避免刀尖或刀根在上一帧和当前帧之间快速移动时漏掉目标。
             int pointCount = Mathf.Max(2, data.SamplePointCount);
             int bladeCount = Query(buffer => Physics.OverlapCapsuleNonAlloc(currentRoot, currentTip,
                 WeaponTraceRadius, buffer, context.AttackSettings.LayerMask,
                 context.AttackSettings.TriggerInteraction));
             PublishResults(clip, frame, (currentRoot + currentTip) * 0.5f,
                 bladeCount, hitTargets, null);
+            // 检测移动的刀尖和刀根，避免刀身在上一帧和当前帧之间快速移动时漏掉目标。
             for (int index = 0; index < pointCount; index++)
             {
                 float t = index / (float)(pointCount - 1);

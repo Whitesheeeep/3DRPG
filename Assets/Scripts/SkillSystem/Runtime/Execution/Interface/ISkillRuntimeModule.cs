@@ -23,6 +23,9 @@ namespace RPG.SkillSystem
         /// <summary>在整数逻辑帧切换动作阶段或可打断状态后触发。</summary>
         event Action<SkillActionPhaseChangedEventArgs> ActionPhaseChanged;
 
+        /// <summary>在 Projectile Clip 到达自身发射帧时触发。</summary>
+        event Action<SkillProjectileSpawnEventArgs> ProjectileSpawnRequested;
+
         #endregion
 
         #region 状态查询

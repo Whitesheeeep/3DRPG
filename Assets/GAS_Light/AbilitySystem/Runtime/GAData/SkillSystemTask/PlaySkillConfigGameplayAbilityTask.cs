@@ -1,4 +1,3 @@
-using System;
 using RPG.Character;
 using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
@@ -15,7 +14,7 @@ namespace RPG.SkillSystem
         #region 字段
 
         private readonly SkillConfig skillConfig;
-        private SkillRuntimeHost host;
+        private ISkillRuntimeHost host;
         private IMotionDriver motionDriver;
         private bool subscribed;
         private GameplayTag appliedPhaseTag;
@@ -45,11 +44,21 @@ namespace RPG.SkillSystem
         /// <summary>获取 Source Host、订阅本次执行事件并尝试播放时间轴。</summary>
         protected override void OnStart()
         {
-            host = Runtime.SourceASC.GetComponent<SkillRuntimeHost>();
+            if (Runtime.SourceOwner is not { } skillOwner)
+            {
+                Debug.LogError(
+                    $"Ability '{Runtime.Data.name}' 的 Source '{Runtime.SourceASC.name}' 宿主不支持 Skill Gameplay Ability。",
+                    Runtime.SourceASC);
+                Complete();
+                return;
+            }
+
+            // ASC 已经缓存宿主，Task 只取得接口能力，不再依赖角色具体组件类型。
+            host = skillOwner.SkillRuntimeHost;
             if (host == null)
             {
                 Debug.LogError(
-                    $"Ability '{Runtime.Data.name}' 的 Source '{Runtime.SourceASC.name}' 缺少 SkillRuntimeHost。",
+                    $"Ability '{Runtime.Data.name}' 的 Source '{Runtime.SourceASC.name}' 宿主缺少 SkillRuntimeHost。",
                     Runtime.SourceASC);
                 Complete();
                 return;
@@ -57,18 +66,17 @@ namespace RPG.SkillSystem
 
             if (skillConfig.IsRootMotion)
             {
-                PlayerController playerController = Runtime.SourceASC.GetComponent<PlayerController>();
-                if (playerController == null || playerController.MotionDriver == null)
+                if (skillOwner.MotionDriver == null)
                 {
                     Debug.LogError(
-                        $"Ability '{Runtime.Data.name}' 的 RootMotion SkillConfig 需要已初始化的 PlayerController。",
+                        $"Ability '{Runtime.Data.name}' 的 RootMotion SkillConfig 需要宿主提供 MotionDriver。",
                         Runtime.SourceASC);
                     Complete();
                     return;
                 }
 
-                // Task 直接缓存角色移动服务；SkillRuntimeHost 只保留时间轴执行职责。
-                motionDriver = playerController.MotionDriver;
+                // Task 直接缓存角色移动接口；SkillRuntimeHost 只负责时间轴执行职责。
+                motionDriver = skillOwner.MotionDriver;
             }
 
             Subscribe();
@@ -154,6 +162,24 @@ namespace RPG.SkillSystem
                 rotation: Quaternion.identity);
         }
 
+        /// <summary>将当前 SkillConfig 的 Projectile 发射事件转换为带有 GA 快照的池化投射物生成。</summary>
+        /// <param name="args">已经解析 Marker 与作者 Spawn 配置的时间轴事件。</param>
+        private void OnProjectileSpawnRequested(SkillProjectileSpawnEventArgs args)
+        {
+            if (args.Config != skillConfig) return;
+
+            ProjectileSpawnService.SpawnBatch(
+                args.Origin,
+                args.SpawnConfig,
+                Runtime.SourceASC,
+                Runtime.Level,
+                Runtime.SetByCaller,
+                Runtime.Data.Effects,
+                Runtime.Data.CueTags,
+                Runtime,
+                Runtime.SourceASC);
+        }
+
         /// <summary>把当前 SkillExecution 的阶段快照替换为 Source ASC 上的两个引用计数 Tag。</summary>
         /// <param name="args">同帧生效的阶段与可打断状态。</param>
         private void OnActionPhaseChanged(SkillActionPhaseChangedEventArgs args)
@@ -169,6 +195,7 @@ namespace RPG.SkillSystem
             host.Completed += OnSkillCompleted;
             host.HitDetected += OnSkillHit;
             host.ActionPhaseChanged += OnActionPhaseChanged;
+            host.ProjectileSpawnRequested += OnProjectileSpawnRequested;
             subscribed = true;
         }
 
@@ -179,6 +206,7 @@ namespace RPG.SkillSystem
             host.Completed -= OnSkillCompleted;
             host.HitDetected -= OnSkillHit;
             host.ActionPhaseChanged -= OnActionPhaseChanged;
+            host.ProjectileSpawnRequested -= OnProjectileSpawnRequested;
             subscribed = false;
         }
 

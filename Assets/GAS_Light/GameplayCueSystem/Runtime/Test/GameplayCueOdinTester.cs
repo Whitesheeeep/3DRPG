@@ -369,7 +369,7 @@ namespace WS_Modules.GAS.GameplayCue
             if (anchorAsc == null || data.MarkerKey == null)
                 return anchorAsc == null ? null : anchorAsc.transform;
 
-            MarkerProvider provider = anchorAsc.GetComponent<MarkerProvider>();
+            IMarkerProvider provider = anchorAsc.Owner.MarkerProvider;
             return provider != null && provider.TryGetMarker(data.MarkerKey, out Transform marker)
                 ? marker
                 : anchorAsc.transform;

@@ -26,9 +26,14 @@ namespace RPG.SkillSystem.Editor
                 SceneAsset scene = settings.PreviewScene;
                 if (scene == null) return false;
                 string path = AssetDatabase.GetAssetPath(scene);
-                Scene activeScene = SceneManager.GetActiveScene();
-                return activeScene.IsValid() && activeScene.isLoaded && !string.IsNullOrEmpty(path) &&
-                       activeScene.path == path;
+                if (string.IsNullOrEmpty(path)) return false;
+                for (int index = 0; index < SceneManager.sceneCount; index++)
+                {
+                    Scene loadedScene = SceneManager.GetSceneAt(index);
+                    if (loadedScene.IsValid() && loadedScene.isLoaded && loadedScene.path == path)
+                        return true;
+                }
+                return false;
             }
         }
 
@@ -78,7 +83,7 @@ namespace RPG.SkillSystem.Editor
         }
 
         /// <summary>
-        /// 询问保存当前场景后打开固定预览场景。
+        /// 保存当前场景后以 Additive 加载固定预览场景，并将其设为 Active Scene。
         /// </summary>
         public bool OpenPreviewScene()
         {
@@ -92,7 +97,21 @@ namespace RPG.SkillSystem.Editor
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return false;
             string path = AssetDatabase.GetAssetPath(scene);
             if (string.IsNullOrEmpty(path)) return false;
-            EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
+            Scene previewScene = SceneManager.GetSceneByPath(path);
+            if (!previewScene.IsValid() || !previewScene.isLoaded)
+                previewScene = EditorSceneManager.OpenScene(path, OpenSceneMode.Additive);
+            if (!previewScene.IsValid() || !previewScene.isLoaded)
+            {
+                EditorUtility.DisplayDialog("技能时间轴", "无法加载编辑器预览场景。", "确定");
+                return false;
+            }
+
+            // 保留原有场景，只切换 Active Scene，确保预览副本进入刚加载的测试场景。
+            if (!SceneManager.SetActiveScene(previewScene))
+            {
+                EditorUtility.DisplayDialog("技能时间轴", "无法将预览场景设置为 Active Scene。预览场景可能已经是 Active Scene。", "确定");
+                return false;
+            }
             SettingsChanged?.Invoke();
             return true;
         }

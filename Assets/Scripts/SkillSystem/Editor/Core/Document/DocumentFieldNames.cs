@@ -26,10 +26,28 @@ namespace RPG.SkillSystem.Editor
         internal const string Clips = "clips";
         /// <summary>事件轨道使用的单帧标记列表。</summary>
         internal const string Markers = "markers";
+        /// <summary>Projectile 轨道使用的单帧发射内容列表。</summary>
+        internal const string Projectiles = "clips";
         /// <summary>区间内容的起始帧，区间规则为 [StartFrame, EndFrame)。</summary>
         internal const string StartFrame = "startFrame";
         /// <summary>事件 Marker 所在的整数帧。</summary>
         internal const string Frame = "frame";
+        /// <summary>Projectile Clip 保存的统一投射物生成配置。</summary>
+        internal const string SpawnConfig = "spawnConfig";
+        /// <summary>投射物对象池的可选 Addressable 资源 Key。</summary>
+        internal const string AddressableKey = "addressableKey";
+        /// <summary>投射物对象池资源失败时使用的 Prefab。</summary>
+        internal const string FallbackPrefab = "fallbackPrefab";
+        /// <summary>投射物扇形覆盖的总角度。</summary>
+        internal const string SpreadAngle = "spreadAngle";
+        /// <summary>投射物单次释放的数量。</summary>
+        internal const string ProjectileCount = "projectileCount";
+        /// <summary>投射物沿自身方向的移动速度。</summary>
+        internal const string Speed = "speed";
+        /// <summary>投射物未命中时的最长存活秒数。</summary>
+        internal const string Lifetime = "lifetime";
+        /// <summary>Projectile 允许结算的目标 ASC 根节点 LayerMask。</summary>
+        internal const string TargetLayerMask = "targetLayerMask";
         /// <summary>动画内容引用的 AnimationClip。</summary>
         internal const string AnimationClip = "animationClip";
         /// <summary>动画内容从源 AnimationClip 开始采样的偏移帧。</summary>

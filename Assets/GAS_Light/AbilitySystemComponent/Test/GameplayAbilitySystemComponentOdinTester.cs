@@ -48,10 +48,10 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         private PassiveGameplayAbilityData passiveAbility;
 
         [SerializeField, AssetsOnly, Required]
-        private SphereProjectileGameplayAbilityData projectileAbility;
+        private ProjectileGameplayAbilityData projectileAbility;
 
         [SerializeField, AssetsOnly, Required]
-        private LinearProjectileGameplayAbilityData linearProjectileAbility;
+        private ProjectileGameplayAbilityData linearProjectileAbility;
 
         [SerializeField, AssetsOnly, Required]
         private SelfCastGameplayAbilityData selfCastAbility;
@@ -114,7 +114,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         private GameplayAbilitySystemComponent target;
         private PlayerController sourcePlayerController;
         private GameplayAbilitySystemComponentTestVisualizer visualizer;
-        private SkillRuntimeHost skillRuntimeHost;
+        private ISkillRuntimeHost skillRuntimeHost;
         private bool cueEventSubscribed;
         private int observedCueCount;
         private GameplayAbilitySystemComponent lastCueTarget;
@@ -728,7 +728,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             ExpectCurrent("第二次 Passive Cost 扣除 MP", source, GameplayAttributes.Attribute_MP, 30f);
         }
 
-        /// <summary>验证 Sphere 投射物只命中当前测试的专用 Target。</summary>
+        /// <summary>验证池化 Sphere 投射物只命中当前测试的专用 Target。</summary>
         /// <returns>等待真实 Trigger 命中的协程枚举器。</returns>
         private IEnumerator RunSphereProjectileScenario()
         {
@@ -755,10 +755,10 @@ namespace WS_Modules.GAS.AbilitySystemComponent
                 70f);
             ExpectProjectileCue("Sphere Projectile 命中 Cue 指向专用 Target", cueCountBefore, projectileAbility);
             yield return null;
-            Expect("Sphere Projectile 命中后已销毁", GameObject.Find("GA Sphere Projectile (Test)") == null);
+            Expect("Sphere Projectile 命中后已回收到对象池", FindActiveProjectiles().Count == 0);
         }
 
-        /// <summary>验证对象池 Linear 投射物只命中当前测试的专用 Target并完成回收。</summary>
+        /// <summary>验证通用 Projectile 扇形发射、命中和对象池回收。</summary>
         /// <returns>等待真实 Trigger 命中的协程枚举器。</returns>
         private IEnumerator RunLinearProjectileScenario()
         {
@@ -891,14 +891,35 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             Expect($"Linear Projectile {shotLabel}发射后 Runtime 已结束",
                 runtime != null && runtime.State == GameplayAbilityRuntimeState.Ended);
 
-            GameObject activeProjectile = GameObject.Find("GA_Test_LinearProjectile");
-            Expect($"Linear Projectile {shotLabel}生成活动实例", activeProjectile != null);
+            List<GameplayAbilityProjectileBehaviour> activeProjectiles = FindActiveProjectiles();
+            Expect($"Linear Projectile {shotLabel}生成 {linearProjectileAbility.ProjectileCount} 个活动实例",
+                activeProjectiles.Count == linearProjectileAbility.ProjectileCount);
+            if (activeProjectiles.Count == 0) yield break;
+
+            for (int index = 0; index < linearProjectileAbility.ProjectileCount; index++)
+            {
+                ProjectileSpawnPose expectedPose = ResolveLinearProjectileSpawnPose(index);
+                GameplayAbilityProjectileBehaviour projectile = FindClosestProjectile(
+                    activeProjectiles,
+                    expectedPose.Rotation);
+                bool poseMatches = projectile != null &&
+                                   Vector3.Distance(projectile.transform.position, expectedPose.Position) <= 0.01f &&
+                                   Quaternion.Angle(projectile.transform.rotation, expectedPose.Rotation) <= 0.1f;
+                Expect($"Linear Projectile {shotLabel} 第 {index + 1} 发 Pose 正确", poseMatches);
+            }
+
+            ProjectileSpawnPose centerPose = ResolveLinearProjectileSpawnPose(
+                linearProjectileAbility.ProjectileCount / 2);
+            GameplayAbilityProjectileBehaviour centerProjectile = FindClosestProjectile(
+                activeProjectiles,
+                centerPose.Rotation);
+            GameObject activeProjectile = centerProjectile != null ? centerProjectile.gameObject : null;
+            Expect($"Linear Projectile {shotLabel}找到中心投射物", activeProjectile != null);
             if (activeProjectile == null) yield break;
 
             Rigidbody projectileBody = activeProjectile.GetComponent<Rigidbody>();
-            ResolveLinearProjectileSpawnPose(
-                out Vector3 expectedSpawnPosition,
-                out Quaternion expectedSpawnRotation);
+            Vector3 expectedSpawnPosition = centerPose.Position;
+            Quaternion expectedSpawnRotation = centerPose.Rotation;
             Vector3 initialTransformPosition = activeProjectile.transform.position;
             Quaternion initialTransformRotation = activeProjectile.transform.rotation;
             Vector3 initialBodyPosition = projectileBody != null
@@ -978,32 +999,69 @@ namespace WS_Modules.GAS.AbilitySystemComponent
                     $"LifetimeRecycled={(activeProjectile != null && !activeProjectile.activeInHierarchy)}。",
                     this);
 
-            yield return null;
-            Expect($"Linear Projectile {shotLabel}命中后已回收到对象池",
-                GameObject.Find("GA_Test_LinearProjectile") == null);
+            float recycleDeadline = Time.realtimeSinceStartup + 3f;
+            while (FindActiveProjectiles().Count > 0 && Time.realtimeSinceStartup < recycleDeadline)
+                yield return null;
+            Expect($"Linear Projectile {shotLabel}全部回收到对象池", FindActiveProjectiles().Count == 0);
             if (visualizer != null)
                 visualizer.SetProjectilePosition(lastObservedPosition, false);
         }
 
-        /// <summary>按当前 Source Marker 和 Linear Ability 的作者偏移计算本次期望生成 Pose。</summary>
-        /// <param name="position">与正式 Linear Projectile 配置对应的世界生成位置。</param>
-        /// <param name="rotation">与正式 Linear Projectile 配置对应的世界生成旋转。</param>
-        private void ResolveLinearProjectileSpawnPose(
-            out Vector3 position,
-            out Quaternion rotation)
+        /// <summary>按当前 Source Marker 和 Projectile 配置计算指定发射序号的期望 Pose。</summary>
+        /// <param name="index">当前发射序号。</param>
+        /// <returns>与正式 Projectile Spawn 逻辑一致的世界 Pose。</returns>
+        private ProjectileSpawnPose ResolveLinearProjectileSpawnPose(int index)
         {
             Transform spawnTransform = source.transform;
-            MarkerKey markerKey = linearProjectileAbility.SpawnMarker;
+            MarkerKey markerKey = linearProjectileAbility.MarkerKey;
             if (markerKey != null)
             {
-                IMarkerProvider provider = source.GetComponent<IMarkerProvider>();
+                IMarkerProvider provider = source.Owner.MarkerProvider;
                 if (provider != null && provider.TryGetMarker(markerKey, out Transform marker))
                     spawnTransform = marker;
             }
 
-            position = spawnTransform.TransformPoint(linearProjectileAbility.LocalPosition);
-            rotation = spawnTransform.rotation *
-                       Quaternion.Euler(linearProjectileAbility.LocalEulerAngles);
+            return ProjectileSpawnUtility.CalculatePose(
+                spawnTransform,
+                linearProjectileAbility.LocalPosition,
+                linearProjectileAbility.LocalEulerAngles,
+                linearProjectileAbility.SpreadAngle,
+                linearProjectileAbility.ProjectileCount,
+                index);
+        }
+
+        /// <summary>获取当前场景中仍处于池化运行状态的 Projectile Behaviour。</summary>
+        /// <returns>所有活动投射物 Behaviour 的列表。</returns>
+        private static List<GameplayAbilityProjectileBehaviour> FindActiveProjectiles()
+        {
+            GameplayAbilityProjectileBehaviour[] behaviours =
+                FindObjectsOfType<GameplayAbilityProjectileBehaviour>();
+            var result = new List<GameplayAbilityProjectileBehaviour>(behaviours.Length);
+            for (int i = 0; i < behaviours.Length; i++)
+                if (behaviours[i] != null && behaviours[i].gameObject.activeInHierarchy)
+                    result.Add(behaviours[i]);
+            return result;
+        }
+
+        /// <summary>按旋转差异找到扇形中最接近期望角度的活动投射物。</summary>
+        /// <param name="projectiles">当前活动投射物。</param>
+        /// <param name="rotation">目标世界旋转。</param>
+        /// <returns>最接近目标旋转的投射物；列表为空时返回 null。</returns>
+        private static GameplayAbilityProjectileBehaviour FindClosestProjectile(
+            IReadOnlyList<GameplayAbilityProjectileBehaviour> projectiles,
+            Quaternion rotation)
+        {
+            GameplayAbilityProjectileBehaviour result = null;
+            float closestAngle = float.MaxValue;
+            for (int i = 0; i < projectiles.Count; i++)
+            {
+                GameplayAbilityProjectileBehaviour candidate = projectiles[i];
+                float angle = Quaternion.Angle(candidate.transform.rotation, rotation);
+                if (angle >= closestAngle) continue;
+                closestAngle = angle;
+                result = candidate;
+            }
+            return result;
         }
 
         #endregion
@@ -1058,19 +1116,28 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             Vector3 sourcePosition = transform.position + transform.rotation * testWorldOffset;
             sourceObject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             sourceObject.name = $"ASC Test Source - {currentScenario}";
+            sourceObject.SetActive(false);
             sourceObject.transform.SetPositionAndRotation(sourcePosition, transform.rotation);
             Collider sourceCollider = sourceObject.GetComponent<Collider>();
             if (sourceCollider != null)
                 sourceCollider.enabled = false;
             if (IsSkillConfigScenario(scenario))
-                skillRuntimeHost = sourceObject.AddComponent<SkillRuntimeHost>();
-            source = sourceObject.AddComponent<GameplayAbilitySystemComponent>();
-            source.Initialize(attributeSets);
-            if (IsSkillConfigScenario(scenario))
+            {
                 sourcePlayerController = sourceObject.AddComponent<PlayerController>();
+                source = sourceObject.GetComponent<GameplayAbilitySystemComponent>();
+                skillRuntimeHost = sourcePlayerController.SkillRuntimeHost;
+            }
+            else
+            {
+                sourceObject.AddComponent<GameplayAbilitySystemTestOwner>();
+                source = sourceObject.AddComponent<GameplayAbilitySystemComponent>();
+            }
+            sourceObject.SetActive(true);
+            source.Initialize(attributeSets);
 
             targetObject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             targetObject.name = $"ASC Test Target - {currentScenario}";
+            targetObject.AddComponent<GameplayAbilitySystemTestOwner>();
             targetObject.transform.SetPositionAndRotation(
                 sourcePosition + transform.forward *
                 (IsSkillConfigScenario(scenario) ? 2f : targetDistance),
@@ -1214,13 +1281,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             if (target != null) target.Clear();
             UnsubscribeCueEvents();
 
-            GameObject sphereProjectile = GameObject.Find("GA Sphere Projectile (Test)");
-            if (sphereProjectile != null)
-                Destroy(sphereProjectile);
-
-            GameObject linearProjectile = GameObject.Find("GA_Test_LinearProjectile");
-            if (linearProjectile != null)
-                PoolManager.Instance.Recycle(linearProjectile);
+            List<GameplayAbilityProjectileBehaviour> projectiles = FindActiveProjectiles();
+            for (int i = 0; i < projectiles.Count; i++)
+                PoolManager.Instance.Recycle(projectiles[i].gameObject);
 
             if (sourceObject != null) Destroy(sourceObject);
             if (targetObject != null) Destroy(targetObject);
@@ -1596,5 +1659,6 @@ namespace WS_Modules.GAS.AbilitySystemComponent
 
         #endregion
     }
+
 }
 #endif

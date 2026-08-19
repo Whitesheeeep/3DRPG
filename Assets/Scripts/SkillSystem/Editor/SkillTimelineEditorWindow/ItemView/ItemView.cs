@@ -49,6 +49,8 @@ namespace RPG.SkillSystem.Editor
             AudioSkillClipConfig audio => audio.AudioClip != null ? audio.AudioClip.name : "Audio Clip",
             CameraModifierSkillClipConfig modifier => modifier.ModifierType.ToString(),
             SkillEventMarkerConfig marker => marker.DisplayName,
+            ProjectileSkillClipConfig projectile => projectile.SpawnConfig.FallbackPrefab != null
+                ? projectile.SpawnConfig.FallbackPrefab.name : "Projectile",
             _ => item.GetType().Name
         };
 
@@ -210,6 +212,24 @@ namespace RPG.SkillSystem.Editor
         /// <summary>
         /// 将事件帧写入内容坐标；Marker 的半宽居中位移由 USS translate 负责。
         /// </summary>
+        public override void RefreshGeometry(int startFrame, int durationFrames) =>
+            Element.style.left = Mapper.FrameToContentX(startFrame);
+    }
+
+    /// <summary>显示不可裁剪的 Projectile 发射帧标记。</summary>
+    internal sealed class ProjectileMarkerView : ItemView
+    {
+        /// <summary>创建 Projectile 标记视图并显示发射方向符号。</summary>
+        public ProjectileMarkerView(TrackConfigBase track,
+            ProjectileSkillClipConfig item, VisualElement element,
+            CoordinateMapper mapper) : base(track, item, element, mapper)
+        {
+            if (Element is Label label) label.text = "➤";
+            Element.tooltip = GetDisplayName(item);
+            RefreshGeometry(item.StartFrame, item.DurationFrames);
+        }
+
+        /// <inheritdoc />
         public override void RefreshGeometry(int startFrame, int durationFrames) =>
             Element.style.left = Mapper.FrameToContentX(startFrame);
     }

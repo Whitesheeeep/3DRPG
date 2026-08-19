@@ -646,6 +646,105 @@ namespace RPG.SkillSystem.Editor
             item.FindPropertyRelative(DocumentFieldNames.Pitch).floatValue = 1f;
         }
     }
+    /// <summary>定义 Projectile 轨道序列化结构，并处理单帧发射内容的编辑。</summary>
+    internal sealed class ProjectileDocumentHandler : TrackDocumentHandler
+    {
+        /// <summary>创建 Projectile 轨道数据处理器。</summary>
+        public ProjectileDocumentHandler()
+            : base(typeof(ProjectileTrackConfig), DocumentFieldNames.Projectiles,
+                DocumentFieldNames.StartFrame, string.Empty, "投射物轨道")
+        {
+        }
+
+        /// <inheritdoc />
+        public override ItemsCreateResult CreateItems(Document document, string trackId,
+            IItemCreateRequest request) =>
+            ItemsCreateResult.Failure("投射物轨道不支持 Project 素材拖入，请使用添加内容按钮。 ");
+
+        /// <inheritdoc />
+        public override EditResult EditItem(Document document, string trackId, string itemId,
+            IItemEditRequest request)
+        {
+            if (request is not ProjectileEditRequest projectile)
+                return EditResult.Failure("投射物轨道收到不匹配的编辑请求。");
+            if (projectile.FallbackPrefab != null && !EditorUtility.IsPersistent(projectile.FallbackPrefab))
+                return EditResult.Failure("投射物 Prefab 只允许引用 Project 资产。");
+            if (!document.TryFindItem(this, trackId, itemId, out TrackConfigBase track,
+                    out SerializedObject trackObject, out SerializedProperty items,
+                    out SerializedProperty item, out _))
+                return EditResult.Failure("投射物 Clip 不存在。");
+            if (track.EditorLocked) return EditResult.Failure("轨道已锁定。");
+
+            int frame = Mathf.Max(0, projectile.Frame);
+            if (!document.CanPlaceInterval(this, items, itemId, frame, 1))
+                return EditResult.Failure("目标帧已有其他 Projectile Clip。");
+            document.MutateTrack("修改投射物 Clip", track, trackObject, () =>
+            {
+                Document.SetItemFrame(this, item, frame, 1);
+                SerializedProperty config = item.FindPropertyRelative(DocumentFieldNames.SpawnConfig);
+                config.FindPropertyRelative(DocumentFieldNames.AddressableKey).stringValue =
+                    projectile.AddressableKey ?? string.Empty;
+                config.FindPropertyRelative(DocumentFieldNames.FallbackPrefab).objectReferenceValue = projectile.FallbackPrefab;
+                config.FindPropertyRelative(DocumentFieldNames.MarkerKey).objectReferenceValue = projectile.SpawnMarker;
+                config.FindPropertyRelative(DocumentFieldNames.LocalPosition).vector3Value = projectile.LocalPosition;
+                config.FindPropertyRelative(DocumentFieldNames.LocalEulerAngles).vector3Value = projectile.LocalEulerAngles;
+                config.FindPropertyRelative(DocumentFieldNames.SpreadAngle).floatValue =
+                    Mathf.Clamp(projectile.SpreadAngle, 0f, 360f);
+                config.FindPropertyRelative(DocumentFieldNames.ProjectileCount).intValue =
+                    Mathf.Max(1, projectile.ProjectileCount);
+                config.FindPropertyRelative(DocumentFieldNames.Speed).floatValue = Mathf.Max(0f, projectile.Speed);
+                config.FindPropertyRelative(DocumentFieldNames.Lifetime).floatValue = Mathf.Max(0.01f, projectile.Lifetime);
+                config.FindPropertyRelative(DocumentFieldNames.TargetLayerMask).intValue = projectile.TargetLayerMask.value;
+                document.ExpandDurationForItem(this, item);
+                Document.SortItems(this, items);
+            });
+            return EditResult.Success();
+        }
+
+        /// <inheritdoc />
+        public override void CopySpecificFields(SerializedProperty source, SerializedProperty destination)
+        {
+            SerializedProperty from = source.FindPropertyRelative(DocumentFieldNames.SpawnConfig);
+            SerializedProperty to = destination.FindPropertyRelative(DocumentFieldNames.SpawnConfig);
+            to.FindPropertyRelative(DocumentFieldNames.AddressableKey).stringValue =
+                from.FindPropertyRelative(DocumentFieldNames.AddressableKey).stringValue;
+            to.FindPropertyRelative(DocumentFieldNames.FallbackPrefab).objectReferenceValue =
+                from.FindPropertyRelative(DocumentFieldNames.FallbackPrefab).objectReferenceValue;
+            to.FindPropertyRelative(DocumentFieldNames.MarkerKey).objectReferenceValue =
+                from.FindPropertyRelative(DocumentFieldNames.MarkerKey).objectReferenceValue;
+            to.FindPropertyRelative(DocumentFieldNames.LocalPosition).vector3Value =
+                from.FindPropertyRelative(DocumentFieldNames.LocalPosition).vector3Value;
+            to.FindPropertyRelative(DocumentFieldNames.LocalEulerAngles).vector3Value =
+                from.FindPropertyRelative(DocumentFieldNames.LocalEulerAngles).vector3Value;
+            to.FindPropertyRelative(DocumentFieldNames.SpreadAngle).floatValue =
+                from.FindPropertyRelative(DocumentFieldNames.SpreadAngle).floatValue;
+            to.FindPropertyRelative(DocumentFieldNames.ProjectileCount).intValue =
+                from.FindPropertyRelative(DocumentFieldNames.ProjectileCount).intValue;
+            to.FindPropertyRelative(DocumentFieldNames.Speed).floatValue =
+                from.FindPropertyRelative(DocumentFieldNames.Speed).floatValue;
+            to.FindPropertyRelative(DocumentFieldNames.Lifetime).floatValue =
+                from.FindPropertyRelative(DocumentFieldNames.Lifetime).floatValue;
+            to.FindPropertyRelative(DocumentFieldNames.TargetLayerMask).intValue =
+                from.FindPropertyRelative(DocumentFieldNames.TargetLayerMask).intValue;
+        }
+
+        /// <inheritdoc />
+        protected override void InitializeSpecificFields(SerializedProperty item)
+        {
+            SerializedProperty config = item.FindPropertyRelative(DocumentFieldNames.SpawnConfig);
+            config.FindPropertyRelative(DocumentFieldNames.AddressableKey).stringValue = string.Empty;
+            config.FindPropertyRelative(DocumentFieldNames.FallbackPrefab).objectReferenceValue = null;
+            config.FindPropertyRelative(DocumentFieldNames.MarkerKey).objectReferenceValue = null;
+            config.FindPropertyRelative(DocumentFieldNames.LocalPosition).vector3Value = Vector3.zero;
+            config.FindPropertyRelative(DocumentFieldNames.LocalEulerAngles).vector3Value = Vector3.zero;
+            config.FindPropertyRelative(DocumentFieldNames.SpreadAngle).floatValue = 0f;
+            config.FindPropertyRelative(DocumentFieldNames.ProjectileCount).intValue = 1;
+            config.FindPropertyRelative(DocumentFieldNames.Speed).floatValue = 10f;
+            config.FindPropertyRelative(DocumentFieldNames.Lifetime).floatValue = 3f;
+            config.FindPropertyRelative(DocumentFieldNames.TargetLayerMask).intValue = ~0;
+        }
+    }
+
     /// <summary>
     /// 定义事件轨道序列化结构，并处理单帧 Marker 的字段编辑。
     /// </summary>

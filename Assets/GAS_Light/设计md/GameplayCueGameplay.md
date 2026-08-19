@@ -60,7 +60,7 @@ GE 的 Instant 和 Periodic 成功结算发布 Execute；Duration/Infinite 首�
 
 CueController 不直接调用 `Instantiate` 或 `Destroy`。Addressable Key 优先，获取失败后使用 Fallback Prefab，两者都失败则记录错误并放弃本次表现。正式项目应使用 WSFrame PoolManager 的 Prewarm，避免首帧资源加载阻塞；`GameplayCueBehaviour` 继承 `PoolObjectIdentity` 并直接保存 Key，且 Addressable Key 必须与对象池 Key 一致。
 
-位置优先级为：请求动态挂点、请求显式世界位置、CueData 的 Marker 与 DefaultAnchor Mode。`DefaultAnchor Mode` 是默认挂载对象模式，不是 Marker 本身：当没有显式挂点或世界位置时，它决定使用 Source、Target 或 World。`DefaultAnchor = Source` 时，在 Source ASC 根节点的 `MarkerProvider` 中查找 `MarkerKey`；`DefaultAnchor = Target` 时，在 Target ASC 根节点的 `MarkerProvider` 中查找。Marker 解析失败时，才回退到 DefaultAnchor 指定的 ASC Transform；`DefaultAnchor = World` 时不查找 Marker，直接使用世界位置。`FollowAnchor` 为真时对象保持挂在解析出的 Marker 或 ASC Transform 下；否则只在生成时写入一次世界位置。Marker 和 DefaultAnchor 只影响表现位置，不参与 GE/GA 规则计算。
+位置优先级为：请求动态挂点、请求显式世界位置、CueData 的 Marker 与 DefaultAnchor Mode。`DefaultAnchor Mode` 是默认挂载对象模式，不是 Marker 本身：当没有显式挂点或世界位置时，它决定使用 Source、Target 或 World。`DefaultAnchor = Source` 时，通过 Source ASC 的 `Owner.MarkerProvider` 查找 `MarkerKey`；`DefaultAnchor = Target` 时，通过 Target ASC 的 `Owner.MarkerProvider` 查找。Marker 解析失败时，才回退到 DefaultAnchor 指定 Owner 的 `RootTransform`；`DefaultAnchor = World` 时不查找 Marker，直接使用世界位置。`FollowAnchor` 为真时对象保持挂在解析出的 Marker 或 RootTransform 下；否则只在生成时写入一次世界位置。Marker 和 DefaultAnchor 只影响表现位置，不参与 GE/GA 规则计算。
 
 ```mermaid
 flowchart TD

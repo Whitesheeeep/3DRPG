@@ -58,7 +58,9 @@ Module 同一时间只允许一个活动执行。装备系统负责选择当前�
 GAS 角色通过 `SkillRuntimeHost` 长期持有一个共享 Module，并由当前 Running Task 生命周期驱动：
 
 ```csharp
-SkillRuntimeHost host = source.GetComponent<SkillRuntimeHost>();
+ISkillGameplayAbilitySystemOwner skillOwner =
+    (ISkillGameplayAbilitySystemOwner)source.Owner;
+ISkillRuntimeHost host = skillOwner.SkillRuntimeHost;
 host.TryPlay(skillConfig);
 
 // AbilityTask 的普通更新阶段。
@@ -128,3 +130,19 @@ flowchart LR
     Check -->|true| Driver["MotionDriver.UpdateAnimationMove"]
     Check -->|false| Skip["不消费 Animator Delta"]
 ```
+## Projectile Track
+
+`ProjectileTrackConfig` 是单帧发射轨道。每个 Clip 在自己的 `StartFrame` 解析 Marker 或角色 Origin，并发布一次 Projectile 请求；它复用 `ProjectileSpawnConfig` 的 Prefab、局部变换、扇形、数量、速度和寿命。
+
+```mermaid
+flowchart LR
+    Clip["Projectile Clip StartFrame"] --> Handler["ProjectileRuntimeHandler"]
+    Handler --> Host["SkillRuntimeHost Event"]
+    Host --> Task["PlaySkillConfig Task"]
+    Task --> Spawn["ProjectileSpawnService"]
+```
+
+Clip 前 Stop 或 Cancel 不会生成投射物；已经生成的投射物独立移动、命中和回收，不随 SkillConfig 清理。
+## 编辑器预览场景
+
+Skill Timeline 的预览场景通过 Editor `Additive` 加载，并在加载完成后设置为 Active Scene。已有场景不会被卸载；重复打开同一预览场景只会切换 Active Scene，不会创建重复场景实例。

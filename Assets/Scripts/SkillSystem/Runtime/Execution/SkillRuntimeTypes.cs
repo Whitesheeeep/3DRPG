@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using WS_Modules.GAS.GameplayAbilitySystem;
 
 namespace RPG.SkillSystem
 {
@@ -75,6 +76,44 @@ namespace RPG.SkillSystem
             Frame = frame;
             Phase = phase;
             CanBeInterrupted = canBeInterrupted;
+        }
+    }
+
+    /// <summary>保存 Projectile Track 到达发射帧时的无 GAS 依赖事件快照。</summary>
+    public readonly struct SkillProjectileSpawnEventArgs
+    {
+        /// <summary>获取本次 SkillExecution 的稳定标识。</summary>
+        public ulong ExecutionId { get; }
+        /// <summary>获取本次播放使用的 SkillConfig。</summary>
+        public SkillConfig Config { get; }
+        /// <summary>获取触发发射的单帧 Projectile Clip。</summary>
+        public ProjectileSkillClipConfig Clip { get; }
+        /// <summary>获取 Clip 使用的完整 Projectile Spawn 配置。</summary>
+        public ProjectileSpawnConfig SpawnConfig { get; }
+        /// <summary>获取已经解析完成的发射空间基准。</summary>
+        public Transform Origin { get; }
+        /// <summary>获取触发该事件的整数逻辑帧。</summary>
+        public int Frame { get; }
+
+        /// <summary>创建一次 Projectile 发射事件快照。</summary>
+        /// <param name="executionId">Module 内单调递增的执行标识。</param>
+        /// <param name="config">本次播放使用的 SkillConfig。</param>
+        /// <param name="clip">达到发射帧的 Projectile Clip。</param>
+        /// <param name="origin">已解析的 Marker 或角色 Origin。</param>
+        /// <param name="frame">当前整数逻辑帧。</param>
+        public SkillProjectileSpawnEventArgs(
+            ulong executionId,
+            SkillConfig config,
+            ProjectileSkillClipConfig clip,
+            Transform origin,
+            int frame)
+        {
+            ExecutionId = executionId;
+            Config = config;
+            Clip = clip;
+            SpawnConfig = clip.SpawnConfig;
+            Origin = origin;
+            Frame = frame;
         }
     }
 

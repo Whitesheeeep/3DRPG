@@ -24,6 +24,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private Vector3 direction;
         private float speed;
         private float remainingLifetime;
+        private LayerMask targetLayerMask = ~0;
         private int level;
         private bool running;
 
@@ -62,6 +63,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             GameplayAbilitySystemComponent target =
                 other.GetComponentInParent<GameplayAbilitySystemComponent>();
             if (target == null || ReferenceEquals(target, source)) return;
+            if ((targetLayerMask.value & (1 << target.gameObject.layer)) == 0) return;
 
             running = false;
             for (int i = 0; i < effects.Length; i++)
@@ -110,6 +112,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             cueTags = null;
             setByCaller = null;
             abilityRuntime = null;
+            targetLayerMask = ~0;
         }
 
         /// <summary>复制单次 Ability 激活数据并启动投射物。</summary>
@@ -124,6 +127,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <param name="moveDirection">投射物世界移动方向。</param>
         /// <param name="moveSpeed">移动速度。</param>
         /// <param name="lifetime">最长存活秒数。</param>
+        /// <param name="targetMask">允许投射物结算的目标 ASC 根节点 LayerMask。</param>
         public void Initialize(
             GameplayAbilitySystemComponent sourceAsc,
             int abilityLevel,
@@ -135,7 +139,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             Quaternion spawnRotation,
             Vector3 moveDirection,
             float moveSpeed,
-            float lifetime)
+            float lifetime,
+            LayerMask targetMask)
         {
             // 池化对象可能保留上一次物理 Pose；在写入运行数据前先阻止 FixedUpdate 消费半初始化状态。
             running = false;
@@ -143,8 +148,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             transform.SetPositionAndRotation(spawnPosition, spawnRotation);
             projectileBody.position = spawnPosition;
             projectileBody.rotation = spawnRotation;
-            projectileBody.velocity = Vector3.zero;
-            projectileBody.angularVelocity = Vector3.zero;
+
 
             source = sourceAsc;
             level = abilityLevel;
@@ -152,6 +156,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             direction = moveDirection.normalized;
             speed = moveSpeed;
             remainingLifetime = lifetime;
+            targetLayerMask = targetMask;
 
             effects = new GameplayEffectData[configuredEffects.Count];
             for (int i = 0; i < configuredEffects.Count; i++)

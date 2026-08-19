@@ -29,6 +29,9 @@ namespace RPG.SkillSystem
         /// <inheritdoc />
         public event Action<SkillActionPhaseChangedEventArgs> ActionPhaseChanged;
 
+        /// <inheritdoc />
+        public event Action<SkillProjectileSpawnEventArgs> ProjectileSpawnRequested;
+
         #endregion
 
         #region 状态查询
@@ -99,7 +102,8 @@ namespace RPG.SkillSystem
                 request,
                 attackSettings,
                 PublishHit,
-                PublishActionPhaseChanged);
+                PublishActionPhaseChanged,
+                PublishProjectileSpawn);
             execution = new SkillExecution(context);
 
             // 必须先保存当前引用再处理第 0 帧，使帧零回调可以同步 Stop 或 Cancel。
@@ -170,6 +174,13 @@ namespace RPG.SkillSystem
         private void PublishActionPhaseChanged(SkillActionPhaseChangedEventArgs args)
         {
             ActionPhaseChanged?.Invoke(args);
+        }
+
+        /// <summary>将当前执行到达的 Projectile 发射帧发送给 Host 或 GAS Task。</summary>
+        /// <param name="args">已解析发射基准与配置的事件快照。</param>
+        private void PublishProjectileSpawn(SkillProjectileSpawnEventArgs args)
+        {
+            ProjectileSpawnRequested?.Invoke(args);
         }
 
         /// <summary>

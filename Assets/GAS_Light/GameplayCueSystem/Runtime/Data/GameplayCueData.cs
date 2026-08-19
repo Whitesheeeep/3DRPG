@@ -12,7 +12,7 @@ namespace WS_Modules.GAS.GameplayCue
         #region 作者配置
         [SerializeField, Tooltip("用于 CueDatabase 映射的稳定 GameplayTag。")]
         private GameplayTag cueTag;
-        [SerializeField, Tooltip("在 Default Anchor Mode 指定的 ASC 的 MarkerProvider 中查找；找不到时回退到该 ASC Transform。")]
+        [SerializeField, Tooltip("在 Default Anchor Mode 指定的 ASC Owner 的 MarkerProvider 中查找；找不到时回退到 Owner RootTransform。")]
         private MarkerKey markerKey;
         [SerializeField, WSAddressableKey, Tooltip("优先使用的对象池资源 Key，可以是 Addressable Key。")]
         private string addressableKey;

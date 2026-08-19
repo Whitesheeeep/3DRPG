@@ -36,7 +36,7 @@ namespace WS_Modules.Pooling
             scaleInitialized = true;
         }
 
-        private void OnValidate()
+        protected virtual void OnValidate()
         {
             name = key;
         }

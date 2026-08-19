@@ -9,6 +9,7 @@ using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.AttributeSystem;
 using WS_Modules.GAS.GameplayEffect;
 using WS_Modules.GAS.Generated;
+using WS_Modules.Pooling;
 
 namespace WS_Modules.GAS.GameplayAbilitySystem
 {
@@ -210,7 +211,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         [SerializeField, AssetsOnly, Tooltip("可直接在 GA Editor 中编辑的 Passive Skill SO。")]
         private PassiveGameplayAbilityData passiveSkill;
         [SerializeField, AssetsOnly, Tooltip("可直接在 GA Editor 中编辑的 Sphere Projectile Skill SO。")]
-        private SphereProjectileGameplayAbilityData sphereProjectileSkill;
+        private ProjectileGameplayAbilityData sphereProjectileSkill;
         [SerializeField, AssetsOnly, Tooltip("等待后对 Source 结算的 SelfCast Skill SO。")]
         private SelfCastGameplayAbilityData selfCastSkill;
         [SerializeField, AssetsOnly, Tooltip("周期对 Source 结算的 SelfChannel Skill SO。")]
@@ -378,6 +379,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             {
                 hideFlags = HideFlags.HideAndDontSave
             };
+            otherObject.AddComponent<GameplayAbilitySystemTestOwner>();
             GameplayAbilitySystemComponent other =
                 otherObject.AddComponent<GameplayAbilitySystemComponent>();
             GameplayAbilityHandle otherHandle = other.GiveAbility(instantSkill, 1);
@@ -471,7 +473,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         public void TestSphereProjectileSkill()
         {
             ResetTest();
-            SphereProjectileGameplayAbilityData data = sphereProjectileSkill;
+            ProjectileGameplayAbilityData data = sphereProjectileSkill;
             Expect("Sphere Projectile Skill SO 已配置", data != null);
             if (data == null)
             {
@@ -486,10 +488,39 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             Expect("创建后 GA Runtime 已 Ended", runtime != null &&
                 runtime.State == GameplayAbilityRuntimeState.Ended);
 
-            GameObject projectile = GameObject.Find("GA Sphere Projectile (Test)");
+            GameplayAbilityProjectileBehaviour[] projectiles =
+                FindObjectsOfType<GameplayAbilityProjectileBehaviour>();
+            GameplayAbilityProjectileBehaviour projectile = projectiles.Length > 0
+                ? projectiles[0]
+                : null;
             Expect("球体对象已创建", projectile != null);
-            if (projectile != null) DestroyImmediate(projectile);
+            if (projectile != null) PoolManager.Instance.Recycle(projectile.gameObject);
 
+            LogSummary();
+        }
+
+        /// <summary>验证通用 Projectile 扇形计算在单发与三发时均保持确定性方向。</summary>
+        [Button("测试 Projectile 扇形 Pose")]
+        public void TestProjectileSpreadPose()
+        {
+            ResetTest();
+            GameObject originObject = new("Projectile Pose Test Origin");
+            originObject.transform.SetPositionAndRotation(new Vector3(1f, 2f, 3f), Quaternion.identity);
+
+            ProjectileSpawnPose single = ProjectileSpawnUtility.CalculatePose(
+                originObject.transform, Vector3.zero, Vector3.zero, 60f, 1, 0);
+            ProjectileSpawnPose left = ProjectileSpawnUtility.CalculatePose(
+                originObject.transform, Vector3.zero, Vector3.zero, 30f, 3, 0);
+            ProjectileSpawnPose center = ProjectileSpawnUtility.CalculatePose(
+                originObject.transform, Vector3.zero, Vector3.zero, 30f, 3, 1);
+            ProjectileSpawnPose right = ProjectileSpawnUtility.CalculatePose(
+                originObject.transform, Vector3.zero, Vector3.zero, 30f, 3, 2);
+
+            Expect("Projectile 单发始终沿正前方", Quaternion.Angle(single.Rotation, Quaternion.identity) <= 0.01f);
+            Expect("Projectile 三发左侧为 -15 度", Mathf.Abs(Vector3.SignedAngle(Vector3.forward, left.Direction, Vector3.up) + 15f) <= 0.01f);
+            Expect("Projectile 三发中心为 0 度", Mathf.Abs(Vector3.SignedAngle(Vector3.forward, center.Direction, Vector3.up)) <= 0.01f);
+            Expect("Projectile 三发右侧为 +15 度", Mathf.Abs(Vector3.SignedAngle(Vector3.forward, right.Direction, Vector3.up) - 15f) <= 0.01f);
+            DestroyImmediate(originObject);
             LogSummary();
         }
         /// <summary>验证同步 Ability 在激活调用内执行并按 Activated→Ended 顺序结束。</summary>
@@ -724,6 +755,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             TestAbilityTagCancellation();
             TestPassiveSkill();
             TestSphereProjectileSkill();
+            TestProjectileSpreadPose();
             TestCommonSelfAbilities();
             TestSynchronousAbility();
             TestAsynchronousSequence();
@@ -756,6 +788,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             {
                 hideFlags = HideFlags.HideAndDontSave
             };
+            sourceObject.AddComponent<GameplayAbilitySystemTestOwner>();
             source = sourceObject.AddComponent<GameplayAbilitySystemComponent>();
             runtime = null;
             passed = 0;
