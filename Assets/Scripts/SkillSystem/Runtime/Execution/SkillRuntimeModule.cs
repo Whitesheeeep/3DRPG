@@ -17,6 +17,7 @@ namespace RPG.SkillSystem
         // 执行状态
         private SkillExecution execution;
         private ulong nextExecutionId;
+        private float playbackSpeed = 1f;
         private bool initialized;
         private bool disposed;
 
@@ -47,6 +48,9 @@ namespace RPG.SkillSystem
 
         /// <inheritdoc />
         public bool CanBeInterrupted => execution?.CanBeInterrupted ?? false;
+
+        /// <inheritdoc />
+        public float PlaybackSpeed => playbackSpeed;
 
         #endregion
 
@@ -86,6 +90,19 @@ namespace RPG.SkillSystem
         }
 
         /// <inheritdoc />
+        public void SetPlaybackSpeed(float value)
+        {
+            ThrowIfDisposed();
+            if (float.IsNaN(value) || float.IsInfinity(value) || value < 0f || value > 2f)
+                throw new ArgumentOutOfRangeException(nameof(value), value, "技能播放倍率必须是 0 到 2 之间的有限数值。");
+            if (Mathf.Approximately(playbackSpeed, value)) return;
+
+            playbackSpeed = value;
+            // 活动执行必须立即收到 0 倍率，否则自主推进的 Animancer 与粒子不会随逻辑帧冻结。
+            execution?.SetPlaybackSpeed(value);
+        }
+
+        /// <inheritdoc />
         public SkillStartResult TryPlay(in SkillPlayRequest request)
         {
             ThrowIfDisposed();
@@ -104,7 +121,7 @@ namespace RPG.SkillSystem
                 PublishHit,
                 PublishActionPhaseChanged,
                 PublishProjectileSpawn);
-            execution = new SkillExecution(context);
+            execution = new SkillExecution(context, playbackSpeed);
 
             // 必须先保存当前引用再处理第 0 帧，使帧零回调可以同步 Stop 或 Cancel。
             execution.Start();

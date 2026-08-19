@@ -50,6 +50,11 @@ namespace RPG.SkillSystem
         /// </summary>
         bool CanBeInterrupted { get; }
 
+        /// <summary>
+        /// 获取当前通道的全局播放倍率；该值会保留到后续技能执行。
+        /// </summary>
+        float PlaybackSpeed { get; }
+
         #endregion
 
         #region 配置与播放
@@ -72,6 +77,13 @@ namespace RPG.SkillSystem
         /// </summary>
         /// <param name="layerMask">新的目标层掩码。</param>
         void SetAttackLayerMask(LayerMask layerMask);
+
+        /// <summary>
+        /// 设置技能逻辑、动画与粒子系统使用的全局播放倍率。
+        /// </summary>
+        /// <param name="playbackSpeed">范围为 0 到 2；0 表示冻结当前技能时间轴。</param>
+        /// <exception cref="ArgumentOutOfRangeException">倍率不是有限数值或超出有效范围。</exception>
+        void SetPlaybackSpeed(float playbackSpeed);
 
         /// <summary>
         /// 尝试启动技能；已有活动执行时不会自动抢占。

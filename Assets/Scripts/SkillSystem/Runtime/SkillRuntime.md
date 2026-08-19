@@ -53,6 +53,30 @@ SkillStartResult result = runner.TryPlay(
 
 Module 同一时间只允许一个活动执行。装备系统负责选择当前武器，并在每次 Play 时传入刀根和刀尖；SkillConfig 不绑定具体武器。
 
+## 全局播放倍率与卡帧
+
+`SkillRuntimeModule.PlaybackSpeed` 是角色执行通道状态，范围为 `0..2`，默认值为 `1`。它可以在播放前设置，并会保留到后续技能；调用方负责在卡帧结束后恢复目标倍率。
+
+```csharp
+// 完全冻结逻辑时间、技能动画和当前粒子。
+runner.SetPlaybackSpeed(0f);
+
+// 卡帧结束后由外部状态机或 AbilityTask 恢复。
+runner.SetPlaybackSpeed(1f);
+```
+
+```mermaid
+flowchart LR
+    Caller["状态机 / AbilityTask"] --> Module["SkillRuntimeModule.SetPlaybackSpeed"]
+    Module --> Execution["SkillExecution 缩放 deltaTime"]
+    Execution --> Animation["Animancer State.Speed"]
+    Execution --> VFX["ParticleSystem simulationSpeed"]
+    Execution --> Logic["阶段 / 检测 / Event"]
+    Execution -.不修改 Pitch.-> Audio["Audio"]
+```
+
+动画速度为 Clip 倍率乘全局倍率；粒子速度为 Prefab 原始 `simulationSpeed`乘 Clip 倍率再乘全局倍率。Audio Pitch 不参与全局变速。自然结束或 Stop 后脱离执行的 VFX 尾迹会移除全局倍率，继续按 Clip 倍率消亡并回池，避免在 0 倍率下永久冻结。
+
 ## 手动驱动接入
 
 GAS 角色通过 `SkillRuntimeHost` 长期持有一个共享 Module，并由当前 Running Task 生命周期驱动：

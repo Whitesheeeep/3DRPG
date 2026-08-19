@@ -1,8 +1,8 @@
-# 任务系统、红点系统与存档系统架构设计（讨论稿）
+# 任务系统、红点系统与存档系统架构与实现说明
 
-> 文档状态：第一版讨论稿  
+> 文档状态：任务模型与运行时订阅基础层已实现；具体玩法 Handler 按业务系统逐步接入
 > 适用范围：单机 RPG、一次性主线/支线任务、全局通用红点、本地多角色存档  
-> 当前阶段：需求与架构讨论，尚未进入代码实现
+> 当前阶段：任务配置模型、TaskManager、TaskRuntime、TaskProgressSystem 和任务存档模块已落地
 
 ## 1. 设计目标
 
@@ -240,6 +240,29 @@ flowchart TD
 - 背包已满等可预期失败返回结构化失败原因，任务保持 `Claimable`。
 - 不支持部分发放、邮件补发或奖励回滚。
 
+### 3.7 任务实例订阅管线
+
+任务事件订阅由具体活动任务运行时持有，`TaskProgressSystem` 不直接订阅玩法事件：
+
+```mermaid
+flowchart LR
+    Progress["TaskProgressSystem"] -->|创建 / 启动 / 停止| Runtime["TaskRuntime(TaskId)"]
+    Runtime -->|Register_Type<T>| EventSystem["WSFrame EventSystem"]
+    EventSystem -->|领域事实事件| Runtime
+    Runtime --> Handler["Objective Handler"]
+    Handler -->|Apply / Set Progress| Manager["TaskManager"]
+    Manager --> TaskEvents["任务事实事件"]
+```
+
+- `TaskManager` 只保存任务状态、目标进度、追踪和未读事实，不持有外部玩法事件订阅。
+- `TaskRuntime` 代表一个活动任务，持有该任务目标运行时和所有 `IUnRegister` 生命周期句柄。
+- `TaskProgressSystem` 是 `BusinessArchitecture` 中的生命周期协调 System，负责创建、恢复、移除 `TaskRuntime`。
+- `ObjectiveHandlerRegistry` 作为 `TaskRuntime` 的依赖，按具体 `TaskObjectiveDefinition` 类型解析 Handler。
+- `TaskRuntime.StartListening()` 和 `StopListening()` 必须幂等；任务完成或架构注销时释放全部订阅。
+- `Live` 状态目标在任务进入 `Claimable` 后继续监听，外部状态下降时允许退回 `InProgress`。
+
+当前已经提供通用目标 Handler 契约和 Odin 测试用领域事件；背包、战斗、角色和对话等具体事件适配器待对应业务系统成型后注册。
+
 ## 4. 红点系统架构
 
 ### 4.1 通用能力
@@ -269,9 +292,8 @@ flowchart LR
 
 ### 4.2 业务状态与未读提示
 
-第一版同时支持两类提示，但二者必须使用不同叶节点：
+第一版任务红点只表示未读任务；可领取状态由任务列表状态和 UI 直接展示，不单独产生任务红点：
 
-- **业务状态提示**：由当前业务事实决定，例如可领取任务数量；不能通过点击按钮直接强行清除。
 - **未读提示**：由持久化确认状态决定，例如新接取但尚未点击查看的任务。
 
 任务未读规则：
@@ -287,22 +309,13 @@ flowchart LR
 
 ```text
 Task
-├─ New
-│  ├─ Main
-│  └─ Side
-└─ Claimable
+└─ New
    ├─ Main
    └─ Side
 ```
 
 - `New/{Category}`：对应分类下 `UnreadTaskIds` 的数量。
-- `Claimable/{Category}`：对应分类下可领取活动任务的数量。
 - 分类和具体任务的关系由任务红点数据源查询任务系统，不由红点核心理解。
-
-> **待确认：任务根节点计数语义**  
-> 同一任务可能同时属于 `New` 和 `Claimable`。若默认对子节点求和，任务入口显示的是“提示事项数”；若按 `TaskId` 去重，显示的是“涉及提示的任务数”。在实现前需二选一。当前文档不固定该行为。
-> 
-> new 才需要红点，claimable 不需要，只用提醒用户有个新任务。
 
 
 ## 5. 存档系统架构
@@ -318,13 +331,26 @@ Task
 
 ### 5.2 接口隔离
 
-业务模块只依赖高层 `ISaveService`。存档编排层将可替换能力拆分为：
+业务模块通过同一 `GameArchitecture` 获取 `SaveManager`，不直接依赖容器文件或序列化细节。存档编排层将可替换能力拆分为：
 
 - `ISaveStorage`：槽位枚举、读取、临时写入、提交、删除。
 - `ISaveSerializer`：存档容器与字节数据之间的序列化/反序列化。
 - `ISaveIntegrity`：生成和验证内容完整性校验值。
 - `ISaveModule`：业务模块的快照采集与恢复入口。
 - `ISaveMigration`：模块版本之间的单步迁移。
+
+依赖任务、背包或角色 Manager 的 `ISaveModule`，由同一 Architecture 中的 System 在 `OnInit` 创建并注册：
+
+```csharp
+protected override void OnInit()
+{
+    SaveManager saveManager = this.GetManager<SaveManager>();
+    TaskManager taskManager = TaskManager.Instance;
+    saveManager.RegisterModule(new TaskSaveModule(taskManager));
+}
+```
+
+`SaveManager` 本身不主动查找其他业务 Manager；需要跨业务依赖的 SaveModule 仍由 BusinessArchitecture System 组装，独立 TaskManager 通过其单例入口提供任务状态。
 
 默认实现：
 
@@ -537,16 +563,15 @@ sequenceDiagram
 - 存档损坏后的自动重置。
 - 任务编辑器专用窗口；第一版可先使用 ScriptableObject Inspector 与校验器。
 
-## 10. 实施前待确认
+## 10. 后续实现待确认
 
-1. **任务根红点计数**：显示 `New + Claimable` 的提示事项数，还是按 `TaskId` 去重后的提示任务数。
-2. **关键节点自动保存清单**：至少应明确任务领奖完成、场景切换和暂停菜单退出等触发点中哪些属于第一版。
-3. **模块恢复依赖顺序**：待玩家、背包、场景等业务模块成型后，补充具体拓扑顺序。
-4. **存档删除交互**：删除正常或损坏槽位是否需要二次确认，由选档 UI 需求确定。
+1. **关键节点自动保存清单**：至少应明确任务领奖完成、场景切换和暂停菜单退出等触发点中哪些属于第一版。
+2. **模块恢复依赖顺序**：待玩家、背包、场景等业务模块成型后，补充具体拓扑顺序。
+3. **存档删除交互**：删除正常或损坏槽位是否需要二次确认，由选档 UI 需求确定。
 
-## 11. 预计实施文件范围
+## 11. 当前实现与后续文件范围
 
-当前仅形成架构文档。进入实现阶段后，预计新增以下职责目录，具体文件名在编码计划中再锁定：
+任务模型基础层已落在以下目录；具体玩法 Handler、红点数据源和 UI 仍按业务系统逐步增加：
 
 ```text
 Assets/Scripts/TaskSystem/
@@ -554,9 +579,11 @@ Assets/Scripts/TaskSystem/
 ├─ Runtime/Core
 ├─ Runtime/Conditions
 ├─ Runtime/Objectives
+├─ Runtime/Data
+├─ Runtime/Save
 ├─ Runtime/Rewards
 ├─ Runtime/Events
-└─ Tests
+└─ Test
 
 Assets/Scripts/RedDotSystem/
 ├─ Runtime/Core

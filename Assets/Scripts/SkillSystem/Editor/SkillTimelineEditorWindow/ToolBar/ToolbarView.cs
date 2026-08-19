@@ -26,6 +26,7 @@ namespace RPG.SkillSystem.Editor
         private IntegerField frameRateField;
         private IntegerField durationField;
         private IntegerField currentFrameField;
+        private Slider playbackSpeedSlider;
         private Slider zoomSlider;
         private Button createConfigButton;
         private Button trimButton;
@@ -82,6 +83,7 @@ namespace RPG.SkillSystem.Editor
             frameRateField.UnregisterValueChangedCallback(OnFrameRateChanged);
             durationField.UnregisterValueChangedCallback(OnDurationChanged);
             currentFrameField.UnregisterValueChangedCallback(OnCurrentFrameChanged);
+            playbackSpeedSlider.UnregisterValueChangedCallback(OnPlaybackSpeedChanged);
             zoomSlider.UnregisterValueChangedCallback(OnZoomChanged);
             trimButton.clicked -= viewModel.TrimToContent;
             openPreviewSceneButton.clicked -= viewModel.OpenPreviewScene;
@@ -97,7 +99,9 @@ namespace RPG.SkillSystem.Editor
 
         #region 控件初始化
 
-        // 从主 UXML 查询并缓存工具栏控件。
+        /// <summary>
+        /// 从主 UXML 查询并缓存工具栏控件。
+        /// </summary>
         private void QueryElements()
         {
             configField = root.Q<ObjectField>("ConfigField");
@@ -109,6 +113,7 @@ namespace RPG.SkillSystem.Editor
             frameRateField = root.Q<IntegerField>("FrameRateField");
             durationField = root.Q<IntegerField>("DurationField");
             currentFrameField = root.Q<IntegerField>("CurrentFrameField");
+            playbackSpeedSlider = root.Q<Slider>("PlaybackSpeedSlider");
             zoomSlider = root.Q<Slider>("ZoomSlider");
             zoomSlider.lowValue = canvasModel.MinimumPixelsPerFrame;
             zoomSlider.highValue = canvasModel.MaximumPixelsPerFrame;
@@ -122,7 +127,9 @@ namespace RPG.SkillSystem.Editor
             nextFrameButton = root.Q<Button>("NextFrameButton");
         }
 
-        // 配置 ObjectField 接受的 Unity 对象类型。
+        /// <summary>
+        /// 配置资源字段类型以及播放速度 Slider 的可编辑范围。
+        /// </summary>
         private void ConfigureFields()
         {
             configField.objectType = typeof(SkillConfig);
@@ -133,9 +140,14 @@ namespace RPG.SkillSystem.Editor
             previewActorField.allowSceneObjects = true;
             gameplayCameraField.objectType = typeof(GameObject);
             gameplayCameraField.allowSceneObjects = false;
+            playbackSpeedSlider.lowValue = 0.1f;
+            playbackSpeedSlider.highValue = 2f;
+            playbackSpeedSlider.showInputField = true;
         }
 
-        // 注册工具栏控件及 ViewModel 的状态变更回调。
+        /// <summary>
+        /// 注册工具栏控件及 ViewModel 的状态变更回调。
+        /// </summary>
         private void RegisterEvents()
         {
             configField.RegisterValueChangedCallback(OnConfigChanged);
@@ -147,6 +159,7 @@ namespace RPG.SkillSystem.Editor
             frameRateField.RegisterValueChangedCallback(OnFrameRateChanged);
             durationField.RegisterValueChangedCallback(OnDurationChanged);
             currentFrameField.RegisterValueChangedCallback(OnCurrentFrameChanged);
+            playbackSpeedSlider.RegisterValueChangedCallback(OnPlaybackSpeedChanged);
             zoomSlider.RegisterValueChangedCallback(OnZoomChanged);
             createConfigButton.clicked += OnCreateConfigClicked;
             trimButton.clicked += viewModel.TrimToContent;
@@ -193,6 +206,7 @@ namespace RPG.SkillSystem.Editor
             stopButton.SetEnabled(enabled);
             previousFrameButton.SetEnabled(enabled);
             nextFrameButton.SetEnabled(enabled);
+            playbackSpeedSlider.SetEnabled(enabled);
             rootMotionToggle.SetEnabled(enabled);
             rootMotionToggle.SetValueWithoutNotify(enabled && config.IsRootMotion);
         }
@@ -200,11 +214,14 @@ namespace RPG.SkillSystem.Editor
         // 刷新贯穿时间轴的播放头位置。
         private void RefreshPlayhead() => currentFrameField.SetValueWithoutNotify(viewModel.CurrentFrame);
 
-        // 刷新播放文字和循环按钮的激活状态，避免 UI 自行持有播放状态。
+        /// <summary>
+        /// 刷新播放文字、循环状态及播放倍率，避免 UI 自行持有播放状态。
+        /// </summary>
         private void RefreshPlayback()
         {
             playPauseButton.text = viewModel.IsPlaying ? "暂停" : "播放";
             loopButton.EnableInClassList("loop-button--active", viewModel.IsLooping);
+            playbackSpeedSlider.SetValueWithoutNotify(viewModel.PlaybackSpeed);
         }
 
         /// <summary>刷新项目级预览场景、演示角色与摄像机字段。</summary>
@@ -268,6 +285,13 @@ namespace RPG.SkillSystem.Editor
 
         // 把当前帧输入转换为播放头定位请求。
         private void OnCurrentFrameChanged(ChangeEvent<int> evt) => viewModel.SetCurrentFrame(evt.newValue);
+
+        /// <summary>
+        /// 把工具栏倍率输入转交给窗口播放时钟，不修改技能资产。
+        /// </summary>
+        /// <param name="evt">包含 0.1 至 2 倍率的 Slider 变化事件。</param>
+        private void OnPlaybackSpeedChanged(ChangeEvent<float> evt) =>
+            viewModel.SetPlaybackSpeed(evt.newValue);
 
         // 把 Slider 输入写入 Canvas 表现模型的每帧像素宽度。
         private void OnZoomChanged(ChangeEvent<float> evt) => canvasModel.SetZoom(evt.newValue);

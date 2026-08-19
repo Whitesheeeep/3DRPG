@@ -108,6 +108,9 @@ namespace WS_Modules.Singleton
             }
         }
 
+        /// <summary>
+        /// 在 Awake 中调用的 Init
+        /// </summary>
         public virtual void Init() { }
     }
 }

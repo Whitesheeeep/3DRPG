@@ -1,13 +1,13 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
-    <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/EditorWindowStyle/SkillTimelineEditorWindow.uss" />
-    <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineItemCommon.uss" />
-    <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineActionPhaseClipItem.uss" />
-    <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineAnimationClipItem.uss" />
-    <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineAttackDetectionClipItem.uss" />
-    <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineVfxClipItem.uss" />
-    <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineAudioClipItem.uss" />
-    <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineEventMarkerItem.uss" />
-    <ui:Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineCameraModifierClipItem.uss" />
+    <Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/EditorWindowStyle/SkillTimelineEditorWindow.uss?fileID=7433441132597879392&amp;guid=226a9c1ac85d6934b913c5d617faf26f&amp;type=3#SkillTimelineEditorWindow" />
+    <Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineItemCommon.uss?fileID=7433441132597879392&amp;guid=a5ac43dd877945a8a9957d0d61054699&amp;type=3#SkillTimelineItemCommon" />
+    <Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineActionPhaseClipItem.uss?fileID=7433441132597879392&amp;guid=28c35816214a45a7aa4e31467027b277&amp;type=3#SkillTimelineActionPhaseClipItem" />
+    <Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineAnimationClipItem.uss?fileID=7433441132597879392&amp;guid=22a60c97bcde4bc0bb7e040ab44ed54e&amp;type=3#SkillTimelineAnimationClipItem" />
+    <Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineAttackDetectionClipItem.uss?fileID=7433441132597879392&amp;guid=a33c670946fe44059caac52f2c8a5551&amp;type=3#SkillTimelineAttackDetectionClipItem" />
+    <Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineVfxClipItem.uss?fileID=7433441132597879392&amp;guid=62cd107096fc4267bd943291d6097416&amp;type=3#SkillTimelineVfxClipItem" />
+    <Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineAudioClipItem.uss?fileID=7433441132597879392&amp;guid=8518a4433ebf4a5899dd5618e6fd9489&amp;type=3#SkillTimelineAudioClipItem" />
+    <Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineEventMarkerItem.uss?fileID=7433441132597879392&amp;guid=ed562575044b48e996b37eca4cd73e59&amp;type=3#SkillTimelineEventMarkerItem" />
+    <Style src="project://database/Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineCameraModifierClipItem.uss?fileID=7433441132597879392&amp;guid=630c26c40df0dec4d9661ed064daeaeb&amp;type=3#SkillTimelineCameraModifierClipItem" />
     <ui:VisualElement name="SkillTimelineRoot" class="skill-timeline-root">
         <ui:VisualElement class="toolbar-row toolbar-wrap-row">
             <ui:VisualElement class="toolbar-section config-section">
@@ -36,7 +36,7 @@
                 <ui:Toggle name="CameraModifierPreviewToggle" label="修饰预览" />
             </ui:VisualElement>
         </ui:VisualElement>
-        <ui:VisualElement class="toolbar-row toolbar-wrap-row playback-row">
+        <ui:VisualElement class="toolbar-row toolbar-wrap-row playback-row" style="flex-wrap: wrap;">
             <ui:VisualElement class="toolbar-section playback-buttons-section">
                 <ui:Button name="PlayPauseButton" text="播放" class="toolbar-button primary-button" />
                 <ui:Button name="LoopButton" text="循环" tooltip="循环播放整个技能" class="toolbar-button loop-button" />
@@ -44,41 +44,42 @@
                 <ui:Button name="PreviousFrameButton" text="上一帧" class="toolbar-button" />
                 <ui:Button name="NextFrameButton" text="下一帧" class="toolbar-button" />
             </ui:VisualElement>
-            <ui:VisualElement class="toolbar-section playback-fields-section">
+            <ui:VisualElement class="toolbar-section playback-fields-section" style="flex-wrap: wrap;">
                 <ui:IntegerField name="CurrentFrameField" label="当前帧" class="number-field unity-base-field__aligned" />
-                <ui:Slider name="ZoomSlider" label="缩放" low-value="4" high-value="48" class="zoom-slider unity-base-field__aligned" />
+                <ui:Slider name="PlaybackSpeedSlider" label="播放速度" low-value="0.1" high-value="2" tooltip="调整时间轴预览速度，不修改技能配置" class="playback-speed-slider unity-base-field__aligned" />
+                <ui:Slider name="ZoomSlider" label="缩放" low-value="4" high-value="48" class="zoom-slider unity-base-field__aligned" style="flex-shrink: 1;" />
             </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement name="TimelinePanel" class="timeline-panel">
-                <WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView name="HeaderTimelineSplit" fixed-pane-index="0" fixed-pane-initial-dimension="240" orientation="Horizontal" class="timeline-inner-split">
-                    <ui:VisualElement name="TimelineHeaderPane" class="timeline-header-pane">
-                        <ui:Label text="轨道" class="timeline-header-title" />
-                        <ui:VisualElement name="TrackRoot" class="track-header-column">
-                            <ui:ScrollView name="TrackHeaderScroll" mode="Vertical" class="track-header-scroll">
-                                <ui:VisualElement name="TrackHeaderContent" class="track-header-content">
-                                    <ui:VisualElement name="TrackHeaderRows" class="track-header-rows" />
-                                </ui:VisualElement>
-                            </ui:ScrollView>
-                            <ui:VisualElement name="HorizontalBarSpace" class="horizontal-scroller-spacer" />
-                        </ui:VisualElement>
-                    </ui:VisualElement>
-                    <ui:VisualElement name="TimelineViewportPane" class="timeline-viewport-pane">
-                        <ui:VisualElement name="RulerRow" class="timeline-ruler-row">
-                            <ui:VisualElement name="RulerLane" class="timeline-ruler-lane" />
-                            <ui:VisualElement class="vertical-scroller-spacer" />
-                        </ui:VisualElement>
-                        <ui:ScrollView name="TimelineScroll" mode="VerticalAndHorizontal" class="timeline-scroll">
-                            <ui:VisualElement name="TimelineContent" class="timeline-content">
-                                <ui:VisualElement name="TimelineLaneBackgroundRows" picking-mode="Ignore" class="timeline-lane-background-rows" />
-                                <ui:VisualElement name="TimelineGridHost" picking-mode="Ignore" class="timeline-grid-host" />
-                                <ui:VisualElement name="TimelineLaneRows" class="timeline-lane-item-rows" />
+            <WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView name="HeaderTimelineSplit" fixed-pane-index="0" fixed-pane-initial-dimension="240" orientation="Horizontal" class="timeline-inner-split">
+                <ui:VisualElement name="TimelineHeaderPane" class="timeline-header-pane">
+                    <ui:Label text="轨道" class="timeline-header-title" />
+                    <ui:VisualElement name="TrackRoot" class="track-header-column">
+                        <ui:ScrollView name="TrackHeaderScroll" mode="Vertical" class="track-header-scroll">
+                            <ui:VisualElement name="TrackHeaderContent" class="track-header-content">
+                                <ui:VisualElement name="TrackHeaderRows" class="track-header-rows" />
                             </ui:VisualElement>
                         </ui:ScrollView>
-                        <ui:VisualElement name="ItemDragOverlay" picking-mode="Ignore" class="item-drag-overlay" />
-                        <ui:VisualElement name="PlayheadOverlay" picking-mode="Ignore" class="playhead-overlay" />
+                        <ui:VisualElement name="HorizontalBarSpace" class="horizontal-scroller-spacer" />
                     </ui:VisualElement>
-                </WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView>
-            </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement name="TimelineViewportPane" class="timeline-viewport-pane">
+                    <ui:VisualElement name="RulerRow" class="timeline-ruler-row">
+                        <ui:VisualElement name="RulerLane" class="timeline-ruler-lane" />
+                        <ui:VisualElement class="vertical-scroller-spacer" />
+                    </ui:VisualElement>
+                    <ui:ScrollView name="TimelineScroll" mode="VerticalAndHorizontal" class="timeline-scroll">
+                        <ui:VisualElement name="TimelineContent" class="timeline-content">
+                            <ui:VisualElement name="TimelineLaneBackgroundRows" picking-mode="Ignore" class="timeline-lane-background-rows" />
+                            <ui:VisualElement name="TimelineGridHost" picking-mode="Ignore" class="timeline-grid-host" />
+                            <ui:VisualElement name="TimelineLaneRows" class="timeline-lane-item-rows" />
+                        </ui:VisualElement>
+                    </ui:ScrollView>
+                    <ui:VisualElement name="ItemDragOverlay" picking-mode="Ignore" class="item-drag-overlay" />
+                    <ui:VisualElement name="PlayheadOverlay" picking-mode="Ignore" class="playhead-overlay" />
+                </ui:VisualElement>
+            </WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView>
+        </ui:VisualElement>
         <ui:Label name="StatusLabel" text="请选择或新建 SkillConfig。" class="status-label" />
     </ui:VisualElement>
 </ui:UXML>

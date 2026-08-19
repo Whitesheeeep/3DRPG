@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dialogue Graph Editor Panel Mockup</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --window: #252525;
+      --titlebar: #202020;
+      --toolbar: #202020;
+      --panel: #292929;
+      --panel-deep: #202020;
+      --border: #151515;
+      --border-soft: #3b3b3b;
+      --text: #d6d6d6;
+      --muted: #9fa8b2;
+      --blue: #315f93;
+      --blue-dark: #315f93;
+      --green: #2f7d4d;
+      --amber: #8a6a24;
+      --purple: #8f3a3a;
+      --danger: #d85a5a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 1060px;
+      margin: 0;
+      padding: 24px;
+      background: #181818;
+      color: var(--text);
+      font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input, select, textarea { font: inherit; }
+
+    button, select, input, textarea {
+      border: 1px solid var(--border-soft);
+      border-radius: 4px;
+      background: #343b44;
+      color: var(--text);
+    }
+
+    button {
+      padding: 5px 10px;
+      cursor: default;
+    }
+
+    button.primary { border-color: #6599c7; background: var(--blue-dark); }
+
+    .editor-window {
+      display: grid;
+      grid-template-rows: 36px 42px minmax(560px, 1fr) 118px;
+      width: min(1440px, calc(100vw - 48px));
+      height: min(900px, calc(100vh - 48px));
+      min-height: 720px;
+      overflow: hidden;
+      border: 1px solid #0e1115;
+      border-radius: 8px;
+      background: var(--window);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+    }
+
+    .titlebar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--titlebar);
+      font-weight: 600;
+    }
+
+    .titlebar .asset-name { color: var(--muted); font-weight: 400; }
+    .titlebar .window-actions { display: flex; gap: 7px; margin-left: auto; color: var(--muted); }
+    .window-actions span { display: inline-grid; place-items: center; width: 18px; height: 18px; }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--toolbar);
+    }
+
+    .toolbar .separator { width: 1px; height: 23px; margin: 0 3px; background: var(--border-soft); }
+    .toolbar .toolbar-spacer { flex: 1; }
+    .toolbar select { width: 210px; padding: 5px 8px; }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 220px minmax(320px, 1fr) 320px;
+      min-height: 0;
+    }
+
+    .sidebar, .inspector {
+      min-width: 0;
+      overflow: auto;
+      background: var(--panel);
+    }
+
+    .sidebar { border-right: 1px solid var(--border); }
+    .inspector { border-left: 1px solid var(--border); }
+
+    .panel-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 34px;
+      padding: 0 11px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .panel-heading span { color: var(--muted); font-size: 10px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+
+    .sidebar-section { padding: 11px 8px 0; }
+    .sidebar-section-title { padding: 0 5px 6px; color: var(--muted); font-size: 11px; }
+
+    .tree-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 28px;
+      padding: 4px 7px;
+      border-radius: 4px;
+      color: #c2cbd4;
+    }
+
+    .tree-row.selected { background: var(--blue-dark); color: #fff; }
+    .tree-row.indent-1 { padding-left: 25px; }
+    .tree-row.indent-2 { padding-left: 43px; }
+    .tree-icon { width: 14px; color: #8fb5d5; text-align: center; }
+    .tree-row.choice .tree-icon { color: #d4a45c; }
+    .tree-row.end .tree-icon { color: #a99bcf; }
+
+    .speaker-list { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px; }
+    .speaker-chip { display: flex; align-items: center; gap: 7px; padding: 5px 7px; color: #c2cbd4; }
+    .speaker-dot { width: 8px; height: 8px; border-radius: 50%; background: #78a9d1; }
+    .speaker-dot.player { background: #79bd8a; }
+    .speaker-dot.captain { background: #d0a85f; }
+
+    .graph-view {
+      position: relative;
+      min-width: 0;
+      overflow: hidden;
+      background-color: #1f1f1f;
+      background-image: radial-gradient(#3a3a3a 1px, transparent 1px);
+      background-size: 18px 18px;
+    }
+
+    .graph-toolbar {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      z-index: 4;
+      display: flex;
+      gap: 5px;
+      padding: 4px;
+      border: 1px solid var(--border-soft);
+      border-radius: 4px;
+      background: rgba(32, 32, 32, 0.94);
+    }
+
+    .graph-toolbar button { padding: 3px 7px; background: #303030; color: var(--muted); }
+    .graph-caption { position: absolute; top: 13px; left: 15px; color: #778491; font-size: 11px; }
+
+    .graph-node {
+      position: absolute;
+      z-index: 2;
+      width: 166px;
+      overflow: hidden;
+      border: 1px solid #3b3b3b;
+      border-radius: 6px;
+      background: #202020;
+      box-shadow: 0 7px 17px rgba(0, 0, 0, 0.28);
+    }
+
+    .graph-node.selected { border-color: #f2ff00; box-shadow: 0 0 0 2px rgba(242, 255, 0, 0.28), 0 7px 17px rgba(0, 0, 0, 0.28); }
+    .graph-node.entry { top: 145px; left: 38px; width: 122px; }
+    .graph-node.speech { top: 118px; left: 248px; }
+    .graph-node.choice { top: 350px; left: 458px; background: #242424; }
+    .graph-node.end { top: 350px; left: 218px; width: 128px; background: #242424; }
+
+    .node-title {
+      padding: 7px 9px;
+      background: var(--blue);
+      color: #f7fbff;
+      font-weight: 700;
+    }
+
+    .graph-node.entry .node-title { background: var(--green); }
+    .graph-node.choice .node-title { background: var(--amber); }
+    .graph-node.end .node-title { background: var(--purple); }
+    .node-body { padding: 9px; color: #b8b8b8; font-size: 11px; line-height: 1.55; }
+    .node-body strong { color: #f0f4f7; }
+
+    .node-port-row { display: flex; align-items: center; gap: 5px; margin-top: 6px; color: #9daab7; }
+    .node-port { width: 8px; height: 8px; border: 1px solid #dce8f3; border-radius: 50%; background: #4d8fdb; }
+    .node-port.output { margin-left: auto; }
+
+    .edge-layer { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; pointer-events: none; }
+    .edge-layer path { fill: none; stroke: #6d96bd; stroke-width: 2; marker-end: url(#arrow); }
+    .edge-layer path.choice-edge { stroke: #d6ad45; }
+
+    .inspector-content { padding: 11px; }
+    .inspector-group { margin-bottom: 17px; }
+    .inspector-label { display: block; margin: 0 0 5px; color: var(--muted); font-size: 11px; }
+    .inspector input, .inspector select, .inspector textarea { width: 100%; padding: 7px 8px; }
+    .inspector textarea { min-height: 92px; resize: vertical; line-height: 1.45; }
+    .inspector-row { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .inspector-note { margin-top: 5px; color: #7e8a96; font-size: 10px; line-height: 1.4; }
+
+    .list-field { overflow: hidden; border: 1px solid var(--border-soft); border-radius: 4px; }
+    .list-field-row { display: flex; align-items: center; gap: 7px; padding: 7px 8px; border-bottom: 1px solid #343434; color: #c8c8c8; }
+    .list-field-row:last-child { border-bottom: 0; }
+    .list-field-row span:last-child { margin-left: auto; color: var(--muted); }
+    .condition-badge { color: #d6ae69; }
+    .action-badge { color: #87c499; }
+
+    .bottom-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      min-height: 0;
+      border-top: 1px solid var(--border);
+      background: var(--toolbar);
+    }
+
+    .validation, .status { overflow: auto; padding: 10px 13px; }
+    .status { border-left: 1px solid var(--border); color: var(--muted); }
+    .validation-row { display: flex; align-items: center; gap: 7px; margin-top: 7px; color: #d7b26f; }
+    .validation-row.ok { color: #83c995; }
+    .status-row { display: flex; justify-content: space-between; gap: 12px; margin-top: 7px; }
+    .status-row strong { color: var(--text); font-weight: 500; }
+
+    @media (max-width: 1120px) {
+      body { padding: 10px; }
+      .editor-window { width: calc(100vw - 20px); height: calc(100vh - 20px); }
+      .workspace { grid-template-columns: 178px minmax(390px, 1fr) 280px; }
+      .graph-node.speech { left: 205px; }
+      .graph-node.choice { left: 385px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="editor-window" aria-label="Dialogue Graph Editor 面板参考">
+    <header class="titlebar">
+      <span>Dialogue Graph Editor</span>
+      <span class="asset-name">DialogueAsset · NPC_Guard_Intro</span>
+      <span class="window-actions"><span>—</span><span>□</span><span>×</span></span>
+    </header>
+
+    <nav class="toolbar" aria-label="Editor toolbar">
+      <button class="primary">New Graph</button>
+      <button>Save</button>
+      <button>Undo</button>
+      <button>Redo</button>
+      <span class="separator"></span>
+      <button>Auto Layout</button>
+      <button>Validate</button>
+      <span class="toolbar-spacer"></span>
+      <select aria-label="当前 Graph">
+        <option>NPC_Guard_Intro</option>
+      </select>
+    </nav>
+
+    <section class="workspace">
+      <aside class="sidebar" aria-label="Graph and Speaker navigation">
+        <div class="panel-heading"><span>Graph Nodes</span><span>5</span></div>
+        <div class="sidebar-section">
+          <div class="tree-row selected"><span class="tree-icon">▣</span><span>NPC_Guard_Intro</span></div>
+          <div class="tree-row indent-1"><span class="tree-icon">○</span><span>EntryNode</span></div>
+          <div class="tree-row indent-1"><span class="tree-icon">●</span><span>GuardGreeting</span></div>
+          <div class="tree-row indent-2 choice"><span class="tree-icon">◆</span><span>AskForPass</span></div>
+          <div class="tree-row indent-1 end"><span class="tree-icon">■</span><span>Completed</span></div>
+        </div>
+        <div class="sidebar-section speaker-list">
+          <div class="sidebar-section-title">Speaker IDs</div>
+          <div class="speaker-chip"><span class="speaker-dot"></span><span>Guard</span></div>
+          <div class="speaker-chip"><span class="speaker-dot player"></span><span>Player</span></div>
+          <div class="speaker-chip"><span class="speaker-dot captain"></span><span>Captain</span></div>
+        </div>
+      </aside>
+
+      <section class="graph-view" aria-label="GraphView canvas">
+        <div class="graph-caption">GraphView Canvas · drag nodes and connect ports</div>
+        <div class="graph-toolbar"><button>＋</button><button>−</button><button>Fit</button></div>
+        <svg class="edge-layer" viewBox="0 0 720 560" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#7fa5c5"></path>
+            </marker>
+          </defs>
+          <path d="M 160 180 C 190 180, 205 180, 248 180"></path>
+          <path class="choice-edge" d="M 414 250 C 460 285, 470 330, 500 350"></path>
+          <path d="M 330 250 C 300 300, 275 330, 280 350"></path>
+        </svg>
+
+        <article class="graph-node entry">
+          <div class="node-title">EntryNode</div>
+          <div class="node-body"><div class="node-port-row"><span class="node-port"></span> Start <span class="node-port output"></span></div></div>
+        </article>
+        <article class="graph-node speech selected">
+          <div class="node-title">SpeechNode</div>
+          <div class="node-body">
+            <strong>Guard</strong><br />
+            “Halt. State your business.”
+            <div class="node-port-row">Out · Choice / Next <span class="node-port output"></span></div>
+          </div>
+        </article>
+        <article class="graph-node choice">
+          <div class="node-title">ChoiceNode</div>
+          <div class="node-body">
+            <strong>AskForPass</strong><br />
+            <span class="condition-badge">Condition · 1</span><br />
+            <span class="action-badge">Action · 1</span>
+            <div class="node-port-row">Target <span class="node-port output"></span></div>
+          </div>
+        </article>
+        <article class="graph-node end">
+          <div class="node-title">EndNode</div>
+          <div class="node-body">Completed<div class="node-port-row">End <span class="node-port output"></span></div></div>
+        </article>
+      </section>
+
+      <aside class="inspector" aria-label="Selected node inspector">
+        <div class="panel-heading"><span>SpeechNode Details</span><span>Selected</span></div>
+        <div class="inspector-content">
+          <div class="inspector-group">
+            <label class="inspector-label" for="node-id">NodeId</label>
+              <input id="node-id" value="8f4d8c6a-1c2e-4e13-9a72-6d5c1b7e2049" />
+          </div>
+          <div class="inspector-group">
+            <label class="inspector-label" for="speaker-id">SpeakerId</label>
+            <select id="speaker-id">
+              <option>Guard</option>
+              <option>Player</option>
+              <option>Captain</option>
+            </select>
+            <div class="inspector-note">来源：DialogueSpeakerIdSettings</div>
+          </div>
+          <div class="inspector-group">
+            <label class="inspector-label" for="speech-text">Text</label>
+            <textarea id="speech-text">Halt. State your business.</textarea>
+          </div>
+          <div class="inspector-group">
+            <div class="inspector-row">
+              <div>
+                <label class="inspector-label" for="animation-clip">AnimationClip</label>
+                <input id="animation-clip" value="Guard_Talk_01" />
+              </div>
+              <div>
+                <label class="inspector-label" for="animation-fade">Fade</label>
+                <input id="animation-fade" value="0.15" />
+              </div>
+            </div>
+            <div class="inspector-note">固定播放层：AnimationLayerType.Action · Full Body</div>
+          </div>
+          <div class="inspector-group">
+            <label class="inspector-label" for="next-node">NextNode</label>
+            <select id="next-node">
+              <option>None · Choice 优先</option>
+              <option>Speech · GuardFarewell</option>
+            </select>
+            <div class="inspector-note">Choices 非空时等待选择；仅在 Choices 为空时使用 NextNode。</div>
+          </div>
+          <div class="inspector-group">
+            <label class="inspector-label">Choices</label>
+            <div class="list-field">
+              <div class="list-field-row"><span>AskForPass</span><span>→</span></div>
+              <div class="list-field-row"><span>Leave</span><span>→</span></div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="bottom-panel">
+      <div class="validation" aria-label="Validation panel">
+        <div class="panel-heading"><span>Validation</span><span>2 messages</span></div>
+        <div class="validation-row ok"><span>✓</span><span>Graph is valid</span></div>
+        <div class="validation-row"><span>!</span><span>Choice AskForPass uses a disabled condition preview</span></div>
+      </div>
+      <div class="status" aria-label="Editor status panel">
+        <div class="panel-heading"><span>Editor Status</span><span>MVC</span></div>
+        <div class="status-row"><span>Selected</span><strong>SpeechNode / GuardGreeting</strong></div>
+        <div class="status-row"><span>Asset</span><strong>Dirty: No</strong></div>
+        <div class="status-row"><span>History</span><strong>Undo available</strong></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

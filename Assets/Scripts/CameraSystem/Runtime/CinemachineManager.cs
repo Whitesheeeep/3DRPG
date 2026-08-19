@@ -14,18 +14,67 @@ namespace RPG.CameraSystem
     {
         #region 配置与状态
 
-        [SerializeField] private CinemachineBrain brain;
+        /// <summary>
+        /// 负责 Gameplay 最终镜头输出的唯一 Cinemachine Brain。
+        /// </summary>
+        [SerializeField, Tooltip("负责 Gameplay 最终镜头输出的唯一 Cinemachine Brain。")]
+        private CinemachineBrain brain;
 
+        // 普通 Modifier 的字典负责定位、列表负责顺序；创建与释放时必须同步维护两者。
+        /// <summary>
+        /// 按 Handle ID 定位普通 Camera Modifier 请求的索引。
+        /// </summary>
         private readonly Dictionary<int, CameraModifierRequest> requests = new();
+
+        /// <summary>
+        /// 按创建顺序保存普通 Camera Modifier 请求，供 Additive 与 Exclusive 混合使用。
+        /// </summary>
         private readonly List<CameraModifierRequest> orderedRequests = new();
+
+        // 持续 Shake 同样使用索引与有序列表双结构，不能只从其中一处移除请求。
+        /// <summary>
+        /// 按 Handle ID 定位持续 Noise Shake 请求的索引。
+        /// </summary>
         private readonly Dictionary<int, CameraShakeRuntime> shakeRequests = new();
+
+        /// <summary>
+        /// 按创建顺序保存持续 Noise Shake 请求，并与普通 Modifier 共享竞争层级。
+        /// </summary>
         private readonly List<CameraShakeRuntime> orderedShakeRequests = new();
+
+        /// <summary>
+        /// 按独立 Handle ID 定位由当前 Manager 发射且仍处于有效期内的 Impulse 事件。
+        /// </summary>
         private readonly Dictionary<int, CameraImpulseRuntime> impulseRequests = new();
+
+        /// <summary>
+        /// 复用的过期 Shake ID 缓存，用于避免遍历字典期间直接删除元素。
+        /// </summary>
         private readonly List<int> expiredShakeIds = new();
+
+        /// <summary>
+        /// 复用的过期 Impulse ID 缓存，用于避免遍历字典期间直接删除元素。
+        /// </summary>
         private readonly List<int> expiredImpulseIds = new();
+
+        /// <summary>
+        /// 合并普通 Modifier 与持续 Noise Shake；Impulse 由 Cinemachine 自身负责混合。
+        /// </summary>
         private readonly CameraModifierMixer mixer = new();
+
+        /// <summary>
+        /// 普通 Modifier 与持续 Noise Shake 共用的下一个 Handle ID。
+        /// </summary>
         private int nextHandleId = 1;
+
+        /// <summary>
+        /// Impulse 请求独立使用的下一个 Handle ID。
+        /// </summary>
         private int nextImpulseHandleId = 1;
+
+        /// <summary>
+        /// 普通 Modifier 与持续 Noise Shake 共用的创建序号，用于确定 Exclusive 竞争层级。
+        /// </summary>
         private long nextSequence;
 
         #endregion

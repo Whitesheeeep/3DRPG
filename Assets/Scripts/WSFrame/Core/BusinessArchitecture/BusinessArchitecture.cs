@@ -53,6 +53,11 @@ namespace WS_Modules.BusinessArchitecture
             }
         }
 
+        /// <summary>
+        /// 获取当前具体架构是否已经创建。
+        /// </summary>
+        public static bool IsInitialized => architecture != null;
+
         public static void InitArchitecture()
         {
             if (architecture != null)
@@ -80,6 +85,14 @@ namespace WS_Modules.BusinessArchitecture
             }
 
             architecture.inited = true;
+        }
+
+        /// <summary>
+        /// 注销当前具体架构；未创建架构时不触发隐式初始化。
+        /// </summary>
+        public static void DeinitArchitecture()
+        {
+            architecture?.Deinit();
         }
 
         protected abstract void Init();

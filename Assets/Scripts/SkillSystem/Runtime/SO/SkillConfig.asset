@@ -134,7 +134,7 @@ MonoBehaviour:
   clips:
   - id: 40cfe4b40ca54f3da679324623786f20
     audioClip: {fileID: 8300000, guid: 9ed4573abd1465749b538474846f4995, type: 3}
-    startFrame: 6
+    startFrame: 4
     durationFrames: 14
     volume: 1
     pitch: 1

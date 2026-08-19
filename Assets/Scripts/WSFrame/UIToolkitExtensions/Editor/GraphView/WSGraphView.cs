@@ -20,6 +20,7 @@ namespace WS_Modules.UIToolkitExtensions.Editor.GraphView
         private readonly IGraphConnectionPolicy connectionPolicy;
         private readonly IGraphChangeListener changeListener;
         private readonly IGraphNodeInteractionListener nodeInteractionListener;
+        private int changeNotificationSuppressionDepth;
 
         // 选择的数据快照，避免每次都从 selection 里遍历 GraphElement。
         private List<WSGraphNode> selectedNodes = new List<WSGraphNode>();
@@ -45,6 +46,16 @@ namespace WS_Modules.UIToolkitExtensions.Editor.GraphView
         #endregion
 
         #region 公开操作
+        /// <summary>
+        /// 暂停 GraphView 变更通知，供从 Model 重建视觉元素时使用。
+        /// </summary>
+        /// <returns>释放后恢复原有通知状态的作用域。</returns>
+        protected IDisposable SuppressChangeNotifications()
+        {
+            changeNotificationSuppressionDepth++;
+            return new ChangeNotificationScope(this);
+        }
+
         /// <summary>
         /// 初始化并加入一个通用节点，然后在节点实际进入图后发送加入结果。
         /// </summary>
@@ -257,6 +268,9 @@ namespace WS_Modules.UIToolkitExtensions.Editor.GraphView
         /// <returns>保持原内容的变更对象。</returns>
         private GraphViewChange HandleGraphViewChanged(GraphViewChange change)
         {
+            // 重建期间只需要让 Unity 完成视觉层级变更，不能把内部清空过程写回领域 Model。
+            if (changeNotificationSuppressionDepth > 0) return change;
+
             List<WSGraphNode> movedNodes = change.movedElements?
                 .OfType<WSGraphNode>().Distinct().ToList() ?? new List<WSGraphNode>();
             List<WSGraphNode> removedNodes = change.elementsToRemove?
@@ -378,7 +392,49 @@ namespace WS_Modules.UIToolkitExtensions.Editor.GraphView
         /// 将变更直接交给业务监听器，不捕获业务异常以便尽早暴露契约错误。
         /// </summary>
         /// <param name="change">已经生效的图变更。</param>
-        private void NotifyChange(GraphChangeEvent change) => changeListener?.OnGraphChanged(change);
+        private void NotifyChange(GraphChangeEvent change)
+        {
+            if (changeNotificationSuppressionDepth > 0) return;
+            changeListener?.OnGraphChanged(change);
+        }
+
+        /// <summary>
+        /// 结束一次 GraphView 变更通知抑制作用域。
+        /// </summary>
+        private void EndChangeNotificationSuppression()
+        {
+            if (changeNotificationSuppressionDepth == 0)
+                throw new InvalidOperationException("GraphView 变更通知抑制作用域未正确配对。");
+
+            changeNotificationSuppressionDepth--;
+        }
+
+        /// <summary>
+        /// 管理 GraphView 变更通知抑制生命周期的内部作用域。
+        /// </summary>
+        private sealed class ChangeNotificationScope : IDisposable
+        {
+            private WSGraphView graphView;
+
+            /// <summary>
+            /// 创建绑定 GraphView 的通知抑制作用域。
+            /// </summary>
+            /// <param name="graphView">需要恢复通知状态的 GraphView。</param>
+            public ChangeNotificationScope(WSGraphView graphView)
+            {
+                this.graphView = graphView;
+            }
+
+            /// <summary>
+            /// 恢复 GraphView 的变更通知。
+            /// </summary>
+            public void Dispose()
+            {
+                if (graphView == null) return;
+                graphView.EndChangeNotificationSuppression();
+                graphView = null;
+            }
+        }
         #endregion
 
         #region 右键菜单
