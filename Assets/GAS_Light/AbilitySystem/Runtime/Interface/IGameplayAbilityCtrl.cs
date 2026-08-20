@@ -14,6 +14,10 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         event Action<GameplayAbilityRuntime> AbilityEnded;
         /// <summary>Runtime 被取消且移出 Active 集合后发送。</summary>
         event Action<GameplayAbilityRuntime> AbilityCancelled;
+        /// <summary>Ability 成功提交 Cooldown GE 后发送。</summary>
+        event Action<GameplayAbilityCooldownEventArgs> CooldownStarted;
+        /// <summary>关联 Cooldown GE 被移除或到期后发送。</summary>
+        event Action<GameplayAbilityCooldownEventArgs> CooldownEnded;
 
         /// <summary>获取该 Controller 服务的 Source ASC。</summary>
         GameplayAbilitySystemComponent Owner { get; }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using WS_Modules.GAS.AbilitySystemComponent;
+using WS_Modules.GAS.GameplayEffect;
 using WS_Modules.GAS.TAG;
 
 namespace WS_Modules.GAS.GameplayAbilitySystem
@@ -10,6 +11,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
     {
         #region 字段与事件
         private readonly Dictionary<GameplayTag, float> setByCaller;
+        private readonly List<GameEffectRuntime> ownedEffects = new();
 
         // Controller 监听唯一终态通知，以维护 Active 集合和公开事件顺序。
         internal event Action<GameplayAbilityRuntime> Finished;
@@ -30,6 +32,11 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         public GameplayAbilityRuntimeState State { get; private set; }
         /// <summary>获取激活时复制的 SetByCaller 只读数据。</summary>
         public IReadOnlyDictionary<GameplayTag, float> SetByCaller => setByCaller;
+        /// <summary>获取由本次 Ability 生命周期持有的 Active GE Runtime。</summary>
+        public IReadOnlyList<GameEffectRuntime> OwnedEffects => ownedEffects;
+
+        /// <summary>提供给生命周期型 Task 登记 GE 的内部可变集合。</summary>
+        internal ICollection<GameEffectRuntime> OwnedEffectsInternal => ownedEffects;
         #endregion
 
         #region 构造与查询
@@ -67,6 +74,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             if (State != GameplayAbilityRuntimeState.Active) return false;
             State = GameplayAbilityRuntimeState.Ended;
             OnEnd();
+            RemoveOwnedEffects();
             Finished?.Invoke(this);
             return true;
         }
@@ -77,6 +85,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             if (State != GameplayAbilityRuntimeState.Active) return false;
             State = GameplayAbilityRuntimeState.Cancelled;
             OnCancel();
+            RemoveOwnedEffects();
             Finished?.Invoke(this);
             return true;
         }
@@ -107,6 +116,26 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
 
         // 子类可在取消时传播中断并释放异步资源。
         protected virtual void OnCancel() { }
+        #endregion
+
+        #region 持续效果所有权
+        /// <summary>登记一个由当前生命周期型 Task 成功应用的 Active GE。
+        /// (目前是通过 <see cref="GameplayAbilityData"/> 的 ApplyConfiguredEffects 注入的)</summary>
+        /// <param name="effectRuntime">需要随本次 Ability 结束而移除的 GE Runtime。</param>
+        internal void RetainOwnedEffect(GameEffectRuntime effectRuntime)
+        {
+            if (effectRuntime == null || ownedEffects.Contains(effectRuntime)) return;
+            ownedEffects.Add(effectRuntime);
+        }
+
+        /// <summary>移除本次 Runtime 持有的全部 GE，并清空所有权快照。</summary>
+        private void RemoveOwnedEffects()
+        {
+            // 复制倒序快照，允许 GE Remove Cue 或其他回调重入 Ability 生命周期。
+            for (int i = ownedEffects.Count - 1; i >= 0; i--)
+                SourceASC.GameEffectCtrl.TryRemove(ownedEffects[i]);
+            ownedEffects.Clear();
+        }
         #endregion
 
         #region 内部辅助

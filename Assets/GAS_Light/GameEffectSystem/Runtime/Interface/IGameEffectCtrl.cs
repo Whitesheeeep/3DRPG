@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.TAG;
 
@@ -7,6 +8,9 @@ namespace WS_Modules.GAS.GameplayEffect
     /// <summary>定义单个目标 ASC 的 GE 应用、更新、移除与只读查询能力。</summary>
     public interface IGameEffectCtrl
     {
+        /// <summary>Active GE 从当前 Target 移除后发送一次。</summary>
+        event Action<GameEffectRuntime> EffectRemoved;
+
         /// <summary>获取该 Controller 服务的目标 ASC。</summary>
         GameplayAbilitySystemComponent Owner { get; }
         /// <summary>获取当前 Duration 与 Infinite Runtime 的只读视图。</summary>

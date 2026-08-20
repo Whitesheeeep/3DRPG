@@ -21,7 +21,8 @@ MonoBehaviour:
     allTags: []
     anyTags: []
     noneTags: []
-  grantedTags: []
+  grantedTags:
+  - id: 22
   cueTags: []
   modifiers:
   - rid: 3428733583305736194

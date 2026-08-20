@@ -9,11 +9,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
     {
         #region 字段与属性
 
-        private readonly List<GameEffectRuntime> appliedEffects = new();
         private bool cuesActive;
-
-        /// <summary>获取本次 Task 成功持有的 Active GE Runtime。</summary>
-        public IReadOnlyList<GameEffectRuntime> AppliedEffects => appliedEffects;
 
         #endregion
 
@@ -39,7 +35,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 Runtime.SourceASC,
                 Runtime.Level,
                 Runtime.SetByCaller,
-                appliedEffects);
+                Runtime.OwnedEffectsInternal);
             data.PublishConfiguredCues(
                 GameplayCueEventType.Active,
                 Runtime.SourceASC,
@@ -61,10 +57,6 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <summary>只清理当前 Task 保存的精确 GE 句柄，并保证 Remove Cue 只发布一次。</summary>
         private void RemoveOwnedState()
         {
-            for (int i = appliedEffects.Count - 1; i >= 0; i--)
-                Runtime.SourceASC.GameEffectCtrl.TryRemove(appliedEffects[i]);
-            appliedEffects.Clear();
-
             if (!cuesActive) return;
             Runtime.Data.PublishConfiguredCues(
                 GameplayCueEventType.Remove,

@@ -22,6 +22,9 @@ namespace WS_Modules.GAS.GameplayEffect
         #region 属性与构造
 
         /// <inheritdoc />
+        public event Action<GameEffectRuntime> EffectRemoved;
+
+        /// <inheritdoc />
         public GameplayAbilitySystemComponent Owner { get; }
         /// <inheritdoc />
         public IReadOnlyList<GameEffectRuntime> ActiveEffects => activeEffects;
@@ -86,6 +89,7 @@ namespace WS_Modules.GAS.GameplayEffect
             activeEffects.RemoveAt(index);
             activeEffect.SetActive(false);
             PublishCues(activeEffect.Data, GameplayCueEventType.Remove, activeEffect.Source, activeEffect, null);
+            EffectRemoved?.Invoke(activeEffect);
             return true;
         }
 

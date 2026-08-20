@@ -97,7 +97,7 @@ SynchronousGameplayAbilityData 直接覆盖 Execute。执行返回后 Runtime �
 上述配置均可作为 ScriptableObject 在 GA Editor 中创建和检查。Odin Tester 使用 SO 引用而不是每次按钮点击临时创建 Ability Data，便于检查多态字段和 Validation。 测试夹具位于 Assets/GAS_Light/AbilitySystem/Runtime/GAData/SO/，可直接拖到 GameplayAbilityOdinTester 的 Skill 测试 SO 字段。
 GA Odin 测试器还需要配置 `Assets/GAS_Light/AttributeSystem/Editor/TestAssets/GameplayAttributeTestSet.asset`。每次重置测试时，Tester 会将该 Set 导入新的 ASC；否则依赖 Attribute 的 Cost GE 无法提交。该 Set 只用于测试夹具，不是 GA Runtime 的必需依赖。
 
-`GA_Test_PassiveSkill.asset` 使用 `PersistentSelfEffectsGameplayAbilityTaskConfig`，其 Infinite Effect 在启动时保存精确 Runtime 句柄，并在 End/Cancel 时只移除本次句柄。
+`GA_Test_PassiveSkill.asset` 使用 `PersistentSelfEffectsGameplayAbilityTaskConfig`，其 Infinite Effect 在启动时登记到 `GameplayAbilityRuntime.OwnedEffects`，并在 End/Cancel 时只移除本次 Runtime 持有的句柄。
 
 ## 5. 异步 Ability 与 Task
 
@@ -256,7 +256,9 @@ flowchart LR
     SelfTask -->|PersistentSelfEffects| Persistent["保存并持有 Infinite GE Runtime"]
 ```
 
-`PersistentSelfEffectsGameplayAbilityTask` 只接受 `Infinite + StackingType.None`，这样每次 Ability 激活都能保存并精确移除自己的 GE Runtime。`PeriodicSelfEffectsGameplayAbilityTask` 只接受 Instant GE；已经完成的周期结算不会因后续 End/Cancel 回滚。
+`PersistentSelfEffectsGameplayAbilityTask` 只接受 `Infinite + StackingType.None`，这样每次 Ability 激活都能把 GE Runtime 登记到 Ability Runtime 并精确移除。`PeriodicSelfEffectsGameplayAbilityTask` 只接受 Instant GE；已经完成的周期结算不会因后续 End/Cancel 回滚。
+
+Cooldown 的身份来自 Cooldown GE 的 `GrantedTags`，不再通过 GE Data 引用判断。ASC 只要匹配任一 Cooldown Tag 就拒绝新的同类激活；Cooldown GE 不登记到 `OwnedEffects`，因此同步 Ability 结束或 Toggle Off 不会提前清理冷却。`IGameplayAbilityCtrl` 发布 `CooldownStarted` 与 `CooldownEnded`，事件参数同时携带 Ability、Handle、AbilityId、Cooldown Runtime 和剩余时长，UI Controller 可直接订阅并自行计时。
 
 SelfCast 的等待正常完成后才进入 Apply Task。外部 `TryEnd` 会 Stop 当前 Root，`TryCancel` 会 Cancel 当前 Root，两者都不会越过等待阶段结算 Effects。
 

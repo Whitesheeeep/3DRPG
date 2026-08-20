@@ -15,6 +15,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private readonly List<GameplayAbilityRuntime> activeRuntimes = new();
         // 三个 Unity 阶段复用稳定快照，避免 Runtime 在回调中结束或激活时破坏当前遍历。
         private readonly List<GameplayAbilityRuntime> runtimeSnapshot = new();
+        private readonly Dictionary<GameEffectRuntime, GameplayAbilityRuntime> cooldownOwners = new();
         private int nextHandleId = 1;
         private int nextActivationId = 1;
         #endregion
@@ -26,6 +27,11 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         public event Action<GameplayAbilityRuntime> AbilityEnded;
         /// <inheritdoc />
         public event Action<GameplayAbilityRuntime> AbilityCancelled;
+        /// <inheritdoc />
+        public event Action<GameplayAbilityCooldownEventArgs> CooldownStarted;
+        /// <inheritdoc />
+        /// <remarks>Cooldown GE Runtime 已从 ASC 移除时触发（GACtrl 转发 GECtrl，由 Ability Runtime 触发），可能在 Ability Runtime 终态前发生。</remarks>
+        public event Action<GameplayAbilityCooldownEventArgs> CooldownEnded;
         #endregion
 
         #region 属性与构造
@@ -42,6 +48,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         public GameplayAbilityCtrl(GameplayAbilitySystemComponent owner)
         {
             Owner = owner ?? throw new ArgumentNullException(nameof(owner));
+            Owner.GameEffectCtrl.EffectRemoved += OnEffectRemoved;
         }
         #endregion
 
@@ -175,7 +182,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 return false;
 
             GameplayEffectData cooldown = spec.Data.CooldownEffect;
-            if (cooldown != null && Owner.GameEffectCtrl.HasActiveEffect(cooldown)) return false;
+            if (cooldown != null && HasActiveCooldown(cooldown)) return false;
 
             GameplayAbilityRuntime candidate = spec.Data.CreateRuntimeInstance(
                 AllocateActivationId(), spec, Owner, setByCaller);
@@ -198,10 +205,17 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 return false;
             }
 
+            // cost 和 CD 都已成功应用，Runtime 仍可能在 Activated 回调中被取消；只有仍处于 Active 的 Runtime 才能发出 Cancel 指令。
             runtime = candidate;
             runtime.Finished += OnRuntimeFinished;
             activeRuntimes.Add(runtime);
             runtime.Activate();
+            if (cooldownRuntime != null)
+            {
+                // Cooldown Runtime 是独立于 Ability 生命周期的 GE，只保存关联关系供结束事件还原技能身份。
+                cooldownOwners.Add(cooldownRuntime, runtime);
+                CooldownStarted?.Invoke(CreateCooldownEventArgs(runtime, cooldownRuntime));
+            }
             AbilityActivated?.Invoke(runtime);
             // Activated 回调可能已经取消新 Runtime；只有仍成立的激活才能发出取消指令。
             if (runtime.State == GameplayAbilityRuntimeState.Active)
@@ -225,7 +239,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         public void Clear()
         {
             while (activeRuntimes.Count > 0)
-                activeRuntimes[activeRuntimes.Count - 1].Cancel();
+                activeRuntimes[^1].Cancel();
             runtimeSnapshot.Clear();
             grantedAbilities.Clear();
         }
@@ -241,6 +255,16 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             else if (runtime.State == GameplayAbilityRuntimeState.Cancelled)
                 AbilityCancelled?.Invoke(runtime);
         }
+
+        /// <summary>处理 GE Controller 发出的实际移除通知，并转发对应 Ability 的 CooldownEnded。</summary>
+        /// <param name="effectRuntime">已经从 Owner ASC 移除的 GE Runtime。</param>
+        private void OnEffectRemoved(GameEffectRuntime effectRuntime)
+        {
+            if (!cooldownOwners.Remove(effectRuntime, out GameplayAbilityRuntime abilityRuntime))
+                return;
+
+            CooldownEnded?.Invoke(CreateCooldownEventArgs(abilityRuntime, effectRuntime));
+        }
         #endregion
 
         #region 校验与内部辅助
@@ -250,7 +274,41 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
              data.CostEffect.DurationType == E_GameEffectDurationType.Instant) &&
             (data.CooldownEffect == null ||
              data.CooldownEffect.DurationType == E_GameEffectDurationType.Duration ||
-             data.CooldownEffect.DurationType == E_GameEffectDurationType.Infinite);
+             data.CooldownEffect.DurationType == E_GameEffectDurationType.Infinite) &&
+            HasValidCooldownTags(data.CooldownEffect);
+
+        /// <summary>按 Cooldown GE 的 GrantedTags 判断当前 ASC 是否已处于同类冷却。</summary>
+        /// <param name="cooldown">待检查的 Cooldown GE 配置。</param>
+        /// <returns>任一 Cooldown Tag 已在 ASC 上匹配时返回 true。</returns>
+        private bool HasActiveCooldown(GameplayEffectData cooldown)
+        {
+            IReadOnlyList<GameplayTag> tags = cooldown.GrantedTags;
+            for (int i = 0; i < tags.Count; i++)
+                if (Owner.HasTag(tags[i])) return true;
+            return false;
+        }
+
+        /// <summary>校验 Cooldown GE 的运行时 Tag 契约。</summary>
+        /// <param name="cooldown">待检查的 Cooldown GE；可以为空。</param>
+        /// <returns>为空或包含至少一个有效 Tag 时返回 true。</returns>
+        private static bool HasValidCooldownTags(GameplayEffectData cooldown)
+        {
+            if (cooldown == null) return true;
+            IReadOnlyList<GameplayTag> tags = cooldown.GrantedTags;
+            if (tags == null || tags.Count == 0) return false;
+            for (int i = 0; i < tags.Count; i++)
+                if (!GameplayTagManager.Instance.IsValidTag(tags[i])) return false;
+            return true;
+        }
+
+        /// <summary>创建供 UI 订阅的不可变 Cooldown 事件参数。</summary>
+        /// <param name="abilityRuntime">关联 Ability Runtime。</param>
+        /// <param name="cooldownRuntime">关联 Cooldown GE Runtime。</param>
+        /// <returns>包含 Ability 身份与时长快照的事件参数。</returns>
+        private static GameplayAbilityCooldownEventArgs CreateCooldownEventArgs(
+            GameplayAbilityRuntime abilityRuntime,
+            GameEffectRuntime cooldownRuntime) =>
+            new(abilityRuntime, cooldownRuntime);
 
         // Runtime 必须仍在当前 Controller 的 Active 集合且 Source 相同。
         private bool OwnsActiveRuntime(GameplayAbilityRuntime runtime) =>

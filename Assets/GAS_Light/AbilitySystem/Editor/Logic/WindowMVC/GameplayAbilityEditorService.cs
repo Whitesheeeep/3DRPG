@@ -253,6 +253,7 @@ namespace WS_Modules.GAS.Editor
                 ability.CooldownEffect.DurationType != E_GameEffectDurationType.Infinite)
                 issues.Add(Error(
                     $"Cooldown GE '{GetAssetLabel(ability.CooldownEffect)}' 必须是 Duration 或 Infinite。"));
+            ValidateCooldownTags(ability.CooldownEffect, issues);
 
             ValidateEffectReferences(ability.Effects, issues);
             ValidateAbilityTags(ability.AbilityTags, "AbilityTags", issues);
@@ -373,6 +374,34 @@ namespace WS_Modules.GAS.Editor
             for (int i = 0; i < tags.Count; i++)
                 if (!unique.Add(tags[i]))
                     issues.Add(Error($"{fieldName}[{i}] 与前面的标签重复。"));
+        }
+
+        /// <summary>校验 Cooldown GE 的 GrantedTags，确保运行时能以 Tag 作为冷却身份。</summary>
+        /// <param name="cooldown">当前 Ability 配置的 Cooldown GE。</param>
+        /// <param name="issues">接收校验结果的集合。</param>
+        private static void ValidateCooldownTags(
+            GameplayEffectData cooldown,
+            ICollection<GameplayAbilityValidationIssue> issues)
+        {
+            if (cooldown == null) return;
+            if (cooldown.StackingType != E_GameEffectStackingType.None)
+                issues.Add(Error("Cooldown GE 必须使用 None 叠层，保证每个 Cooldown Runtime 可准确关联 Ability。"));
+
+            IReadOnlyList<GameplayTag> tags = cooldown.GrantedTags;
+            if (tags == null || tags.Count == 0)
+            {
+                issues.Add(Error($"Cooldown GE '{GetAssetLabel(cooldown)}' 至少需要一个 GrantedTag 作为冷却身份。"));
+                return;
+            }
+
+            var unique = new HashSet<GameplayTag>();
+            for (int i = 0; i < tags.Count; i++)
+            {
+                if (!tags[i].IsValid)
+                    issues.Add(Error($"Cooldown GE GrantedTags[{i}] 不是有效 GameplayTag。"));
+                if (!unique.Add(tags[i]))
+                    issues.Add(Error($"Cooldown GE GrantedTags[{i}] 与前面的 Tag 重复。"));
+            }
         }
 
         /// <summary>校验指定 Ability 的 Effects 是否全部为 Instant GE。</summary>

@@ -60,21 +60,21 @@
 }
 
 .ge-section-title {
-    unity-font-style: bold;
+    -unity-font-style: bold;
     font-size: 13px;
     margin-top: 5px;
     margin-bottom: 5px;
 }
 
 .ge-effect-title {
-    unity-font-style: bold;
+    -unity-font-style: bold;
     font-size: 17px;
     margin-bottom: 8px;
 }
 
 .ge-empty-label {
     color: #9a9a9a;
-    unity-text-align: middle-center;
+    -unity-text-align: middle-center;
     padding: 14px;
 }
 
@@ -189,5 +189,5 @@
 .ge-modifier-attribute {
     color: #8da6bf;
     min-width: 72px;
-    unity-text-align: middle-right;
+    -unity-text-align: middle-right;
 }
