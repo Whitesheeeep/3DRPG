@@ -43,7 +43,7 @@ MonoBehaviour:
     WindowGeneratorPath: Assets/Scripts/WSFrame/UISystem/Samples
     ItemScriptsGeneratorPath: Assets/Scripts/WSFrame/UISystem/Samples/Items
     WindowPrefabFolderPathArr:
-    - Assets/Prefabs/UI/WindowPrefab
+    - Assets/Prefabs/UI/Window
     UsingNameSpaceArr:
     - UnityEngine
     - UnityEngine.UI
