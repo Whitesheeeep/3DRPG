@@ -80,6 +80,7 @@ namespace RPG.Character
 
             StateBlackboard = new PlayerStateBlackboard(abilitySystemComponent);
             InputIntentArbiterManager = new GameplayInputIntentArbiterManager(inputController, StateBlackboard);
+            InputIntentArbiterManager.RegisterDefaultArbiters();
             motionDriver.Initialize(animator, characterController, abilitySystemComponent);
         }
 

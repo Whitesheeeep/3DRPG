@@ -40,6 +40,18 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_CueTest_GE_Instant = new GameplayTag(16);
         /// <summary>CueTest.GE.Periodic</summary>
         public static readonly GameplayTag Tag_CueTest_GE_Periodic = new GameplayTag(19);
+        /// <summary>Game</summary>
+        public static readonly GameplayTag Tag_Game = new GameplayTag(37);
+        /// <summary>Game.Interacting</summary>
+        public static readonly GameplayTag Tag_Game_Interacting = new GameplayTag(38);
+        /// <summary>Intent.Interaction</summary>
+        public static readonly GameplayTag Tag_Intent_Interaction = new GameplayTag(39);
+        /// <summary>Intent.Interaction.Execute</summary>
+        public static readonly GameplayTag Tag_Intent_Interaction_Execute = new GameplayTag(40);
+        /// <summary>Intent.Interaction.Next</summary>
+        public static readonly GameplayTag Tag_Intent_Interaction_Next = new GameplayTag(41);
+        /// <summary>Intent.Interaction.Previous</summary>
+        public static readonly GameplayTag Tag_Intent_Interaction_Previous = new GameplayTag(42);
         /// <summary>MyTag</summary>
         public static readonly GameplayTag Tag_MyTag = new GameplayTag(0);
         /// <summary>MyTag.的</summary>

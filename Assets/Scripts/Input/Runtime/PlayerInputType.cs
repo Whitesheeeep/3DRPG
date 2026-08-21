@@ -11,7 +11,9 @@ namespace RPG.PlayerInputSystem
         Skill4,
         Jump,
         Crouch,
-        Interact
+        Interact,
+        InteractionPrevious,
+        InteractionNext
     }
 
     /// <summary>表示一次输入手势当前的物理阶段。</summary>

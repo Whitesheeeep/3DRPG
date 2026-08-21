@@ -37,6 +37,36 @@ namespace WS_Modules.UIToolkitExtensions.Editor.GraphView
     }
 
     /// <summary>
+    /// 定义节点布局操作的方向与排列方式。
+    /// </summary>
+    public enum GraphLayoutOperation
+    {
+        /// <summary>按节点左边缘对齐。</summary>
+        HorizontalAlignLeft,
+
+        /// <summary>按节点水平中心对齐。</summary>
+        HorizontalAlignCenter,
+
+        /// <summary>按节点右边缘对齐。</summary>
+        HorizontalAlignRight,
+
+        /// <summary>按节点左上角的水平坐标均匀分布。</summary>
+        HorizontalDistributeEvenly,
+
+        /// <summary>按节点上边缘对齐。</summary>
+        VerticalAlignTop,
+
+        /// <summary>按节点垂直中心对齐。</summary>
+        VerticalAlignCenter,
+
+        /// <summary>按节点下边缘对齐。</summary>
+        VerticalAlignBottom,
+
+        /// <summary>按节点左上角的垂直坐标均匀分布。</summary>
+        VerticalDistributeEvenly
+    }
+
+    /// <summary>
     /// 提供节点中间内容区域的构建能力。
     /// </summary>
     public interface IGraphNodeContentProvider
@@ -405,6 +435,37 @@ namespace WS_Modules.UIToolkitExtensions.Editor.GraphView
             Nodes = nodes ?? Array.Empty<WSGraphNode>();
             Connections = connections ?? Array.Empty<GraphConnectionContext>();
             MoveDelta = moveDelta;
+        }
+
+        #endregion
+    }
+
+    /// <summary>
+    /// 表示一次已经应用到 GraphView 节点视觉位置的布局结果。
+    /// </summary>
+    public readonly struct GraphLayoutChange
+    {
+        #region 属性
+
+        /// <summary>获取本次布局操作。</summary>
+        public GraphLayoutOperation Operation { get; }
+
+        /// <summary>获取位置发生变化的节点。</summary>
+        public IReadOnlyList<WSGraphNode> Nodes { get; }
+
+        #endregion
+
+        #region 生命周期
+
+        /// <summary>
+        /// 创建布局结果；节点集合保存为只读快照，供业务层写回对应 Model。
+        /// </summary>
+        /// <param name="operation">执行的布局操作。</param>
+        /// <param name="nodes">位置发生变化的节点。</param>
+        public GraphLayoutChange(GraphLayoutOperation operation, IReadOnlyList<WSGraphNode> nodes)
+        {
+            Operation = operation;
+            Nodes = nodes ?? Array.Empty<WSGraphNode>();
         }
 
         #endregion

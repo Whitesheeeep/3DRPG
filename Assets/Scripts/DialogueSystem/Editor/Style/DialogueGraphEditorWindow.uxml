@@ -1,5 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
-    <Style src="project://database/Assets/Scripts/DialogueSystem/Editor/DialogueGraphEditor.uss?fileID=7433441132597879392&amp;guid=4803b9aba27b98d4eb56cd11ade4a978&amp;type=3#DialogueGraphEditor" />
+    <Style src="project://database/Assets/Scripts/DialogueSystem/Editor/Style/DialogueGraphEditor.uss?fileID=7433441132597879392&amp;guid=4803b9aba27b98d4eb56cd11ade4a978&amp;type=3#DialogueGraphEditor" />
     <ui:VisualElement name="DialogueGraphEditorRoot" class="dialogue-editor-root">
         <ui:VisualElement name="DialogueEditorToolbar" class="dialogue-editor-toolbar">
             <ui:Label text="Dialogue Graph Editor" class="dialogue-editor-toolbar__label" />
@@ -20,23 +20,25 @@
                 </ui:VisualElement>
             </ui:VisualElement>
             <WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView name="InspectorSplitView" fixed-pane-index="1" fixed-pane-initial-dimension="320" orientation="Horizontal" class="dialogue-editor-content-split">
-                <ui:VisualElement name="GraphContainer" class="dialogue-editor-graph-container" />
-                <ui:VisualElement class="dialogue-editor-inspector-panel">
-                    <ui:VisualElement class="dialogue-editor-details-panel">
-                        <ui:Label text="Selected Node" class="dialogue-editor-panel__header" />
-                        <ui:ScrollView name="DetailsContainer" class="dialogue-editor-details" />
-                    </ui:VisualElement>
-                </ui:VisualElement>
-            </WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView>
-        </WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView>
-        <ui:VisualElement class="dialogue-editor-bottom-panel">
-            <ui:VisualElement class="dialogue-editor-validation" style="flex-grow: 0;">
-                <ui:Label text="Validation" class="dialogue-editor-bottom-panel__header" />
-                <ui:Label name="ValidationLabel" text="尚未校验 Graph。" class="dialogue-editor-validation__text" />
-            </ui:VisualElement>
-            <ui:VisualElement class="dialogue-editor-status">
-                <ui:Label text="Status" class="dialogue-editor-bottom-panel__header" />
-                <ui:Label name="StatusLabel" text="未选择 DialogueAsset。" class="dialogue-editor-status__text" />
+                 <ui:VisualElement name="GraphContainer" class="dialogue-editor-graph-container" />
+                 <ui:VisualElement class="dialogue-editor-inspector-panel">
+                     <ui:VisualElement class="dialogue-editor-details-panel">
+                         <ui:Label text="Node Details" class="dialogue-editor-panel__header" />
+                         <ui:ScrollView name="DetailsContainer" class="dialogue-editor-details" />
+                     </ui:VisualElement>
+                     <ui:VisualElement class="dialogue-editor-validation-panel">
+                         <ui:Label text="Validation" class="dialogue-editor-panel__header" />
+                         <ui:ScrollView name="ValidationContainer" class="dialogue-editor-validation">
+                             <ui:Label name="ValidationLabel" text="尚未校验 Graph。" class="dialogue-editor-validation__text" />
+                         </ui:ScrollView>
+                     </ui:VisualElement>
+                 </ui:VisualElement>
+             </WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView>
+         </WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView>
+         <ui:VisualElement class="dialogue-editor-bottom-panel">
+             <ui:VisualElement class="dialogue-editor-status">
+                 <ui:Label text="Status" class="dialogue-editor-bottom-panel__header" />
+                 <ui:Label name="StatusLabel" text="未选择 DialogueAsset。" class="dialogue-editor-status__text" />
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>

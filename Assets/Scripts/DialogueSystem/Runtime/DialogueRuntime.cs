@@ -190,14 +190,14 @@ namespace RPG.DialogueSystem
         /// <param name="player">发起对话的玩家对象。</param>
         /// <param name="playerAbilitySystem">玩家 ASC，可为空。</param>
         /// <param name="participants">当前场景的 SpeakerId 参与者绑定。</param>
-        /// <param name="target">触发本次对话的通用交互目标，可为空。</param>
+        /// <param name="target">触发本次对话的 IInteractable Provider，可为空。</param>
         /// <param name="dialogueControlTag">可选的已烘焙站桩控制 Tag。</param>
         public DialogueRequest(
             DialogueAsset asset,
             GameObject player,
             GameplayAbilitySystemComponent playerAbilitySystem,
             IEnumerable<DialogueParticipantBinding> participants,
-            IInteractionTarget target = null,
+            IInteractable target = null,
             GameplayTag dialogueControlTag = default)
         {
             Asset = asset;
@@ -219,8 +219,8 @@ namespace RPG.DialogueSystem
         /// <summary>获取玩家 ASC。</summary>
         public GameplayAbilitySystemComponent PlayerAbilitySystem { get; }
 
-        /// <summary>获取交互目标。</summary>
-        public IInteractionTarget Target { get; }
+        /// <summary>获取触发本次对话的 IInteractable Provider。</summary>
+        public IInteractable Target { get; }
 
         /// <summary>获取不可变参与者绑定集合。</summary>
         public IReadOnlyList<DialogueParticipantBinding> Participants { get; }

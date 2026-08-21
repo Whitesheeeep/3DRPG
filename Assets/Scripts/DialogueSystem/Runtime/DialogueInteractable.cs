@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using RPG.Game;
 using RPG.InteractionSystem;
 using UnityEngine;
@@ -9,16 +10,18 @@ namespace RPG.DialogueSystem
     #region 对话交互适配
 
     /// <summary>
-    /// 将 NPC 的 DialogueAsset 和 SpeakerId 适配为通用交互目标。
+    /// 将 NPC 的 DialogueAsset 和 SpeakerId 适配为通用交互 Provider。
     /// </summary>
-    public sealed class DialogueInteractionTarget : MonoBehaviour, IInteractionTarget
+    public sealed class DialogueInteractable : MonoBehaviour, IInteractable
     {
-        #region 序列化字段
+        #region 序列化字段与状态
 
         [SerializeField] private DialogueAsset dialogueAsset;
         [SerializeField] private string speakerId = string.Empty;
         [SerializeField] private Transform participantRoot;
         [SerializeField] private MonoBehaviour dialogueSystemProvider;
+
+        private InteractionOption dialogueOption;
 
         #endregion
 
@@ -36,23 +39,59 @@ namespace RPG.DialogueSystem
         /// <summary>获取配置的 DialogueAsset。</summary>
         public DialogueAsset DialogueAsset => dialogueAsset;
 
-        /// <summary>设置用于组合根注入的 DialogueSystem Provider。</summary>
+        /// <summary>设置用于组合根注入的对话系统 Provider。</summary>
         /// <param name="provider">提供 DialogueSystem 的组件。</param>
         public void SetDialogueSystemProvider(MonoBehaviour provider) => dialogueSystemProvider = provider;
 
         #endregion
 
-        #region 交互契约
+        #region Unity 生命周期
 
-        /// <inheritdoc />
-        public bool CanInteract(GameObject interactor) =>
-            interactor != null && dialogueAsset != null &&
-            dialogueSystemProvider is DialogueSystemProvider provider && provider.System != null;
-
-        /// <inheritdoc />
-        public void Interact(GameObject interactor)
+        /// <summary>创建可缓存的 Dialogue Option；业务可用性在每次查询时动态判断。</summary>
+        private void Awake()
         {
-            if (!CanInteract(interactor)) return;
+            dialogueOption = new InteractionOption(
+                new InteractionOptionId(GetInstanceID(), "Dialogue"),
+                "对话",
+                gameObject,
+                InteractionOrigin,
+                0,
+                0f,
+                CanStartDialogue,
+                TryStartDialogue);
+        }
+
+        #endregion
+
+        #region Provider 契约
+
+        /// <inheritdoc />
+        public void CollectInteractionOptions(in InteractionQueryContext context, List<InteractionOption> results)
+        {
+            // Provider 只贡献缓存的命令对象，距离、视野和 CanExecute 由玩家交互层统一处理。
+            results.Add(dialogueOption);
+        }
+
+        #endregion
+
+        #region 对话命令
+
+        /// <summary>判断当前对话配置和组合根是否允许启动对话。</summary>
+        /// <param name="interactor">发起对话的玩家对象。</param>
+        /// <returns>可以构造有效对话请求时返回 true。</returns>
+        private bool CanStartDialogue(GameObject interactor)
+        {
+            return interactor != null && dialogueAsset != null &&
+                   dialogueSystemProvider is DialogueSystemProvider provider && provider.System != null;
+        }
+
+        /// <summary>构造并提交一次对话启动请求。</summary>
+        /// <param name="interactor">发起对话的玩家对象。</param>
+        /// <returns>对话系统成功创建会话时返回 true。</returns>
+        private bool TryStartDialogue(GameObject interactor)
+        {
+            if (!CanStartDialogue(interactor)) return false;
+
             DialogueSystemProvider provider = (DialogueSystemProvider)dialogueSystemProvider;
             GameplayAbilitySystemComponent playerAsc =
                 interactor.GetComponentInParent<GameplayAbilitySystemComponent>();
@@ -64,7 +103,7 @@ namespace RPG.DialogueSystem
                 new[] { participant },
                 this,
                 provider.DialogueControlTag);
-            provider.System.TryStartDialogue(request);
+            return provider.System.TryStartDialogue(request).Succeeded;
         }
 
         #endregion

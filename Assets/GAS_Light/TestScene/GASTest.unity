@@ -14578,6 +14578,16 @@ MonoBehaviour:
     inputType: 8
     pressBufferDuration: 2
     releaseBufferDuration: 2
+  - action: {fileID: 0, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    actionName: Previous
+    inputType: 9
+    pressBufferDuration: 2
+    releaseBufferDuration: 2
+  - action: {fileID: 0, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    actionName: Next
+    inputType: 10
+    pressBufferDuration: 2
+    releaseBufferDuration: 2
 --- !u!114 &1733374005
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14636,6 +14646,57 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4b0799f21e062a46bc8ef0c1cb35599, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &1733374017
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1733374008}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4df8e4c3f3743d0b2b8a1ac8c770003, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  detectionRange: 8
+  scanInterval: 0.1
+  initialBufferSize: 64
+  detectionMask:
+    serializedVersion: 2
+    m_Bits: 2147483647
+  startDetect: 1
+  characterController: {fileID: 1733374006}
+--- !u!114 &1733374018
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1733374008}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a88494160d44e3b8a14cb5690f7a8ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  viewCamera: {fileID: 0}
+  occlusionMask:
+    serializedVersion: 2
+    m_Bits: 2147483647
+  detector: {fileID: 1733374017}
+  startDetect: 1
+--- !u!114 &1733374019
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1733374008}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e98a4f1d8e1b49a3a23e4c1f34cce002, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  interactor: {fileID: 1733374018}
 --- !u!1 &1733374008
 GameObject:
   m_ObjectHideFlags: 0
@@ -14657,6 +14718,9 @@ GameObject:
   - component: {fileID: 1733374005}
   - component: {fileID: 1733374004}
   - component: {fileID: 1733374002}
+  - component: {fileID: 1733374017}
+  - component: {fileID: 1733374018}
+  - component: {fileID: 1733374019}
   m_Layer: 0
   m_Name: "\u660E\u65E5\u99991.0 (1)"
   m_TagString: Untagged

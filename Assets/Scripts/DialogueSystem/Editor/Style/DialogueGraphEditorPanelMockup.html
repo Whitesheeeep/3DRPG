@@ -99,7 +99,7 @@
 
     .sidebar, .inspector {
       min-width: 0;
-      overflow: auto;
+      min-height: 0;
       background: var(--panel);
     }
 
@@ -211,7 +211,18 @@
     .edge-layer path { fill: none; stroke: #6d96bd; stroke-width: 2; marker-end: url(#arrow); }
     .edge-layer path.choice-edge { stroke: #d6ad45; }
 
-    .inspector-content { padding: 11px; }
+    .inspector {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .inspector-content {
+      min-height: 0;
+      flex: 1;
+      overflow: auto;
+      padding: 11px;
+    }
     .inspector-group { margin-bottom: 17px; }
     .inspector-label { display: block; margin: 0 0 5px; color: var(--muted); font-size: 11px; }
     .inspector input, .inspector select, .inspector textarea { width: 100%; padding: 7px 8px; }
@@ -228,14 +239,23 @@
 
     .bottom-panel {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 300px;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: 1fr;
       min-height: 0;
       border-top: 1px solid var(--border);
       background: var(--toolbar);
     }
 
+    .inspector-validation {
+      min-height: 170px;
+      max-height: 230px;
+      overflow: auto;
+      border-top: 1px solid var(--border);
+      padding: 0 11px 11px;
+    }
+
     .validation, .status { overflow: auto; padding: 10px 13px; }
-    .status { border-left: 1px solid var(--border); color: var(--muted); }
+    .status { color: var(--muted); }
     .validation-row { display: flex; align-items: center; gap: 7px; margin-top: 7px; color: #d7b26f; }
     .validation-row.ok { color: #83c995; }
     .status-row { display: flex; justify-content: space-between; gap: 12px; margin-top: 7px; }
@@ -380,15 +400,15 @@
             </div>
           </div>
         </div>
+        <section class="inspector-validation" aria-label="Inspector validation">
+          <div class="panel-heading"><span>Validation</span><span>2 messages</span></div>
+          <div class="validation-row ok"><span>✓</span><span>Graph is valid</span></div>
+          <div class="validation-row"><span>!</span><span>Choice AskForPass cannot coexist with NextNode</span></div>
+        </section>
       </aside>
     </section>
 
     <section class="bottom-panel">
-      <div class="validation" aria-label="Validation panel">
-        <div class="panel-heading"><span>Validation</span><span>2 messages</span></div>
-        <div class="validation-row ok"><span>✓</span><span>Graph is valid</span></div>
-        <div class="validation-row"><span>!</span><span>Choice AskForPass uses a disabled condition preview</span></div>
-      </div>
       <div class="status" aria-label="Editor status panel">
         <div class="panel-heading"><span>Editor Status</span><span>MVC</span></div>
         <div class="status-row"><span>Selected</span><strong>SpeechNode / GuardGreeting</strong></div>

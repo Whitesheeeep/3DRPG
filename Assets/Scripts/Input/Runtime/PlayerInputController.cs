@@ -140,13 +140,25 @@ namespace RPG.PlayerInputSystem
             if (bindings.Count == 0)
                 throw new InvalidOperationException("PlayerInputController 至少需要一个显式 PlayerInputBinding。");
 
+            // 交互导航绑定可以只保存动作名称，仍复用同一 InputActionAsset，避免手工维护内部 fileID。
+            InputActionAsset fallbackAsset = null;
+            for (int index = 0; index < bindings.Count; index++)
+            {
+                if (bindings[index]?.Action?.asset == null) continue;
+                fallbackAsset = bindings[index].Action.asset;
+                break;
+            }
+
             var inputTypes = new HashSet<PlayerInputType>();
             for (int i = 0; i < bindings.Count; i++)
             {
                 PlayerInputBinding binding = bindings[i] ??
                     throw new InvalidOperationException($"输入绑定 {i} 未配置。");
                 InputAction action = binding.Action != null ? binding.Action.action : null;
-                if (action == null) throw new InvalidOperationException($"输入绑定 {i} 缺少 InputActionReference。");
+                if (action == null && fallbackAsset != null && !string.IsNullOrWhiteSpace(binding.ActionName))
+                    action = fallbackAsset.FindAction(binding.ActionName, false);
+                if (action == null)
+                    throw new InvalidOperationException($"输入绑定 {i} 缺少有效 InputActionReference 或 ActionName。");
                 var resolved = new ResolvedBinding(binding.InputType,
                     binding.ResolvePressDuration(defaultPressBufferDuration),
                     binding.ResolveReleaseDuration(defaultReleaseBufferDuration));
