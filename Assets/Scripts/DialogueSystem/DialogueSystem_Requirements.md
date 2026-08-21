@@ -236,7 +236,7 @@ SpeechNode
                └-> SpeechNode / EndNode（最多一个线性目标）
 ```
 
-同一个 SpeechNode 可以同时连接多个 ChoiceNode 和一个 SpeechNode/EndNode。Choice 优先：有 Choice 时等待 `SelectChoice`，Choice 条件失败时不回退到 `NextNode`；只有 Choice 为空时才由 `Advance` 使用 `NextNode`。
+同一个 SpeechNode 只能选择一种输出模式：可以连接多个 ChoiceNode，或连接一个 SpeechNode/EndNode 作为线性目标。Choice 优先规则仍由运行时保证：有 Choice 时等待 `SelectChoice`，Choice 条件失败时不回退到 `NextNode`；编辑器和 Validator 都拒绝 Choice 与 NextNode 混用。
 
 ### 5.3 ChoiceNode
 
@@ -296,7 +296,7 @@ animationPlayer.Play(
 - EntryNode 唯一且目标有效。
 - NodeId 非空且不重复。
 - ChoiceId 在所属 SpeechNode 内不重复。
-- SpeechNode 可以同时存在 `NextNode` 和非空 `Choices[]`；`Choices[]` 非空时运行时优先等待 Choice。
+- SpeechNode 不能同时存在 `NextNode` 和非空 `Choices[]`；编辑器以 Choice 模式或线性模式二选一，运行时在合法资产中按对应模式推进。
 - 所有 `NextNode`、`TargetNode` 引用存在。
 - 每个 Choice 都有目标节点。
 - Condition/Action 列表中的每个 `[SerializeReference]` 定义不能为空。
@@ -482,14 +482,16 @@ Controller：
 - `IGraphChangeListener`：接收节点移动、连接、断开和删除后的结果。
 - `IGraphNodeInteractionListener`：接收点击和选择变化。
 - `IGraphContextMenuProvider`：提供创建节点、删除节点和编辑操作菜单。
+- `Port.Create<Edge>` 使用 Unity 2022.3 内置 DefaultEdgeConnector 提供拖线预览；节点选择逻辑跳过端口命中，避免拖线被误判为节点点击。
+- 通用右键 `Layout` 提供水平/竖直对齐与均匀分布；Controller 使用 Undo 将布局后的视觉位置写回 `EditorPosition`，不重建画布。
 
 接线规则：
 
 - EntryNode 只能连接 SpeechNode。
-- SpeechNode 只有一个 `speech-output`，可连接多个 ChoiceNode，以及最多一个 SpeechNode 或 EndNode 作为 `NextNode`。
+- SpeechNode 只有一个 `speech-output`；可连接多个 ChoiceNode，或最多一个 SpeechNode/EndNode 作为 `NextNode`，两种输出模式互斥。
 - ChoiceNode 的目标连接 SpeechNode 或 EndNode。
 - 一个 ChoiceNode 只能归属于一个 SpeechNode。
-- SpeechNode 与 ChoiceNode/线性目标可以同时存在；运行时按 Choice 优先规则处理。
+- SpeechNode 的 Choice 输出与线性目标互斥；GraphView 在接线时拒绝混用，Validator 对已有非法资产报告 Error。
 - 删除节点时同步清理所有直接 ScriptableObject 引用。
 - 节点位置只用于编辑器布局，不参与运行时节点跳转。
 
@@ -574,7 +576,7 @@ internal sealed class DialogueSpeakerIdSettings
 
 ### 10.6 EditorWindow 最终面板外观参考
 
-独立 HTML 参考稿：[DialogueGraphEditorPanelMockup.html](Editor/DialogueGraphEditorPanelMockup.html)。
+独立 HTML 参考稿：[DialogueGraphEditorPanelMockup.html](Editor/Style/DialogueGraphEditorPanelMockup.html)。
 
 独立 HTML 参考稿包含以下最终面板分区：
 
@@ -582,9 +584,9 @@ internal sealed class DialogueSpeakerIdSettings
 - 左侧导航：节点树以及来自 Editor-only `ScriptableSingleton` 的 `SpeakerId` 列表。
 - 中央 `GraphView`：展示 `EntryNode -> SpeechNode -> ChoiceNode/EndNode`，`Condition` 和 `Action` 只在 `ChoiceNode` 内容中显示。
 - 右侧 Inspector：通过 `SerializedObject` 编辑 `NodeId`、`SpeakerId`、文本、全身 `AnimationClip`、`NextNode` 和 Choices。
-- 底部面板：显示 Graph 校验结果、当前选中节点、Dirty 状态和 Undo 可用状态。
+- 右侧 Inspector：上方为可滚动 Node Details，下方为独立可滚动 Validation；底部只显示当前选中节点、Dirty 状态和 Undo 可用状态。
 
-该文件是静态视觉参考，不代表 UXML/USS 的最终实现代码；当前 Unity `EditorWindow` 使用两个嵌套的 `CustomTwoPanelSplitView` 实现左导航、中央 GraphView 和右 Inspector 的可调宽度布局，并使用 MTWY 对话编辑器的深色主题。GraphView 从 `DialogueAsset` 重建视觉元素时必须抑制内部删除、加入和连线通知，避免 View 同步过程反向修改 Model。GraphNode 根节点的四方向边框宽度在普通、Hover、原生选中和业务选中状态保持固定，只切换颜色，不改变节点尺寸或外层 margin。
+该文件是静态视觉参考，不代表 UXML/USS 的最终实现代码；当前 Unity `EditorWindow` 使用两个嵌套的 `CustomTwoPanelSplitView` 实现左导航、中央 GraphView 和右 Inspector 的可调宽度布局，并使用 MTWY 对话编辑器的深色主题。`DialogueGraphEditorWindow` 只负责加载 UXML、创建 `DialogueGraphEditorView`、`DialogueGraphView` 和 `DialogueGraphEditorController`；Controller 负责资产、Graph 变更、选择、Inspector、SpeakerId、Validation 和状态协调。GraphView 将纯 UI 创建 API 与用户变更通知 API 分开，重建只调用 `ClearGraphView`、`AddGraphNodeView` 和 `AddGraphEdgeView`，不再使用通知抑制作用域，也不会反向修改 Model。普通节点编辑、移动、接线、断线、创建和删除使用局部刷新，不重建整个画布。GraphNode 根节点的四方向边框宽度在普通、Hover、原生选中和业务选中状态保持固定，只切换颜色，不改变节点尺寸或外层 margin。
 
 ## 11. Handler 注册与失败语义
 

@@ -14,7 +14,7 @@ namespace RPG.DialogueSystem.Editor
     {
         #region 常量与属性
 
-        private const string StyleSheetPath = "Assets/Scripts/DialogueSystem/Editor/DialogueGraphEditor.uss";
+        private const string StyleSheetPath = "Assets/Scripts/DialogueSystem/Editor/Style/DialogueGraphEditor.uss";
 
         /// <summary>获取该 View 绑定的领域节点。</summary>
         internal DialogueNode Model { get; }
@@ -73,39 +73,44 @@ namespace RPG.DialogueSystem.Editor
         }
 
         /// <summary>
+        /// 重新生成节点摘要内容，保留端口、位置、选中状态和连线实例。
+        /// </summary>
+        internal void RefreshContent()
+        {
+            extensionContainer.Clear();
+            PopulateContent(extensionContainer);
+            RefreshExpandedState();
+        }
+
+        /// <summary>
         /// 返回节点端口声明；端口 ID 用于 Controller 还原直接 ScriptableObject 引用。
         /// </summary>
         /// <returns>当前节点的稳定端口描述。</returns>
         public IEnumerable<GraphPortDescriptor> GetPortDescriptors()
         {
-            if (Model is DialogueEntryNode)
+            switch (Model)
             {
-                yield return new GraphPortDescriptor("entry-output", "Start", Direction.Output,
-                    Port.Capacity.Single, typeof(DialogueNode));
-                yield break;
+                case DialogueEntryNode:
+                    yield return new GraphPortDescriptor("entry-output", "Start", Direction.Output,
+                        Port.Capacity.Single, typeof(DialogueNode));
+                    yield break;
+                case DialogueSpeechNode:
+                    yield return new GraphPortDescriptor("speech-input", "In", Direction.Input,
+                        Port.Capacity.Multi, typeof(DialogueNode));
+                    yield return new GraphPortDescriptor("speech-output", "Out", Direction.Output,
+                        Port.Capacity.Multi, typeof(DialogueNode));
+                    yield break;
+                case DialogueChoiceNode:
+                    yield return new GraphPortDescriptor("choice-owner", "Owner", Direction.Input,
+                        Port.Capacity.Single, typeof(DialogueNode));
+                    yield return new GraphPortDescriptor("choice-target", "Target", Direction.Output,
+                        Port.Capacity.Single, typeof(DialogueNode));
+                    yield break;
+                case DialogueEndNode:
+                    yield return new GraphPortDescriptor("end-input", "In", Direction.Input,
+                        Port.Capacity.Multi, typeof(DialogueNode));
+                    break;
             }
-
-            if (Model is DialogueSpeechNode)
-            {
-                yield return new GraphPortDescriptor("speech-input", "In", Direction.Input,
-                    Port.Capacity.Multi, typeof(DialogueNode));
-                yield return new GraphPortDescriptor("speech-output", "Out", Direction.Output,
-                    Port.Capacity.Multi, typeof(DialogueNode));
-                yield break;
-            }
-
-            if (Model is DialogueChoiceNode)
-            {
-                yield return new GraphPortDescriptor("choice-owner", "Owner", Direction.Input,
-                    Port.Capacity.Single, typeof(DialogueNode));
-                yield return new GraphPortDescriptor("choice-target", "Target", Direction.Output,
-                    Port.Capacity.Single, typeof(DialogueNode));
-                yield break;
-            }
-
-            if (Model is DialogueEndNode)
-                yield return new GraphPortDescriptor("end-input", "In", Direction.Input,
-                    Port.Capacity.Multi, typeof(DialogueNode));
         }
 
         /// <summary>

@@ -10,6 +10,7 @@ namespace RPG.PlayerInputSystem
     {
         #region 序列化配置
         [SerializeField] private InputActionReference action;
+        [SerializeField] private string actionName = string.Empty;
         [SerializeField] private PlayerInputType inputType;
         [SerializeField, Min(0f)] private float pressBufferDuration = 0.2f;
         [SerializeField, Min(0f)] private float releaseBufferDuration = 0.1f;
@@ -18,6 +19,8 @@ namespace RPG.PlayerInputSystem
         #region 属性
         /// <summary>获取被监听的 Input Action。</summary>
         public InputActionReference Action => action;
+        /// <summary>获取在 Action Reference 缺失时用于从同一输入资产解析的动作名称。</summary>
+        public string ActionName => actionName;
         /// <summary>获取请求类型。</summary>
         public PlayerInputType InputType => inputType;
         #endregion

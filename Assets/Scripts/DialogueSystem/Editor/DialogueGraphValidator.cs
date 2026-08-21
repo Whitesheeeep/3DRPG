@@ -233,7 +233,15 @@ namespace RPG.DialogueSystem
                 return;
             }
 
-            ValidateTarget(speech.NextNode, nodeSet, messages, speech.NodeId, "NextNode", true);
+            if (speech.NextNode != null)
+            {
+                messages.Add(new DialogueValidationMessage(
+                    DialogueValidationSeverity.Error,
+                    "SpeechNode 不能同时配置 Choices 和 NextNode；请选择一种输出模式。",
+                    speech.NodeId));
+                // 混合结构本身非法，但仍校验 NextNode 的引用，避免一个错误掩盖另一个错误。
+                ValidateTarget(speech.NextNode, nodeSet, messages, speech.NodeId, "NextNode", true);
+            }
             HashSet<string> choiceIds = new HashSet<string>(StringComparer.Ordinal);
             for (int index = 0; index < choices.Count; index++)
             {

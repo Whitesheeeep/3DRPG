@@ -68,6 +68,8 @@
 
 .dialogue-editor-inspector-panel {
     min-width: 0;
+    min-height: 0;
+    flex-grow: 1;
     flex-direction: column;
     background-color: rgb(41, 41, 41);
 }
@@ -142,20 +144,37 @@
 
 .dialogue-editor-details-panel {
     min-width: 0;
+    min-height: 0;
     flex-grow: 1;
+    flex-shrink: 1;
     flex-direction: column;
     background-color: rgb(41, 41, 41);
 }
 
 .dialogue-editor-details {
+    min-height: 0;
+    flex-grow: 1;
+    flex-shrink: 1;
     padding: 10px;
 }
 
-.dialogue-editor-bottom-panel {
-    height: 112px;
-    min-height: 112px;
-    flex-shrink: 1;
+.dialogue-editor-validation-panel {
+    min-width: 0;
+    height: 220px;
+    min-height: 150px;
+    flex-grow: 0;
+    flex-shrink: 0;
     flex-direction: column;
+    border-top-width: 1px;
+    border-top-color: rgb(21, 21, 21);
+    background-color: rgb(41, 41, 41);
+}
+
+.dialogue-editor-bottom-panel {
+    height: 72px;
+    min-height: 72px;
+    flex-shrink: 0;
+    flex-direction: row;
     border-top-width: 1px;
     border-top-color: rgb(17, 17, 17);
     background-color: rgb(32, 32, 32);
@@ -165,8 +184,9 @@
 .dialogue-editor-validation {
     min-width: 0;
     min-height: 0;
+    flex-grow: 1;
+    flex-shrink: 1;
     padding: 8px 12px;
-    overflow: hidden;
 }
 
 .dialogue-editor-status {
@@ -176,13 +196,10 @@
     overflow: hidden;
 }
 
-.dialogue-editor-validation {
-    flex-grow: 1;
-}
-
 .dialogue-editor-status {
     width: 320px;
-    flex-shrink: 0;
+    flex-grow: 1;
+    flex-shrink: 1;
     border-left-width: 1px;
     border-left-color: rgb(21, 21, 21);
 }

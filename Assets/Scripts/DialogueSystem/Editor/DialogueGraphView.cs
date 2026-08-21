@@ -66,23 +66,82 @@ namespace RPG.DialogueSystem.Editor
         /// <param name="nodes">待显示的资产节点集合。</param>
         internal void Rebuild(IReadOnlyList<DialogueNode> nodes)
         {
-            // 清空和重新加入节点属于 Model 到 View 的单向同步，不应触发 Controller 修改 Model。
-            using (SuppressChangeNotifications())
+            // 重建只操作视觉层，避免清空旧节点时被误认为用户删除并写回资产。
+            ClearGraphView();
+            viewsByModel.Clear();
+            if (nodes == null) return;
+            for (int index = 0; index < nodes.Count; index++)
             {
-                DeleteElements(graphElements.ToList());
-                viewsByModel.Clear();
-                if (nodes == null) return;
-                for (int index = 0; index < nodes.Count; index++)
-                {
-                    DialogueNode node = nodes[index];
-                    if (node == null) continue;
-                    DialogueGraphNodeView view = new DialogueGraphNodeView(node);
-                    viewsByModel.Add(node, view);
-                    AddGraphNode(view, node.EditorPosition);
-                }
-
-                CreateModelEdges(nodes);
+                DialogueNode node = nodes[index];
+                if (node == null) continue;
+                AddNodeView(node);
             }
+
+            CreateModelEdges(nodes);
+        }
+
+        /// <summary>
+        /// 为领域节点创建一个视觉节点，不修改领域数据或发送变更通知。
+        /// </summary>
+        /// <param name="node">待显示的领域节点。</param>
+        /// <returns>新建的节点 View。</returns>
+        internal DialogueGraphNodeView AddNodeView(DialogueNode node)
+        {
+            if (node == null) throw new ArgumentNullException(nameof(node));
+            if (viewsByModel.TryGetValue(node, out DialogueGraphNodeView existingView))
+                return existingView;
+
+            DialogueGraphNodeView view = new DialogueGraphNodeView(node);
+            viewsByModel.Add(node, view);
+            AddGraphNodeView(view, node.EditorPosition);
+            return view;
+        }
+
+        /// <summary>
+        /// 移除一个领域节点对应的视觉节点，不修改领域数据。
+        /// </summary>
+        /// <param name="node">待移除的领域节点。</param>
+        /// <returns>成功移除时返回 true。</returns>
+        internal bool RemoveNodeView(DialogueNode node)
+        {
+            if (node == null || !viewsByModel.TryGetValue(node, out DialogueGraphNodeView view))
+                return false;
+            RemoveGraphNodeView(view);
+            viewsByModel.Remove(node);
+            return true;
+        }
+
+        /// <summary>
+        /// 刷新一个节点 View 的摘要内容，不重建节点、连线或画布状态。
+        /// </summary>
+        /// <param name="node">需要刷新的领域节点。</param>
+        internal void RefreshNodeView(DialogueNode node)
+        {
+            if (FindView(node) is DialogueGraphNodeView view) view.RefreshContent();
+        }
+
+        /// <summary>
+        /// 刷新多个节点 View 的摘要内容。
+        /// </summary>
+        /// <param name="nodes">需要刷新的领域节点集合。</param>
+        internal void RefreshNodeViews(IEnumerable<DialogueNode> nodes)
+        {
+            if (nodes == null) return;
+            foreach (DialogueNode node in nodes) RefreshNodeView(node);
+        }
+
+        /// <summary>
+        /// 按领域节点最新引用局部重建相关视觉连线，不重建节点和画布状态。
+        /// </summary>
+        /// <param name="node">引用发生变化的领域节点。</param>
+        internal void RefreshEdgesForNode(DialogueNode node)
+        {
+            if (FindView(node) == null) return;
+
+            // 只重建 Edge 层，节点实例、位置、选择状态和画布变换均保持不变。
+            ClearGraphEdgesView();
+            foreach (DialogueNode model in viewsByModel.Keys.ToList())
+                CreateModelEdgesForNode(model);
         }
 
         /// <summary>按领域节点查找对应的 GraphView 节点。</summary>
@@ -131,10 +190,19 @@ namespace RPG.DialogueSystem.Editor
             if (output.Model is DialogueSpeechNode speech)
             {
                 bool isLinearTarget = inputId == "speech-input" || inputId == "end-input";
+                bool isChoiceTarget = inputId == "choice-owner";
                 if (outputId == "speech-output" && isLinearTarget &&
                     (speech.NextNode != null || HasLinearOutputConnection(output)))
                     return GraphConnectionValidationResult.Reject(
                         "当前 SpeechNode 已经存在一个线性目标节点。");
+                if (outputId == "speech-output" && isLinearTarget &&
+                    (speech.Choices.Count > 0 || HasChoiceOutputConnection(output)))
+                    return GraphConnectionValidationResult.Reject(
+                        "当前 SpeechNode 已经存在 Choice，不能再连接线性目标。");
+                if (outputId == "speech-output" && isChoiceTarget &&
+                    (speech.NextNode != null || HasLinearOutputConnection(output)))
+                    return GraphConnectionValidationResult.Reject(
+                        "当前 SpeechNode 已经存在线性目标，不能再连接 Choice。");
             }
 
             bool duplicate = edges.Any(edge =>
@@ -160,6 +228,21 @@ namespace RPG.DialogueSystem.Editor
                 outputDescriptor.Id == "speech-output" &&
                 edge.input?.userData is GraphPortDescriptor inputDescriptor &&
                 (inputDescriptor.Id == "speech-input" || inputDescriptor.Id == "end-input"));
+        }
+
+        /// <summary>
+        /// 判断 SpeechNode 是否已经存在 Choice 输出边。
+        /// </summary>
+        /// <param name="node">待检查的 SpeechNode View。</param>
+        /// <returns>存在 Choice 输出边时返回 true。</returns>
+        private bool HasChoiceOutputConnection(DialogueGraphNodeView node)
+        {
+            return edges.Any(edge =>
+                ReferenceEquals(edge.output?.node, node) &&
+                edge.output.userData is GraphPortDescriptor outputDescriptor &&
+                outputDescriptor.Id == "speech-output" &&
+                edge.input?.userData is GraphPortDescriptor inputDescriptor &&
+                inputDescriptor.Id == "choice-owner");
         }
 
         #endregion
@@ -221,18 +304,26 @@ namespace RPG.DialogueSystem.Editor
         {
             for (int index = 0; index < nodes.Count; index++)
             {
-                DialogueNode node = nodes[index];
-                if (node is DialogueEntryNode entry)
-                    Connect(entry, "entry-output", entry.FirstSpeechNode, "speech-input");
-                else if (node is DialogueSpeechNode speech)
-                {
-                    Connect(speech, "speech-output", speech.NextNode, GetInputPortId(speech.NextNode));
-                    for (int choiceIndex = 0; choiceIndex < speech.Choices.Count; choiceIndex++)
-                        Connect(speech, "speech-output", speech.Choices[choiceIndex], "choice-owner");
-                }
-                else if (node is DialogueChoiceNode choice)
-                    Connect(choice, "choice-target", choice.TargetNode, GetInputPortId(choice.TargetNode));
+                CreateModelEdgesForNode(nodes[index]);
             }
+        }
+
+        /// <summary>
+        /// 根据一个领域节点的直接引用创建其输出连线。
+        /// </summary>
+        /// <param name="node">待恢复连线的领域节点。</param>
+        private void CreateModelEdgesForNode(DialogueNode node)
+        {
+            if (node is DialogueEntryNode entry)
+                Connect(entry, "entry-output", entry.FirstSpeechNode, "speech-input");
+            else if (node is DialogueSpeechNode speech)
+            {
+                Connect(speech, "speech-output", speech.NextNode, GetInputPortId(speech.NextNode));
+                for (int choiceIndex = 0; choiceIndex < speech.Choices.Count; choiceIndex++)
+                    Connect(speech, "speech-output", speech.Choices[choiceIndex], "choice-owner");
+            }
+            else if (node is DialogueChoiceNode choice)
+                Connect(choice, "choice-target", choice.TargetNode, GetInputPortId(choice.TargetNode));
         }
 
         /// <summary>创建一条模型直接引用对应的 Edge。</summary>
@@ -250,7 +341,7 @@ namespace RPG.DialogueSystem.Editor
                 !inputView.TryGetPort(inputPortId, out Port inputPort)) return;
 
             Edge edge = outputPort.ConnectTo(inputPort);
-            AddElement(edge);
+            AddGraphEdgeView(edge);
         }
 
         /// <summary>按目标节点类型选择输入端口 ID。</summary>
