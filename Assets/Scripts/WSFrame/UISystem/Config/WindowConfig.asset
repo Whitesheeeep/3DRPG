@@ -12,4 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 753b9030b241415dbbfdcd89b78a68cf, type: 3}
   m_Name: WindowConfig
   m_EditorClassIdentifier: 
-  windowConfigList: []
+  windowConfigList:
+  - windowName: ChoiceWindow
+    windowPrefabPath: ChoiceWindow
+  - windowName: DialogueWindow
+    windowPrefabPath: DialogueWindow
+  - windowName: HUDWindow
+    windowPrefabPath: HUDWindow

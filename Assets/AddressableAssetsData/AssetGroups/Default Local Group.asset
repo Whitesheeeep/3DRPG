@@ -16,7 +16,12 @@ MonoBehaviour:
   m_Data:
     m_SerializedData: []
   m_GUID: 9bbcb585ef8eb2c40a92e3a52cbb3dcc
-  m_SerializeEntries: []
+  m_SerializeEntries:
+  - m_GUID: 413224b4e83dbe441a8a1736e54abc5a
+    m_Address: ChatChoice
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: cf483ba42ae65ea478a5243d9f39d4df, type: 2}
   m_SchemaSet:
