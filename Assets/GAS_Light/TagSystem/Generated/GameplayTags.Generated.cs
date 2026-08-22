@@ -64,6 +64,12 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_NewTag_NewTag1_NewTag6 = new GameplayTag(4);
         /// <summary>State</summary>
         public static readonly GameplayTag Tag_State = new GameplayTag(27);
+        /// <summary>State.Block</summary>
+        public static readonly GameplayTag Tag_State_Block = new GameplayTag(43);
+        /// <summary>State.Block.AbilityActivation</summary>
+        public static readonly GameplayTag Tag_State_Block_AbilityActivation = new GameplayTag(45);
+        /// <summary>State.Block.Movement</summary>
+        public static readonly GameplayTag Tag_State_Block_Movement = new GameplayTag(44);
         /// <summary>State.Action</summary>
         public static readonly GameplayTag Tag_State_Action = new GameplayTag(28);
         /// <summary>State.Action.Skill</summary>
