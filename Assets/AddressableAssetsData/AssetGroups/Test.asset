@@ -21,10 +21,6 @@ MonoBehaviour:
     m_Address: Cube
     m_ReadOnly: 0
     m_SerializedLabels: []
-  - m_GUID: e98a4f1d8e1b49a3a23e4c1f34cce004
-    m_Address: InteractionOptionWindow
-    m_ReadOnly: 0
-    m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: cf483ba42ae65ea478a5243d9f39d4df, type: 2}

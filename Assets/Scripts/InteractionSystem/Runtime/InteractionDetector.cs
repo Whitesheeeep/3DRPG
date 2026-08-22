@@ -19,6 +19,9 @@ namespace RPG.InteractionSystem
         [SerializeField, Min(1)] private int initialBufferSize = 64;
         [SerializeField] private LayerMask detectionMask = ~0;
         [SerializeField] private bool startDetect = true;
+        // 依赖的实际是 cc 的 center、radius、height，若 cc 为空则会在 Awake 抛异常。
+        // 主要逻辑在：OverlapCapsuleWithExpansion
+        // TODO: 未来考虑使用 CapsuleCollider 代替 CharacterController，避免依赖 cc，而不能复用于非玩家角色。
         [SerializeField] private CharacterController characterController;
 
         private readonly List<IInteractable> providers = new();
