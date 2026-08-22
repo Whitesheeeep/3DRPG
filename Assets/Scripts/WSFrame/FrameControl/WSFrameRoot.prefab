@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1526171592716235483}
   - component: {fileID: 3217963146180904393}
+  - component: {fileID: 3217963146180904394}
   m_Layer: 0
   m_Name: WSFrameRoot
   m_TagString: Untagged
@@ -45,3 +46,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   frameSetting: {fileID: 11400000, guid: 438086277e704024e82a3422052c1055, type: 2}
+--- !u!114 &3217963146180904394
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8242590249179799947}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3a7f4b7ce1d34fd8a8a1f4b41e4a7c03, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 using WS_Modules.LogModule;
 using WS_Modules.ResLoadModule;
 using WS_Modules.Singleton;
@@ -96,11 +97,67 @@ namespace WS_Modules.UIModule
             GameObject uiEventSystem = GameObject.Find("UIEventSystem") ??
                                        GameObject.Instantiate(
                                            await ResSystem.Instance.LoadAsync<GameObject>(uiEventSystemPath));
+
+            // 实在没有，最后通过 Resources 加载
+            if (uiRoot == null) uiRoot = GameObject.Instantiate(Resources.Load<GameObject>("UIRoot")).transform;
+            if (uiCamera == null) uiCamera = GameObject.Instantiate(Resources.Load<GameObject>("UICamera")).GetComponent<Camera>();
+            if (uiEventSystem == null) uiEventSystem = GameObject.Instantiate(Resources.Load<GameObject>("UIEventSystem"));
+
+            ConfigureCameraStack();
             uiEventSystem.name = "UIEventSystem";
             GameObject.DontDestroyOnLoad(uiRoot);
             GameObject.DontDestroyOnLoad(uiCamera);
             GameObject.DontDestroyOnLoad(uiEventSystem);
             InitializeServices(isSingleMask);
+        }
+
+        /// <summary>
+        /// 将 UI Overlay 摄像机加入常驻 Base 摄像机的渲染栈。
+        /// </summary>
+        /// <exception cref="InvalidOperationException">主摄像机、摄像机类型或 URP Stack 配置不符合约定时抛出。</exception>
+        private void ConfigureCameraStack()
+        {
+            // 主摄像机是游戏唯一的最终输出，UI 摄像机只能作为 Overlay 追加渲染，不能独立清除画面。
+            Camera baseCamera = Camera.main;
+            if (baseCamera == null)
+            {
+                throw new InvalidOperationException("UIManager 初始化失败：找不到带有 MainCamera Tag 的常驻 Base Camera。");
+            }
+
+            if (uiCamera == null)
+            {
+                throw new InvalidOperationException("UIManager 初始化失败：UICamera 预制体缺少 Camera 组件。");
+            }
+
+            UniversalAdditionalCameraData baseCameraData = baseCamera.GetUniversalAdditionalCameraData();
+            UniversalAdditionalCameraData uiCameraData = uiCamera.GetUniversalAdditionalCameraData();
+            if (baseCameraData.renderType != CameraRenderType.Base)
+            {
+                throw new InvalidOperationException("UIManager 初始化失败：MainCamera 必须设置为 URP Base。");
+            }
+
+            if (uiCameraData.renderType != CameraRenderType.Overlay)
+            {
+                throw new InvalidOperationException("UIManager 初始化失败：UICamera 必须设置为 URP Overlay。");
+            }
+
+            List<Camera> cameraStack = baseCameraData.cameraStack;
+            if (cameraStack == null)
+            {
+                throw new InvalidOperationException("UIManager 初始化失败：MainCamera 当前 Renderer 不支持 Camera Stack。");
+            }
+
+            // 只清理 UICamera 自身的重复引用，保留其他 Overlay 摄像机及其顺序。
+            for (int index = cameraStack.Count - 1; index >= 0; index--)
+            {
+                if (cameraStack[index] == uiCamera)
+                {
+                    cameraStack.RemoveAt(index);
+                }
+            }
+
+            // 初始化可重复调用，但同一 UICamera 在 Stack 中始终只保留一个末尾引用。
+            cameraStack.Add(uiCamera);
         }
 
         /// <summary>

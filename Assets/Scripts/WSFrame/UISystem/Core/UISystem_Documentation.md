@@ -203,5 +203,10 @@ UIManager.Instance.PushAndPopStackWindow<RewardWindow>(
 6. **Canvas Camera**:
    - 默认所有窗口的 Canvas 会被设置为 `WorldSpace` 或 `ScreenSpace-Camera` 并绑定到系统的 `UICamera`。不要手动修改 Canvas 的 Render Mode，除非你非常清楚自己在做什么。
 
-7. **DOTween 依赖**:
+7. **URP Camera Stack**:
+   - 游戏主相机必须是带有 `MainCamera` Tag 的同一个常驻 URP **Base Camera**，并在 `UIManager` 初始化前完成创建和启用。
+   - `UICamera` 必须设置为 URP **Overlay Camera**。`UIManager` 初始化时会将它追加到主相机的 `cameraStack`，不会清空主相机已有的其他 Overlay 相机。
+   - 不要把 `UICamera` 设置为 Base；它会独立输出并清除主相机的画面。主相机的 Renderer 必须支持 Camera Stack。
+
+8. **DOTween 依赖**:
    - 窗口动效依赖 DOTween 插件，确保工程中已安装该插件。
