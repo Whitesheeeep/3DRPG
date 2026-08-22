@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using WS_Modules.CustomEventSystem;
 using WS_Modules.GAS.AttributeSystem;
 using WS_Modules.GAS.GameplayAbilitySystem;
 using WS_Modules.GAS.GameplayEffect;
@@ -107,6 +106,31 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         /// <param name="attributeSets">由外部 Owner 提供的 AttributeSet 集合。</param>
         public void Initialize(IEnumerable<GameplayAttributeSet> attributeSets)
         {
+            InitializeCore(attributeSets, new());
+        }
+
+        /// <summary>
+        /// 导入 AttributeSet，并把共享 Ability 激活阻断规则注入 AbilityCtrl。
+        /// </summary>
+        /// <param name="attributeSets">由 Owner 提供的 AttributeSet 集合。</param>
+        /// <param name="activationRules">共享 Ability 激活规则资产。</param>
+        public void Initialize(
+            IEnumerable<GameplayAttributeSet> attributeSets,
+            GameplayAbilityActivationRules activationRules)
+        {
+            if (activationRules == null) throw new ArgumentNullException(nameof(activationRules));
+            InitializeCore(attributeSets, activationRules.ActivationBlockedOwnerTags);
+        }
+
+        /// <summary>
+        /// 执行 Attribute 和 Ability 规则初始化的共同流程。
+        /// </summary>
+        /// <param name="attributeSets">待导入的 AttributeSet 集合。</param>
+        /// <param name="blockedOwnerTags">Ability 激活阻断 Tag 集合。</param>
+        private void InitializeCore(
+            IEnumerable<GameplayAttributeSet> attributeSets,
+            GameplayTagQuery blockedOwnerTags)
+        {
             if (initialized) return;
 
             if (!MutableAttributes.TryInitialize(attributeSets, out string error))
@@ -115,6 +139,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
                 return;
             }
 
+            abilityController.InitializeActivationBlockedTags(blockedOwnerTags);
             initialized = true;
         }
 
@@ -163,6 +188,20 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         /// <param name="tag">待查询的 GameplayTag。</param>
         /// <returns>显式拥有时返回 true。</returns>
         public bool HasTagExact(GameplayTag tag) => Tags.HasTagExact(tag);
+
+        /// <summary>
+        /// 为当前 ASC 增加一份 Loose GameplayTag 引用。
+        /// </summary>
+        /// <param name="tag">待增加的有效 GameplayTag。</param>
+        /// <returns>Tag 计数成功更新时返回 true。</returns>
+        public bool AddLooseGameplayTag(GameplayTag tag) => UpdateRuntimeTagCount(tag, 1);
+
+        /// <summary>
+        /// 为当前 ASC 移除一份 Loose GameplayTag 引用。
+        /// </summary>
+        /// <param name="tag">待移除的有效 GameplayTag。</param>
+        /// <returns>Tag 计数成功更新时返回 true。</returns>
+        public bool RemoveLooseGameplayTag(GameplayTag tag) => UpdateRuntimeTagCount(tag, -1);
 
         /// <summary>读取当前 ASC 中指定 Attribute 的 CurrentValue。</summary>
         /// <param name="attribute">待查询的 GameplayAttribute。</param>
@@ -284,5 +323,6 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         // 仅允许当前 ASC 内部发布 Cue 请求，Controller 负责消费和对象池生命周期。
         internal void PublishGameplayCue(GameplayCueRequest request) => CueRequested?.Invoke(request);
         #endregion
+
     }
 }

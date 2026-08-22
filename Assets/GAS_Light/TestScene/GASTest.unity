@@ -14717,19 +14717,6 @@ MonoBehaviour:
     m_Bits: 2147483647
   detector: {fileID: 1733374017}
   startDetect: 1
---- !u!114 &1733374019
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1733374008}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e98a4f1d8e1b49a3a23e4c1f34cce002, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  interactor: {fileID: 1733374018}
 --- !u!1 &1733374008
 GameObject:
   m_ObjectHideFlags: 0
@@ -14753,7 +14740,6 @@ GameObject:
   - component: {fileID: 1733374002}
   - component: {fileID: 1733374017}
   - component: {fileID: 1733374018}
-  - component: {fileID: 1733374019}
   m_Layer: 0
   m_Name: "\u660E\u65E5\u99991.0 (1)"
   m_TagString: Untagged
