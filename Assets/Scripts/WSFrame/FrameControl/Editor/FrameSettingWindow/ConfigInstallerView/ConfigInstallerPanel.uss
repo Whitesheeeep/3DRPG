@@ -29,6 +29,79 @@
     margin-bottom: 6px;
 }
 
+.config-installer-available-panel {
+    margin-bottom: 10px;
+}
+
+.config-installer-scan-status {
+    color: rgb(165, 170, 180);
+    margin-bottom: 6px;
+}
+
+.config-installer-help-text {
+    color: rgb(175, 180, 190);
+    margin-bottom: 4px;
+}
+
+.config-installer-status-warning {
+    color: rgb(225, 170, 105);
+}
+
+.config-installer-available-list {
+    height: 220px;
+    min-height: 124px;
+    flex-grow: 0;
+}
+
+.config-node-option-row {
+    flex-direction: row;
+    align-items: center;
+    min-height: 62px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+.config-node-option-row #NodeToggle {
+    width: 24px;
+    flex-shrink: 0;
+}
+
+.config-node-option-text {
+    flex-direction: column;
+    justify-content: center;
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.config-node-option-text #NodeType {
+    -unity-font-style: bold;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.config-node-option-text #NodeAsset {
+    color: rgb(150, 156, 166);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.config-node-option-text #NodeState {
+    color: rgb(125, 182, 135);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.config-node-option-included {
+    background-color: rgba(70, 100, 70, 0.18);
+}
+
+.config-node-option-not-included #NodeState {
+    color: rgb(180, 155, 115);
+}
+
 .config-installer-button-row {
     flex-direction: row;
     flex-wrap: wrap;

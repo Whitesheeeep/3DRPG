@@ -10,6 +10,16 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
+        <ui:VisualElement name="AvailableNodesPanel" class="config-installer-panel config-installer-available-panel">
+            <ui:Label text="Discovered Config Nodes" class="config-installer-panel-title" />
+            <ui:Label text="Select a Composite node; each registration status below is calculated from that node's subtree." class="config-installer-help-text" />
+            <ui:Label name="AvailableNodeScanStatus" text="Scanning ConfigRegisterNodeBase types..." class="config-installer-scan-status" />
+            <ui:ListView name="AvailableNodeList" class="config-installer-available-list" />
+            <ui:VisualElement class="config-installer-button-row">
+                <ui:Button name="ApplyAvailableNodesButton" text="Add Selected Nodes To Composite" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
         <ui:VisualElement name="ConfigInstallerSplit" class="config-installer-split">
             <ui:VisualElement name="ConfigTreePanel" class="config-installer-panel config-installer-tree-panel">
                 <ui:Label text="Config Tree" class="config-installer-panel-title" />
