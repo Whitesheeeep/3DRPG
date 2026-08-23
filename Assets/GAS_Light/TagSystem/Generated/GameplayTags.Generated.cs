@@ -82,6 +82,12 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_State_Action_Skill_Phase_StartUp = new GameplayTag(75);
         /// <summary>State.Action.Skill.Uninterruptible</summary>
         public static readonly GameplayTag Tag_State_Action_Skill_Uninterruptible = new GameplayTag(79);
+        /// <summary>State.Block</summary>
+        public static readonly GameplayTag Tag_State_Block = new GameplayTag(87);
+        /// <summary>State.Block.AbilityActivation</summary>
+        public static readonly GameplayTag Tag_State_Block_AbilityActivation = new GameplayTag(89);
+        /// <summary>State.Block.Movement</summary>
+        public static readonly GameplayTag Tag_State_Block_Movement = new GameplayTag(88);
         /// <summary>Test</summary>
         public static readonly GameplayTag Tag_Test = new GameplayTag(48);
         /// <summary>Test.GE</summary>
