@@ -10,15 +10,18 @@ namespace RPG.TaskSystem
     /// </summary>
     public sealed class TaskManager : SingletonBase<TaskManager>
     {
+        // 配置锁独立于实例状态锁，使 ConfigInstaller 可以在不创建 TaskManager 单例的情况下注入数据库。
+        private static readonly object configurationGate = new object();
+
         private readonly object stateGate = new object();
         private readonly Dictionary<TaskId, TaskRecord> activeRecords =
             new Dictionary<TaskId, TaskRecord>();
         private readonly HashSet<TaskId> completedTaskIds = new HashSet<TaskId>();
         private readonly HashSet<TaskId> unreadTaskIds = new HashSet<TaskId>();
 
-        private TaskDatabase database;
+        private static TaskDatabase database;
+        private static bool configured;
         private TaskId trackedTaskId;
-        private bool configured;
 
         /// <summary>
         /// 创建任务 Manager；实例由 SingletonBase 通过私有无参构造函数创建。
@@ -97,14 +100,14 @@ namespace RPG.TaskSystem
         /// <param name="taskDatabase">任务配置资产。</param>
         /// <exception cref="ArgumentNullException">数据库为空时抛出。</exception>
         /// <exception cref="InvalidOperationException">重复注入不同数据库时抛出。</exception>
-        public void Initialize(TaskDatabase taskDatabase)
+        public static void Initialize(TaskDatabase taskDatabase)
         {
             if (taskDatabase == null)
             {
                 throw new ArgumentNullException(nameof(taskDatabase));
             }
 
-            lock (stateGate)
+            lock (configurationGate)
             {
                 if (configured)
                 {
@@ -119,7 +122,6 @@ namespace RPG.TaskSystem
                 taskDatabase.ValidateAndBuildIndex();
                 database = taskDatabase;
                 configured = true;
-                ClearRuntimeStateInternal();
             }
         }
 
@@ -439,14 +441,18 @@ namespace RPG.TaskSystem
                 throw new ArgumentNullException(nameof(taskDatabase));
             }
 
-            lock (stateGate)
+            lock (configurationGate)
             {
-                configured = false;
-                database = null;
-                ClearRuntimeStateInternal();
-            }
+                // 测试需要同时清理静态配置和当前实例状态，避免不同测试之间共享数据库或任务事实。
+                lock (stateGate)
+                {
+                    configured = false;
+                    database = null;
+                    ClearRuntimeStateInternal();
+                }
 
-            Initialize(taskDatabase);
+                Initialize(taskDatabase);
+            }
         }
 
         /// <summary>
