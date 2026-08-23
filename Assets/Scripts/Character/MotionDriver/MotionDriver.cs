@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
+using WS_Modules.GAS.Generated;
 using WS_Modules.GAS.TAG;
 
 namespace RPG.Character
@@ -28,7 +29,12 @@ namespace RPG.Character
         /// <inheritdoc />
         public bool CanMoveHorizontally =>
             !HasAnyTag(allMovementBlockedTags) &&
-            !HasAnyTag(horizontalMovementBlockedTags);
+            !IsHorizontalMovementBlocked;
+
+        /// <summary>获取固定的移动阻断状态与作者配置状态的合并结果。</summary>
+        private bool IsHorizontalMovementBlocked =>
+            HasTag(GameplayTags.Tag_State_Block_Movement) ||
+            HasAnyTag(horizontalMovementBlockedTags);
 
         /// <summary>获取当前是否由最高优先级 Tag 阻止全部位移和根旋转。</summary>
         private bool IsAllMovementBlocked => HasAnyTag(allMovementBlockedTags);
@@ -64,7 +70,7 @@ namespace RPG.Character
             if (IsAllMovementBlocked || !characterController.enabled) return;
 
             // 水平限制只删除 X/Z，使重力和其他垂直位移仍能正常结算。
-            if (HasAnyTag(horizontalMovementBlockedTags))
+            if (IsHorizontalMovementBlocked)
                 movement = new Vector3(0f, movement.y, 0f);
             characterController.Move(movement);
         }
@@ -94,6 +100,11 @@ namespace RPG.Character
             }
             return false;
         }
+
+        /// <summary>判断 ASC 是否拥有指定 Tag 或其子标签。</summary>
+        /// <param name="tag">待判断的固定移动规则 Tag。</param>
+        /// <returns>存在匹配 Tag 时返回 true。</returns>
+        private bool HasTag(GameplayTag tag) => abilitySystemComponent.HasTag(tag);
 
         #endregion
     }

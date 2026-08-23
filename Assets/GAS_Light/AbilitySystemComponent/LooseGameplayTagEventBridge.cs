@@ -12,8 +12,8 @@ namespace WS_Modules.GAS.AbilitySystemComponent
     {
         #region 字段
 
-        // 由 PlayerController 提供 ASC 和事件目标，桥接器不直接依赖具体角色类型。
-        private readonly IGameplayAbilitySystemTagBridge target;
+        // 提供接收 Tag 事件的 ASC 和事件目标，桥接器不直接依赖具体角色类型。
+        private readonly ILooseGameplayTagEventTarget target;
         // 记录本桥接器已经提交给 ASC 的来源，保证 Add/Remove 对称且可安全注销。
         private readonly HashSet<LooseGameplayTagSourceKey> activeSources = new();
         private IUnRegister unregister;
@@ -24,7 +24,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
 
         /// <summary>创建绑定指定角色桥接接口的事件桥。</summary>
         /// <param name="target">提供 ASC 和事件目标的角色接口。</param>
-        public LooseGameplayTagEventBridge(IGameplayAbilitySystemTagBridge target)
+        public LooseGameplayTagEventBridge(ILooseGameplayTagEventTarget target)
         {
             this.target = target ?? throw new ArgumentNullException(nameof(target));
         }

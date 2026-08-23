@@ -17,7 +17,7 @@ namespace RPG.Character
     [RequireComponent(typeof(GameplayAbilitySystemComponent), typeof(Animator), typeof(CharacterController))]
     [RequireComponent(typeof(PlayerInputController))]
     [RequireComponent(typeof(SkillRuntimeHost))]
-    public sealed class PlayerController : MonoBehaviour, IGameplayAbilitySystemOwner
+    public sealed class PlayerController : MonoBehaviour, IGameplayAbilitySystemOwner, IGameplayAbilitySystemTagBridge
     {
         #region 序列化引用与属性
 
@@ -29,6 +29,8 @@ namespace RPG.Character
         [SerializeField] private MotionDriver motionDriver = new();
         private IMarkerProvider markerProvider;
         private Coroutine frameIntentCleanupCoroutine;
+        // 由 PlayerController 持有事件桥接生命周期，不让 ASC 反向订阅全局事件。
+        private LooseGameplayTagEventBridge looseGameplayTagEventBridge;
 
         /// <summary>获取由当前角色长期持有的移动驱动。</summary>
         public IMotionDriver MotionDriver => motionDriver;
@@ -44,6 +46,12 @@ namespace RPG.Character
 
         /// <inheritdoc />
         public ISkillRuntimeHost SkillRuntimeHost => skillRuntimeHost;
+
+        /// <inheritdoc />
+        public GameplayAbilitySystemComponent AbilitySystemComponent => abilitySystemComponent;
+
+        /// <inheritdoc />
+        public GameObject TagEventTarget => gameObject;
 
         /// <summary>获取当前角色拥有的输入 Intent 仲裁管理器。</summary>
         public GameplayInputIntentArbiterManager InputIntentArbiterManager { get; private set; }
@@ -82,11 +90,13 @@ namespace RPG.Character
             InputIntentArbiterManager = new GameplayInputIntentArbiterManager(inputController, StateBlackboard);
             InputIntentArbiterManager.RegisterDefaultArbiters();
             motionDriver.Initialize(animator, characterController, abilitySystemComponent);
+            looseGameplayTagEventBridge = new LooseGameplayTagEventBridge(this);
         }
 
         /// <summary>启动真正帧末执行的 Intent 清理循环。</summary>
         private void OnEnable()
         {
+            looseGameplayTagEventBridge?.Enable();
             // Controller 统一协调自己持有的黑板与输入组件，消费回传不属于仲裁器职责。
             StateBlackboard.IntentSourceConsumed += OnIntentSourceConsumed;
             frameIntentCleanupCoroutine = StartCoroutine(ClearFrameIntentsAtFrameEnd());
@@ -95,6 +105,7 @@ namespace RPG.Character
         /// <summary>停止帧末循环并清空当前角色持有的全部临时黑板状态。</summary>
         private void OnDisable()
         {
+            looseGameplayTagEventBridge?.Disable();
             // 先切断消费回传，再重置帧级状态，避免禁用期间继续改变 Request。
             StateBlackboard.IntentSourceConsumed -= OnIntentSourceConsumed;
             if (frameIntentCleanupCoroutine != null)
@@ -105,6 +116,9 @@ namespace RPG.Character
 
             StateBlackboard?.Reset();
         }
+
+        /// <summary>释放玩家专属的 LooseTag 事件桥接器。</summary>
+        private void OnDestroy() => looseGameplayTagEventBridge?.Dispose();
 
         /// <summary>按角色控制器定义的顺序推进 ASC 普通阶段。</summary>
         private void Update()
