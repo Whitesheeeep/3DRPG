@@ -33,7 +33,6 @@ namespace RPG.Character
 
         /// <summary>获取固定的移动阻断状态与作者配置状态的合并结果。</summary>
         private bool IsHorizontalMovementBlocked =>
-            HasTag(GameplayTags.Tag_State_Block_Movement) ||
             HasAnyTag(horizontalMovementBlockedTags);
 
         /// <summary>获取当前是否由最高优先级 Tag 阻止全部位移和根旋转。</summary>
