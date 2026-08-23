@@ -17,7 +17,7 @@ namespace RPG.Character
     [RequireComponent(typeof(GameplayAbilitySystemComponent), typeof(Animator), typeof(CharacterController))]
     [RequireComponent(typeof(PlayerInputController))]
     [RequireComponent(typeof(SkillRuntimeHost))]
-    public sealed class PlayerController : MonoBehaviour, IGameplayAbilitySystemOwner, IGameplayAbilitySystemTagBridge
+    public sealed class PlayerController : MonoBehaviour, IGameplayAbilitySystemOwner, ILooseGameplayTagEventTarget
     {
         #region 序列化引用与属性
 

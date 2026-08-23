@@ -15,7 +15,7 @@ namespace RPG.TaskSystem
         [SerializeField] private TaskDatabase database;
 
         /// <summary>
-        /// 将配置资产显式初始化到 TaskManager；此步骤必须发生在业务架构启动前。
+        /// 将配置资产静态注入 TaskManager；此步骤不会创建 TaskManager 单例，且必须发生在业务架构启动前。
         /// </summary>
         /// <exception cref="System.InvalidOperationException">未配置数据库资产时抛出。</exception>
         public override void Register()
@@ -25,7 +25,7 @@ namespace RPG.TaskSystem
                 throw new System.InvalidOperationException("TaskDatabaseConfigProvider 未配置 TaskDatabase。 ");
             }
 
-            TaskManager.Instance.Initialize(database);
+            TaskManager.Initialize(database);
         }
     }
 }
