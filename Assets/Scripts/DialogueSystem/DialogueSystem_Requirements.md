@@ -12,12 +12,12 @@
 
 - 玩家通过通用 `Interact` 目标开始 NPC 对话。
 - 对话内容由 ScriptableObject 图资产配置。
-- 支持 Speech、Choice 以及 Completed/Canceled End；Condition 和 Action 配置在 Choice 内。
-- 对话期间玩家不能移动，由 `State.Control.Dialogue` GameplayTag 控制其他系统拒绝对应行为。
+- 支持 Speech、Choice 以及无类型配置的 Completed End；Condition 和 Action 配置在 Choice 内。
+- 对话期间通过通用 LooseGameplayTag 事件请求 `State.Block.Movement` 与 `State.Block.AbilityActivation`，不创建对话专属 Tag。
 - 使用现有 WSFrame `UIManager + WindowBase` 显示对话界面。
 - 使用 `DialogueSession` 管理一次对话周期。
 - 使用 `DialogueSystem` 作为对话系统入口和会话编排器。
-- SpeechNode 可以配置 3D 说话人的全身 `AnimationClip`。
+- SpeechNode 可以配置 3D 说话人的全身 `AnimationClip` 和 `AudioClip` 语音。
 - 对话图按照现有 WSFrame GraphView 扩展设计编辑器准备方案。
 
 ### 1.2 第一版明确不包含
@@ -25,7 +25,7 @@
 - 不制作头像、Portrait、左右头像站位或头像资源加载。
 - 不制作镜头切换、角色走位、转身、过场动画或镜头演出。
 - 不保存对话中途进度。
-- 不接入本地化 Key、语音和打字机效果。
+- 不接入本地化 Key、打字机效果或语音等待/自动推进；VoiceClip 只负责按对白节点播放。
 - 不内置任务、背包、奖励等业务 Handler。
 - 不提供通用 Escape 或关闭按钮取消对话。
 - 不通过禁用 PlayerController、Locomotion 或其他组件实现站桩。
@@ -43,7 +43,7 @@ flowchart TD
     Architecture --> Handlers["Condition / Action Handlers"]
     Architecture --> Business["Task / Inventory / Player Managers"]
     Handlers --> Business
-    InteractionInteractor --> DialogueTarget["DialogueInteractionTarget"]
+    InteractionInteractor --> DialogueTarget["DialogueInteractable"]
     DialogueTarget --> DialogueSystem
     DialogueSystem --> Session["DialogueSession\n单次对话周期"]
     DialogueSystem --> Events["Dialogue 事实事件"]
@@ -59,10 +59,10 @@ flowchart TD
 - 当前会话 ID。
 - 当前 `DialogueRequest`。
 - 当前 `DialogueAsset`、`SpeechNode`、`ChoiceNode` 和运行状态。
-- 当前 3D 参与者与 `SpeakerId` 绑定。
-- 当前会话由哪个玩家 ASC 添加了 Dialogue LooseGameplayTag。
+- 当前 `IDialogueParticipantContext` 与 `SpeakerId` 绑定。
+- 当前会话的 `SessionId` 作为 LooseGameplayTag 来源标识，系统只发布通用事件。
 - `SpeechPresented`、`ChoicePresented` 和 `Ended` 事件。
-- 会话结束时清理 UI、交互状态、LooseGameplayTag 和本会话启动的动画状态。
+- 会话结束时清理本会话启动的语音和动画；DialogueSystem 负责发布对称的 LooseGameplayTag Remove 请求，UI 通过事实事件关闭窗口。
 
 不负责：
 
@@ -150,9 +150,9 @@ DialogueStepResult SelectChoice(string choiceId);
 - Choice 不存在时返回 `InvalidChoice`。
 - Condition 不满足的 Choice 显示为置灰且不可选择。
 - Choice 被选择后触发其 Actions。
-- Action 不返回成功/失败状态，也不决定节点跳转。
+- Action 不返回成功/失败状态，也不决定节点跳转；Handler 异常由 DialogueSystem 转换为 Failed。
 - Actions 触发后立即进入 Choice 配置的 `TargetNode`。
-- Action 契约要求实现者自行处理业务异常，不向 DialogueSystem 抛出异常。
+- 缺失 Handler 或 Action 异常会结束会话并返回 Failed；Condition 不满足只返回置灰的 `ConditionFailed`。
 
 ### 3.4 事实事件
 
@@ -171,25 +171,26 @@ DialogueStepResult SelectChoice(string choiceId);
 public sealed class DialogueRequest
 {
     public DialogueAsset Asset { get; }
-    public GameObject Player { get; }
-    public GameplayAbilitySystemComponent PlayerAbilitySystem { get; }
-    public IInteractionTarget Target { get; }
-    public IReadOnlyList<DialogueParticipantBinding> Participants { get; }
+    public IDialogueParticipantContext Initiator { get; }
+    public IInteractable Target { get; }
+    public IReadOnlyList<IDialogueParticipantContext> Participants { get; }
 }
 ```
 
-`DialogueParticipantBinding` 将静态 `SpeakerId` 绑定到当前场景中的 3D 参与者：
+`IDialogueParticipantContext` 是玩家和 NPC 共用的最小参与者契约：
 
-- `SpeakerId`
-- `GameObject` 或 `Transform`
-- `IAnimationPlayer`
+- `SpeakerId`：与 SpeechNode 匹配的稳定标识。
+- `ParticipantObject`：参与者的场景对象，用于通用事件目标。
+- `VoiceAudioSource`：对话专用语音 AudioSource，可为空。
+- `AnimationPlayer`：动画播放接口，可为空。
 
-绑定上下文用于：
+`DialogueParticipant : MonoBehaviour` 是运行时默认实现。玩家和 NPC 均挂载该组件，分别配置自己的 SpeakerId、语音 AudioSource 和 `IAnimationPlayer`。Context 不包含 ASC、GameplayTag、任务 Manager 或 UI 引用。
 
-- 给正确玩家的 ASC 添加或移除 Dialogue LooseGameplayTag。
+Context 用于：
+
 - 找到 SpeechNode 对应的 3D 说话人。
-- 让 DialogueSession 调用对应角色的动画播放接口。
-- 让 Condition/Action 通过会话上下文访问玩家、NPC 和业务服务。
+- 让 DialogueSession 调用对应角色的语音和动画接口。
+- 让 Condition/Action 通过会话上下文访问参与者及已注入的业务服务。
 - 允许同一个 DialogueAsset 被多个 NPC 复用。
 
 DialogueAsset 只保存内容、节点引用和稳定标识，不持有场景中的玩家、NPC、ASC、Window 或 `IAnimationPlayer` 引用。
@@ -224,6 +225,7 @@ DialogueAsset
 - `SpeakerId`：由 Editor SpeakerId 配置提供选择。
 - `Text`：第一版直接保存字符串。
 - `AnimationClip`：可选的全身说话动作。
+- `VoiceClip`：可选的对白语音；由对应 Context 的 `VoiceAudioSource` 播放。
 - `AnimationFadeDuration`：动画淡入时间。
 - `NextNode`：无 Choice 时的线性后续节点。
 - `Choices[]`：当前对白提供的 Choice 列表。
@@ -256,19 +258,12 @@ Action 的运行规则：
 1. Choice 满足条件并被选择。
 2. 按配置顺序触发 Actions。
 3. Action 不返回成功/失败结果。
-4. Action 实现者自行处理异常，不向对话系统抛出异常。
+4. Action Handler 同步执行；异常由 DialogueSystem 捕获并结束会话为 Failed。
 5. DialogueSession 立即进入 Choice 的 TargetNode。
 
 ### 5.4 EndNode
 
-EndNode 配置正常结束类型：
-
-```csharp
-Completed
-Canceled
-```
-
-Canceled End 通过 Choice 的 TargetNode 进入，例如“暂不接受”选项直接指向 Canceled End；不提供通用 Escape 取消。
+EndNode 不配置结束类型，也不允许存在后继连接。运行时进入任意 EndNode 都返回 `DialogueEndStatus.Completed`；Handler 缺失、Action 异常、非法节点和架构注销统一返回 `Failed`。拒绝任务、取消交易等业务语义由 Choice 的 Action 修改业务状态后进入普通 EndNode。
 
 ### 5.5 全身动画
 
@@ -285,6 +280,8 @@ animationPlayer.Play(
 - `AnimationLayerProfile` 中的 Action 层配置为全身 Avatar Mask。
 - 不允许 SpeechNode 修改动画层。
 - 新 Speech 的动画替换当前会话在 Action 层启动的上一段对话动画。
+- 新 Speech 进入时停止上一句语音并在对应 Participant 的专用 AudioSource 播放 VoiceClip；没有 VoiceClip 不报错。
+- 配置了 VoiceClip 或 AnimationClip 但 Participant 缺少对应组件时记录错误并继续文本流程。
 - Session 结束时停止或淡出由本会话启动的动画状态。
 - 不处理镜头、移动、转身或角色站位演出。
 
@@ -299,17 +296,18 @@ animationPlayer.Play(
 - SpeechNode 不能同时存在 `NextNode` 和非空 `Choices[]`；编辑器以 Choice 模式或线性模式二选一，运行时在合法资产中按对应模式推进。
 - 所有 `NextNode`、`TargetNode` 引用存在。
 - 每个 Choice 都有目标节点。
+- EndNode 不允许存在后继连接。
 - Condition/Action 列表中的每个 `[SerializeReference]` 定义不能为空。
 - 每个定义的具体 C# 类型必须有已注册的 Handler；具体字段配置由定义和 Handler 自行校验。
-- 不存在没有后续和没有合法结束路径的 SpeechNode。
+- 至少有一个从 EntryNode 可达的 EndNode，且每个可达节点都存在通往 EndNode 的路径；允许有出口的循环。
 
-节点图允许循环，因为循环必须经过玩家的 `Advance` 或 `SelectChoice`；图中不创建 ConditionNode/ActionNode，因而不需要自动节点步数限制。
+节点图允许循环，因为循环必须经过玩家的 `Advance` 或 `SelectChoice`，并且必须存在可达 EndNode 的出口；图中不创建 ConditionNode/ActionNode，因而不需要自动节点步数限制。
 
 ## 7. 通用 Interact 与碰撞体
 
 ### 7.1 InteractionSystem 边界
 
-通用交互代码位于独立的 `RPG.InteractionSystem`，不引用 `DialogueSystem`。它提供 `IInteractionTarget`、`InteractionData`、`Interact` 和 `InteractionInteractor`；对话系统只通过 `DialogueInteractionTarget` 实现通用接口完成业务适配。
+通用交互代码位于独立的 `RPG.InteractionSystem`，不引用 `DialogueSystem`。它提供 `IInteractable`、`InteractionOption`、`Interact` 和 `InteractionInteractor`；对话系统只通过 `DialogueInteractable` 实现通用接口完成业务适配。
 
 ### 7.2 Interact 职责
 
@@ -350,50 +348,57 @@ Interactor 只在当前候选集合中进行视野、遮挡和评分处理：
 
 ### 7.4 对话交互适配
 
-`DialogueInteractionTarget` 或等价适配组件负责保存：
+`DialogueInteractable` 或等价适配组件负责保存：
 
 - DialogueAsset。
-- NPC 的 SpeakerId。
-- NPC 的 3D 参与者引用或绑定入口。
+- NPC 的 `DialogueParticipant` 组件入口。
+- 从交互发起者父级 `DialogueParticipant` 构建 Initiator Context。
 
-它实现通用 `IInteractionTarget`，在 `Interact` 被触发时构建 `DialogueRequest` 并调用 `DialogueSystem.TryStartDialogue`。
+它实现通用 `IInteractable`，在 `Interact` 选项被执行时构建 `DialogueRequest` 并调用 `DialogueSystem.TryStartDialogue`。
 
-## 8. GAS LooseGameplayTag 控制
+## 8. GAS LooseGameplayTag 与 Ability 全局阻断
 
-对话控制 Tag：
+对话不创建专属 Tag，也不把 ASC 塞进 Participant Context。`DialogueSystem` 只向发起者对象发布两个通用请求：
 
 ```text
-State.Control.Dialogue
+State.Block.Movement
+State.Block.AbilityActivation
 ```
 
-对话开始时添加 Tag，对话所有结束路径统一移除 Tag。底层继续使用 `GameplayTagCountContainer` 引用计数，不开放 `MutableTags`。
+请求携带 `Target`、`SourceId = DialogueSession.SessionId`、Tag 和 Add/Remove 操作。玩家侧 `PlayerController` 实现 `IGameplayAbilitySystemTagBridge`，由 `LooseGameplayTagEventBridge` 订阅 WSFrame Type Event，只接收属于该角色层级的请求并调用 ASC 的公开 `AddLooseGameplayTag` / `RemoveLooseGameplayTag`。DialogueSystem 不查找 ASC、不做 Tag 映射；没有事件桥接时纯对话仍可运行。
+
+ASC 内部用 `SourceId + GameplayTag` 维护来源集合：重复 Add 不重复计数，只有对应来源存在时 Remove 才减少计数，底层继续使用 `GameplayTagCountContainer`，不开放 `MutableTags`。PlayerController 禁用或销毁时，桥接器注销事件并释放自身持有的来源。
 
 ```mermaid
 sequenceDiagram
-    participant Dialogue as DialogueSession
+    participant Dialogue as DialogueSystem
+    participant Event as WSFrame Type Event
+    participant Bridge as PlayerController Tag Bridge
     participant ASC as Player ASC
-    participant Movement as MotionDriver
-    participant Interaction as InteractionInteractor
-    participant UI as DialogueWindow
+    participant Ability as GameplayAbilityCtrl
+    participant Motion as MotionDriver
 
-    Dialogue->>ASC: AddLooseGameplayTag(State.Control.Dialogue)
-    ASC-->>Movement: HasTag = true
-    ASC-->>Interaction: HasTag = true
-    Movement-->>Movement: 拒绝移动与根运动
-    Interaction-->>Interaction: 拒绝新的交互触发
-    Dialogue->>UI: Speech / Choice Presented
-    UI->>Dialogue: Advance / SelectChoice
-    Dialogue->>ASC: RemoveLooseGameplayTag(State.Control.Dialogue)
-    Dialogue->>UI: DialogueEnded
+    Dialogue->>Event: Add(SessionId, Block.Movement)
+    Dialogue->>Event: Add(SessionId, Block.AbilityActivation)
+    Event->>Bridge: 匹配 Target 后转发
+    Bridge->>ASC: 增加来源引用
+    ASC-->>Motion: HasTag(State.Block.Movement)
+    Ability->>ASC: TryActivate 查询 Owner Tags
+    ASC-->>Ability: 命中 State.Block.AbilityActivation
+    Ability-->>Ability: false，不创建 Runtime/Cost/Cooldown
+    Dialogue->>Event: Remove 两个 Tag
+    Event->>Bridge: 对称释放 SessionId 来源
 ```
 
-需要响应该 Tag 的系统包括：
+### 8.1 MotionDriver 规则
 
-- `MotionDriver`：阻止水平移动和根运动。
-- `InteractionInteractor`：阻止再次触发其他交互。
-- 攻击或技能系统：按自身能力规则拒绝对应操作。
+`MotionDriver` 将 `State.Block.Movement` 作为固定基础规则：主动水平移动的 X/Z 被清零，但垂直重力结算保留；已有可配置的水平阻断 Tag 与全部移动阻断 Tag 继续生效。对话不直接禁用 PlayerController、Locomotion 或其他组件。
 
-DialogueSystem 不直接禁用 PlayerController、Locomotion 或其他组件。
+### 8.2 Ability 激活规则资产
+
+新增共享 `GameplayAbilityActivationRules : ScriptableObject`，由 ASC 初始化时注入 `GameplayAbilityCtrl`。默认资产配置 `State.Block.AbilityActivation`。AbilityCtrl 复制规则集合，不持有可变资产数组；`TryActivate` 在查询 Spec、处理已有 Runtime 的 `RejectWhileActive/ToggleOff` 后，先检查任一全局阻断 Tag，再进入 Ability 自身条件、Cooldown 和 Cost 流程。命中时不创建 Runtime、不结算 Cost、不应用 Cooldown；ToggleOff 仍允许关闭已有 Runtime。
+
+保留 `Initialize(attributeSets)` 旧重载作为空规则兼容入口；规则资产重载拒绝空资产。`Clear` 同时清除 AbilityCtrl 的规则快照，允许下一次初始化注入新规则。该规则不新增 `CanActivate` API，也不引用 DialogueSystem。
 
 ## 9. UI 表现
 
@@ -513,9 +518,10 @@ internal sealed class DialogueSpeakerIdSettings
 - 设置资产只服务 Editor，不进入 Runtime 程序集。
 - 设置资产持有预先定义的 SpeakerId 列表。
 - SpeechNode 编辑字段通过下拉列表选择 SpeakerId。
+- SpeechNode 和 DialogueParticipant 的 `SpeakerId` 使用同一个 `[SpeakerId]` `PropertyDrawer`，只允许从设置列表、空值或历史未知值（显示 `Missing`）中选择，不允许手工输入。
 - Graph 资产只保存最终选中的 SpeakerId 字符串。
 - SpeakerId 删除或重命名时，Validation 面板报告受影响的 SpeechNode。
-- 运行时不依赖 `DialogueSpeakerIdSettings`。
+- Graph Inspector 使用普通 `PropertyField`，由 Drawer 统一处理多对象编辑、SerializedProperty 和 Undo；运行时不依赖 `DialogueSpeakerIdSettings`。
 
 ### 10.5 Editor 使用参考图
 
@@ -583,7 +589,7 @@ internal sealed class DialogueSpeakerIdSettings
 - 顶部标题栏和工具栏：选择 `DialogueAsset`，执行保存、Undo/Redo、自动布局和校验。
 - 左侧导航：节点树以及来自 Editor-only `ScriptableSingleton` 的 `SpeakerId` 列表。
 - 中央 `GraphView`：展示 `EntryNode -> SpeechNode -> ChoiceNode/EndNode`，`Condition` 和 `Action` 只在 `ChoiceNode` 内容中显示。
-- 右侧 Inspector：通过 `SerializedObject` 编辑 `NodeId`、`SpeakerId`、文本、全身 `AnimationClip`、`NextNode` 和 Choices。
+- 右侧 Inspector：通过 `SerializedObject` 编辑 `NodeId`、`SpeakerId`、文本、全身 `AnimationClip`、`VoiceClip`、`NextNode` 和 Choices。
 - 右侧 Inspector：上方为可滚动 Node Details，下方为独立可滚动 Validation；底部只显示当前选中节点、Dirty 状态和 Undo 可用状态。
 
 该文件是静态视觉参考，不代表 UXML/USS 的最终实现代码；当前 Unity `EditorWindow` 使用两个嵌套的 `CustomTwoPanelSplitView` 实现左导航、中央 GraphView 和右 Inspector 的可调宽度布局，并使用 MTWY 对话编辑器的深色主题。`DialogueGraphEditorWindow` 只负责加载 UXML、创建 `DialogueGraphEditorView`、`DialogueGraphView` 和 `DialogueGraphEditorController`；Controller 负责资产、Graph 变更、选择、Inspector、SpeakerId、Validation 和状态协调。GraphView 将纯 UI 创建 API 与用户变更通知 API 分开，重建只调用 `ClearGraphView`、`AddGraphNodeView` 和 `AddGraphEdgeView`，不再使用通知抑制作用域，也不会反向修改 Model。普通节点编辑、移动、接线、断线、创建和删除使用局部刷新，不重建整个画布。GraphNode 根节点的四方向边框宽度在普通、Hover、原生选中和业务选中状态保持固定，只切换颜色，不改变节点尺寸或外层 margin。
@@ -609,9 +615,9 @@ GameArchitecture
 - `InvalidChoice`：选项不存在或已置灰。
 - `MissingHandler`：Condition/Action Handler 未注册。
 - `AutomaticStepLimitExceeded`：保留为历史兼容错误码，不用于当前 Speech/Choice 运行流程。
-- `Failed`：参与者销毁、Architecture 注销或其他会话级运行时异常。
+- `Failed`：缺失 Handler、Action 异常、参与者销毁、Architecture 注销或其他会话级运行时异常。
 
-Action 不返回失败状态，也不向 DialogueSystem 抛出异常；Action 的业务错误由 Action 自身按业务约定记录或处理。
+Action 不返回失败状态；DialogueSystem 捕获 Action Handler 异常并结束会话为 Failed。业务 Handler 仍由 BusinessArchitecture System 显式注册，不内置任务、背包或奖励实现。
 
 ## 12. 对话进度、取消和结束结果
 
@@ -623,12 +629,7 @@ Action 不返回失败状态，也不向 DialogueSystem 抛出异常；Action �
 
 ### 12.2 取消
 
-不提供通用 Escape 或关闭按钮取消。
-
-进入 Canceled 的方式：
-
-- Choice 直接指向 Canceled End。
-- 业务 Action 修改外部业务状态后，后续图通过 Choice 进入 Canceled End。
+运行时不提供通用 Escape 或关闭按钮取消，也不保留 Canceled End 状态。拒绝任务、取消交易等业务结果由 Choice Action 负责修改业务状态，然后进入普通 Completed EndNode。若需要真正取消会话，第一版通过业务图设计为失败 Action 或架构注销路径，不引入通用取消 API。
 
 以下情况结束为 Failed：
 
@@ -640,8 +641,8 @@ Action 不返回失败状态，也不向 DialogueSystem 抛出异常；Action �
 
 1. 关闭对话窗口。
 2. 隐藏交互提示。
-3. 移除本会话添加的 LooseGameplayTag。
-4. 清理本会话启动的全身动画状态。
+3. DialogueSystem 发布本会话对应的 LooseGameplayTag Remove 请求。
+4. 清理本会话启动的语音和全身动画状态。
 5. 发布 `DialogueEndedEvent`。
 
 ## 13. 验收场景与后续扩展边界
@@ -657,17 +658,19 @@ Action 不返回失败状态，也不向 DialogueSystem 抛出异常；Action �
 - SpeechNode 可以展示多个 ChoiceNode。
 - 条件不满足的 Choice 显示为置灰且不可选择。
 - Choice Action 触发后不等待成功状态并进入 TargetNode。
-- Action 实现不向 DialogueSystem 抛出异常。
+- Action Handler 异常会被 DialogueSystem 转换为 Failed。
 - SpeechNode 可以播放指定参与者的全身 AnimationClip。
-- Canceled End 正确结束会话。
-- 对话期间 Dialogue LooseGameplayTag 生效。
-- 移动、攻击和交互系统按 Tag 拒绝对应行为。
-- Completed、Canceled、Failed 都会清理 UI、LooseGameplayTag 和动画状态。
+- 任意 EndNode 都以 Completed 正常结束会话；缺失 Handler 或 Action 异常以 Failed 结束。
+- 对话期间两个通用 LooseGameplayTag 请求按 SessionId 对称生效和移除。
+- `State.Block.Movement` 阻止水平移动但保留重力；`State.Block.AbilityActivation` 在 `TryActivate` 中统一阻断新 Ability。
+- Completed、Failed 都会清理 UI、来源 Tag、语音和动画状态。
 - 节点图循环只能由玩家操作产生，不触发自动节点死循环。
 - `NodeId` 使用稳定字符串 GUID，节点重排不影响直接引用。
 - GraphView 可以创建、移动、连接、删除节点并执行 Undo/Redo。
 - GraphView Details 使用 SerializedObject 绑定节点字段。
 - SpeakerId 下拉从 Editor-only ScriptableSingleton 读取。
+- SpeechNode 与 DialogueParticipant 使用同一 SpeakerId PropertyDrawer；历史未知值显示 Missing 且不被静默覆盖。
+- SpeechNode VoiceClip 在对应 Participant AudioSource 播放；推进、选择、结束和失败立即停止当前语音。
 - 重复或失效 SpeakerId、NodeId 和节点引用能在 ValidationView 中报告。
 - 对话系统不使用 UniTask。
 

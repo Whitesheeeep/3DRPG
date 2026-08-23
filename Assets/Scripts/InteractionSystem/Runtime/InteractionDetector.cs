@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace RPG.InteractionSystem
@@ -14,9 +15,11 @@ namespace RPG.InteractionSystem
     {
         #region 序列化配置与状态
 
-        [SerializeField, Min(0f)] private float detectionRange = 8f;
-        [SerializeField, Min(0.01f)] private float scanInterval = 0.1f;
-        [SerializeField, Min(1)] private int initialBufferSize = 64;
+        [LabelText("探测半径"), MinValue(0f), SuffixLabel("m", true)]
+        [SerializeField]
+        private float detectionRange = 8f;
+        [SerializeField, MinValue(0.01f), LabelText("扫描间隔 s")] private float scanInterval = 0.1f;
+        [SerializeField, MinValue(1), LabelText("初始化缓冲区大小")] private int initialBufferSize = 64;
         [SerializeField] private LayerMask detectionMask = ~0;
         [SerializeField] private bool startDetect = true;
         // 依赖的实际是 cc 的 center、radius、height，若 cc 为空则会在 Awake 抛异常。
@@ -177,7 +180,6 @@ namespace RPG.InteractionSystem
                 throw new InvalidOperationException("InteractionDetector detectionRange 必须是有限非负数。");
             if (float.IsNaN(scanInterval) || float.IsInfinity(scanInterval) || scanInterval <= 0f)
                 throw new InvalidOperationException("InteractionDetector scanInterval 必须是有限正数。");
-            if (initialBufferSize <= 0) throw new InvalidOperationException("InteractionDetector initialBufferSize 必须大于 0。");
         }
 
         #endregion

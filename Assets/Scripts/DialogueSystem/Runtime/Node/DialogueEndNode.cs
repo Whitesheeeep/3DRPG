@@ -3,7 +3,7 @@ using UnityEngine;
 namespace RPG.DialogueSystem
 {
     /// <summary>
-    /// 表示一个对话正常结束或取消结束节点。
+    /// 表示一个对话正常完成节点；运行时进入任意 EndNode 都返回 Completed。
     /// </summary>
     public sealed class DialogueEndNode : DialogueNode
     {

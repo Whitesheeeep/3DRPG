@@ -107,7 +107,7 @@ namespace RPG.InteractionSystem
         /// <param name="displayName">UI 展示名称。</param>
         /// <param name="interactionObject">用于遮挡判断的目标对象。</param>
         /// <param name="interactionOrigin">用于距离和视野判断的交互中心。</param>
-        /// <param name="priority">排序优先级。</param>
+        /// <param name="priority">排序优先级。优先级越高越优先。</param>
         /// <param name="maxDistance">Option 最大有效距离。</param>
         /// <param name="canExecute">执行前的业务可用性判断。</param>
         /// <param name="execute">业务执行回调，返回本次执行是否成功。</param>

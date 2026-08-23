@@ -1,18 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
 using RPG.Character.Animation;
+using UnityEngine;
 
 namespace RPG.DialogueSystem
 {
     /// <summary>
-    /// 管理一段完整对话周期中的当前节点、参与者动画、控制 Tag 和事实事件。
+    /// 管理一段完整对话周期中的当前节点、参与者表现和事实事件。
     /// </summary>
     public sealed class DialogueSession
     {
         #region 字段与属性
         private readonly string sessionId;
+        // 表现引用只指向本会话最近一次播放的对象，推进或结束时立即释放。
         private IAnimationPlayer activeAnimationPlayer;
-        private bool dialogueControlTagAdded;
+        private AudioSource activeVoiceAudioSource;
 
         /// <summary>创建一个尚未进入首个 SpeechNode 的会话。</summary>
         /// <param name="request">本次对话请求。</param>
@@ -56,7 +58,7 @@ namespace RPG.DialogueSystem
 
         #region 节点进入
         /// <summary>
-        /// 进入指定 SpeechNode，播放其固定 Action 层全身动画并发布展示事件。
+        /// 进入指定 SpeechNode，播放其语音、固定 Action 层动画并发布展示事件。
         /// </summary>
         /// <param name="speech">待进入的 SpeechNode。</param>
         internal void EnterSpeech(DialogueSpeechNode speech)
@@ -64,13 +66,29 @@ namespace RPG.DialogueSystem
             if (speech == null) throw new ArgumentNullException(nameof(speech));
             if (IsEnded) return;
 
-            StopActiveAnimation();
+            StopActivePresentation();
             CurrentSpeech = speech;
             State = speech.Choices.Count > 0
                 ? DialogueSessionState.WaitingForChoice
                 : DialogueSessionState.Running;
 
-            DialogueParticipantBinding participant = Request.FindParticipant(speech.SpeakerId);
+            IDialogueParticipantContext participant = Request.FindParticipant(speech.SpeakerId);
+            if (speech.VoiceClip != null)
+            {
+                if (participant?.VoiceAudioSource == null)
+                {
+                    Debug.LogError(
+                        $"Dialogue SpeechNode '{speech.NodeId}' 配置了语音，但 SpeakerId '{speech.SpeakerId}' 没有 AudioSource。",
+                        participant?.ParticipantObject);
+                }
+                else
+                {
+                    activeVoiceAudioSource = participant.VoiceAudioSource;
+                    activeVoiceAudioSource.clip = speech.VoiceClip;
+                    activeVoiceAudioSource.Play();
+                }
+            }
+
             if (speech.AnimationClip != null && participant?.AnimationPlayer != null)
             {
                 // 对话动画固定进入全身 Action 层；新对白先停止本会话上一段动作，避免层内残留。
@@ -79,6 +97,12 @@ namespace RPG.DialogueSystem
                     AnimationLayerType.Action,
                     speech.AnimationClip,
                     speech.AnimationFadeDuration);
+            }
+            else if (speech.AnimationClip != null)
+            {
+                Debug.LogError(
+                    $"Dialogue SpeechNode '{speech.NodeId}' 配置了动画，但 SpeakerId '{speech.SpeakerId}' 没有 IAnimationPlayer。",
+                    participant?.ParticipantObject);
             }
 
             SpeechPresented?.Invoke(new DialogueSpeechPresentedEvent(this, speech));
@@ -89,51 +113,36 @@ namespace RPG.DialogueSystem
 
         #region 结束与资源清理
         /// <summary>
-        /// 关闭会话并清理动画和本会话添加的控制 Tag。
+        /// 关闭会话并清理本会话启动的语音和动画。
         /// </summary>
         /// <param name="message">结束补充说明。</param>
-        internal void End(string message)
+        internal void End(string message, DialogueEndStatus status = DialogueEndStatus.Failed)
         {
             if (IsEnded) return;
 
-            StopActiveAnimation();
-            RemoveDialogueControlTag();
+            StopActivePresentation();
+            EndStatus = status;
             State = DialogueSessionState.Ended;
             Ended?.Invoke(new DialogueEndedEvent(this, message));
         }
 
-        /// <summary>
-        /// 为本会话添加一次引用计数式控制 Tag；无效 Tag 不伪造运行时状态。
-        /// </summary>
-        internal void AddDialogueControlTag()
-        {
-            if (dialogueControlTagAdded || Request.PlayerAbilitySystem == null ||
-                !Request.DialogueControlTag.IsValid)
-                return;
-
-            // ASC 内部仍以 GameplayTagCountContainer 维护引用计数，系统只提交本次会话的一次增量。
-            Request.PlayerAbilitySystem.UpdateRuntimeTagCount(Request.DialogueControlTag, 1);
-            dialogueControlTagAdded = true;
-        }
+        /// <summary>获取本次会话已经确定的结束原因。</summary>
+        public DialogueEndStatus EndStatus { get; private set; } = DialogueEndStatus.Failed;
 
         /// <summary>
-        /// 停止当前会话启动的 Action 层动画，并清除引用。
+        /// 停止当前会话启动的语音和 Action 层动画，并清除表现引用。
         /// </summary>
-        private void StopActiveAnimation()
+        private void StopActivePresentation()
         {
+            if (activeVoiceAudioSource != null)
+            {
+                activeVoiceAudioSource.Stop();
+                activeVoiceAudioSource = null;
+            }
+
             if (activeAnimationPlayer == null) return;
             activeAnimationPlayer.StopLayer(AnimationLayerType.Action);
             activeAnimationPlayer = null;
-        }
-
-        /// <summary>
-        /// 对称移除本会话曾经添加的控制 Tag。
-        /// </summary>
-        private void RemoveDialogueControlTag()
-        {
-            if (!dialogueControlTagAdded) return;
-            Request.PlayerAbilitySystem.UpdateRuntimeTagCount(Request.DialogueControlTag, -1);
-            dialogueControlTagAdded = false;
         }
         #endregion
     }

@@ -17,8 +17,23 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: 037f56e38ec8b75419e8983b585d6042
   m_SerializeEntries:
+  - m_GUID: 2d9160d59cd222943ab947bccbef21b0
+    m_Address: HUDWindow
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 413224b4e83dbe441a8a1736e54abc5a
     m_Address: OptionChoice
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9043c1983ab086e40920577426014006
+    m_Address: ChoiceWindow
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d89412627c47e9c4a992cc1265cf7cb2
+    m_Address: DialogueWindow
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0

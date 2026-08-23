@@ -4,6 +4,7 @@ using RPG.Character;
 using RPG.Character.State;
 using UnityEngine;
 using WS_Modules.GAS.Generated;
+using WS_Modules.Singleton;
 
 namespace RPG.InteractionSystem
 {
@@ -13,7 +14,7 @@ namespace RPG.InteractionSystem
     [DefaultExecutionOrder(-700)]
     [DisallowMultipleComponent]
     [RequireComponent(typeof(InteractionDetector))]
-    public sealed class PlayerInteractor : MonoBehaviour
+    public sealed class PlayerInteractor : SingletonMonoBase<PlayerInteractor>
     {
         #region 序列化引用与状态
 
@@ -30,11 +31,15 @@ namespace RPG.InteractionSystem
         private readonly List<ScoredOption> scoredOptions = new();
         private readonly List<InteractionOptionId> previousOptionIds = new();
         private RaycastHit[] occlusionHits = new RaycastHit[16];
+        // 用于在 Update 中按玩家控制器之后消费 Intent，避免在同一帧中被控制器重置。
         private PlayerStateBlackboard stateBlackboard;
 
         #endregion
 
         #region 事件与属性
+
+        /// <summary>玩家交互单例建立或销毁时触发，供跨场景 UI 组合根重新绑定模型。</summary>
+        public static event Action<PlayerInteractor> InstanceChanged;
 
         /// <summary>最终可用 Option 列表发生变化时触发。</summary>
         public event Action<IReadOnlyList<InteractionOption>> OptionsChanged;
@@ -55,14 +60,26 @@ namespace RPG.InteractionSystem
 
         #region Unity 生命周期
 
-        /// <summary>解析同节点依赖并缓存玩家帧级 Intent 黑板。</summary>
-        private void Awake()
+        /// <summary>注册玩家单例、解析同节点依赖并缓存玩家帧级 Intent 黑板。</summary>
+        protected override void Awake()
         {
+            base.Awake();
+            if (Instance != this) return;
+
             if (detector == null) detector = GetComponent<InteractionDetector>();
             if (viewCamera == null) viewCamera = Camera.main;
 
             PlayerController playerController = GetComponent<PlayerController>();
             stateBlackboard = playerController != null ? playerController.StateBlackboard : null;
+            InstanceChanged?.Invoke(this);
+        }
+
+        /// <summary>清空玩家单例并通知窗口 Controller 解除模型绑定。</summary>
+        protected override void OnDestroy()
+        {
+            bool isCurrentInstance = Instance == this;
+            base.OnDestroy();
+            if (isCurrentInstance) InstanceChanged?.Invoke(null);
         }
 
         /// <summary>订阅检测结果并按组件配置启动范围检测。</summary>
@@ -114,6 +131,24 @@ namespace RPG.InteractionSystem
         #endregion
 
         #region 选择与执行
+
+        /// <summary>按稳定 Option ID 选择当前列表中的交互项。</summary>
+        /// <param name="optionId">待选择的交互选项 ID。</param>
+        /// <returns>Option 仍存在于当前列表时返回 true。</returns>
+        public bool Select(InteractionOptionId optionId)
+        {
+            for (int index = 0; index < options.Count; index++)
+            {
+                InteractionOption option = options[index];
+                if (option.Id != optionId) continue;
+
+                // SetSelectedOption 负责抑制重复事件；这里的返回值表示目标仍可选择，便于 UI 随后提交。
+                SetSelectedOption(option);
+                return true;
+            }
+
+            return false;
+        }
 
         /// <summary>选择前一条 Option，并在选择发生变化时返回 true。</summary>
         /// <returns>选择发生变化时返回 true。</returns>

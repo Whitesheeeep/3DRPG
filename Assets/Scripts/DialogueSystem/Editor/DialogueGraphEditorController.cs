@@ -52,7 +52,6 @@ namespace RPG.DialogueSystem.Editor
             editorView.NodeSelected += SelectNode;
             editorView.SpeakerAddRequested += AddSpeakerId;
             editorView.SpeakerRemoveRequested += RemoveSpeakerId;
-            editorView.SpeakerChanged += ChangeSpeakerId;
             editorView.PropertiesChanged += OnPropertiesChanged;
             graphView.GraphChanged += OnGraphChanged;
             graphView.LayoutChanged += OnLayoutChanged;
@@ -80,7 +79,6 @@ namespace RPG.DialogueSystem.Editor
             editorView.NodeSelected -= SelectNode;
             editorView.SpeakerAddRequested -= AddSpeakerId;
             editorView.SpeakerRemoveRequested -= RemoveSpeakerId;
-            editorView.SpeakerChanged -= ChangeSpeakerId;
             editorView.PropertiesChanged -= OnPropertiesChanged;
             graphView.GraphChanged -= OnGraphChanged;
             graphView.LayoutChanged -= OnLayoutChanged;
@@ -224,24 +222,6 @@ namespace RPG.DialogueSystem.Editor
             if (!DialogueSpeakerIdSettings.instance.RemoveSpeakerId(speakerId)) return;
             editorView.RefreshSpeakerList();
             RefreshValidation();
-        }
-
-        /// <summary>
-        /// 将 Inspector 选择的 SpeakerId 写入 SpeechNode。
-        /// </summary>
-        /// <param name="speech">目标 SpeechNode。</param>
-        /// <param name="speakerId">新的 SpeakerId。</param>
-        private void ChangeSpeakerId(DialogueSpeechNode speech, string speakerId)
-        {
-            if (speech == null || selectedNode != speech) return;
-            SerializedObject serializedObject = new SerializedObject(speech);
-            SerializedProperty property = serializedObject.FindProperty("speakerId");
-            Undo.RecordObject(speech, "Change Dialogue SpeakerId");
-            serializedObject.Update();
-            property.stringValue = speakerId ?? string.Empty;
-            serializedObject.ApplyModifiedProperties();
-            EditorUtility.SetDirty(speech);
-            RefreshNodeAndPanels(speech, false);
         }
 
         /// <summary>

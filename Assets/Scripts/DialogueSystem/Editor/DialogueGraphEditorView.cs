@@ -41,8 +41,6 @@ namespace RPG.DialogueSystem.Editor
         internal event Action<string> SpeakerAddRequested;
         /// <summary>删除 SpeakerId 用户意图。</summary>
         internal event Action<string> SpeakerRemoveRequested;
-        /// <summary>修改 SpeechNode SpeakerId 用户意图。</summary>
-        internal event Action<DialogueSpeechNode, string> SpeakerChanged;
         /// <summary>SerializedObject 字段发生变化。</summary>
         internal event Action<DialogueNode> PropertiesChanged;
 
@@ -214,9 +212,10 @@ namespace RPG.DialogueSystem.Editor
             detailsSerializedObject = new SerializedObject(node);
             if (node is DialogueSpeechNode speech)
             {
-                AddSpeakerDropdown(speech);
+                AddBoundProperty("speakerId", "SpeakerId", false);
                 AddBoundProperty("text", "Text", true);
                 AddBoundProperty("animationClip", "AnimationClip", false);
+                AddBoundProperty("voiceClip", "VoiceClip", false);
                 AddBoundProperty("animationFadeDuration", "Animation Fade Duration", false);
                 AddBoundProperty("nextNode", "NextNode", false);
                 AddBoundProperty("choices", "Choices", true);
@@ -231,8 +230,6 @@ namespace RPG.DialogueSystem.Editor
             }
             else if (node is DialogueEntryNode)
                 AddBoundProperty("firstSpeechNode", "First SpeechNode", false);
-            else if (node is DialogueEndNode)
-                AddBoundProperty("endType", "End Type", false);
             detailsContainer.Bind(detailsSerializedObject);
         }
 
@@ -268,18 +265,6 @@ namespace RPG.DialogueSystem.Editor
         #endregion
 
         #region Inspector 辅助
-
-        /// <summary>创建 SpeakerId 下拉并转发修改意图。</summary>
-        /// <param name="speech">当前 SpeechNode。</param>
-        private void AddSpeakerDropdown(DialogueSpeechNode speech)
-        {
-            List<string> choices = new List<string>(DialogueSpeakerIdSettings.instance.SpeakerIds);
-            string currentSpeakerId = speech.SpeakerId ?? string.Empty;
-            if (!choices.Contains(currentSpeakerId)) choices.Insert(0, currentSpeakerId);
-            DropdownField dropdown = new DropdownField("SpeakerId", choices, currentSpeakerId);
-            dropdown.RegisterValueChangedCallback(change => SpeakerChanged?.Invoke(speech, change.newValue ?? string.Empty));
-            detailsContainer.Add(dropdown);
-        }
 
         /// <summary>添加一个 SerializedProperty 绑定字段。</summary>
         /// <param name="propertyName">字段名。</param>

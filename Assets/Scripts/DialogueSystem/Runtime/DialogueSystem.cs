@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using WS_Modules.BusinessArchitecture;
+using WS_Modules.GAS.AbilitySystemComponent;
+using WS_Modules.GAS.Generated;
 
 namespace RPG.DialogueSystem
 {
@@ -116,7 +118,7 @@ namespace RPG.DialogueSystem
             DialogueSession session = new DialogueSession(request);
             CurrentSession = session;
             SubscribeSession(session);
-            session.AddDialogueControlTag();
+            PublishLooseGameplayTagRequests(session, LooseGameplayTagChangeOperation.Add);
             session.EnterSpeech(request.Asset.EntryNode.FirstSpeechNode);
             Started?.Invoke(new DialogueStartedEvent(session));
             return new DialogueStartResult(DialogueStartStatus.Started, "对话已开始。", session);
@@ -156,11 +158,24 @@ namespace RPG.DialogueSystem
 
             DialogueStepStatus conditionStatus = EvaluateConditions(choice, out string conditionMessage);
             if (conditionStatus != DialogueStepStatus.Advanced)
+            {
+                if (conditionStatus == DialogueStepStatus.MissingHandler)
+                {
+                    DialogueSession failedSession = CurrentSession;
+                    failedSession.End(conditionMessage);
+                    return CreateStepResult(conditionStatus, conditionMessage, failedSession);
+                }
                 return CreateStepResult(conditionStatus, conditionMessage, CurrentSession);
+            }
 
+            DialogueSession session = CurrentSession;
             DialogueStepStatus actionStatus = ExecuteActions(choice, out string actionMessage);
             if (actionStatus != DialogueStepStatus.Advanced)
-                return CreateStepResult(actionStatus, actionMessage, CurrentSession);
+            {
+                if (actionStatus == DialogueStepStatus.Failed || actionStatus == DialogueStepStatus.MissingHandler)
+                    session.End(actionMessage);
+                return CreateStepResult(actionStatus, actionMessage, session);
+            }
 
             // Action 只产生副作用，不返回成功状态；所有动作完成后立即沿 Choice 直接引用跳转。
             return EnterTarget(choice.TargetNode);
@@ -199,6 +214,7 @@ namespace RPG.DialogueSystem
             session.SpeechPresented -= OnSpeechPresented;
             session.ChoicePresented -= OnChoicePresented;
             session.Ended -= OnSessionEnded;
+            PublishLooseGameplayTagRequests(session, LooseGameplayTagChangeOperation.Remove);
             if (ReferenceEquals(CurrentSession, session)) CurrentSession = null;
             Ended?.Invoke(eventArgs);
         }
@@ -223,7 +239,7 @@ namespace RPG.DialogueSystem
             if (targetNode is DialogueEndNode endNode)
             {
                 DialogueSession session = CurrentSession;
-                session.End( "已进入结束节点。");
+                session.End("已进入结束节点。", DialogueEndStatus.Completed);
                 return CreateStepResult(DialogueStepStatus.Ended, "对话已结束。", session);
             }
 
@@ -304,8 +320,10 @@ namespace RPG.DialogueSystem
                 }
                 catch (Exception exception)
                 {
-                    // Action 是外部业务边界；记录异常后继续沿 TargetNode 推进，避免动作结果改变图流程。
+                    // Action 是外部业务边界；异常结束当前会话，避免副作用失败后继续沿图推进。
                     Debug.LogException(exception);
+                    message = $"Action Handler 执行失败：{exception.Message}";
+                    return DialogueStepStatus.Failed;
                 }
             }
 
@@ -343,9 +361,9 @@ namespace RPG.DialogueSystem
                 return false;
             }
 
-            if (request.Player == null)
+            if (request.Initiator == null || request.Initiator.ParticipantObject == null)
             {
-                message = "DialogueRequest 必须配置玩家对象。";
+                message = "DialogueRequest 必须配置发起者 Participant。";
                 return false;
             }
 
@@ -357,6 +375,30 @@ namespace RPG.DialogueSystem
 
             message = string.Empty;
             return true;
+        }
+
+        /// <summary>
+        /// 为发起者发布通用移动和 Ability 阻断 Tag 请求；目标 ASC 自行桥接事件。
+        /// </summary>
+        /// <param name="session">当前对话会话。</param>
+        /// <param name="operation">增加或移除操作。</param>
+        private void PublishLooseGameplayTagRequests(
+            DialogueSession session,
+            LooseGameplayTagChangeOperation operation)
+        {
+            GameObject target = session.Request.Initiator?.ParticipantObject;
+            if (target == null) return;
+
+            this.SendEvent(new LooseGameplayTagChangeRequestedEventArgs(
+                target,
+                session.SessionId,
+                GameplayTags.Tag_State_Block_Movement,
+                operation));
+            this.SendEvent(new LooseGameplayTagChangeRequestedEventArgs(
+                target,
+                session.SessionId,
+                GameplayTags.Tag_State_Block_AbilityActivation,
+                operation));
         }
 
         /// <summary>创建与当前系统会话关联的推进结果。</summary>

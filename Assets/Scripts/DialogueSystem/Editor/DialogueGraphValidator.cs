@@ -109,6 +109,7 @@ namespace RPG.DialogueSystem
             ValidateEntryReference(asset.EntryNode, nodeSet, messages);
             ValidateNodeReferences(nodes, nodeSet, messages, conditionTypes, actionTypes,
                 validateConditionHandlers, validateActionHandlers);
+            ValidateTermination(asset.EntryNode, nodes, nodeSet, messages);
             return messages;
         }
 
@@ -360,6 +361,114 @@ namespace RPG.DialogueSystem
         #endregion
 
         #region 内部辅助
+
+        /// <summary>
+        /// 校验 Entry 可达子图是否存在终点，并确保每个可达节点都有通往 EndNode 的路径。
+        /// </summary>
+        /// <param name="entryNode">资产入口节点。</param>
+        /// <param name="nodes">资产全部节点。</param>
+        /// <param name="nodeSet">资产节点引用集合。</param>
+        /// <param name="messages">输出校验消息。</param>
+        private static void ValidateTermination(
+            DialogueEntryNode entryNode,
+            IReadOnlyList<DialogueNode> nodes,
+            ISet<DialogueNode> nodeSet,
+            ICollection<DialogueValidationMessage> messages)
+        {
+            Dictionary<DialogueNode, List<DialogueNode>> edges = BuildEdges(entryNode, nodes, nodeSet);
+            HashSet<DialogueNode> reachable = new HashSet<DialogueNode>();
+            Queue<DialogueNode> pending = new Queue<DialogueNode>();
+            if (entryNode != null) pending.Enqueue(entryNode);
+            while (pending.Count > 0)
+            {
+                DialogueNode current = pending.Dequeue();
+                if (!reachable.Add(current) || !edges.TryGetValue(current, out List<DialogueNode> nextNodes)) continue;
+                for (int index = 0; index < nextNodes.Count; index++)
+                    if (!reachable.Contains(nextNodes[index])) pending.Enqueue(nextNodes[index]);
+            }
+
+            HashSet<DialogueNode> canReachEnd = new HashSet<DialogueNode>();
+            foreach (DialogueNode node in reachable)
+                if (node is DialogueEndNode) canReachEnd.Add(node);
+
+            bool changed;
+            do
+            {
+                changed = false;
+                foreach (KeyValuePair<DialogueNode, List<DialogueNode>> pair in edges)
+                {
+                    if (!reachable.Contains(pair.Key) || canReachEnd.Contains(pair.Key)) continue;
+                    for (int index = 0; index < pair.Value.Count; index++)
+                    {
+                        if (!canReachEnd.Contains(pair.Value[index])) continue;
+                        canReachEnd.Add(pair.Key);
+                        changed = true;
+                        break;
+                    }
+                }
+            } while (changed);
+
+            bool hasReachableEnd = false;
+            foreach (DialogueNode node in canReachEnd)
+                if (node is DialogueEndNode) { hasReachableEnd = true; break; }
+            if (!hasReachableEnd)
+            {
+                messages.Add(new DialogueValidationMessage(
+                    DialogueValidationSeverity.Error,
+                    "EntryNode 可达子图至少需要一个 EndNode。",
+                    entryNode?.NodeId));
+            }
+
+            foreach (DialogueNode node in reachable)
+            {
+                if (node is DialogueEndNode || canReachEnd.Contains(node)) continue;
+                messages.Add(new DialogueValidationMessage(
+                    DialogueValidationSeverity.Error,
+                    "可达节点没有通往 EndNode 的路径，可能存在封闭循环或死分支。",
+                    node.NodeId));
+            }
+        }
+
+        /// <summary>按运行时节点跳转规则构建图边集合。</summary>
+        /// <param name="entryNode">入口节点。</param>
+        /// <param name="nodes">资产节点集合。</param>
+        /// <param name="nodeSet">资产节点引用集合。</param>
+        /// <returns>每个节点的直接后继集合。</returns>
+        private static Dictionary<DialogueNode, List<DialogueNode>> BuildEdges(
+            DialogueEntryNode entryNode,
+            IReadOnlyList<DialogueNode> nodes,
+            ISet<DialogueNode> nodeSet)
+        {
+            Dictionary<DialogueNode, List<DialogueNode>> edges = new Dictionary<DialogueNode, List<DialogueNode>>();
+            for (int index = 0; index < nodes.Count; index++)
+            {
+                DialogueNode node = nodes[index];
+                if (node == null) continue;
+                List<DialogueNode> next = new List<DialogueNode>();
+                if (node is DialogueEntryNode entry && entry.FirstSpeechNode != null && nodeSet.Contains(entry.FirstSpeechNode))
+                    next.Add(entry.FirstSpeechNode);
+                else if (node is DialogueSpeechNode speech)
+                {
+                    if (speech.Choices.Count > 0)
+                    {
+                        for (int choiceIndex = 0; choiceIndex < speech.Choices.Count; choiceIndex++)
+                        {
+                            DialogueChoiceNode choice = speech.Choices[choiceIndex];
+                            if (choice != null && nodeSet.Contains(choice)) next.Add(choice);
+                        }
+                    }
+                    else if (speech.NextNode != null && nodeSet.Contains(speech.NextNode))
+                        next.Add(speech.NextNode);
+                }
+                else if (node is DialogueChoiceNode choiceNode &&
+                         choiceNode.TargetNode != null && nodeSet.Contains(choiceNode.TargetNode))
+                    next.Add(choiceNode.TargetNode);
+
+                edges[node] = next;
+            }
+
+            return edges;
+        }
 
         /// <summary>复制 Handler 定义类型集合。</summary>
         /// <param name="types">待复制的定义类型集合。</param>

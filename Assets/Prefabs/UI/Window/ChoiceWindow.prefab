@@ -66,7 +66,7 @@ RectTransform:
   m_GameObject: {fileID: 5677016004488553930}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 8538564025785449027}
@@ -166,6 +166,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   IsFullWindow: 0
   DoAnimation: 0
+  initOptionPrefabCount: 3
+  OptionPrefabPath: OptionChoice
   ChoiceRootTransform: {fileID: 7169893238201610552}
 --- !u!1 &6508778022708221465
 GameObject:

@@ -2,22 +2,19 @@ using System.Collections.Generic;
 using RPG.Game;
 using RPG.InteractionSystem;
 using UnityEngine;
-using WS_Modules.GAS.AbilitySystemComponent;
-using WS_Modules.GAS.TAG;
 
 namespace RPG.DialogueSystem
 {
     #region 对话交互适配
 
     /// <summary>
-    /// 将 NPC 的 DialogueAsset 和 SpeakerId 适配为通用交互 Provider。
+    /// 将 NPC 的 DialogueAsset 和 DialogueParticipant 适配为通用交互 Provider。
     /// </summary>
     public sealed class DialogueInteractable : MonoBehaviour, IInteractable
     {
         #region 序列化字段与状态
 
         [SerializeField] private DialogueAsset dialogueAsset;
-        [SerializeField] private string speakerId = string.Empty;
         [SerializeField] private Transform participantRoot;
         [SerializeField] private MonoBehaviour dialogueSystemProvider;
 
@@ -32,9 +29,6 @@ namespace RPG.DialogueSystem
 
         /// <inheritdoc />
         public Transform InteractionOrigin => participantRoot != null ? participantRoot : transform;
-
-        /// <summary>获取 NPC 在当前对话中的 SpeakerId。</summary>
-        public string SpeakerId => speakerId;
 
         /// <summary>获取配置的 DialogueAsset。</summary>
         public DialogueAsset DialogueAsset => dialogueAsset;
@@ -82,6 +76,8 @@ namespace RPG.DialogueSystem
         private bool CanStartDialogue(GameObject interactor)
         {
             return interactor != null && dialogueAsset != null &&
+                   interactor.GetComponentInParent<DialogueParticipant>() != null &&
+                   FindNpcParticipant() != null &&
                    dialogueSystemProvider is DialogueSystemProvider provider && provider.System != null;
         }
 
@@ -93,17 +89,31 @@ namespace RPG.DialogueSystem
             if (!CanStartDialogue(interactor)) return false;
 
             DialogueSystemProvider provider = (DialogueSystemProvider)dialogueSystemProvider;
-            GameplayAbilitySystemComponent playerAsc =
-                interactor.GetComponentInParent<GameplayAbilitySystemComponent>();
-            DialogueParticipantBinding participant = new DialogueParticipantBinding(speakerId, gameObject);
+            IDialogueParticipantContext initiator =
+                interactor.GetComponentInParent<DialogueParticipant>();
+            IDialogueParticipantContext participant =
+                FindNpcParticipant();
             DialogueRequest request = new DialogueRequest(
                 dialogueAsset,
-                interactor,
-                playerAsc,
+                initiator,
                 new[] { participant },
-                this,
-                provider.DialogueControlTag);
+                this);
             return provider.System.TryStartDialogue(request).Succeeded;
+        }
+
+        /// <summary>按配置的参与者根节点查找 NPC Context，兼容交互体挂在 NPC 子节点的布局。</summary>
+        /// <returns>找到的 NPC Participant；不存在时为空。</returns>
+        private DialogueParticipant FindNpcParticipant()
+        {
+            if (participantRoot != null)
+            {
+                DialogueParticipant participant = participantRoot.GetComponent<DialogueParticipant>();
+                if (participant != null) return participant;
+                participant = participantRoot.GetComponentInParent<DialogueParticipant>();
+                if (participant != null) return participant;
+            }
+
+            return GetComponentInParent<DialogueParticipant>();
         }
 
         #endregion
@@ -114,19 +124,10 @@ namespace RPG.DialogueSystem
     /// </summary>
     public sealed class DialogueSystemProvider : MonoBehaviour
     {
-        #region 配置
-
-        [SerializeField] private GameplayTag dialogueControlTag;
-
-        #endregion
-
         #region 属性
 
         /// <summary>在 Provider 生命周期内持有的对话系统实例。</summary>
         public DialogueSystem System { get; private set; }
-
-        /// <summary>获取项目配置的对话控制 GameplayTag。</summary>
-        public GameplayTag DialogueControlTag => dialogueControlTag;
 
         #endregion
 

@@ -14,6 +14,9 @@ namespace RPG.InteractionSystem.Tests
         [Title("交互系统")]
         [SerializeField, Required] private PlayerInteractor interactor;
 
+        [Title("物品交互")]
+        [SerializeField] private ItemInteractable itemInteractable;
+
         #endregion
 
         #region 检测测试
@@ -77,6 +80,53 @@ namespace RPG.InteractionSystem.Tests
             bool succeeded = target.SubmitSelected();
             Debug.Log($"[InteractionTest] Execute succeeded={succeeded}", this);
             LogState("执行当前项");
+        }
+
+        /// <summary>按列表索引模拟 ChoiceWindowView 的点击流程，先选择再提交。</summary>
+        /// <param name="index">待点击的 Option 索引。</param>
+        [Button("按索引选择并执行")]
+        public void SelectAndSubmitAtIndex(int index)
+        {
+            if (!TryGetInteractor(out PlayerInteractor target)) return;
+            if (index < 0 || index >= target.Options.Count)
+            {
+                Debug.LogWarning($"[InteractionTest] Option 索引无效：{index}", this);
+                return;
+            }
+
+            bool selected = target.Select(target.Options[index].Id);
+            bool succeeded = selected && target.SubmitSelected();
+            Debug.Log($"[InteractionTest] Click index={index}, selected={selected}, succeeded={succeeded}", this);
+            LogState("按索引选择并执行");
+        }
+
+        #endregion
+
+        #region 物品测试
+
+        /// <summary>扫描并提交配置物品的拾取 Option，验证接收器成功后物品被停用。</summary>
+        [Button("测试物品拾取")]
+        public void SubmitItemPickup()
+        {
+            if (!TryGetInteractor(out PlayerInteractor target) || itemInteractable == null)
+            {
+                Debug.LogError("[InteractionTest] 请同时配置 PlayerInteractor 和 ItemInteractable。", this);
+                return;
+            }
+
+            target.Detector.ScanNow();
+            for (int index = 0; index < target.Options.Count; index++)
+            {
+                InteractionOption option = target.Options[index];
+                if (option.InteractionObject != itemInteractable.gameObject) continue;
+
+                bool selected = target.Select(option.Id);
+                bool succeeded = selected && target.SubmitSelected();
+                Debug.Log($"[InteractionTest] Item selected={selected}, succeeded={succeeded}, active={itemInteractable.gameObject.activeSelf}", this);
+                return;
+            }
+
+            Debug.LogWarning("[InteractionTest] 当前列表中没有可执行的物品 Option。", this);
         }
 
         #endregion

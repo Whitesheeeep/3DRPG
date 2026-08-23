@@ -14,6 +14,7 @@ namespace RPG.DialogueSystem
         [SerializeField] private string speakerId = string.Empty;
         [SerializeField, TextArea(3, 8)] private string text = string.Empty;
         [SerializeField] private AnimationClip animationClip;
+        [SerializeField] private AudioClip voiceClip;
         [SerializeField, Min(0f)] private float animationFadeDuration;
         [SerializeField] private DialogueNode nextNode;
         [SerializeField] private List<DialogueChoiceNode> choices = new List<DialogueChoiceNode>();
@@ -30,6 +31,9 @@ namespace RPG.DialogueSystem
 
         /// <summary>获取可选的全身说话动画。</summary>
         public AnimationClip AnimationClip => animationClip;
+
+        /// <summary>获取可选的对白语音片段。</summary>
+        public AudioClip VoiceClip => voiceClip;
 
         /// <summary>获取动画在固定 Action 层的淡入时长。</summary>
         public float AnimationFadeDuration => animationFadeDuration;
@@ -52,11 +56,18 @@ namespace RPG.DialogueSystem
         /// <param name="speechText">对白文本。</param>
         /// <param name="clip">全身说话动画，可为空。</param>
         /// <param name="fadeDuration">动画淡入秒数。</param>
-        public void Configure(string value, string speechText, AnimationClip clip, float fadeDuration)
+        /// <param name="voice">对白语音，可为空。</param>
+        public void Configure(
+            string value,
+            string speechText,
+            AnimationClip clip,
+            float fadeDuration,
+            AudioClip voice = null)
         {
             speakerId = value ?? string.Empty;
             text = speechText ?? string.Empty;
             animationClip = clip;
+            voiceClip = voice;
             animationFadeDuration = Mathf.Max(0f, fadeDuration);
         }
 
