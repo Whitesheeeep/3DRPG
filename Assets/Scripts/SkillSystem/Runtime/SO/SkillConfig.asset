@@ -185,14 +185,26 @@ MonoBehaviour:
     durationFrames: 7
     sampleIntervalFrames: 1
     detectionData:
-      rid: 3428733716005650436
+      rid: 3428734063055470596
+  - id: 85146ccca4c24659acdba7eb5aeadf98
+    startFrame: 14
+    durationFrames: 15
+    sampleIntervalFrames: 1
+    detectionData:
+      rid: 3428734063055470592
   references:
     version: 2
     RefIds:
-    - rid: 3428733716005650436
+    - rid: 3428734063055470592
+      type: {class: BoxAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        localPosition: {x: 0, y: 0, z: 0}
+        localEulerAngles: {x: 0, y: 0, z: 0}
+        size: {x: 1, y: 1, z: 1}
+    - rid: 3428734063055470596
       type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
-        localPosition: {x: 6.7566525e-12, y: 0.5252155, z: 0}
+        localPosition: {x: 6.7566525e-12, y: 0.5252155, z: -0.0108626485}
         localEulerAngles: {x: 0, y: 0, z: 0}
         innerRadius: 1.22
         outerRadius: 3.09

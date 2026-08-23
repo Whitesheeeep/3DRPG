@@ -16,6 +16,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         // 三个 Unity 阶段复用稳定快照，避免 Runtime 在回调中结束或激活时破坏当前遍历。
         private readonly List<GameplayAbilityRuntime> runtimeSnapshot = new();
         private readonly Dictionary<GameEffectRuntime, GameplayAbilityRuntime> cooldownOwners = new();
+        // ASC 初始化时注入的统一阻断规则快照；Controller 不直接持有配置资产数组。
+        private GameplayTagQuery activationBlockedOwnerTags;
         private int nextHandleId = 1;
         private int nextActivationId = 1;
         #endregion
@@ -49,6 +51,16 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         {
             Owner = owner ?? throw new ArgumentNullException(nameof(owner));
             Owner.GameEffectCtrl.EffectRemoved += OnEffectRemoved;
+        }
+
+        /// <summary>
+        /// 初始化当前 ASC 的统一 Ability 激活阻断 Tag 快照。
+        /// </summary>
+        /// <param name="blockedOwnerTags">Owner 拥有任意一个即阻止新 Ability 激活的 Tag 集合。</param>
+        internal void InitializeActivationBlockedTags(GameplayTagQuery blockedOwnerTags)
+        {
+            activationBlockedOwnerTags.Clear();
+            activationBlockedOwnerTags = blockedOwnerTags;
         }
         #endregion
 
@@ -175,6 +187,9 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 }
             }
 
+            // 全局阻断规则位于具体 Ability 条件之前，统一拦截对话、眩晕等状态下的新激活。
+            if (IsActivationBlockedByOwnerTags()) return false;
+
             if (spec.Level < 1 ||
                 !spec.Data.ActivationTagQuery.Matches(Owner.Tags) ||
                 !HasValidActivationPolicies(spec.Data) ||
@@ -242,6 +257,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 activeRuntimes[^1].Cancel();
             runtimeSnapshot.Clear();
             grantedAbilities.Clear();
+            activationBlockedOwnerTags.Clear();
         }
 
         // Runtime 已先进入终态；Controller 先移除，再发送唯一公开终态事件。
@@ -268,6 +284,16 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         #endregion
 
         #region 校验与内部辅助
+        /// <summary>
+        /// 判断 Owner 是否拥有统一规则中任意一个 Ability 激活阻断 Tag。
+        /// </summary>
+        /// <returns>命中任意阻断 Tag 时返回 true。</returns>
+        private bool IsActivationBlockedByOwnerTags()
+        {
+            return activationBlockedOwnerTags.IsValid &&
+                   activationBlockedOwnerTags.Matches(Owner.Tags);
+        }
+
         // Cost/Cooldown 是序列化边界输入，运行时仍验证 Duration Policy。
         private static bool HasValidActivationPolicies(GameplayAbilityData data) =>
             (data.CostEffect == null ||

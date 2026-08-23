@@ -37,6 +37,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         [SerializeField, AssetsOnly, Required, Tooltip("为真实技能周期提供 CueTag 到 CueData 的运行时映射。")]
         private GameplayCueDatabase cueDatabase;
 
+        [SerializeField, AssetsOnly, Tooltip("可选的共享 Ability 激活阻断规则资产；为空时使用空规则。")]
+        private GameplayAbilityActivationRules activationRules;
+
         [Title("真实技能 SO")]
         [SerializeField, AssetsOnly, Required]
         private InstantGameplayAbilityData instantAbility;
@@ -234,7 +237,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             GameplayAbilityManager.Instance.Initialize(abilityDatabase);
             GameplayCueManager.Instance.Initialize(cueDatabase);
             realCharacterAsc.Clear();
-            realCharacterAsc.Initialize(attributeSets);
+            InitializeAsc(realCharacterAsc);
             realFirstSkillHandle = realCharacterAsc.GiveAbility(skillConfigAbility, 1);
             realSecondSkillHandle = realCharacterAsc.GiveAbility(secondSkillConfigAbility, 1);
             Debug.Log($"[ASCTest][RealCharacter] Initialized first={realFirstSkillHandle.IsValid}, " +
@@ -1068,6 +1071,16 @@ namespace WS_Modules.GAS.AbilitySystemComponent
 
         #region 场景准备与清理
 
+        /// <summary>
+        /// 使用当前测试夹具初始化 ASC；规则资产为空时保留旧的空规则行为。
+        /// </summary>
+        /// <param name="abilitySystem">待初始化的 ASC。</param>
+        private void InitializeAsc(GameplayAbilitySystemComponent abilitySystem)
+        {
+            if (activationRules == null) abilitySystem.Initialize(attributeSets);
+            else abilitySystem.Initialize(attributeSets, activationRules);
+        }
+
         /// <summary>检查 Inspector 测试夹具，避免缺失 SO 时输出误导性的运行时失败。</summary>
         /// <returns>全部测试资产均已配置时返回 true。</returns>
         private bool ValidateInputs()
@@ -1133,7 +1146,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
                 source = sourceObject.AddComponent<GameplayAbilitySystemComponent>();
             }
             sourceObject.SetActive(true);
-            source.Initialize(attributeSets);
+            InitializeAsc(source);
 
             targetObject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             targetObject.name = $"ASC Test Target - {currentScenario}";
@@ -1143,7 +1156,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
                 (IsSkillConfigScenario(scenario) ? 2f : targetDistance),
                 transform.rotation);
             target = targetObject.AddComponent<GameplayAbilitySystemComponent>();
-            target.Initialize(attributeSets);
+            InitializeAsc(target);
 
             GameplayAbilityData ability = GetAbility(scenario);
             bool dependenciesValid = ValidateAbilityRegistration(ability) &&

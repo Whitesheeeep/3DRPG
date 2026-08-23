@@ -1,6 +1,10 @@
 fileFormatVersion: 2
+<<<<<<<< HEAD:Assets/Scripts/WSFrame/Utilities/Editor/PhysicsUtility.meta
 guid: e49badf119b62bc45b8f0950ca02757c
 folderAsset: yes
+========
+guid: 2d0297ac40cf88340b56849a5a1d2acb
+>>>>>>>> main:Assets/Res/Animation/Kevin Iglesias/Human Animations/Old Versions/Melee Warrior Animations - Old Version (1.3).unitypackage.meta
 DefaultImporter:
   externalObjects: {}
   userData: 

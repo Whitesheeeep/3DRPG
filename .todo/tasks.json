@@ -195,5 +195,49 @@
       }
     },
     "isImported": false
+  },
+  {
+    "id": "TASK_57",
+    "priority": "LOW",
+    "tags": [],
+    "title": "红点系统",
+    "description": "",
+    "status": "TODO",
+    "date": {
+      "date": {
+        "year": 2026,
+        "month": 8,
+        "day": 12
+      },
+      "time": {
+        "hour": 20,
+        "minute": 49,
+        "second": 42,
+        "nano": 479913900
+      }
+    },
+    "isImported": false
+  },
+  {
+    "id": "TASK_79",
+    "priority": "LOW",
+    "tags": [],
+    "title": "任务系统配合红点系统一起",
+    "description": "",
+    "status": "TODO",
+    "date": {
+      "date": {
+        "year": 2026,
+        "month": 8,
+        "day": 12
+      },
+      "time": {
+        "hour": 21,
+        "minute": 2,
+        "second": 44,
+        "nano": 52288900
+      }
+    },
+    "isImported": false
   }
 ]
