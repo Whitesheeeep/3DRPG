@@ -12,9 +12,7 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
-  m_InvalidKeywords:
-  - SELFSHADOW_ON
-  - _TOON
+  m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -123,6 +121,7 @@ Material:
     - _AmbientToDiffuse: 5
     - _Blend: 0
     - _BlendModePreserveSpecular: 1
+    - _BlendOp: 0
     - _BumpScale: 1
     - _ClearCoatMask: 0
     - _ClearCoatSmoothness: 0
@@ -159,6 +158,7 @@ Material:
     - _RimIntensity: 1
     - _RimOffset: 1
     - _RimThreshold: 1
+    - _SampleGI: 0
     - _ShadowLum: 1.5
     - _ShadowOffset: 0
     - _ShadowSmoothness: 0
