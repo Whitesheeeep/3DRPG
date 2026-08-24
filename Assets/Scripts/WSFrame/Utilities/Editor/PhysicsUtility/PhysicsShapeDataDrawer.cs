@@ -84,7 +84,7 @@ namespace WS_Modules.Utilities.Editor
                         new GUIContent("轴向"));
                     break;
                 case PhysicsShapeType.Sector:
-                    DrawSectorFields(fieldRect, property, line, spacing);
+                    DrawSectorFields(ref fieldRect, property, line, spacing);
                     break;
                 case PhysicsShapeType.Ray:
                     EditorGUI.PropertyField(fieldRect, property.FindPropertyRelative("length"),
@@ -126,7 +126,7 @@ namespace WS_Modules.Utilities.Editor
         }
 
         /// <summary>绘制 Sector 的内外半径、角度和高度字段。</summary>
-        private static void DrawSectorFields(Rect fieldRect, SerializedProperty property,
+        private static void DrawSectorFields(ref Rect fieldRect, SerializedProperty property,
             float line, float spacing)
         {
             EditorGUI.PropertyField(fieldRect, property.FindPropertyRelative("innerRadius"),

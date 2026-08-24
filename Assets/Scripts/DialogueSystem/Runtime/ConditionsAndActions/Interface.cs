@@ -1,6 +1,6 @@
 using System;
 
-namespace RPG.DialogueSystem
+namespace RPG.DialogueSystemModule
 {
     #region Condition 与 Action 定义
 

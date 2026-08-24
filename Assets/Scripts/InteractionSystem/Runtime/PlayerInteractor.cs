@@ -28,6 +28,8 @@ namespace RPG.InteractionSystem
         private readonly List<InteractionOption> options = new();
         private readonly List<InteractionOption> collectedOptions = new();
         private readonly HashSet<InteractionOptionId> optionIds = new();
+
+        // 用于在刷新 Option 时缓存评分数据，避免排序比较器重复计算空间数据。
         private readonly List<ScoredOption> scoredOptions = new();
         private readonly List<InteractionOptionId> previousOptionIds = new();
         private RaycastHit[] occlusionHits = new RaycastHit[16];
@@ -204,7 +206,7 @@ namespace RPG.InteractionSystem
 
         #region Option 刷新
 
-        /// <summary>从 Provider 重建候选 Option，并执行视野、遮挡、距离和业务筛选。</summary>
+        /// <summary>从 Provider 重建候选 Option，并执行视野、遮挡、最大距离和业务筛选。</summary>
         private void RefreshOptions()
         {
             IReadOnlyList<IInteractable> providers = detector.Providers;
@@ -218,18 +220,17 @@ namespace RPG.InteractionSystem
             collectedOptions.Clear();
             optionIds.Clear();
             scoredOptions.Clear();
-            InteractionQueryContext context = new(gameObject, transform, viewCamera, detector.DetectionRange);
+            InteractionQueryContext context = new(gameObject, transform, viewCamera);
 
-            for (int providerIndex = 0; providerIndex < providers.Count; providerIndex++)
+            // 收集所有 Provider 的 Option，允许 Provider 自行筛选和生成。
+            foreach (var provider in providers)
             {
-                IInteractable provider = providers[providerIndex];
-                if (provider == null) continue;
-                provider.CollectInteractionOptions(in context, collectedOptions);
+                provider?.CollectInteractionOptions(in context, collectedOptions);
             }
 
-            for (int optionIndex = 0; optionIndex < collectedOptions.Count; optionIndex++)
+            // 对收集到的 Option 执行硬筛选和评分，避免重复计算空间数据。
+            foreach (var option in collectedOptions)
             {
-                InteractionOption option = collectedOptions[optionIndex];
                 if (option == null || !optionIds.Add(option.Id)) continue;
                 if (!TryScoreOption(option, out ScoredOption scoredOption)) continue;
                 scoredOptions.Add(scoredOption);
@@ -304,8 +305,6 @@ namespace RPG.InteractionSystem
 
             Vector3 toOrigin = option.InteractionOrigin.position - transform.position;
             float distanceSqr = toOrigin.sqrMagnitude;
-            float detectionRange = detector.DetectionRange;
-            if (distanceSqr > detectionRange * detectionRange) return false;
             if (option.MaxDistance > 0f && distanceSqr > option.MaxDistance * option.MaxDistance) return false;
             if (!option.CanExecute(gameObject)) return false;
             if (!IsVisible(option)) return false;

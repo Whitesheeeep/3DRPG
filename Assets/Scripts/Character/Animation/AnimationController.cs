@@ -32,6 +32,11 @@ namespace RPG.Character.Animation
             InitializeIfNeeded();
         }
 
+        private void Reset()
+        {
+            animancer = GetComponent<AnimancerComponent>();
+            profile = null;
+        }
         #endregion
 
         #region 播放

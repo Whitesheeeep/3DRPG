@@ -14,9 +14,11 @@ namespace WS_Modules.UIModule
         #region 资源与状态
 
         // View 依赖生成的 ChoiceRoot Transform 与 Addressable 选项行资源。
+        // 依赖数据：pendingOptionNames、pendingSelectedIndex。
         private readonly Transform choiceRoot;
         private readonly string optionPrefabPath;
         private readonly int initialRowCount;
+        // rows 和 pendingOptionNames index 对应，pendingSelectedIndex 为 -1 时表示无选中项。
         private readonly List<OptionChoice> rows = new();
         private readonly List<string> pendingOptionNames = new();
 

@@ -14691,14 +14691,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f4df8e4c3f3743d0b2b8a1ac8c770003, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  detectionRange: 8
+  detectionShape:
+    type: 2
+    canDrawGizmos: 1
+    localPosition: {x: 0, y: 0.8, z: 0}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+    size: {x: 1, y: 1, z: 1}
+    radius: 8
+    height: 2
+    capsuleAxis: 1
+    innerRadius: 0
+    outerRadius: 2
+    angle: 90
+    length: 5
   scanInterval: 0.1
   initialBufferSize: 64
   detectionMask:
     serializedVersion: 2
     m_Bits: 2147483647
   startDetect: 1
-  characterController: {fileID: 1733374006}
 --- !u!114 &1733374018
 MonoBehaviour:
   m_ObjectHideFlags: 0

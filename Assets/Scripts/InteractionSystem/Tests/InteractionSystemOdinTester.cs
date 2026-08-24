@@ -184,7 +184,13 @@ namespace RPG.InteractionSystem.Tests
             if (!TryGetInteractor(out PlayerInteractor target)) return;
 
             string selectedId = target.SelectedOption == null ? "<none>" : target.SelectedOption.Id.ToString();
-            Debug.Log($"[InteractionTest] {operation}: providers={target.Detector.Providers.Count}, options={target.Options.Count}, selected={selectedId}", this);
+            string shapeType = target.Detector.DetectionShape == null
+                ? "<none>"
+                : target.Detector.DetectionShape.Type.ToString();
+            bool canDrawGizmos = target.Detector.DetectionShape != null &&
+                target.Detector.DetectionShape.CanDrawGizmos;
+            Debug.Log($"[InteractionTest] {operation}: shape={shapeType}, gizmos={canDrawGizmos}, " +
+                $"providers={target.Detector.Providers.Count}, options={target.Options.Count}, selected={selectedId}", this);
             for (int index = 0; index < target.Options.Count; index++)
             {
                 InteractionOption option = target.Options[index];

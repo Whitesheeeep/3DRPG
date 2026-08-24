@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace RPG.DialogueSystem
+namespace RPG.DialogueSystemModule
 {
     #region 校验结果
 

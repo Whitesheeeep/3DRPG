@@ -3,7 +3,7 @@ using RPG.Game;
 using RPG.InteractionSystem;
 using UnityEngine;
 
-namespace RPG.DialogueSystem
+namespace RPG.DialogueSystemModule
 {
     #region 对话交互适配
 
@@ -16,8 +16,9 @@ namespace RPG.DialogueSystem
 
         [SerializeField] private DialogueAsset dialogueAsset;
         [SerializeField] private Transform participantRoot;
-        [SerializeField] private MonoBehaviour dialogueSystemProvider;
 
+        // 对话系统由项目唯一的 BusinessArchitecture 持有，场景组件只缓存运行时引用。
+        private DialogueSystem dialogueSystem;
         private InteractionOption dialogueOption;
 
         #endregion
@@ -33,10 +34,6 @@ namespace RPG.DialogueSystem
         /// <summary>获取配置的 DialogueAsset。</summary>
         public DialogueAsset DialogueAsset => dialogueAsset;
 
-        /// <summary>设置用于组合根注入的对话系统 Provider。</summary>
-        /// <param name="provider">提供 DialogueSystem 的组件。</param>
-        public void SetDialogueSystemProvider(MonoBehaviour provider) => dialogueSystemProvider = provider;
-
         #endregion
 
         #region Unity 生命周期
@@ -44,6 +41,8 @@ namespace RPG.DialogueSystem
         /// <summary>创建可缓存的 Dialogue Option；业务可用性在每次查询时动态判断。</summary>
         private void Awake()
         {
+            // GameArchitectureStartup 以 -900 执行序提前启动架构；此处直接取得已注册的唯一系统。
+            dialogueSystem = GameArchitecture.Interface.GetSystem<DialogueSystem>();
             dialogueOption = new InteractionOption(
                 new InteractionOptionId(GetInstanceID(), "Dialogue"),
                 "对话",
@@ -78,7 +77,7 @@ namespace RPG.DialogueSystem
             return interactor != null && dialogueAsset != null &&
                    interactor.GetComponentInParent<DialogueParticipant>() != null &&
                    FindNpcParticipant() != null &&
-                   dialogueSystemProvider is DialogueSystemProvider provider && provider.System != null;
+                   dialogueSystem != null;
         }
 
         /// <summary>构造并提交一次对话启动请求。</summary>
@@ -88,7 +87,6 @@ namespace RPG.DialogueSystem
         {
             if (!CanStartDialogue(interactor)) return false;
 
-            DialogueSystemProvider provider = (DialogueSystemProvider)dialogueSystemProvider;
             IDialogueParticipantContext initiator =
                 interactor.GetComponentInParent<DialogueParticipant>();
             IDialogueParticipantContext participant =
@@ -98,7 +96,7 @@ namespace RPG.DialogueSystem
                 initiator,
                 new[] { participant },
                 this);
-            return provider.System.TryStartDialogue(request).Succeeded;
+            return dialogueSystem.TryStartDialogue(request).Succeeded;
         }
 
         /// <summary>按配置的参与者根节点查找 NPC Context，兼容交互体挂在 NPC 子节点的布局。</summary>
@@ -114,30 +112,6 @@ namespace RPG.DialogueSystem
             }
 
             return GetComponentInParent<DialogueParticipant>();
-        }
-
-        #endregion
-    }
-
-    /// <summary>
-    /// 从项目 GameArchitecture 获取对话系统的场景组合根。
-    /// </summary>
-    public sealed class DialogueSystemProvider : MonoBehaviour
-    {
-        #region 属性
-
-        /// <summary>在 Provider 生命周期内持有的对话系统实例。</summary>
-        public DialogueSystem System { get; private set; }
-
-        #endregion
-
-        #region Unity 生命周期
-
-        /// <summary>确保项目架构已初始化，并绑定架构中唯一的 DialogueSystem。</summary>
-        private void Awake()
-        {
-            if (GameArchitecture.Interface == null) GameArchitecture.InitArchitecture();
-            System = GameArchitecture.Interface!.GetSystem<DialogueSystem>();
         }
 
         #endregion

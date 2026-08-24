@@ -4,7 +4,7 @@ using UnityEditor.Experimental.GraphView;
 using UnityEngine.UIElements;
 using WS_Modules.UIToolkitExtensions.Editor.GraphView;
 
-namespace RPG.DialogueSystem.Editor
+namespace RPG.DialogueSystemModule.Editor
 {
     /// <summary>
     /// 将一个 DialogueNode 映射为 WSFrame GraphView 节点，并提供稳定端口语义。

@@ -1,7 +1,7 @@
 using RPG.Character.Animation;
 using UnityEngine;
 
-namespace RPG.DialogueSystem
+namespace RPG.DialogueSystemModule
 {
     /// <summary>
     /// 提供一个对话参与者的身份、语音和动画表现能力，不包含业务控制依赖。

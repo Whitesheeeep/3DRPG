@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace RPG.DialogueSystem
+namespace RPG.DialogueSystemModule
 {
     /// <summary>
     /// 保存对话内容、节点子资产和直接 ScriptableObject 跳转引用的图资产。

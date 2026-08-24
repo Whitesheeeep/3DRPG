@@ -17,6 +17,7 @@ MonoBehaviour:
   speakerId: Player
   text: "\u4F60\u597D\u8010\u53D7"
   animationClip: {fileID: 0}
+  voiceClip: {fileID: 0}
   animationFadeDuration: 0
   nextNode: {fileID: 0}
   choices:
@@ -166,6 +167,7 @@ MonoBehaviour:
   speakerId: 
   text: 
   animationClip: {fileID: 0}
+  voiceClip: {fileID: 0}
   animationFadeDuration: 0
   nextNode: {fileID: 0}
   choices: []
@@ -201,6 +203,7 @@ MonoBehaviour:
   speakerId: 
   text: 
   animationClip: {fileID: 0}
+  voiceClip: {fileID: 0}
   animationFadeDuration: 0
   nextNode: {fileID: 0}
   choices:

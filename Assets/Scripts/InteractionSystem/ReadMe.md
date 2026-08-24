@@ -4,7 +4,7 @@
 
 ```mermaid
 flowchart LR
-    Detector[玩家胶囊检测] --> Provider[IInteractable Provider]
+    Detector[玩家可编辑体积检测] --> Provider[IInteractable Provider]
     Provider --> Option[InteractionOption]
     Option --> Filter[距离 / 视口 / 遮挡 / CanExecute]
     Filter --> UI[交互 HUD 列表]
@@ -15,7 +15,7 @@ flowchart LR
 
 `InteractableObject` 是可选便利基类，只提供自身 `GameObject` 和 `Transform` 作为默认交互对象；业务组件也可以直接实现 `IInteractable`。
 
-`InteractionOption` 才是 UI 展示和最终执行的最小单位。Provider 负责缓存并收集 Option，`PlayerInteractor` 负责统一距离、视口、遮挡、业务可用性筛选及稳定排序，UI 只负责展示和选中状态。
+`InteractionOption` 才是 UI 展示和最终执行的最小单位。Provider 负责缓存并收集 Option，`PlayerInteractor` 负责视口、遮挡、Option 最大距离、业务可用性筛选及稳定排序，UI 只负责展示和选中状态。
 
 ## Provider 示例
 
@@ -23,7 +23,9 @@ flowchart LR
 
 ## 接入约束
 
-- `InteractionDetector` 与 `PlayerInteractor` 应挂载在玩家对象上；检测器依赖同节点 `CharacterController`。
+- `InteractionDetector` 与 `PlayerInteractor` 应挂载在玩家对象上；Detector 的交互区域由 `PhysicsShapeData` 配置，不依赖 `CharacterController`。
+- `PhysicsShapeData` 支持 Box、Sphere、Capsule 和 Sector；Inspector 的“开始编辑”按钮可在 Scene View 中调整位置、旋转和尺寸。
+- Detector 的“绘制 Gizmos”开关控制 Scene View 中的持续可视化；检测体积负责 Provider 粗筛，`InteractionOption.MaxDistance` 只负责进一步收紧选项距离。
 - 目标 Collider 可以位于 Provider 的子物体上，检测器会沿父级收集全部 `IInteractable`。
 - `CanExecute == false` 的 Option 不进入 HUD 列表。
 - `InteractionOptionId` 使用 Provider 运行时实例 ID 和稳定 ActionId，只保证当前运行期间稳定，不作为存档 ID。

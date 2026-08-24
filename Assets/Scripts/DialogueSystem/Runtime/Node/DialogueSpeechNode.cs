@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace RPG.DialogueSystem
+namespace RPG.DialogueSystemModule
 {
     /// <summary>
     /// 表示一段由 3D 参与者播放动画并展示文本的对话内容。

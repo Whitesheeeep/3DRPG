@@ -14,29 +14,34 @@ namespace RPG.Character
     /// <summary>统一编排角色 ASC 的 Unity 更新时序，并持有角色移动驱动。</summary>
     [DefaultExecutionOrder(-800)]
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(GameplayAbilitySystemComponent), typeof(Animator), typeof(CharacterController))]
-    [RequireComponent(typeof(PlayerInputController))]
+    [RequireComponent(typeof(GameplayAbilitySystemComponent))]
     [RequireComponent(typeof(SkillRuntimeHost))]
     public sealed class PlayerController : MonoBehaviour, IGameplayAbilitySystemOwner, ILooseGameplayTagEventTarget
     {
         #region 序列化引用与属性
-
-        [SerializeField] private GameplayAbilitySystemComponent abilitySystemComponent;
-        [SerializeField] private Animator animator;
-        [SerializeField] private CharacterController characterController;
-        [SerializeField] private PlayerInputController inputController;
-        [SerializeField] private SkillRuntimeHost skillRuntimeHost;
-        [SerializeField] private MotionDriver motionDriver = new();
+        [SerializeField]
+        private GameplayAbilitySystemComponent abilitySystemComponent;
+        [SerializeField]
+        private Animator animator;
+        [SerializeField]
+        private CharacterController characterController;
+        [SerializeField]
+        private PlayerInputController inputController;
+        [SerializeField]
+        private SkillRuntimeHost skillRuntimeHost;
+        [SerializeField]
+        private MotionDriver motionDriver = new();
         private IMarkerProvider markerProvider;
         private Coroutine frameIntentCleanupCoroutine;
         // 由 PlayerController 持有事件桥接生命周期，不让 ASC 反向订阅全局事件。
         private LooseGameplayTagEventBridge looseGameplayTagEventBridge;
+        /// <summary>获取由当前 PlayerController 独占并管理生命周期的玩家状态黑板。</summary>
+        public PlayerStateBlackboard StateBlackboard { get; private set; }
+        /// <summary>获取当前角色拥有的输入 Intent 仲裁管理器。</summary>
+        public GameplayInputIntentArbiterManager InputIntentArbiterManager { get; private set; }
 
         /// <summary>获取由当前角色长期持有的移动驱动。</summary>
         public IMotionDriver MotionDriver => motionDriver;
-
-        /// <summary>获取由当前 PlayerController 独占并管理生命周期的玩家状态黑板。</summary>
-        public PlayerStateBlackboard StateBlackboard { get; private set; }
 
         /// <inheritdoc />
         public Transform RootTransform => transform;
@@ -53,20 +58,18 @@ namespace RPG.Character
         /// <inheritdoc />
         public GameObject TagEventTarget => gameObject;
 
-        /// <summary>获取当前角色拥有的输入 Intent 仲裁管理器。</summary>
-        public GameplayInputIntentArbiterManager InputIntentArbiterManager { get; private set; }
-
         #endregion
 
-        #if UNITY_EDITOR
+#if UNITY_EDITOR
+
         #region 输入消费事件
         /// <summary>报告黑板来源句柄转交给输入 Controller 后的实际接受结果。</summary>
         internal event Action<GameplayTag, InputRequestHandle, bool> InputRequestConsumptionForwarded;
         #endregion
-        #endif
+
+#endif
 
         #region Unity 生命周期
-
         /// <summary>校验角色序列化依赖并构造不参与 Unity 生命周期的移动驱动。</summary>
         /// <exception cref="InvalidOperationException">任一必需角色依赖未配置时抛出。</exception>
         private void Awake()
@@ -79,7 +82,8 @@ namespace RPG.Character
             if (inputController == null) inputController = GetComponent<PlayerInputController>();
             if (skillRuntimeHost == null) skillRuntimeHost = GetComponent<SkillRuntimeHost>();
             markerProvider = GetComponent<IMarkerProvider>();
-            if (abilitySystemComponent == null || animator == null || characterController == null || inputController == null)
+            if (abilitySystemComponent == null || animator == null || characterController == null ||
+                inputController == null)
                 throw new InvalidOperationException(
                     $"PlayerController '{name}' 必须配置 ASC、Animator、CharacterController 和 PlayerInputController。");
             if (skillRuntimeHost == null)
@@ -151,11 +155,9 @@ namespace RPG.Character
             }
             // ReSharper disable once IteratorNeverReturns
         }
-
         #endregion
 
         #region 输入消费协调
-
         /// <summary>把黑板确认的 Intent 来源阶段提交给所属输入 Controller。</summary>
         /// <param name="intentTag">已确认消费的帧级 Intent Tag。</param>
         /// <param name="handle">业务成功消费 Intent 后由黑板返回的来源句柄。</param>
@@ -163,9 +165,11 @@ namespace RPG.Character
         {
             // 只有 Request Controller 接受匹配的版本与阶段，才算完成输入阶段消费。
             bool accepted = inputController.TryConfirmConsumed(handle);
-            InputRequestConsumptionForwarded?.Invoke(intentTag, handle, accepted);
-        }
 
+            #region UNITY_EDITOR
+            InputRequestConsumptionForwarded?.Invoke(intentTag, handle, accepted);
+            #endregion
+        }
         #endregion
     }
 }

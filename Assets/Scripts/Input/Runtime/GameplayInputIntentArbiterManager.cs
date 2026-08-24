@@ -16,7 +16,6 @@ namespace RPG.PlayerInputSystem
 
         // 仲裁管线的注册表与状态，按照注册顺序执行策略，首个命中策略的 Intent 会被发布到黑板。
         private readonly List<GameplayInputIntentArbiter> arbiters = new();
-        private InteractionInputIntentArbiter interactionInputIntentArbiter;
 
         /// <summary>获取当前已注册仲裁策略的只读顺序视图。</summary>
         public IReadOnlyList<GameplayInputIntentArbiter> Arbiters => arbiters;
@@ -44,7 +43,7 @@ namespace RPG.PlayerInputSystem
         /// <summary>注册项目约定的默认仲裁策略。</summary>
         public void RegisterDefaultArbiters()
         {
-            interactionInputIntentArbiter ??= new InteractionInputIntentArbiter();
+            var interactionInputIntentArbiter = new InteractionInputIntentArbiter();
             RegisterArbiter(interactionInputIntentArbiter);
         }
 

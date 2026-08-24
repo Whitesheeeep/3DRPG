@@ -3,9 +3,9 @@ using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
-using RPG.DialogueSystem;
+using RPG.DialogueSystemModule;
 
-namespace RPG.DialogueSystem.Editor
+namespace RPG.DialogueSystemModule.Editor
 {
     /// <summary>
     /// 为 Dialogue 的 SerializeReference 定义提供统一的派生类型选择和子字段绘制。

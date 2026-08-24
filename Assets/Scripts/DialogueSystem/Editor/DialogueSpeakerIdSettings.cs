@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using UnityEditor;
 
-namespace RPG.DialogueSystem.Editor
+namespace RPG.DialogueSystemModule.Editor
 {
     /// <summary>
     /// 仅供 Dialogue Graph Editor 使用的预定义 SpeakerId 持久化设置。

@@ -8,7 +8,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using WS_Modules.UIToolkitExtensions.Editor;
 
-namespace RPG.DialogueSystem.Editor
+namespace RPG.DialogueSystemModule.Editor
 {
     /// <summary>
     /// Dialogue Graph Editor 的 UI View，负责控件绑定、用户意图转发和界面刷新。

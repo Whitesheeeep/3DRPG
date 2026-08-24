@@ -132,9 +132,8 @@ namespace WS_Modules.Utilities
             {
                 Collider collider = sectorCandidates[index];
                 if (collider == null) continue;
-                Vector3 closestPoint = collider.ClosestPoint(center);
                 Vector3 shapePoint = inverseShapeRotation *
-                    (origin.InverseTransformPoint(closestPoint) - data.LocalPosition);
+                    (origin.InverseTransformPoint(collider.transform.position) - data.LocalPosition);
                 if (!IsInsideSector(shapePoint, data)) continue;
                 if (resultCount < results.Length)
                     results[resultCount++] = collider;

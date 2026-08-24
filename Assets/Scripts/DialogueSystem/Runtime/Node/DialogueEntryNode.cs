@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace RPG.DialogueSystem
+namespace RPG.DialogueSystemModule
 {
     /// <summary>
     /// 表示对话图唯一的入口节点。

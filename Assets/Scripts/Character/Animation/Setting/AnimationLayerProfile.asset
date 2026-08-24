@@ -25,6 +25,6 @@ MonoBehaviour:
     initialWeight: 0
     applyAnimatorIK: 0
   additiveLayer:
-    avatarMask: {fileID: 101100000, guid: a5b5bfc1e90b5514f9b30b23377aa15e, type: 2}
+    avatarMask: {fileID: 0}
     initialWeight: 0
     applyAnimatorIK: 0

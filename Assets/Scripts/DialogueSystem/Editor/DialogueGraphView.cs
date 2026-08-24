@@ -7,7 +7,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using WS_Modules.UIToolkitExtensions.Editor.GraphView;
 
-namespace RPG.DialogueSystem.Editor
+namespace RPG.DialogueSystemModule.Editor
 {
     /// <summary>
     /// 定义画布右键创建节点的类型。

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace RPG.DialogueSystem
+namespace RPG.DialogueSystemModule
 {
     /// <summary>
     /// 标记需要从 DialogueSpeakerIdSettings 严格选择的 SpeakerId 字符串字段。

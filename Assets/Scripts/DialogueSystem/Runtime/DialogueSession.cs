@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using RPG.Character.Animation;
 using UnityEngine;
 
-namespace RPG.DialogueSystem
+namespace RPG.DialogueSystemModule
 {
     /// <summary>
     /// 管理一段完整对话周期中的当前节点、参与者表现和事实事件。

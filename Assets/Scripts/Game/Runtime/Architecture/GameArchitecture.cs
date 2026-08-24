@@ -1,5 +1,5 @@
 using System.IO;
-using DialogueRuntimeSystem = RPG.DialogueSystem.DialogueSystem;
+using RPG.DialogueSystemModule;
 using RPG.SaveSystem;
 using RPG.TaskSystem;
 using UnityEngine;
@@ -39,7 +39,7 @@ namespace RPG.Game
             // TaskManager 由 WSFrame ConfigInstaller 注入 TaskDatabase；
             // TaskProgressSystem 只协调任务实例运行时，并在初始化时注册 TaskSaveModule。
             RegisterSystem(new TaskProgressSystem(new TaskObjectiveHandlerRegistry()));
-            RegisterSystem(new DialogueRuntimeSystem());
+            RegisterSystem(new DialogueSystem());
 
             // 角色、背包等跨业务 System 在这里继续注册；
             // 它们对应的 SaveModule 由各自 System 在 OnInit 中注册到 SaveManager。

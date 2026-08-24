@@ -5,7 +5,7 @@ using WS_Modules.BusinessArchitecture;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.Generated;
 
-namespace RPG.DialogueSystem
+namespace RPG.DialogueSystemModule
 {
     /// <summary>
     /// 作为 BusinessArchitecture 系统入口，编排同步对话会话与 Handler 注册表。

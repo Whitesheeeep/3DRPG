@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using RPG.InteractionSystem;
 
-namespace RPG.DialogueSystem
+namespace RPG.DialogueSystemModule
 {
     #region 运行状态与结果
 

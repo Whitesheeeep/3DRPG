@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace RPG.DialogueSystem
+namespace RPG.DialogueSystemModule
 {
     /// <summary>
     /// 表示对话图中的抽象节点；节点作为 DialogueAsset 的 ScriptableObject 子资产保存。

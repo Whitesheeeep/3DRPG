@@ -8,7 +8,7 @@ using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using WS_Modules.UIToolkitExtensions.Editor.GraphView;
 
-namespace RPG.DialogueSystem.Editor
+namespace RPG.DialogueSystemModule.Editor
 {
     /// <summary>
     /// 协调 Dialogue Graph Editor 的资产 Model、GraphView 和面板 View。

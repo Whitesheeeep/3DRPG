@@ -2,32 +2,30 @@ using System;
 using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using WS_Modules.Utilities;
 
 namespace RPG.InteractionSystem
 {
     /// <summary>
-    /// 以玩家 CharacterController 为中心周期执行胶囊范围检测，并输出去重后的 Provider 集合。
+    /// 以可编辑 PhysicsShapeData 为范围周期执行体积检测，并输出去重后的 Provider 集合。
     /// </summary>
     [DefaultExecutionOrder(-750)]
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(CharacterController))]
     public sealed class InteractionDetector : MonoBehaviour
     {
         #region 序列化配置与状态
 
-        [LabelText("探测半径"), MinValue(0f), SuffixLabel("m", true)]
-        [SerializeField]
-        private float detectionRange = 8f;
+        // 依赖 WSFrame.Utilities 的通用形状数据，Inspector 和 Scene Handle 共同编辑这份配置。
+        [SerializeField, LabelText("检测形状")]
+        private PhysicsShapeData detectionShape = new();
         [SerializeField, MinValue(0.01f), LabelText("扫描间隔 s")] private float scanInterval = 0.1f;
         [SerializeField, MinValue(1), LabelText("初始化缓冲区大小")] private int initialBufferSize = 64;
         [SerializeField] private LayerMask detectionMask = ~0;
         [SerializeField] private bool startDetect = true;
-        // 依赖的实际是 cc 的 center、radius、height，若 cc 为空则会在 Awake 抛异常。
-        // 主要逻辑在：OverlapCapsuleWithExpansion
-        // TODO: 未来考虑使用 CapsuleCollider 代替 CharacterController，避免依赖 cc，而不能复用于非玩家角色。
-        [SerializeField] private CharacterController characterController;
 
+        // Provider 状态使用稳定列表对外暴露，并用双 Set 对比本次扫描与上一轮快照。
         private readonly List<IInteractable> providers = new();
+        private readonly List<IInteractable> providerBuffer = new();
         private readonly HashSet<IInteractable> providerSet = new();
         private readonly HashSet<IInteractable> nextProviderSet = new();
         private Collider[] overlapBuffer;
@@ -43,8 +41,8 @@ namespace RPG.InteractionSystem
         /// <summary>获取最近一次扫描得到的 Provider 只读视图。</summary>
         public IReadOnlyList<IInteractable> Providers => providers;
 
-        /// <summary>获取玩家检测器的粗筛范围。</summary>
-        public float DetectionRange => detectionRange;
+        /// <summary>获取当前用于物理查询和可视化的检测形状。</summary>
+        public PhysicsShapeData DetectionShape => detectionShape;
 
         /// <summary>获取当前检测器是否正在运行。</summary>
         public bool IsDetecting => startDetect;
@@ -53,13 +51,9 @@ namespace RPG.InteractionSystem
 
         #region Unity 生命周期
 
-        /// <summary>解析同节点 CharacterController 并初始化 NonAlloc 查询缓冲区。</summary>
+        /// <summary>校验可编辑形状并初始化 NonAlloc 查询缓冲区。</summary>
         private void Awake()
         {
-            if (characterController == null) characterController = GetComponent<CharacterController>();
-            if (characterController == null)
-                throw new InvalidOperationException($"InteractionDetector '{name}' 缺少 CharacterController。");
-
             ValidateConfiguration();
             overlapBuffer = new Collider[initialBufferSize];
         }
@@ -73,6 +67,13 @@ namespace RPG.InteractionSystem
 
             scanElapsed = 0f;
             ScanNow();
+        }
+
+        /// <summary>绘制当前检测形状，便于在未选中玩家时持续观察交互区域。</summary>
+        private void OnDrawGizmos()
+        {
+            // PhysicsShapeData 自己控制是否绘制；宿主只负责提供局部坐标所属的 Transform。
+            detectionShape?.OnDrawGizmos(transform);
         }
 
         #endregion
@@ -95,12 +96,10 @@ namespace RPG.InteractionSystem
             ClearProviders();
         }
 
-        /// <summary>立即执行一次胶囊查询，供测试和恢复检测使用。</summary>
+        /// <summary>立即执行一次形状查询，供测试和恢复检测使用。</summary>
         public void ScanNow()
         {
-            if (characterController == null) return;
-
-            int overlapCount = OverlapCapsuleWithExpansion();
+            int overlapCount = OverlapShape();
             nextProviderSet.Clear();
 
             for (int index = 0; index < overlapCount; index++)
@@ -108,13 +107,11 @@ namespace RPG.InteractionSystem
                 Collider collider = overlapBuffer[index];
                 if (collider == null || IsPlayerHierarchy(collider.transform)) continue;
 
-                MonoBehaviour[] components = collider.GetComponentsInParent<MonoBehaviour>(true);
-                for (int componentIndex = 0; componentIndex < components.Length; componentIndex++)
-                {
-                    MonoBehaviour component = components[componentIndex];
-                    if (component == null || IsPlayerHierarchy(component.transform)) continue;
-                    if (component is IInteractable provider) nextProviderSet.Add(provider);
-                }
+                // 直接查询接口并复用列表，避免为每个 Collider 分配组件数组和遍历无关脚本。
+                providerBuffer.Clear();
+                collider.GetComponentsInParent(true, providerBuffer);
+                for (int providerIndex = 0; providerIndex < providerBuffer.Count; providerIndex++)
+                    nextProviderSet.Add(providerBuffer[providerIndex]);
             }
 
             if (providerSet.SetEquals(nextProviderSet)) return;
@@ -123,29 +120,23 @@ namespace RPG.InteractionSystem
             providerSet.UnionWith(nextProviderSet);
             providers.Clear();
             providers.AddRange(providerSet);
+            // 检测到数量
+            Debug.Log($"InteractionDetector '{name}' 扫描到 {providers.Count} 个 Provider。");
             ProvidersChanged?.Invoke(providers);
         }
 
         #endregion
 
-        #region 胶囊查询
+        #region 形状查询
 
-        /// <summary>使用 CharacterController 几何体外扩检测范围执行 NonAlloc 胶囊查询。</summary>
+        /// <summary>使用配置形状执行 NonAlloc 查询，并在结果满时扩容重查。</summary>
         /// <returns>本次查询命中的 Collider 数量。</returns>
-        private int OverlapCapsuleWithExpansion()
+        private int OverlapShape()
         {
-            Vector3 center = transform.TransformPoint(characterController.center);
-            Vector3 up = transform.up;
-            float baseRadius = Mathf.Max(0.01f, characterController.radius);
-            float radius = baseRadius + detectionRange;
-            float halfHeight = Mathf.Max(characterController.height * 0.5f + detectionRange, radius);
-            Vector3 pointA = center - up * (halfHeight - radius);
-            Vector3 pointB = center + up * (halfHeight - radius);
-
             int count;
             do
             {
-                count = Physics.OverlapCapsuleNonAlloc(pointA, pointB, radius, overlapBuffer,
+                count = PhysicsUtility.OverlapNonAlloc(transform, detectionShape, overlapBuffer,
                     detectionMask, QueryTriggerInteraction.Collide);
                 if (count < overlapBuffer.Length) return count;
 
@@ -173,14 +164,48 @@ namespace RPG.InteractionSystem
             ProvidersChanged?.Invoke(providers);
         }
 
-        /// <summary>验证序列化配置的有限范围和有效缓冲容量。</summary>
+        /// <summary>验证序列化配置的形状类型、尺寸、扫描间隔和缓冲容量。</summary>
         private void ValidateConfiguration()
         {
-            if (float.IsNaN(detectionRange) || float.IsInfinity(detectionRange) || detectionRange < 0f)
-                throw new InvalidOperationException("InteractionDetector detectionRange 必须是有限非负数。");
+            if (detectionShape == null)
+                throw new InvalidOperationException($"InteractionDetector '{name}' 缺少检测形状。");
+            if (detectionShape.Type is PhysicsShapeType.None or PhysicsShapeType.Ray)
+                throw new InvalidOperationException(
+                    $"InteractionDetector '{name}' 只支持 Box、Sphere、Capsule 或 Sector 检测形状。");
+            if (!IsShapeConfigurationValid(detectionShape))
+                throw new InvalidOperationException($"InteractionDetector '{name}' 的检测形状尺寸不合法。");
             if (float.IsNaN(scanInterval) || float.IsInfinity(scanInterval) || scanInterval <= 0f)
                 throw new InvalidOperationException("InteractionDetector scanInterval 必须是有限正数。");
+            if (initialBufferSize <= 0)
+                throw new InvalidOperationException("InteractionDetector initialBufferSize 必须为正数。");
         }
+
+        /// <summary>检查通用形状数据的尺寸是否满足对应 Physics 查询契约。</summary>
+        /// <param name="shape">待检查的检测形状。</param>
+        /// <returns>形状可用于体积查询时返回 true。</returns>
+        private static bool IsShapeConfigurationValid(PhysicsShapeData shape)
+        {
+            return shape.Type switch
+            {
+                PhysicsShapeType.Box => IsFinitePositive(shape.Size.x) &&
+                    IsFinitePositive(shape.Size.y) && IsFinitePositive(shape.Size.z),
+                PhysicsShapeType.Sphere => IsFinitePositive(shape.Radius),
+                PhysicsShapeType.Capsule => IsFinitePositive(shape.Radius) &&
+                    IsFinitePositive(shape.Height) && shape.Height >= shape.Radius * 2f,
+                PhysicsShapeType.Sector => IsFinitePositive(shape.OuterRadius) &&
+                    IsFiniteNonNegative(shape.InnerRadius) && shape.InnerRadius <= shape.OuterRadius &&
+                    IsFinitePositive(shape.Height) && IsFinitePositive(shape.Angle) && shape.Angle <= 360f,
+                _ => false
+            };
+        }
+
+        /// <summary>判断数值是否为有限正数。</summary>
+        private static bool IsFinitePositive(float value) => value > 0f &&
+            !float.IsNaN(value) && !float.IsInfinity(value);
+
+        /// <summary>判断数值是否为有限非负数。</summary>
+        private static bool IsFiniteNonNegative(float value) => value >= 0f &&
+            !float.IsNaN(value) && !float.IsInfinity(value);
 
         #endregion
     }

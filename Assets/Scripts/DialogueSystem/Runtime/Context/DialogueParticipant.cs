@@ -1,7 +1,7 @@
 using UnityEngine;
 using RPG.Character.Animation;
 
-namespace RPG.DialogueSystem
+namespace RPG.DialogueSystemModule
 {
     /// <summary>
     /// 将场景对象配置为可参与 DialogueRequest 的通用对话参与者。
@@ -18,7 +18,7 @@ namespace RPG.DialogueSystem
         [SerializeField]
         private AudioSource voiceAudioSource;
         [SerializeField]
-        private MonoBehaviour animationPlayerComponent;
+        private IAnimationPlayer animationPlayerComponent;
 
         #endregion
 
@@ -46,7 +46,7 @@ namespace RPG.DialogueSystem
         private void Reset()
         {
             voiceAudioSource = GetComponent<AudioSource>();
-            animationPlayerComponent = GetComponent(typeof(IAnimationPlayer)) as MonoBehaviour;
+            animationPlayerComponent = GetComponent<IAnimationPlayer>();
         }
 
         #endregion
