@@ -72,7 +72,11 @@ namespace WS_Modules
         #endregion
 
         private IResLoad<string> _resLoader;
+        private bool applicationQuitting;
 
+        /// <summary>
+        /// 注册 WSFrame 单例并初始化框架核心系统。
+        /// </summary>
         protected override void Awake()
         {
             base.Awake();
@@ -80,6 +84,9 @@ namespace WS_Modules
             InitWSFrameRoot();
         }
 
+        /// <summary>
+        /// 按框架依赖顺序初始化日志、配置、资源、对象池、音频和 UI 系统。
+        /// </summary>
         private void InitWSFrameRoot()
         {
             GetResLoader();
@@ -92,6 +99,9 @@ namespace WS_Modules
             UIManager.Instance.Initialize(frameSetting.uiManagerSetting);
         }
 
+        /// <summary>
+        /// 根据 FrameSetting 选择并创建资源加载实现。
+        /// </summary>
         private void GetResLoader()
         {
             switch (frameSetting.resLoadType)
@@ -103,6 +113,34 @@ namespace WS_Modules
                     _resLoader = new AddressablesLoadMgrModule();
                     break;
             }
+        }
+
+        /// <summary>
+        /// 在 Unity 开始退出前先释放 UI 窗口逻辑，确保纯 C# Window 收到 OnDestroy。
+        /// </summary>
+        protected virtual void OnApplicationQuit()
+        {
+            if (Instance != this)
+            {
+                return;
+            }
+
+            applicationQuitting = true;
+            UIManager.Instance.Shutdown();
+        }
+
+        /// <summary>
+        /// 在根节点被非正常销毁时兜底关闭 UI，并最后清理框架单例引用。
+        /// </summary>
+        protected override void OnDestroy()
+        {
+            bool isCurrentInstance = Instance == this;
+            if (isCurrentInstance && !applicationQuitting)
+            {
+                UIManager.Instance.Shutdown();
+            }
+
+            base.OnDestroy();
         }
     }
 }

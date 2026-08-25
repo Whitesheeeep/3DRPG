@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using RPG.Character;
 using RPG.Character.State;
 using UnityEngine;
+using UnityEngine.Serialization;
 using WS_Modules.GAS.Generated;
 using WS_Modules.Singleton;
 
@@ -18,20 +19,21 @@ namespace RPG.InteractionSystem
     {
         #region 序列化引用与状态
 
-        [SerializeField, Tooltip("用于评估交互视野的摄像机，一般就是主摄像机。")]
+        [SerializeField, Tooltip("传给 Provider 查询上下文的摄像机，一般就是主摄像机。")]
         private Camera viewCamera;
-        [SerializeField, Tooltip("用于遮挡检测的图层掩码。")]
+        [SerializeField, Tooltip("保留视口与遮挡配置，当前版本不作为 Option 评分或硬筛选。")]
         private LayerMask occlusionMask = ~0;
         [SerializeField] private InteractionDetector detector;
-        [SerializeField] private bool startDetect = true;
+        [SerializeField, FormerlySerializedAs("startDetect")]
+        private bool startDetectOnEnable = true;
 
         private readonly List<InteractionOption> options = new();
         private readonly List<InteractionOption> collectedOptions = new();
         private readonly HashSet<InteractionOptionId> optionIds = new();
 
-        // 用于在刷新 Option 时缓存评分数据，避免排序比较器重复计算空间数据。
-        private readonly List<ScoredOption> scoredOptions = new();
+        private readonly List<InteractionOption> filteredOptions = new();
         private readonly List<InteractionOptionId> previousOptionIds = new();
+        private bool isDetecting;
         private RaycastHit[] occlusionHits = new RaycastHit[16];
         // 用于在 Update 中按玩家控制器之后消费 Intent，避免在同一帧中被控制器重置。
         private PlayerStateBlackboard stateBlackboard;
@@ -87,22 +89,21 @@ namespace RPG.InteractionSystem
         /// <summary>订阅检测结果并按组件配置启动范围检测。</summary>
         private void OnEnable()
         {
-            if (detector != null) detector.ProvidersChanged += OnProvidersChanged;
-            if (startDetect) StartDetect();
+            if (detector != null) detector.ScanCompleted += OnScanCompleted;
+            if (startDetectOnEnable) StartDetect();
         }
 
         /// <summary>解绑检测事件、暂停检测并清理当前交互状态。</summary>
         private void OnDisable()
         {
-            if (detector != null) detector.ProvidersChanged -= OnProvidersChanged;
+            if (detector != null) detector.ScanCompleted -= OnScanCompleted;
             PauseDetect();
         }
 
-        /// <summary>每帧刷新摄像机相关筛选，并在玩家控制器之后处理 Interaction Intent。</summary>
+        /// <summary>仅在玩家控制器之后处理帧级 Interaction Intent；Option 列表由 Detector 扫描事件刷新。</summary>
         private void Update()
         {
-            if (!startDetect) return;
-            RefreshOptions();
+            if (!isDetecting) return;
             ConsumeInputIntents();
         }
 
@@ -113,22 +114,20 @@ namespace RPG.InteractionSystem
         /// <summary>开启交互检测并立即刷新 Option 列表。</summary>
         public void StartDetect()
         {
-            startDetect = true;
+            isDetecting = true;
             detector.StartDetect();
-            RefreshOptions();
         }
 
         /// <summary>暂停交互检测并清空 Option 与选择状态。</summary>
         public void PauseDetect()
         {
-            startDetect = false;
+            isDetecting = false;
             if (detector != null && detector.IsDetecting) detector.PauseDetect();
             ClearOptions();
         }
 
-        /// <summary>响应检测器 Provider 变化，立即重建候选 Option。</summary>
-        /// <param name="providers">最新的 Provider 集合。</param>
-        private void OnProvidersChanged(IReadOnlyList<IInteractable> providers) => RefreshOptions();
+        /// <summary>响应检测器扫描完成，重建包含动态业务状态的最终 Option 列表。</summary>
+        private void OnScanCompleted() => RefreshOptions();
 
         #endregion
 
@@ -219,7 +218,7 @@ namespace RPG.InteractionSystem
 
             collectedOptions.Clear();
             optionIds.Clear();
-            scoredOptions.Clear();
+            filteredOptions.Clear();
             InteractionQueryContext context = new(gameObject, transform, viewCamera);
 
             // 收集所有 Provider 的 Option，允许 Provider 自行筛选和生成。
@@ -228,17 +227,17 @@ namespace RPG.InteractionSystem
                 provider?.CollectInteractionOptions(in context, collectedOptions);
             }
 
-            // 对收集到的 Option 执行硬筛选和评分，避免重复计算空间数据。
+            // 对收集到的 Option 执行动态硬筛选；排序不再依赖镜头关注度或距离评分。
             foreach (var option in collectedOptions)
             {
                 if (option == null || !optionIds.Add(option.Id)) continue;
-                if (!TryScoreOption(option, out ScoredOption scoredOption)) continue;
-                scoredOptions.Add(scoredOption);
+                if (!TryAcceptOption(option)) continue;
+                filteredOptions.Add(option);
             }
 
-            scoredOptions.Sort(CompareScoredOptions);
+            filteredOptions.Sort(CompareOptions);
             options.Clear();
-            for (int index = 0; index < scoredOptions.Count; index++) options.Add(scoredOptions[index].Option);
+            options.AddRange(filteredOptions);
 
             bool optionsChanged = !HaveSameOptionIds(options, previousOptionIds);
             InteractionOption nextSelection = null;
@@ -294,31 +293,17 @@ namespace RPG.InteractionSystem
 
         #region 筛选与排序
 
-        /// <summary>执行 Option 的硬筛选并计算排序所需的距离和镜头关注度。</summary>
+        /// <summary>执行 Option 的动态硬筛选，不把距离或镜头关注度作为排序评分。</summary>
         /// <param name="option">待筛选 Option。</param>
-        /// <param name="scoredOption">通过筛选后带评分数据的 Option。</param>
         /// <returns>通过全部筛选时返回 true。</returns>
-        private bool TryScoreOption(InteractionOption option, out ScoredOption scoredOption)
+        private bool TryAcceptOption(InteractionOption option)
         {
-            scoredOption = default;
             if (option.InteractionObject == null || option.InteractionOrigin == null) return false;
 
             Vector3 toOrigin = option.InteractionOrigin.position - transform.position;
             float distanceSqr = toOrigin.sqrMagnitude;
             if (option.MaxDistance > 0f && distanceSqr > option.MaxDistance * option.MaxDistance) return false;
             if (!option.CanExecute(gameObject)) return false;
-            if (!IsVisible(option)) return false;
-
-            float focusScore = 0f;
-            if (viewCamera != null)
-            {
-                Vector3 cameraDirection = option.InteractionOrigin.position - viewCamera.transform.position;
-                focusScore = cameraDirection.sqrMagnitude <= Mathf.Epsilon
-                    ? 1f
-                    : Vector3.Dot(viewCamera.transform.forward, cameraDirection.normalized);
-            }
-
-            scoredOption = new ScoredOption(option, distanceSqr, focusScore);
             return true;
         }
 
@@ -373,20 +358,15 @@ namespace RPG.InteractionSystem
         private static bool IsTargetCollider(Collider collider, Transform target) =>
             collider.transform == target || collider.transform.IsChildOf(target);
 
-        /// <summary>按计划定义的优先级、关注度、距离和 ID 执行稳定排序。</summary>
-        /// <param name="left">左侧评分项。</param>
-        /// <param name="right">右侧评分项。</param>
+        /// <summary>按优先级降序和稳定 Option ID 升序执行确定性排序。</summary>
+        /// <param name="left">左侧 Option。</param>
+        /// <param name="right">右侧 Option。</param>
         /// <returns>排序比较结果。</returns>
-        private static int CompareScoredOptions(ScoredOption left, ScoredOption right)
+        private static int CompareOptions(InteractionOption left, InteractionOption right)
         {
-            int priorityComparison = right.Option.Priority.CompareTo(left.Option.Priority);
+            int priorityComparison = right.Priority.CompareTo(left.Priority);
             if (priorityComparison != 0) return priorityComparison;
-            int focusComparison = right.FocusScore.CompareTo(left.FocusScore);
-            if (focusComparison != 0) return focusComparison;
-            int distanceComparison = left.DistanceSqr.CompareTo(right.DistanceSqr);
-            return distanceComparison != 0
-                ? distanceComparison
-                : left.Option.Id.CompareTo(right.Option.Id);
+            return left.Id.CompareTo(right.Id);
         }
 
         #endregion
@@ -413,32 +393,5 @@ namespace RPG.InteractionSystem
 
         #endregion
 
-        #region 嵌套类型
-
-        /// <summary>缓存 Option 在当前帧的排序评分，避免比较器重复计算空间数据。</summary>
-        private readonly struct ScoredOption
-        {
-            /// <summary>获取交互 Option。</summary>
-            public InteractionOption Option { get; }
-
-            /// <summary>获取玩家到交互中心的平方距离。</summary>
-            public float DistanceSqr { get; }
-
-            /// <summary>获取镜头前方向与目标方向的点积。</summary>
-            public float FocusScore { get; }
-
-            /// <summary>创建一条 Option 评分缓存。</summary>
-            /// <param name="option">交互 Option。</param>
-            /// <param name="distanceSqr">平方距离。</param>
-            /// <param name="focusScore">镜头关注度。</param>
-            public ScoredOption(InteractionOption option, float distanceSqr, float focusScore)
-            {
-                Option = option;
-                DistanceSqr = distanceSqr;
-                FocusScore = focusScore;
-            }
-        }
-
-        #endregion
     }
 }

@@ -140,6 +140,7 @@ namespace RPG.InteractionSystem.Tests
             if (!TryGetInteractor(out PlayerInteractor target)) return;
 
             bool unique = true;
+            bool stableOrder = true;
             for (int left = 0; left < target.Options.Count; left++)
             {
                 for (int right = left + 1; right < target.Options.Count; right++)
@@ -147,6 +148,13 @@ namespace RPG.InteractionSystem.Tests
                     if (target.Options[left].Id != target.Options[right].Id) continue;
                     unique = false;
                 }
+
+                if (left + 1 >= target.Options.Count) continue;
+                InteractionOption current = target.Options[left];
+                InteractionOption next = target.Options[left + 1];
+                if (current.Priority < next.Priority ||
+                    (current.Priority == next.Priority && current.Id.CompareTo(next.Id) > 0))
+                    stableOrder = false;
             }
 
             bool selectionInList = target.SelectedOption == null;
@@ -157,8 +165,10 @@ namespace RPG.InteractionSystem.Tests
                 break;
             }
 
-            bool valid = unique && selectionInList && (target.Options.Count > 0 || target.SelectedOption == null);
-            Debug.Log($"[InteractionTest] Validate valid={valid}, unique={unique}, selectionInList={selectionInList}, optionCount={target.Options.Count}", this);
+            bool valid = unique && stableOrder && selectionInList &&
+                (target.Options.Count > 0 || target.SelectedOption == null);
+            Debug.Log($"[InteractionTest] Validate valid={valid}, unique={unique}, stableOrder={stableOrder}, " +
+                $"selectionInList={selectionInList}, optionCount={target.Options.Count}", this);
         }
 
         #endregion
@@ -189,8 +199,9 @@ namespace RPG.InteractionSystem.Tests
                 : target.Detector.DetectionShape.Type.ToString();
             bool canDrawGizmos = target.Detector.DetectionShape != null &&
                 target.Detector.DetectionShape.CanDrawGizmos;
-            Debug.Log($"[InteractionTest] {operation}: shape={shapeType}, gizmos={canDrawGizmos}, " +
-                $"providers={target.Detector.Providers.Count}, options={target.Options.Count}, selected={selectedId}", this);
+            Debug.Log($"[InteractionTest] {operation}: detecting={target.Detector.IsDetecting}, shape={shapeType}, " +
+                $"gizmos={canDrawGizmos}, providers={target.Detector.Providers.Count}, " +
+                $"options={target.Options.Count}, selected={selectedId}", this);
             for (int index = 0; index < target.Options.Count; index++)
             {
                 InteractionOption option = target.Options[index];

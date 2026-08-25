@@ -74,7 +74,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         private void Awake()
         {
             // Owner 必须在 ASC 建立 Controller 前解析，后续 Ability 与 Cue 只能通过该契约访问宿主。
-            Owner = GetComponent<IGameplayAbilitySystemOwner>();
+            Owner = GetComponentInParent<IGameplayAbilitySystemOwner>();
             if (Owner == null)
                 throw new InvalidOperationException(
                     $"ASC '{name}' 必须挂载实现 IGameplayAbilitySystemOwner 的宿主组件。");

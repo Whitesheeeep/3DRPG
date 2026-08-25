@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using RPG.Game;
 using RPG.InteractionSystem;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace RPG.DialogueSystemModule
@@ -13,7 +14,7 @@ namespace RPG.DialogueSystemModule
     public sealed class DialogueInteractable : MonoBehaviour, IInteractable
     {
         #region 序列化字段与状态
-
+        [InfoBox("请将该组件放到用于交互的碰撞体的节点或者其父节点上，并配置对话资源和参与者根节点。")]
         [SerializeField] private DialogueAsset dialogueAsset;
         [SerializeField] private Transform participantRoot;
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -13,6 +14,13 @@ namespace RPG.Markers
 
         private Dictionary<MarkerKey, Transform> markers = new();
 
+        #endregion
+
+        #region Unity 生命周期
+        private void Awake()
+        {
+            TryRebuild();
+        }
         #endregion
 
         #region 公开操作

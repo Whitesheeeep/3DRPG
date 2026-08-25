@@ -13,6 +13,7 @@ namespace WS_Modules.UIModule
         private readonly UIWindowLifecycleService lifecycleService;
         private readonly List<WindowBase> windowStack = new List<WindowBase>();
         private bool startPopStackWindowStatus;
+        private bool isShuttingDown;
 
         /// <summary>
         /// 创建窗口栈服务。
@@ -29,7 +30,7 @@ namespace WS_Modules.UIModule
         /// </summary>
         public void StartPopFirstStackWindow()
         {
-            if (startPopStackWindowStatus)
+            if (isShuttingDown || startPopStackWindowStatus)
             {
                 return;
             }
@@ -48,6 +49,11 @@ namespace WS_Modules.UIModule
         public void PushWindowToStack<T>(Action<WindowBase> popCallBack = null, bool single = false, bool pushToStackTop = false)
             where T : WindowBase, new()
         {
+            if (isShuttingDown)
+            {
+                return;
+            }
+
             string windowName = typeof(T).Name;
             if (single)
             {
@@ -99,6 +105,11 @@ namespace WS_Modules.UIModule
         /// <returns>成功弹出返回 true。</returns>
         public bool PopStackWindow()
         {
+            if (isShuttingDown)
+            {
+                return false;
+            }
+
             if (windowStack.Count <= 0)
             {
                 startPopStackWindowStatus = false;
@@ -119,18 +130,47 @@ namespace WS_Modules.UIModule
             windowStack.Clear();
         }
 
+        /// <summary>
+        /// 关闭窗口栈并解除生命周期订阅，阻止关闭阶段继续弹出窗口。
+        /// </summary>
+        public void Shutdown()
+        {
+            if (isShuttingDown)
+            {
+                return;
+            }
+
+            isShuttingDown = true;
+            startPopStackWindowStatus = false;
+            windowStack.Clear();
+            lifecycleService.WindowClosed -= PopNextStackWindow;
+        }
+
+        /// <summary>
+        /// 响应窗口关闭事件并在栈服务仍有效时继续弹出下一个窗口。
+        /// </summary>
+        /// <param name="windowBase">刚关闭的窗口。</param>
         private void PopNextStackWindow(WindowBase windowBase)
         {
-            if (windowBase != null && startPopStackWindowStatus && windowBase.PopStack)
+            if (!isShuttingDown && windowBase != null && startPopStackWindowStatus && windowBase.PopStack)
             {
                 windowBase.PopStack = false;
                 PopStackWindow();
             }
         }
 
+        /// <summary>
+        /// 异步显示栈顶窗口，并在服务关闭期间丢弃异步结果。
+        /// </summary>
+        /// <param name="window">待显示的窗口逻辑对象。</param>
         private async UniTaskVoid PopStackWindowAsync(WindowBase window)
         {
             WindowBase popWindow = await lifecycleService.PopUpWindowAsync(window);
+            if (isShuttingDown)
+            {
+                return;
+            }
+
             if (popWindow == null)
             {
                 PopStackWindow();

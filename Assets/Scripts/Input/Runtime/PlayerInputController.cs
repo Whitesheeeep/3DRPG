@@ -88,7 +88,10 @@ namespace RPG.PlayerInputSystem
                 requestsByType.Add(inputType, request);
                 requests.Add(request);
             }
+#if UNITY_EDITOR
+            Debug.Log($"PlayerInputController '{name}' 收到 {inputType} Pressed，持续 {pressBufferDuration:F3} 秒。");
 
+#endif
             request.Perform(pressBufferDuration, Time.frameCount);
         }
 

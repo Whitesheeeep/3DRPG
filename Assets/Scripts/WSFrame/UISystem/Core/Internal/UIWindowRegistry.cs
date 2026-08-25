@@ -130,6 +130,15 @@ namespace WS_Modules.UIModule
         }
 
         /// <summary>
+        /// 获取当前所有窗口记录的快照，用于关闭阶段安全遍历并逐项注销。
+        /// </summary>
+        /// <returns>窗口记录列表副本。</returns>
+        public List<UIWindowRecord> GetRecordsSnapshot()
+        {
+            return new List<UIWindowRecord>(records.Values);
+        }
+
+        /// <summary>
         /// 获取当前顶层窗口快照。
         /// </summary>
         /// <param name="snapshot">顶层窗口快照。</param>

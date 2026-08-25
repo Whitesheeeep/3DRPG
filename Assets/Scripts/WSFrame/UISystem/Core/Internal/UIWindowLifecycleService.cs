@@ -20,6 +20,7 @@ namespace WS_Modules.UIModule
         private readonly Transform uiRoot;
         private readonly Camera uiCamera;
         private string currentTopWindowName = string.Empty;
+        private bool isShuttingDown;
 
         /// <summary>
         /// 窗口被隐藏或销毁后触发，用于驱动窗口栈弹出下一个窗口。
@@ -79,6 +80,11 @@ namespace WS_Modules.UIModule
         /// <typeparam name="T">窗口类型。</typeparam>
         public async UniTask PreLoadWindowAsync<T>() where T : WindowBase, new()
         {
+            if (isShuttingDown)
+            {
+                return;
+            }
+
             string windowName = typeof(T).Name;
             if (loadingWindows.TryGetValue(windowName, out UniTaskCompletionSource<WindowBase> loadingSource))
             {
@@ -107,6 +113,11 @@ namespace WS_Modules.UIModule
         /// <returns>窗口对象。</returns>
         public async UniTask<T> PopUpWindowAsync<T>() where T : WindowBase, new()
         {
+            if (isShuttingDown)
+            {
+                return null;
+            }
+
             string windowName = typeof(T).Name;
             if (loadingWindows.TryGetValue(windowName, out UniTaskCompletionSource<WindowBase> loadingSource))
             {
@@ -146,6 +157,11 @@ namespace WS_Modules.UIModule
         public async UniTask<TWindow> PopUpWindowAsync<TWindow, TOpenContext>(TOpenContext openContext)
             where TWindow : WindowBase, new()
         {
+            if (isShuttingDown)
+            {
+                return null;
+            }
+
             string windowName = typeof(TWindow).Name;
             if (loadingWindows.TryGetValue(windowName, out UniTaskCompletionSource<WindowBase> loadingSource))
             {
@@ -181,6 +197,11 @@ namespace WS_Modules.UIModule
         /// <returns>窗口对象。</returns>
         public async UniTask<WindowBase> PopUpWindowAsync(WindowBase window)
         {
+            if (isShuttingDown)
+            {
+                return null;
+            }
+
             string windowName = string.IsNullOrEmpty(window.Name) ? window.GetType().Name : window.Name;
             if (loadingWindows.TryGetValue(windowName, out UniTaskCompletionSource<WindowBase> loadingSource))
             {
@@ -216,6 +237,11 @@ namespace WS_Modules.UIModule
         /// <param name="windowName">窗口名称。</param>
         public void HideWindow(string windowName)
         {
+            if (isShuttingDown)
+            {
+                return;
+            }
+
             if (registry.TryGetRecord(windowName, out UIWindowRecord record))
             {
                 HideWindow(record, true);
@@ -228,6 +254,11 @@ namespace WS_Modules.UIModule
         /// <param name="windowName">窗口名称。</param>
         public void DestroyWindow(string windowName)
         {
+            if (isShuttingDown)
+            {
+                return;
+            }
+
             if (loadingWindows.ContainsKey(windowName))
             {
                 WSLog.LogWarning("窗口正在加载中，跳过本次销毁请求，窗口名称:" + windowName);
@@ -267,6 +298,35 @@ namespace WS_Modules.UIModule
         }
 
         /// <summary>
+        /// 关闭生命周期服务并释放所有已注册窗口；关闭过程中不发送常规窗口事件。
+        /// </summary>
+        public void Shutdown()
+        {
+            if (isShuttingDown)
+            {
+                return;
+            }
+
+            // 先阻断新请求和异步加载的后续绑定，再清理已有窗口，保证窗口栈不会在释放期间重新打开窗口。
+            isShuttingDown = true;
+            foreach (UniTaskCompletionSource<WindowBase> source in loadingWindows.Values)
+            {
+                source.TrySetResult(null);
+            }
+
+            loadingWindows.Clear();
+            List<UIWindowRecord> records = registry.GetRecordsSnapshot();
+            for (int index = 0; index < records.Count; index++)
+            {
+                UIWindowRecord record = records[index];
+                registry.Unregister(record.WindowName);
+                DestroyRecordDuringShutdown(record);
+            }
+
+            currentTopWindowName = string.Empty;
+        }
+
+        /// <summary>
         /// 获取指定类型窗口。
         /// </summary>
         /// <typeparam name="T">窗口类型。</typeparam>
@@ -302,14 +362,28 @@ namespace WS_Modules.UIModule
             return registry.TryGetTopWindowSnapshot(out snapshot);
         }
 
+        /// <summary>
+        /// 注册加载任务并初始化窗口；同名并发调用共享同一个完成源。
+        /// </summary>
+        /// <param name="windowName">窗口名称。</param>
+        /// <param name="windowBase">待绑定的窗口逻辑对象。</param>
+        /// <param name="isVisible">初始化完成后是否显示窗口。</param>
+        /// <typeparam name="T">窗口类型。</typeparam>
+        /// <returns>初始化完成的窗口；服务关闭时返回 null。</returns>
         private async UniTask<WindowBase> InitializeWindowWithLoading<T>(string windowName, T windowBase,
             bool isVisible)
             where T : WindowBase
         {
+            if (isShuttingDown)
+            {
+                return null;
+            }
+
             if (loadingWindows.TryGetValue(windowName, out UniTaskCompletionSource<WindowBase> loadingSource))
             {
                 WSLog.LogWarning("窗口正在加载中，已复用加载任务，窗口名称:" + windowName);
-                return await loadingSource.Task;
+                WindowBase loadingWindow = await loadingSource.Task;
+                return isShuttingDown ? null : loadingWindow;
             }
 
             UniTaskCompletionSource<WindowBase> source = new UniTaskCompletionSource<WindowBase>();
@@ -332,9 +406,22 @@ namespace WS_Modules.UIModule
             }
         }
 
+        /// <summary>
+        /// 加载窗口预制体、绑定 WindowBase 并完成初始显示状态设置。
+        /// </summary>
+        /// <param name="windowName">窗口名称。</param>
+        /// <param name="windowBase">待绑定的窗口逻辑对象。</param>
+        /// <param name="isVisible">初始化完成后是否显示窗口。</param>
+        /// <typeparam name="T">窗口类型。</typeparam>
+        /// <returns>初始化完成的窗口；服务关闭时返回 null。</returns>
         private async UniTask<WindowBase> InitializeWindow<T>(string windowName, T windowBase, bool isVisible)
             where T : WindowBase
         {
+            if (isShuttingDown)
+            {
+                return null;
+            }
+
             UIWindowRecord record = registry.Register(windowName, windowBase, UIWindowState.Loading);
             WindowStateChanged?.Invoke(new UIWindowStateChangedEventArgs(
                 record.WindowName,
@@ -345,7 +432,19 @@ namespace WS_Modules.UIModule
             if (windowObject == null)
             {
                 registry.Unregister(windowName);
-                WSLog.LogError("弹出窗口失败，无法加载窗口预制体，窗口名称:" + windowName);
+                if (!isShuttingDown)
+                {
+                    WSLog.LogError("弹出窗口失败，无法加载窗口预制体，窗口名称:" + windowName);
+                }
+
+                return null;
+            }
+
+            if (isShuttingDown)
+            {
+                registry.Unregister(windowName);
+                GameObject.Destroy(windowObject);
+                UnloadWindowPrefab(windowName);
                 return null;
             }
 
@@ -464,6 +563,61 @@ namespace WS_Modules.UIModule
             rectTransform.SetFullStretch();
         }
 
+        /// <summary>
+        /// 释放关闭阶段的窗口记录，不触发隐藏、窗口栈或对外生命周期事件。
+        /// </summary>
+        /// <param name="record">待释放的窗口记录。</param>
+        private void DestroyRecordDuringShutdown(UIWindowRecord record)
+        {
+            GameObject windowObject = record.GameObject;
+            if (record.State == UIWindowState.Loading)
+            {
+                return;
+            }
+
+            try
+            {
+                // WindowBase.OnDestroy 负责释放纯 C# Controller、View 和业务事件订阅，即使 Unity 对象已先变为伪空也必须调用。
+                record.Window.OnDestroy();
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+            }
+
+            try
+            {
+                UnloadWindowPrefab(record.WindowName);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+            }
+
+            if (windowObject != null)
+            {
+                GameObject.Destroy(windowObject);
+            }
+        }
+
+        /// <summary>
+        /// 按窗口配置释放窗口预制体资源引用。
+        /// </summary>
+        /// <param name="windowName">窗口名称。</param>
+        private void UnloadWindowPrefab(string windowName)
+        {
+            WindowConfigData windowData = windowConfig != null ? windowConfig.GetWindowData(windowName) : null;
+            if (windowData != null)
+            {
+                ResSystem.Instance.UnLoad<GameObject>(windowData.windowPrefabPath);
+            }
+        }
+
+        /// <summary>
+        /// 加载并实例化窗口预制体；服务关闭后释放刚加载的资源且不创建实例。
+        /// </summary>
+        /// <param name="windowName">窗口名称。</param>
+        /// <returns>窗口实例；加载失败或服务关闭时返回 null。</returns>
         private async UniTask<GameObject> LoadWindow(string windowName)
         {
             if (windowConfig == null)
@@ -483,6 +637,12 @@ namespace WS_Modules.UIModule
             if (windowPrefab == null)
             {
                 WSLog.LogError("窗口预制体加载失败，窗口名称:" + windowName + "，路径:" + windowData.windowPrefabPath);
+                return null;
+            }
+
+            if (isShuttingDown)
+            {
+                ResSystem.Instance.UnLoad<GameObject>(windowData.windowPrefabPath);
                 return null;
             }
 

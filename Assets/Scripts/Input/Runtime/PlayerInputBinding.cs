@@ -12,8 +12,8 @@ namespace RPG.PlayerInputSystem
         [SerializeField] private InputActionReference action;
         [SerializeField] private string actionName = string.Empty;
         [SerializeField] private PlayerInputType inputType;
-        [SerializeField, Min(0f)] private float pressBufferDuration = 0.2f;
-        [SerializeField, Min(0f)] private float releaseBufferDuration = 0.1f;
+        [SerializeField] private float pressBufferDuration = 0.2f;
+        [SerializeField] private float releaseBufferDuration = 0.1f;
         #endregion
 
         #region 属性

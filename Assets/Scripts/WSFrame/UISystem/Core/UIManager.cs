@@ -25,6 +25,8 @@ namespace WS_Modules.UIModule
         private UIWindowLayerService layerService;
         private UIWindowLifecycleService lifecycleService;
         private UIWindowStackService stackService;
+        private bool isShuttingDown;
+        private int initializationVersion;
 
         /// <summary>
         /// UI 摄像机。
@@ -34,7 +36,7 @@ namespace WS_Modules.UIModule
         /// <summary>
         /// UI 管理器是否已经完成服务初始化。
         /// </summary>
-        public bool IsInitialized => lifecycleService != null && stackService != null;
+        public bool IsInitialized => !isShuttingDown && lifecycleService != null && stackService != null;
 
         /// <summary>
         /// 窗口状态变化时触发。
@@ -89,6 +91,7 @@ namespace WS_Modules.UIModule
             string uiEventSystemPath = "UIEventSystem",
             bool isSingleMask = false)
         {
+            int currentInitializationVersion = BeginInitialization();
             this.windowConfig = windowConfig;
             uiRoot = GameObject.Find("UIRoot")?.transform ??
                      GameObject.Instantiate(ResSystem.Instance.Load<GameObject>(uiRootPath)).transform;
@@ -96,7 +99,12 @@ namespace WS_Modules.UIModule
                 .Instantiate(ResSystem.Instance.Load<GameObject>(uiCameraPath)).GetComponent<Camera>();
             GameObject uiEventSystem = GameObject.Find("UIEventSystem") ??
                                        GameObject.Instantiate(
-                                           await ResSystem.Instance.LoadAsync<GameObject>(uiEventSystemPath));
+                                       await ResSystem.Instance.LoadAsync<GameObject>(uiEventSystemPath));
+
+            if (!IsInitializationCurrent(currentInitializationVersion))
+            {
+                return;
+            }
 
             // 实在没有，最后通过 Resources 加载
             if (uiRoot == null) uiRoot = GameObject.Instantiate(Resources.Load<GameObject>("UIRoot")).transform;
@@ -109,6 +117,40 @@ namespace WS_Modules.UIModule
             GameObject.DontDestroyOnLoad(uiCamera);
             GameObject.DontDestroyOnLoad(uiEventSystem);
             InitializeServices(isSingleMask);
+        }
+
+        /// <summary>
+        /// 关闭 UI 管理器并释放所有窗口；该操作可重复调用，且不会触发常规窗口栈事件。
+        /// </summary>
+        public void Shutdown()
+        {
+            if (isShuttingDown && lifecycleService == null && stackService == null)
+            {
+                return;
+            }
+
+            // 先标记关闭并使旧的异步初始化失效，防止停止运行时继续创建窗口服务。
+            isShuttingDown = true;
+            initializationVersion++;
+
+            stackService?.Shutdown();
+            UnsubscribeLifecycleEvents();
+            lifecycleService?.Shutdown();
+
+            stackService = null;
+            lifecycleService = null;
+            layerService = null;
+            windowRegistry = null;
+            uiRoot = null;
+            uiCamera = null;
+            windowConfig = null;
+
+            // 管理器即将进入不可用状态，清理外部订阅，避免禁用域重载时保留旧对象引用。
+            WindowStateChanged = null;
+            WindowOpened = null;
+            WindowHidden = null;
+            WindowDestroyed = null;
+            TopWindowChanged = null;
         }
 
         /// <summary>
@@ -415,6 +457,10 @@ namespace WS_Modules.UIModule
             stackService.ClearStackWindows();
         }
 
+        /// <summary>
+        /// 创建当前 UI 代次使用的注册表、层级、生命周期和窗口栈服务。
+        /// </summary>
+        /// <param name="isSingleMask">是否启用单遮罩策略。</param>
         private void InitializeServices(bool isSingleMask)
         {
             UnsubscribeLifecycleEvents();
@@ -425,7 +471,31 @@ namespace WS_Modules.UIModule
             stackService = new UIWindowStackService(lifecycleService);
         }
 
+        /// <summary>
+        /// 开始一次新的 UI 初始化，并关闭可能残留的上一代服务。
+        /// </summary>
+        /// <returns>本次初始化的代次标识。</returns>
+        private int BeginInitialization()
+        {
+            Shutdown();
+            isShuttingDown = false;
+            return ++initializationVersion;
+        }
+
+        /// <summary>
+        /// 判断异步初始化回调是否仍属于当前有效的 UI 管理器代次。
+        /// </summary>
+        /// <param name="version">初始化开始时保存的代次。</param>
+        /// <returns>仍可继续初始化时返回 true。</returns>
+        private bool IsInitializationCurrent(int version)
+        {
+            return !isShuttingDown && initializationVersion == version;
+        }
+
         #region 事件转发
+        /// <summary>
+        /// 建立生命周期服务到 UIManager 公共事件的转发订阅。
+        /// </summary>
         private void SubscribeLifecycleEvents()
         {
             lifecycleService.WindowStateChanged += OnLifecycleWindowStateChanged;
@@ -435,6 +505,9 @@ namespace WS_Modules.UIModule
             lifecycleService.TopWindowChanged += OnLifecycleTopWindowChanged;
         }
 
+        /// <summary>
+        /// 解除当前生命周期服务到 UIManager 公共事件的转发订阅。
+        /// </summary>
         private void UnsubscribeLifecycleEvents()
         {
             if (lifecycleService == null)
@@ -474,8 +547,17 @@ namespace WS_Modules.UIModule
             TopWindowChanged?.Invoke(args);
         }
 
+        /// <summary>
+        /// 判断 UI 服务是否可用；关闭期间静默拒绝请求，初始化未完成时输出诊断日志。
+        /// </summary>
+        /// <returns>服务可用时返回 true。</returns>
         private bool EnsureServicesReady()
         {
+            if (isShuttingDown)
+            {
+                return false;
+            }
+
             if (lifecycleService != null && stackService != null)
             {
                 return true;

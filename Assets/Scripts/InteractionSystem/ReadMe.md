@@ -6,8 +6,9 @@
 flowchart LR
     Detector[玩家可编辑体积检测] --> Provider[IInteractable Provider]
     Provider --> Option[InteractionOption]
-    Option --> Filter[距离 / 视口 / 遮挡 / CanExecute]
-    Filter --> UI[交互 HUD 列表]
+    Option --> Filter[最大距离 / CanExecute]
+    Filter --> Sort[Priority / OptionId]
+    Sort --> UI[交互 HUD 列表]
     UI --> Execute[TryExecute]
 ```
 
@@ -15,7 +16,9 @@ flowchart LR
 
 `InteractableObject` 是可选便利基类，只提供自身 `GameObject` 和 `Transform` 作为默认交互对象；业务组件也可以直接实现 `IInteractable`。
 
-`InteractionOption` 才是 UI 展示和最终执行的最小单位。Provider 负责缓存并收集 Option，`PlayerInteractor` 负责视口、遮挡、Option 最大距离、业务可用性筛选及稳定排序，UI 只负责展示和选中状态。
+`InteractionOption` 才是 UI 展示和最终执行的最小单位。Provider 负责缓存并收集 Option，`PlayerInteractor` 负责 Option 最大距离和业务可用性筛选，再按优先级降序、`InteractionOptionId` 升序稳定排序，UI 只负责展示和选中状态。
+
+Detector 每次扫描完成都会通知 `PlayerInteractor` 刷新列表，即使 Provider 集合没有变化；因此动态 `CanExecute` 和距离状态最多滞后一个扫描间隔（默认 `0.1s`）。`Update` 仅消费导航和执行 Intent，不再逐帧重复收集 Option。当前版本不启用镜头关注度、Viewport 和遮挡评分/筛选。
 
 ## Provider 示例
 
@@ -28,6 +31,7 @@ flowchart LR
 - Detector 的“绘制 Gizmos”开关控制 Scene View 中的持续可视化；检测体积负责 Provider 粗筛，`InteractionOption.MaxDistance` 只负责进一步收紧选项距离。
 - 目标 Collider 可以位于 Provider 的子物体上，检测器会沿父级收集全部 `IInteractable`。
 - `CanExecute == false` 的 Option 不进入 HUD 列表。
+- 选项排序只使用 `Priority` 和 `InteractionOptionId`，不使用距离或镜头关注度评分。
 - `InteractionOptionId` 使用 Provider 运行时实例 ID 和稳定 ActionId，只保证当前运行期间稳定，不作为存档 ID。
 
 ## ChoiceWindow 接入

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using UnityEngine.Serialization;
 using WS_Modules.Utilities;
 
 namespace RPG.InteractionSystem
@@ -18,10 +19,14 @@ namespace RPG.InteractionSystem
         // 依赖 WSFrame.Utilities 的通用形状数据，Inspector 和 Scene Handle 共同编辑这份配置。
         [SerializeField, LabelText("检测形状")]
         private PhysicsShapeData detectionShape = new();
-        [SerializeField, MinValue(0.01f), LabelText("扫描间隔 s")] private float scanInterval = 0.1f;
+        [SerializeField, MinValue(0.01f), LabelText("扫描间隔 s"), Tooltip("设置为 0，表示每帧扫描一次")] private float scanInterval = 0.1f;
         [SerializeField, MinValue(1), LabelText("初始化缓冲区大小")] private int initialBufferSize = 64;
         [SerializeField] private LayerMask detectionMask = ~0;
-        [SerializeField] private bool startDetect = true;
+        [SerializeField]
+        private bool startDetectOnEnable = true;
+
+        // 运行时检测状态与序列化启动配置分离，暂停不会改变 Inspector 中的自动启动意图。
+        private bool isDetecting;
 
         // Provider 状态使用稳定列表对外暴露，并用双 Set 对比本次扫描与上一轮快照。
         private readonly List<IInteractable> providers = new();
@@ -38,6 +43,9 @@ namespace RPG.InteractionSystem
         /// <summary>Provider 集合发生变化时触发。</summary>
         public event Action<IReadOnlyList<IInteractable>> ProvidersChanged;
 
+        /// <summary>每次检测扫描完成时触发，即使 Provider 集合没有变化也会触发。</summary>
+        public event Action ScanCompleted;
+
         /// <summary>获取最近一次扫描得到的 Provider 只读视图。</summary>
         public IReadOnlyList<IInteractable> Providers => providers;
 
@@ -45,7 +53,7 @@ namespace RPG.InteractionSystem
         public PhysicsShapeData DetectionShape => detectionShape;
 
         /// <summary>获取当前检测器是否正在运行。</summary>
-        public bool IsDetecting => startDetect;
+        public bool IsDetecting => isDetecting;
 
         #endregion
 
@@ -58,10 +66,22 @@ namespace RPG.InteractionSystem
             overlapBuffer = new Collider[initialBufferSize];
         }
 
+        /// <summary>按序列化配置启动检测器，保证独立启用 Detector 时也能工作。</summary>
+        private void OnEnable()
+        {
+            if (startDetectOnEnable) StartDetect();
+        }
+
+        /// <summary>组件禁用时停止扫描并清理对外候选状态。</summary>
+        private void OnDisable()
+        {
+            if (isDetecting) PauseDetect();
+        }
+
         /// <summary>按不受暂停影响的真实时间周期刷新物理候选。</summary>
         private void Update()
         {
-            if (!startDetect) return;
+            if (!isDetecting) return;
             scanElapsed += Time.unscaledDeltaTime;
             if (scanElapsed < scanInterval) return;
 
@@ -83,7 +103,7 @@ namespace RPG.InteractionSystem
         /// <summary>开启检测并立即执行一次扫描。</summary>
         public void StartDetect()
         {
-            startDetect = true;
+            isDetecting = true;
             scanElapsed = 0f;
             ScanNow();
         }
@@ -91,9 +111,11 @@ namespace RPG.InteractionSystem
         /// <summary>暂停检测并清除当前 Provider 集合。</summary>
         public void PauseDetect()
         {
-            startDetect = false;
+            isDetecting = false;
             scanElapsed = 0f;
             ClearProviders();
+            // 即使集合本来为空也通知一次，使订阅者能够完成统一的空状态刷新。
+            ScanCompleted?.Invoke();
         }
 
         /// <summary>立即执行一次形状查询，供测试和恢复检测使用。</summary>
@@ -114,15 +136,18 @@ namespace RPG.InteractionSystem
                     nextProviderSet.Add(providerBuffer[providerIndex]);
             }
 
-            if (providerSet.SetEquals(nextProviderSet)) return;
+            if (!providerSet.SetEquals(nextProviderSet))
+            {
+                providerSet.Clear();
+                providerSet.UnionWith(nextProviderSet);
+                providers.Clear();
+                providers.AddRange(providerSet);
+                Debug.Log($"InteractionDetector '{name}' 扫描到 {providers.Count} 个 Provider。");
+                ProvidersChanged?.Invoke(providers);
+            }
 
-            providerSet.Clear();
-            providerSet.UnionWith(nextProviderSet);
-            providers.Clear();
-            providers.AddRange(providerSet);
-            // 检测到数量
-            Debug.Log($"InteractionDetector '{name}' 扫描到 {providers.Count} 个 Provider。");
-            ProvidersChanged?.Invoke(providers);
+            // Provider 集合稳定时仍需刷新 CanExecute 和 MaxDistance 等动态硬筛选。
+            ScanCompleted?.Invoke();
         }
 
         #endregion

@@ -14,7 +14,6 @@ namespace RPG.Character
     /// <summary>统一编排角色 ASC 的 Unity 更新时序，并持有角色移动驱动。</summary>
     [DefaultExecutionOrder(-800)]
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(GameplayAbilitySystemComponent))]
     [RequireComponent(typeof(SkillRuntimeHost))]
     public sealed class PlayerController : MonoBehaviour, IGameplayAbilitySystemOwner, ILooseGameplayTagEventTarget
     {
@@ -25,6 +24,7 @@ namespace RPG.Character
         private Animator animator;
         [SerializeField]
         private CharacterController characterController;
+
         [SerializeField]
         private PlayerInputController inputController;
         [SerializeField]
@@ -76,9 +76,10 @@ namespace RPG.Character
         {
             // 同节点组件是 PlayerController 的稳定契约；序列化引用为空时按该契约自动取得。
             if (abilitySystemComponent == null)
-                abilitySystemComponent = GetComponent<GameplayAbilitySystemComponent>();
-            if (animator == null) animator = GetComponent<Animator>();
-            if (characterController == null) characterController = GetComponent<CharacterController>();
+                abilitySystemComponent = GetComponentInChildren<GameplayAbilitySystemComponent>();
+            if (animator == null) animator = GetComponentInChildren<Animator>();
+            if (characterController == null) characterController = GetComponentInChildren<CharacterController>();
+
             if (inputController == null) inputController = GetComponent<PlayerInputController>();
             if (skillRuntimeHost == null) skillRuntimeHost = GetComponent<SkillRuntimeHost>();
             markerProvider = GetComponent<IMarkerProvider>();
