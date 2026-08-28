@@ -21,6 +21,8 @@ namespace RPG.DialogueSystemModule.Editor
         private readonly ObjectField assetField;
         private readonly VisualElement nodeListContainer;
         private readonly VisualElement speakerListContainer;
+        // 详情内容挂载在 UXML 提供的 ScrollView 中，避免刷新 Inspector 时替换滚动容器本身。
+        private readonly ScrollView detailsScrollView;
         private readonly VisualElement detailsContainer;
         private readonly VisualElement validationContainer;
         private readonly Label validationLabel;
@@ -37,10 +39,12 @@ namespace RPG.DialogueSystemModule.Editor
         internal event Action ValidateRequested;
         /// <summary>节点列表选择用户意图。</summary>
         internal event Action<DialogueNode> NodeSelected;
-        /// <summary>添加 SpeakerId 用户意图。</summary>
-        internal event Action<string> SpeakerAddRequested;
-        /// <summary>删除 SpeakerId 用户意图。</summary>
-        internal event Action<string> SpeakerRemoveRequested;
+        /// <summary>选择 Speaker 资产用户意图。</summary>
+        internal event Action<DialogueSpeaker> SpeakerSelected;
+        /// <summary>创建 Speaker 资产用户意图。</summary>
+        internal event Action SpeakerCreateRequested;
+        /// <summary>重命名 Speaker 资产用户意图。</summary>
+        internal event Action<DialogueSpeaker, string> SpeakerRenameRequested;
         /// <summary>SerializedObject 字段发生变化。</summary>
         internal event Action<DialogueNode> PropertiesChanged;
 
@@ -63,12 +67,14 @@ namespace RPG.DialogueSystemModule.Editor
             assetField = root.Q<ObjectField>("AssetField");
             nodeListContainer = root.Q<ScrollView>("NodeListContainer").contentContainer;
             speakerListContainer = root.Q<ScrollView>("SpeakerListContainer").contentContainer;
-            detailsContainer = root.Q<ScrollView>("DetailsContainer").contentContainer;
+            detailsScrollView = root.Q<ScrollView>("DetailsContainer");
+            detailsContainer = detailsScrollView.contentContainer;
             validationContainer = root.Q<ScrollView>("ValidationContainer").contentContainer;
             validationLabel = root.Q<Label>("ValidationLabel");
             statusLabel = root.Q<Label>("StatusLabel");
             GraphContainer = root.Q<VisualElement>("GraphContainer");
             ConfigureSplitViews();
+            ConfigureDetailsScrollView();
             RegisterCallbacks();
         }
 
@@ -76,11 +82,15 @@ namespace RPG.DialogueSystemModule.Editor
         internal void Dispose()
         {
             detailsContainer.Unbind();
+            detailsScrollView.UnregisterCallback<WheelEvent>(OnDetailsWheel, TrickleDown.TrickleDown);
             assetField.UnregisterValueChangedCallback(OnAssetChanged);
             root.Q<Button>("NewGraphButton").clicked -= OnNewAssetRequested;
             root.Q<Button>("SaveButton").clicked -= OnSaveAssetRequested;
             root.Q<Button>("ValidateButton").clicked -= OnValidateRequested;
             detailsContainer.UnregisterCallback<SerializedPropertyChangeEvent>(OnPropertyChanged);
+            Button createSpeakerButton = speakerListContainer.Q<Button>("CreateSpeakerButton");
+            if (createSpeakerButton != null)
+                createSpeakerButton.clicked -= OnCreateSpeakerRequested;
             detailsSerializedObject = null;
         }
 
@@ -113,6 +123,9 @@ namespace RPG.DialogueSystemModule.Editor
         /// <summary>转发校验请求。</summary>
         private void OnValidateRequested() => ValidateRequested?.Invoke();
 
+        /// <summary>转发创建 Speaker 资产请求。</summary>
+        private void OnCreateSpeakerRequested() => SpeakerCreateRequested?.Invoke();
+
         /// <summary>转发节点列表选择。</summary>
         /// <param name="node">选中的节点。</param>
         private void SelectNode(DialogueNode node) => NodeSelected?.Invoke(node);
@@ -136,6 +149,34 @@ namespace RPG.DialogueSystemModule.Editor
                 .ConfigureFixedPane(170f, 220f, 320f, "RPG.DialogueGraphEditor.NavigationWidth");
             root.Q<CustomTwoPanelSplitView>("InspectorSplitView")
                 .ConfigureFixedPane(260f, 320f, 480f, "RPG.DialogueGraphEditor.InspectorWidth");
+        }
+
+        /// <summary>
+        /// 配置 Node Details 的纵向滚动，并接管滚轮偏移，避免事件被外层布局吞掉。
+        /// </summary>
+        private void ConfigureDetailsScrollView()
+        {
+            detailsScrollView.mode = ScrollViewMode.Vertical;
+            detailsScrollView.verticalScrollerVisibility = ScrollerVisibility.Auto;
+            detailsScrollView.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
+            detailsScrollView.RegisterCallback<WheelEvent>(OnDetailsWheel, TrickleDown.TrickleDown);
+        }
+
+        /// <summary>
+        /// 将 Node Details 的滚轮增量转换为受边界约束的垂直 ScrollView 偏移。
+        /// </summary>
+        /// <param name="evt">Node Details 收到的滚轮事件。</param>
+        private void OnDetailsWheel(WheelEvent evt)
+        {
+            float minimum = detailsScrollView.verticalScroller.lowValue;
+            float maximum = Mathf.Max(minimum, detailsScrollView.verticalScroller.highValue);
+            if (maximum <= minimum) return;
+
+            float target = Mathf.Clamp(
+                detailsScrollView.scrollOffset.y + evt.delta.y * 20f, minimum, maximum);
+            detailsScrollView.scrollOffset = new Vector2(detailsScrollView.scrollOffset.x, target);
+            evt.PreventDefault();
+            evt.StopPropagation();
         }
 
         /// <summary>刷新工具栏当前资产显示。</summary>
@@ -166,29 +207,37 @@ namespace RPG.DialogueSystemModule.Editor
             }
         }
 
-        /// <summary>重建全局 SpeakerId 列表和编辑入口。</summary>
+        /// <summary>重建项目中的 DialogueSpeaker 资产列表和编辑入口。</summary>
         internal void RefreshSpeakerList()
         {
             speakerListContainer.Clear();
-            speakerListContainer.Add(new Label("Speaker IDs"));
-            TextField input = new TextField { name = "NewSpeakerIdField" };
-            input.style.marginTop = 4f;
-            speakerListContainer.Add(input);
-            speakerListContainer.Add(new Button(() => SpeakerAddRequested?.Invoke(input.value))
+            speakerListContainer.Add(new Label("Dialogue Speakers"));
+            speakerListContainer.Add(new Button(OnCreateSpeakerRequested)
             {
-                text = "Add SpeakerId"
+                name = "CreateSpeakerButton",
+                text = "Create Speaker"
             });
 
-            foreach (string speakerId in DialogueSpeakerIdSettings.instance.SpeakerIds)
+            foreach (DialogueSpeaker speaker in DialogueSpeakerAssetUtility.FindAll())
             {
-                string capturedSpeakerId = speakerId;
-                VisualElement row = new VisualElement { name = $"SpeakerId_{speakerId}" };
+                DialogueSpeaker capturedSpeaker = speaker;
+                VisualElement row = new VisualElement { name = $"DialogueSpeaker_{speaker.name}" };
                 row.style.flexDirection = FlexDirection.Row;
                 row.AddToClassList("dialogue-editor-speaker-row");
-                Label label = new Label(speakerId);
-                label.style.flexGrow = 1f;
-                row.Add(label);
-                row.Add(new Button(() => SpeakerRemoveRequested?.Invoke(capturedSpeakerId)) { text = "×" });
+                Button selectButton = new Button(() => SpeakerSelected?.Invoke(capturedSpeaker))
+                {
+                    text = speaker.SpeakerName
+                };
+                selectButton.style.flexGrow = 1f;
+                row.Add(selectButton);
+                TextField renameField = new TextField { value = speaker.SpeakerName };
+                renameField.style.flexGrow = 1f;
+                renameField.style.width = 100f;
+                row.Add(renameField);
+                row.Add(new Button(() => SpeakerRenameRequested?.Invoke(capturedSpeaker, renameField.value))
+                {
+                    text = "Rename"
+                });
                 speakerListContainer.Add(row);
             }
         }
@@ -212,7 +261,8 @@ namespace RPG.DialogueSystemModule.Editor
             detailsSerializedObject = new SerializedObject(node);
             if (node is DialogueSpeechNode speech)
             {
-                AddBoundProperty("speakerId", "SpeakerId", false);
+                AddBoundProperty("nodeName", "节点名称", false);
+                AddBoundProperty("speaker", "Speaker", false);
                 AddBoundProperty("text", "Text", true);
                 AddBoundProperty("animationClip", "AnimationClip", false);
                 AddBoundProperty("voiceClip", "VoiceClip", false);
@@ -222,7 +272,7 @@ namespace RPG.DialogueSystemModule.Editor
             }
             else if (node is DialogueChoiceNode)
             {
-                AddBoundProperty("choiceId", "ChoiceId", false);
+                AddBoundProperty("nodeName", "节点名称", false);
                 AddBoundProperty("text", "Text", true);
                 AddBoundProperty("conditions", "Conditions", true);
                 AddBoundProperty("actions", "Actions", true);
@@ -284,9 +334,9 @@ namespace RPG.DialogueSystemModule.Editor
         {
             if (node is DialogueEntryNode) return "EntryNode";
             if (node is DialogueSpeechNode speech)
-                return string.IsNullOrWhiteSpace(speech.SpeakerId) ? "SpeechNode" : $"SpeechNode · {speech.SpeakerId}";
+                return string.IsNullOrWhiteSpace(speech.NodeName) ? "SpeechNode" : speech.NodeName;
             if (node is DialogueChoiceNode choice)
-                return string.IsNullOrWhiteSpace(choice.ChoiceId) ? "ChoiceNode" : $"ChoiceNode · {choice.ChoiceId}";
+                return string.IsNullOrWhiteSpace(choice.NodeName) ? "ChoiceNode" : choice.NodeName;
             if (node is DialogueEndNode) return "EndNode";
             return "DialogueNode";
         }

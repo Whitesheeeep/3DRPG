@@ -2,7 +2,7 @@
 
 > 文档状态：需求确认稿  
 > 适用范围：单机 RPG、3D 站桩式 NPC 对话、ScriptableObject 对话图  
-> 当前阶段：运行时与 GraphView 编辑器第一版已实现，运行时 UI 和业务 Handler 仍由业务模块接入
+> 当前阶段：运行时与 GraphView 编辑器第一版已实现，运行时 UI 通过 DialogueWindow 内聚 MVC 接入
 
 ## 1. 产品目标与第一版范围
 
@@ -25,11 +25,11 @@
 - 不制作头像、Portrait、左右头像站位或头像资源加载。
 - 不制作镜头切换、角色走位、转身、过场动画或镜头演出。
 - 不保存对话中途进度。
-- 不接入本地化 Key、打字机效果或语音等待/自动推进；VoiceClip 只负责按对白节点播放。
-- 不内置任务、背包、奖励等业务 Handler。
+- 不接入本地化 Key、语音等待或自动推进；VoiceClip 只负责按对白节点播放。正文显示由 DialogueWindow 的 UI View 复用现有 `TMProTypeWriter`，不进入对话领域层。
+- 不内置任务、背包、奖励等具体业务命令。
 - 不提供通用 Escape 或关闭按钮取消对话。
 - 不通过禁用 PlayerController、Locomotion 或其他组件实现站桩。
-- 不使用 UniTask、TaskCompletionSource 或异步等待式对话接口。
+- DialogueSystem、DialogueSession 和 Controller 不使用 UniTask、TaskCompletionSource 或异步等待式对话接口；ChoiceView 的 Addressable 行资源初始化例外允许使用 UniTask。
 
 ## 2. BusinessArchitecture 分层
 
@@ -40,9 +40,9 @@ flowchart TD
     Startup["GameArchitectureStartup"] --> Architecture["GameArchitecture"]
     Architecture --> DialogueSystem["DialogueSystem\n会话编排与节点推进"]
     Architecture --> InteractionInteractor["InteractionInteractor\n候选目标选择"]
-    Architecture --> Handlers["Condition / Action Handlers"]
+    Architecture --> Commands["SerializeReference Condition / Action Commands"]
     Architecture --> Business["Task / Inventory / Player Managers"]
-    Handlers --> Business
+    Commands --> Business
     InteractionInteractor --> DialogueTarget["DialogueInteractable"]
     DialogueTarget --> DialogueSystem
     DialogueSystem --> Session["DialogueSession\n单次对话周期"]
@@ -59,9 +59,9 @@ flowchart TD
 - 当前会话 ID。
 - 当前 `DialogueRequest`。
 - 当前 `DialogueAsset`、`SpeechNode`、`ChoiceNode` 和运行状态。
-- 当前 `IDialogueParticipantContext` 与 `SpeakerId` 绑定。
+- 当前 `IDialogueParticipantContext` 与 `DialogueSpeaker` 资产引用绑定。
 - 当前会话的 `SessionId` 作为 LooseGameplayTag 来源标识，系统只发布通用事件。
-- `SpeechPresented`、`ChoicePresented` 和 `Ended` 事件。
+- `SpeechPresented` 和 `Ended` 事实事件；Choice 展示快照由 DialogueSystem 在收到 Speech 后计算并发布。
 - 会话结束时清理本会话启动的语音和动画；DialogueSystem 负责发布对称的 LooseGameplayTag Remove 请求，UI 通过事实事件关闭窗口。
 
 不负责：
@@ -80,7 +80,7 @@ flowchart TD
 - 执行 `Advance` 和 `SelectChoice`。
 - 读取 Speech/Choice 直接引用并推进节点。
 - 调用 Condition 和 Action。
-- 校验图结构、节点引用和 Handler 配置。
+- 校验图结构、节点引用和命令序列化配置。
 - 发布对话已经发生的事实事件。
 
 `DialogueSystem` 不把 UI、输入和业务 Manager 引用写入 `DialogueAsset`。
@@ -100,25 +100,27 @@ Interactor 不直接配置 NPC 的交互碰撞体，也不理解 `DialogueAsset`
 
 ### 2.4 Condition 与 Action
 
-Condition 和 Action 是 `ChoiceNode` 的内容，不是独立图节点：
+Condition 和 Action 是 `ChoiceNode` 的内容，不是独立图节点；每个对象自身就是一个带序列化参数的领域命令：
 
 ```csharp
-protected override void OnInit()
+public override DialogueConditionResult Evaluate(DialogueCommandContext context)
 {
-    DialogueSystem dialogueSystem = this.GetSystem<DialogueSystem>();
-    dialogueSystem.RegisterConditionHandler(new PlayerTagConditionHandler());
-    dialogueSystem.RegisterActionHandler(new AcceptTaskActionHandler(taskManager));
+    IInventoryManager inventory =
+        context.Architecture.GetManager<IInventoryManager>();
+    return inventory.HasItem(itemId, count)
+        ? DialogueConditionResult.Met()
+        : DialogueConditionResult.NotMet("缺少任务物品。");
 }
 ```
 
-第一版不使用运行时反射扫描和 UnityEvent。Condition/Action 定义由 `[SerializeReference]` 保存，Handler 按具体 C# 定义类型显式注册，缺失 Handler 视为配置错误。
+第一版不使用运行时反射执行和 UnityEvent。Condition/Action 定义由 `[SerializeReference]` 保存，编辑器通过 `TypeCache` 自动发现可实例化派生类型；运行时由 `DialogueSystem` 创建一次性的 `DialogueCommandContext`，命令通过 Context 的实际 `IArchitecture` 获取 Manager/System，或调用已有 Singleton。命令不保存任何运行时引用，也不需要注册入口。
 
 ## 3. 同步运行时 API
 
 ```csharp
 DialogueStartResult TryStartDialogue(DialogueRequest request);
 DialogueStepResult Advance();
-DialogueStepResult SelectChoice(string choiceId);
+DialogueStepResult SelectChoice(string choiceNodeId);
 ```
 
 ### 3.1 TryStartDialogue
@@ -147,12 +149,13 @@ DialogueStepResult SelectChoice(string choiceId);
 
 `SelectChoice` 只允许选择当前 SpeechNode 的 Choice：
 
+- 参数使用 ChoiceNode 的 `NodeId`，不再维护可编辑的独立 ChoiceId。
 - Choice 不存在时返回 `InvalidChoice`。
 - Condition 不满足的 Choice 显示为置灰且不可选择。
 - Choice 被选择后触发其 Actions。
-- Action 不返回成功/失败状态，也不决定节点跳转；Handler 异常由 DialogueSystem 转换为 Failed。
+- Action 不返回成功/失败状态，也不决定节点跳转；Action 异常由 DialogueSystem 转换为 Failed。
 - Actions 触发后立即进入 Choice 配置的 `TargetNode`。
-- 缺失 Handler 或 Action 异常会结束会话并返回 Failed；Condition 不满足只返回置灰的 `ConditionFailed`。
+- 空命令或 Action 异常会结束会话并返回 Failed；Condition 不满足只返回置灰的 `ConditionFailed`。
 
 ### 3.4 事实事件
 
@@ -162,6 +165,8 @@ DialogueStepResult SelectChoice(string choiceId);
 - `DialogueSpeechPresentedEvent`
 - `DialogueChoicePresentedEvent`
 - `DialogueEndedEvent`
+
+`DialogueChoicePresentedEvent.Choices` 与 `DialogueSystem.CurrentChoicePresentations` 提供按资产顺序生成的只读快照：每项包含 `NodeId`、文本、`IsAvailable` 和 `UnavailableReason`。UI 只消费快照，不直接读取 Condition 或访问业务 IOC。
 
 ## 4. DialogueRequest 与 3D 参与者
 
@@ -179,12 +184,12 @@ public sealed class DialogueRequest
 
 `IDialogueParticipantContext` 是玩家和 NPC 共用的最小参与者契约：
 
-- `SpeakerId`：与 SpeechNode 匹配的稳定标识。
+- `Speaker`：与 SpeechNode 匹配的 `DialogueSpeaker` ScriptableObject 身份。
 - `ParticipantObject`：参与者的场景对象，用于通用事件目标。
 - `VoiceAudioSource`：对话专用语音 AudioSource，可为空。
 - `AnimationPlayer`：动画播放接口，可为空。
 
-`DialogueParticipant : MonoBehaviour` 是运行时默认实现。玩家和 NPC 均挂载该组件，分别配置自己的 SpeakerId、语音 AudioSource 和 `IAnimationPlayer`。Context 不包含 ASC、GameplayTag、任务 Manager 或 UI 引用。
+`DialogueParticipant : MonoBehaviour` 是运行时默认实现。玩家和 NPC 均挂载该组件，分别配置自己的 DialogueSpeaker、语音 AudioSource 和 `IAnimationPlayer`。Context 不包含 ASC、GameplayTag、任务 Manager 或 UI 引用。
 
 Context 用于：
 
@@ -222,7 +227,8 @@ DialogueAsset
 `SpeechNode` 是一段可展示的 3D 对白，字段包括：
 
 - `NodeId`：稳定字符串 GUID。
-- `SpeakerId`：由 Editor SpeakerId 配置提供选择。
+- `NodeName`：编辑器显示用名称，不参与运行时寻址且不要求唯一。
+- `Speaker`：由 Unity ObjectField 选择的 DialogueSpeaker 资产；`SpeakerName` 来自该 SO 的 `name`。
 - `Text`：第一版直接保存字符串。
 - `AnimationClip`：可选的全身说话动作。
 - `VoiceClip`：可选的对白语音；由对应 Context 的 `VoiceAudioSource` 播放。
@@ -245,7 +251,7 @@ SpeechNode
 ChoiceNode 是 SpeechNode 的选项子节点，字段包括：
 
 - `NodeId`：稳定字符串 GUID。
-- `ChoiceId`：同一 SpeechNode 内稳定且唯一的选择标识。
+- `NodeName`：编辑器显示用名称，不参与运行时寻址且不要求唯一。
 - `Text`：选项显示文本。
 - `Conditions[]`：决定当前选项是否可用。
 - `Actions[]`：选择后触发的副作用动作。
@@ -258,12 +264,12 @@ Action 的运行规则：
 1. Choice 满足条件并被选择。
 2. 按配置顺序触发 Actions。
 3. Action 不返回成功/失败结果。
-4. Action Handler 同步执行；异常由 DialogueSystem 捕获并结束会话为 Failed。
+4. Action 命令同步执行；异常由 DialogueSystem 捕获并结束会话为 Failed。
 5. DialogueSession 立即进入 Choice 的 TargetNode。
 
 ### 5.4 EndNode
 
-EndNode 不配置结束类型，也不允许存在后继连接。运行时进入任意 EndNode 都返回 `DialogueEndStatus.Completed`；Handler 缺失、Action 异常、非法节点和架构注销统一返回 `Failed`。拒绝任务、取消交易等业务语义由 Choice 的 Action 修改业务状态后进入普通 EndNode。
+EndNode 不配置结束类型，也不允许存在后继连接。运行时进入任意 EndNode 都返回 `DialogueEndStatus.Completed`；空命令、Action 异常、非法节点和架构注销统一返回 `Failed`。拒绝任务、取消交易等业务语义由 Choice 的 Action 修改业务状态后进入普通 EndNode。
 
 ### 5.5 全身动画
 
@@ -292,13 +298,13 @@ animationPlayer.Play(
 - DialogueId 非空且稳定。
 - EntryNode 唯一且目标有效。
 - NodeId 非空且不重复。
-- ChoiceId 在所属 SpeechNode 内不重复。
+- ChoiceNode 的 `NodeId` 非空且在资产内不重复，并作为 `SelectChoice` 的参数。
 - SpeechNode 不能同时存在 `NextNode` 和非空 `Choices[]`；编辑器以 Choice 模式或线性模式二选一，运行时在合法资产中按对应模式推进。
 - 所有 `NextNode`、`TargetNode` 引用存在。
 - 每个 Choice 都有目标节点。
 - EndNode 不允许存在后继连接。
-- Condition/Action 列表中的每个 `[SerializeReference]` 定义不能为空。
-- 每个定义的具体 C# 类型必须有已注册的 Handler；具体字段配置由定义和 Handler 自行校验。
+- Condition/Action 列表中的每个 `[SerializeReference]` 命令不能为空。
+- 每个 Condition/Action 命令不能为空，并由命令自身的 `Validate()` 检查序列化字段；校验阶段不访问运行时 IOC，也不执行命令。
 - 至少有一个从 EntryNode 可达的 EndNode，且每个可达节点都存在通往 EndNode 的路径；允许有出口的循环。
 
 节点图允许循环，因为循环必须经过玩家的 `Advance` 或 `SelectChoice`，并且必须存在可达 EndNode 的出口；图中不创建 ConditionNode/ActionNode，因而不需要自动节点步数限制。
@@ -410,19 +416,66 @@ UIManager
 └─ InteractionPromptWindow
 ```
 
+`DialogueWindow` 是对话 UI 的组合根，Controller 生命周期跟随窗口实例，而不是跟随 Show/Hide：
+
+```text
+DialogueWindow
+├─ DialogueSpeechView
+├─ DialogueChoiceView
+└─ DialogueUIController
+```
+
+`DialogueUIController` 在窗口 `OnAwake` 时订阅 DialogueSystem 事实事件和两个 View 的用户意图，在 `OnDestroy` 对称解除订阅。窗口隐藏时不解除订阅，因此下一次 `Started` 仍能恢复当前首屏；结束事件清空两个 View 并隐藏窗口。Controller 不执行 Condition/Action，也不访问业务 Manager。
+
+对话 Choice 不创建独立的 `DialogueChoiceWindow`；现有 `ChoiceWindow` 仍只负责场景交互目标的选项列表，Dialogue Choice 始终由 `DialogueWindow` 内的 `DialogueChoiceView` 展示。
+
 DialogueWindow 显示：
 
 - SpeakerName。
 - SpeechNode 正文。
 - ChoiceNode 选项列表。
-- 条件失败时的置灰原因。
+- 条件失败时通过 `DialogueChoiceSnapShot.UnavailableReason` 保留置灰诊断（首版 UI 不重复执行条件）。
 
 输入行为：
 
-- 当前 SpeechNode 没有 Choice 时，Submit 调用 `Advance`。
-- 当前 SpeechNode 有 Choice 时，Submit 或点击调用 `SelectChoice`。
+- `DialogueSpeechView` 的背景 Button 同时响应鼠标点击和 Unity EventSystem Submit；正文仍在打字或淡入时只调用 `TMProTypeWriter.Skip` 并吞掉本次输入，文本完整后才调用 `Advance`。
+- `DialogueChoiceView` 是 DialogueWindow 内部 View，复用 `OptionChoice` 行 prefab，按 `DialogueChoiceSnapShot` 原始顺序显示；不可用项置灰且不可点击，可用项点击或 Submit 只发送 ChoiceNode `NodeId`，由 Controller 调用 `SelectChoice`。
+- 带 Choice 的对白在正文自然显示完成或成功 Skip 后才显示 Choice；完成前保留背景 Button 用于 Skip，完成后禁用推进按钮并将焦点放到首个可用选项。
 - 有 Choice 时不能使用 Advance 默认推进。
 - 不显示头像和左右站位。
+
+Choice 展示由 DialogueSystem 在进入 SpeechNode 后计算并发布 `DialogueChoicePresentedEvent.Choices`。UI 不接触 Condition，也不重复访问 IOC；选择瞬间 DialogueSystem 会重新计算 Condition，展示快照不等于业务授权。`DialogueChoiceView` 的 Addressable 行资源初始化和 `DialogueSpeechView` 对现有 `TMProTypeWriter.ShowText` 的等待可以使用 UniTask，但 DialogueSystem、DialogueSession 和 Controller 对外仍保持同步 API。
+
+### 9.1 打字机行为
+
+`DialogueWindow` 的 `SpeakContent` TMP 对象挂载 `TMProTypeWriter`，由 `DialogueWindowDataComponent.SpeakContentTypeWriter` 显式注入 `DialogueSpeechView`。SpeakerName 和 Choice 文本不使用打字机。
+
+```mermaid
+sequenceDiagram
+    participant D as DialogueSystem
+    participant C as DialogueUIController
+    participant V as DialogueSpeechView
+    participant T as TMProTypeWriter
+    participant Q as DialogueChoiceView
+
+    D->>C: SpeechPresented
+    C->>V: RefreshSpeech
+    V->>T: ShowText
+    D->>C: ChoicePresented
+    C->>C: 暂存 Choice
+    alt 文本仍在显示
+        V-->>C: 点击 / Submit
+        V->>T: Skip
+    end
+    T-->>V: ShowText 完成
+    V-->>C: RevealCompleted
+    C->>Q: RefreshChoices + SetVisible
+    C->>V: 禁用 Advance
+```
+
+- `TMProTypeWriter` 的 `noSkipDuration` 继续由组件自身执行；保护时间内的点击不会推进对话。
+- 成功 Skip 只补全文本，不停止当前 VoiceClip；真正的 Advance、Choice 或会话结束仍由 DialogueSession 管理语音切换和清理。
+- 新 Speech、Ended、窗口销毁会使旧的显示版本失效，旧文本完成回调不会恢复过期 Choice。
 
 ## 10. GraphView 对话编辑器准备
 
@@ -441,7 +494,7 @@ Model：
 - DialogueAsset 与节点 SubAsset。
 - Graph 校验服务。
 - Graph 结构命令服务。
-- Editor-only `DialogueSpeakerIdSettings`。
+- DialogueSpeaker ScriptableObject 资产和编辑器资产查询工具。
 
 View：
 
@@ -450,7 +503,7 @@ View：
 - `DialogueGraphNodeView`。
 - `DialogueGraphDetailsView`。
 - `DialogueGraphValidationView`。
-- `DialogueGraphSpeakerSettingsView`。
+- `DialogueGraphSpeakerAssetListView`（显示并定位项目中的 DialogueSpeaker 资产）。
 
 Controller：
 
@@ -466,9 +519,33 @@ Controller：
 - 当前选中的 Node。
 - 当前校验消息。
 - 当前运行时高亮 Node。
-- 当前 SpeakerId 下拉内容。
+- 当前 DialogueSpeaker 资产列表。
 
 只有当某个面板需要独立筛选、分页、多源组合或复杂派生数据时，才为该面板增加私有 ViewModel；不创建覆盖整个编辑器的共享 ViewModel。
+
+### 10.1.1 编辑器资产与视口记忆
+
+Dialogue Graph Editor 使用 Editor-only `DialogueGraphEditorState : ScriptableSingleton<DialogueGraphEditorState>` 保存每项目、每用户的本地编辑状态，文件位于 `Library/DialogueGraphEditorState.asset`。该状态不属于运行时存档、不写入 `DialogueAsset`，也不进入版本控制。
+
+```mermaid
+flowchart LR
+    Window["DialogueGraphEditorWindow"] --> State["DialogueGraphEditorState\nLibrary"]
+    State --> Last["lastAssetGuid"]
+    State --> Viewports["AssetGuid -> Position + Scale"]
+    Window --> Controller["DialogueGraphEditorController"]
+    Controller --> Graph["DialogueGraphView"]
+    Graph -->|"平移 / 缩放"| Controller
+    Controller -->|"切换 / 关闭时保存"| State
+```
+
+规则：
+
+- 上次编辑资产只保存 GUID；资产移动或重命名后仍可恢复，资产被删除时清除失效记录并打开空编辑器。
+- 每个 DialogueAsset 独立保存 GraphView 的 `viewTransform.position` 和 `viewTransform.scale`。
+- 平移、滚轮缩放期间只更新内存，不持续写 `Library` 文件；切换资产、清空资产、关闭窗口或脚本域重载时一次性保存。
+- 明确双击打开的资产优先于上次资产；重复打开当前资产不重建 GraphView，也不重置当前视口。
+- 没有历史视口的资产首次打开时，在布局完成后调用一次 `FrameAll()`；空图保持默认视口。
+- 节点 `EditorPosition` 是 DialogueAsset 的团队共享布局数据；GraphView 视口是个人编辑器状态，二者互不替代。
 
 ### 10.2 SerializedObject 与 Undo
 
@@ -500,30 +577,42 @@ Controller：
 - 删除节点时同步清理所有直接 ScriptableObject 引用。
 - 节点位置只用于编辑器布局，不参与运行时节点跳转。
 
-### 10.4 SpeakerId Editor 配置
+### 10.4 DialogueSpeaker 资产配置
 
-使用 Editor-only `ScriptableSingleton` 持久化预先定义的 SpeakerId：
+Speaker 身份直接使用 `DialogueSpeaker` ScriptableObject 引用：
 
 ```csharp
-[FilePath("ProjectSettings/DialogueSpeakerIdSettings.asset", FilePathAttribute.Location.ProjectFolder)]
-internal sealed class DialogueSpeakerIdSettings
-    : ScriptableSingleton<DialogueSpeakerIdSettings>
+[CreateAssetMenu(menuName = "RPG/Dialogue/Speaker")]
+public sealed class DialogueSpeaker : ScriptableObject
 {
-    // 持久化预先定义的 SpeakerId 列表。
+    public string SpeakerName => name;
 }
 ```
 
 规则：
 
-- 设置资产只服务 Editor，不进入 Runtime 程序集。
-- 设置资产持有预先定义的 SpeakerId 列表。
-- SpeechNode 编辑字段通过下拉列表选择 SpeakerId。
-- SpeechNode 和 DialogueParticipant 的 `SpeakerId` 使用同一个 `[SpeakerId]` `PropertyDrawer`，只允许从设置列表、空值或历史未知值（显示 `Missing`）中选择，不允许手工输入。
-- Graph 资产只保存最终选中的 SpeakerId 字符串。
-- SpeakerId 删除或重命名时，Validation 面板报告受影响的 SpeechNode。
-- Graph Inspector 使用普通 `PropertyField`，由 Drawer 统一处理多对象编辑、SerializedProperty 和 Undo；运行时不依赖 `DialogueSpeakerIdSettings`。
+- Speaker SO 是唯一身份数据，不保存额外字符串身份字段。
+- SpeakerName 直接来自 SO.name，重命名资产不会改变引用身份。
+- SpeechNode 和 DialogueParticipant 使用普通 ObjectField 选择 DialogueSpeaker。
+- DialogueRuntime 按同一 SO 引用匹配 SpeechNode 和参与者。
+- Graph 编辑器左侧列出项目中的 DialogueSpeaker 资产，可选择、定位和重命名。
+- 重命名以当前 `.asset` 文件名为准：先通过 `AssetDatabase.RenameAsset` 修改文件名，再同步主对象名称；因此即使历史文件名与 `m_Name` 不一致，再次输入当前对象名也能修复该状态。
+- `.meta` GUID 与所有节点引用保持不变；目标文件已存在、名称非法、对象不是已保存的独立主资产或 Unity 拒绝重命名时立即报错，不留下半完成状态。
+- 资产文件重命名不承诺 Unity Ctrl+Z Undo，Controller 在成功后统一刷新 Speaker 列表、Node Details、Validation 和状态栏。
+- Graph Inspector 使用原生 `PropertyField`，不再需要自定义身份 Drawer。
 
-### 10.5 Editor 使用参考图
+### 10.5 SplitView 与 GraphView 交互
+
+编辑器使用嵌套的 `CustomTwoPanelSplitView`：外层负责节点导航，内层负责 GraphView 与 Node Details。分隔线事件由 SplitView 捕获并阻断，不进入 GraphView 的 `ContentDragger`。
+
+- 拖动外层分隔线会改变整个内层 SplitView 的屏幕 X 原点，GraphView 节点会随容器整体移动；这不是 GraphView 平移事件。
+- 拖动内层 Node Details 分隔线只改变 GraphView 的右侧可用宽度，GraphView 左边界保持不变，因此节点不会整体移动。
+- PointerMove 只更新视觉尺寸，PointerUp 才写入 `SessionState`。
+- GeometryChanged 只在实际尺寸变化时更新样式，不重复持久化固定 Pane 尺寸。
+- Node Details 使用独立的纵向 ScrollView；内容超出可视区域时，滚轮只改变 Details 的 `scrollOffset.y`，不传播到 SplitView 或 GraphView。
+- Details ScrollView 在窗口销毁时注销滚轮回调，切换节点时只重建 `contentContainer` 内容，不重复创建外层滚动容器。
+
+### 10.6 Editor 使用参考图
 
 下面的内嵌 SVG 用于表示编辑器的大致使用关系；它是 Markdown 中的说明图，不是运行时 UI，也不替代 GraphView 实现：
 
@@ -542,8 +631,8 @@ internal sealed class DialogueSpeakerIdSettings
   </defs>
 
   <rect x="28" y="40" width="190" height="88" fill="#e8f1fb" class="dialogue-editor-box" />
-  <text x="123" y="74" class="dialogue-editor-title">SpeakerId Settings</text>
-  <text x="123" y="99" class="dialogue-editor-text">ScriptableSingleton</text>
+  <text x="123" y="74" class="dialogue-editor-title">DialogueSpeaker</text>
+  <text x="123" y="99" class="dialogue-editor-text">ScriptableObject Assets</text>
 
   <rect x="28" y="270" width="190" height="88" fill="#e8f1fb" class="dialogue-editor-box" />
   <text x="123" y="304" class="dialogue-editor-title">DialogueAsset</text>
@@ -580,44 +669,48 @@ internal sealed class DialogueSpeakerIdSettings
   <path d="M 820 245 C 770 280, 680 390, 520 250" class="dialogue-editor-arrow dialogue-editor-dashed" />
 </svg>
 
-### 10.6 EditorWindow 最终面板外观参考
+### 10.7 EditorWindow 最终面板外观参考
 
 独立 HTML 参考稿：[DialogueGraphEditorPanelMockup.html](Editor/Style/DialogueGraphEditorPanelMockup.html)。
 
 独立 HTML 参考稿包含以下最终面板分区：
 
 - 顶部标题栏和工具栏：选择 `DialogueAsset`，执行保存、Undo/Redo、自动布局和校验。
-- 左侧导航：节点树以及来自 Editor-only `ScriptableSingleton` 的 `SpeakerId` 列表。
+- 左侧导航：节点树以及项目中的 `DialogueSpeaker` 资产列表。
 - 中央 `GraphView`：展示 `EntryNode -> SpeechNode -> ChoiceNode/EndNode`，`Condition` 和 `Action` 只在 `ChoiceNode` 内容中显示。
-- 右侧 Inspector：通过 `SerializedObject` 编辑 `NodeId`、`SpeakerId`、文本、全身 `AnimationClip`、`VoiceClip`、`NextNode` 和 Choices。
+- 右侧 Inspector：通过 `SerializedObject` 编辑 `NodeId`、`NodeName`、`Speaker`、文本、全身 `AnimationClip`、`VoiceClip`、`NextNode` 和 Choices。
 - 右侧 Inspector：上方为可滚动 Node Details，下方为独立可滚动 Validation；底部只显示当前选中节点、Dirty 状态和 Undo 可用状态。
 
-该文件是静态视觉参考，不代表 UXML/USS 的最终实现代码；当前 Unity `EditorWindow` 使用两个嵌套的 `CustomTwoPanelSplitView` 实现左导航、中央 GraphView 和右 Inspector 的可调宽度布局，并使用 MTWY 对话编辑器的深色主题。`DialogueGraphEditorWindow` 只负责加载 UXML、创建 `DialogueGraphEditorView`、`DialogueGraphView` 和 `DialogueGraphEditorController`；Controller 负责资产、Graph 变更、选择、Inspector、SpeakerId、Validation 和状态协调。GraphView 将纯 UI 创建 API 与用户变更通知 API 分开，重建只调用 `ClearGraphView`、`AddGraphNodeView` 和 `AddGraphEdgeView`，不再使用通知抑制作用域，也不会反向修改 Model。普通节点编辑、移动、接线、断线、创建和删除使用局部刷新，不重建整个画布。GraphNode 根节点的四方向边框宽度在普通、Hover、原生选中和业务选中状态保持固定，只切换颜色，不改变节点尺寸或外层 margin。
+该文件是静态视觉参考，不代表 UXML/USS 的最终实现代码；当前 Unity `EditorWindow` 使用两个嵌套的 `CustomTwoPanelSplitView` 实现左导航、中央 GraphView 和右 Inspector 的可调宽度布局，并使用 MTWY 对话编辑器的深色主题。`DialogueGraphEditorWindow` 只负责加载 UXML、创建 `DialogueGraphEditorView`、`DialogueGraphView` 和 `DialogueGraphEditorController`；Controller 负责资产、Graph 变更、选择、Inspector、DialogueSpeaker、Validation 和状态协调。GraphView 将纯 UI 创建 API 与用户变更通知 API 分开，重建只调用 `ClearGraphView`、`AddGraphNodeView` 和 `AddGraphEdgeView`，不再使用通知抑制作用域，也不会反向修改 Model。普通节点编辑、移动、接线、断线、创建和删除使用局部刷新，不重建整个画布。GraphNode 根节点的四方向边框宽度在普通、Hover、原生选中和业务选中状态保持固定，只切换颜色，不改变节点尺寸或外层 margin。
 
-## 11. Handler 注册与失败语义
+## 11. 命令注册与失败语义
 
-Condition 和 Action Handler 由 BusinessArchitecture System 显式注册：
+Condition 和 Action 不再使用运行时处理器注册表。它们是 DialogueAsset 中的
+`[SerializeReference]` 命令对象，编辑器通过 `TypeCache.GetTypesDerivedFrom` 自动发现公开、非抽象且有无参构造函数的派生类型：
 
-```text
-GameArchitecture
-    -> Register DialogueSystem
-    -> Register 业务 Manager / System
-    -> System.OnInit 注册 Condition / Action Handler
+```mermaid
+flowchart LR
+    TypeCache["TypeCache 扫描派生类型"] --> Drawer["DialogueDefinitionPropertyDrawer"]
+    Drawer --> Serialized["SerializeReference 写入资产"]
+    Serialized --> Runtime["DialogueSystem 创建 DialogueCommandContext"]
+    Runtime --> Condition["Condition.Evaluate(context)"]
+    Runtime --> Action["Action.Execute(context)"]
+    Condition --> IOC["context.Architecture 获取 Manager/System"]
+    Action --> IOC
 ```
 
-第一版只定义按具体定义类型注册的通用注册表，不内置任务、背包或奖励 Handler。
+新增业务命令只需新建派生类、声明序列化参数并实现 `Evaluate` 或 `Execute`；不需要修改 `GameArchitecture`、`DialogueSystem` 或另一个注册器。命令不得保存 Architecture、Manager、System、Session 或场景对象引用。`Validate()` 只检查序列化配置，不访问运行时 IOC。
 
 错误分类：
 
 - `Busy`：已有对话会话。
 - `InvalidRequest`：参与者或资产无效。
 - `InvalidGraph`：资产节点图校验失败。
-- `InvalidChoice`：选项不存在或已置灰。
-- `MissingHandler`：Condition/Action Handler 未注册。
-- `AutomaticStepLimitExceeded`：保留为历史兼容错误码，不用于当前 Speech/Choice 运行流程。
-- `Failed`：缺失 Handler、Action 异常、参与者销毁、Architecture 注销或其他会话级运行时异常。
+- `InvalidChoice`：选项不存在或当前不在 Choice 状态。
+- `ConditionFailed`：条件正常返回 `NotMet`，Choice 保持置灰并可继续选择其他项。
+- `Failed`：空命令、Condition/Action 异常、参与者销毁、Architecture 注销或其他会话级运行时异常。
 
-Action 不返回失败状态；DialogueSystem 捕获 Action Handler 异常并结束会话为 Failed。业务 Handler 仍由 BusinessArchitecture System 显式注册，不内置任务、背包或奖励实现。
+Condition 展示计算采用 AND 短路；Condition 异常直接结束会话。选择瞬间会重新执行全部 Condition，展示快照不是业务授权。Action 按资产顺序同步执行，异常不会继续进入 TargetNode，已执行的前置 Action 不自动回滚。
 
 ## 12. 对话进度、取消和结束结果
 
@@ -658,9 +751,9 @@ Action 不返回失败状态；DialogueSystem 捕获 Action Handler 异常并结
 - SpeechNode 可以展示多个 ChoiceNode。
 - 条件不满足的 Choice 显示为置灰且不可选择。
 - Choice Action 触发后不等待成功状态并进入 TargetNode。
-- Action Handler 异常会被 DialogueSystem 转换为 Failed。
+- Action 命令异常会被 DialogueSystem 转换为 Failed。
 - SpeechNode 可以播放指定参与者的全身 AnimationClip。
-- 任意 EndNode 都以 Completed 正常结束会话；缺失 Handler 或 Action 异常以 Failed 结束。
+- 任意 EndNode 都以 Completed 正常结束会话；空命令或 Action 异常以 Failed 结束。
 - 对话期间两个通用 LooseGameplayTag 请求按 SessionId 对称生效和移除。
 - `State.Block.Movement` 阻止水平移动但保留重力；`State.Block.AbilityActivation` 在 `TryActivate` 中统一阻断新 Ability。
 - Completed、Failed 都会清理 UI、来源 Tag、语音和动画状态。
@@ -668,19 +761,19 @@ Action 不返回失败状态；DialogueSystem 捕获 Action Handler 异常并结
 - `NodeId` 使用稳定字符串 GUID，节点重排不影响直接引用。
 - GraphView 可以创建、移动、连接、删除节点并执行 Undo/Redo。
 - GraphView Details 使用 SerializedObject 绑定节点字段。
-- SpeakerId 下拉从 Editor-only ScriptableSingleton 读取。
-- SpeechNode 与 DialogueParticipant 使用同一 SpeakerId PropertyDrawer；历史未知值显示 Missing 且不被静默覆盖。
+- SpeechNode 与 DialogueParticipant 使用同一 DialogueSpeaker ObjectField。
+- DialogueSpeaker 重命名后所有引用自动显示新的 SpeakerName。
 - SpeechNode VoiceClip 在对应 Participant AudioSource 播放；推进、选择、结束和失败立即停止当前语音。
-- 重复或失效 SpeakerId、NodeId 和节点引用能在 ValidationView 中报告。
-- 对话系统不使用 UniTask。
+- 失效 Speaker、NodeId 和节点引用能在 ValidationView 中报告。
+- 对话运行时核心不使用 UniTask；仅 DialogueChoiceView 的行资源初始化允许使用 UniTask。
 
 ### 13.2 后续扩展
 
 - GraphView 编辑器的自动布局、批量编辑和运行时节点高亮。
-- SpeakerId 显示名、颜色和动画默认配置。
+- SpeakerName 颜色和动画默认配置。
 - 本地化 Key 和多语言文本。
 - 语音和打字机效果。
 - 动画 Transition、动画事件和更复杂的 3D 演出。
 - 对话会话存档和断点恢复。
-- 任务、背包、奖励等正式业务 Handler。
+- 任务、背包、奖励等正式业务命令实现。
 - 镜头、角色朝向、表情和过场演出。

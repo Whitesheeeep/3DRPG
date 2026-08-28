@@ -49,9 +49,6 @@ namespace RPG.DialogueSystemModule
         /// <summary>SpeechNode 进入并展示后的事件。</summary>
         public event Action<DialogueSpeechPresentedEvent> SpeechPresented;
 
-        /// <summary>当前 SpeechNode 的 Choice 展示后的事件。</summary>
-        public event Action<DialogueChoicePresentedEvent> ChoicePresented;
-
         /// <summary>会话结束后的事件。</summary>
         public event Action<DialogueEndedEvent> Ended;
         #endregion
@@ -72,13 +69,20 @@ namespace RPG.DialogueSystemModule
                 ? DialogueSessionState.WaitingForChoice
                 : DialogueSessionState.Running;
 
-            IDialogueParticipantContext participant = Request.FindParticipant(speech.SpeakerId);
+            // 放音频
+            IDialogueParticipantContext participant = Request.FindParticipant(speech.Speaker);
+            if (speech.Speaker == null)
+            {
+                // Speaker 资产是运行时身份契约；即使没有语音或动画，文本仍可继续展示，但必须暴露配置错误。
+                Debug.LogError($"Dialogue SpeechNode '{speech.NodeId}' 未配置 Speaker 资产。",
+                    Request.Target?.InteractionObject);
+            }
             if (speech.VoiceClip != null)
             {
                 if (participant?.VoiceAudioSource == null)
                 {
                     Debug.LogError(
-                        $"Dialogue SpeechNode '{speech.NodeId}' 配置了语音，但 SpeakerId '{speech.SpeakerId}' 没有 AudioSource。",
+                        $"Dialogue SpeechNode '{speech.NodeId}' 配置了语音，但 Speaker '{speech.Speaker?.SpeakerName ?? "<empty>"}' 没有 AudioSource。",
                         participant?.ParticipantObject);
                 }
                 else
@@ -89,6 +93,7 @@ namespace RPG.DialogueSystemModule
                 }
             }
 
+            // 放动画
             if (speech.AnimationClip != null && participant?.AnimationPlayer != null)
             {
                 // 对话动画固定进入全身 Action 层；新对白先停止本会话上一段动作，避免层内残留。
@@ -101,13 +106,12 @@ namespace RPG.DialogueSystemModule
             else if (speech.AnimationClip != null)
             {
                 Debug.LogError(
-                    $"Dialogue SpeechNode '{speech.NodeId}' 配置了动画，但 SpeakerId '{speech.SpeakerId}' 没有 IAnimationPlayer。",
+                    $"Dialogue SpeechNode '{speech.NodeId}' 配置了动画，但 Speaker '{speech.Speaker?.SpeakerName ?? "<empty>"}' 没有 IAnimationPlayer。",
                     participant?.ParticipantObject);
             }
 
+            // DialogueSystem 在收到该事实后计算 Condition 快照并发布 ChoicePresented，Session 不直接执行命令。
             SpeechPresented?.Invoke(new DialogueSpeechPresentedEvent(this, speech));
-            if (State == DialogueSessionState.WaitingForChoice)
-                ChoicePresented?.Invoke(new DialogueChoicePresentedEvent(this, speech));
         }
         #endregion
 

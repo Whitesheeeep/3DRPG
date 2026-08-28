@@ -171,13 +171,18 @@ namespace WS_Modules.UIToolkitExtensions.Editor
             if (!fixedPaneConfigured || fixedPane == null) return currentFixedPaneDimension;
 
             float clampedDimension = ClampFixedPaneDimension(requestedDimension);
-            applyingDimension = true;
-            if (orientation == TwoPaneSplitViewOrientation.Horizontal)
-                fixedPane.style.width = clampedDimension;
-            else
-                fixedPane.style.height = clampedDimension;
+            // 外层 SplitView 重新布局时固定 Pane 可能尺寸未变；只同步 DragLine，避免反复触发布局。
+            float resolvedDimension = GetResolvedFixedPaneDimension();
+            if (!Mathf.Approximately(resolvedDimension, clampedDimension))
+            {
+                applyingDimension = true;
+                if (orientation == TwoPaneSplitViewOrientation.Horizontal)
+                    fixedPane.style.width = clampedDimension;
+                else
+                    fixedPane.style.height = clampedDimension;
+                applyingDimension = false;
+            }
             SynchronizeDragLine(clampedDimension);
-            applyingDimension = false;
 
             currentFixedPaneDimension = clampedDimension;
             if (persist) PersistFixedPaneDimension(clampedDimension);
@@ -210,6 +215,10 @@ namespace WS_Modules.UIToolkitExtensions.Editor
             float offset = fixedPaneIndex == 0
                 ? fixedPaneDimension + fixedPaneMargins
                 : splitDimension - fixedPaneDimension - fixedPaneMargins;
+            float currentOffset = orientation == TwoPaneSplitViewOrientation.Horizontal
+                ? NormalizeFiniteDimension(dragLineAnchor.resolvedStyle.left)
+                : NormalizeFiniteDimension(dragLineAnchor.resolvedStyle.top);
+            if (Mathf.Approximately(currentOffset, offset)) return;
             if (orientation == TwoPaneSplitViewOrientation.Horizontal)
                 dragLineAnchor.style.left = offset;
             else
@@ -308,7 +317,8 @@ namespace WS_Modules.UIToolkitExtensions.Editor
         private void OnGeometryChanged(GeometryChangedEvent _)
         {
             if (!fixedPaneConfigured || !dimensionRestored || applyingDimension || fixedPane == null) return;
-            ApplyFixedPaneDimension(currentFixedPaneDimension, true);
+            // GeometryChanged 只负责恢复合法视觉尺寸；持久化延迟到用户完成拖拽，避免每帧写 SessionState。
+            ApplyFixedPaneDimension(currentFixedPaneDimension, false);
         }
 
         // 在下沉阶段接管 DragLine，阻止 Unity 内置 Resizer 绕过自定义最大尺寸。
@@ -333,7 +343,7 @@ namespace WS_Modules.UIToolkitExtensions.Editor
             float pointerDelta = pointerPosition - dragStartPointerPosition;
             float direction = fixedPaneIndex == 0 ? 1f : -1f;
             float requestedDimension = dragStartDimension + pointerDelta * direction;
-            float clampedDimension = ApplyFixedPaneDimension(requestedDimension, true);
+            float clampedDimension = ApplyFixedPaneDimension(requestedDimension, false);
             if (!Mathf.Approximately(requestedDimension, clampedDimension))
             {
                 dragStartPointerPosition = pointerPosition;

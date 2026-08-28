@@ -68,10 +68,24 @@ namespace WS_Modules.UIModule
         /// <param name="highlighted">是否显示选中高亮。</param>
         public void SetOption(int index, string text, bool highlighted)
         {
+            SetOption(index, text, highlighted, true);
+        }
+
+        /// <summary>设置当前行索引、文本、选中状态和可交互状态。</summary>
+        /// <param name="index">当前行在列表中的索引。</param>
+        /// <param name="text">待显示的选项名称。</param>
+        /// <param name="highlighted">是否显示选中高亮。</param>
+        /// <param name="interactable">按钮是否允许点击和 EventSystem Submit。</param>
+        public void SetOption(int index, string text, bool highlighted, bool interactable)
+        {
             optionIndex = index;
             optionText.text = text ?? string.Empty;
+            optionButton.interactable = interactable;
             SetOptionHighlight(highlighted);
         }
+
+        /// <summary>获取该行实际使用的 Unity Button。</summary>
+        public Button Button => optionButton;
 
         /// <summary>设置当前行的选中视觉状态。</summary>
         /// <param name="highlighted">是否显示选中高亮。</param>
@@ -96,6 +110,7 @@ namespace WS_Modules.UIModule
         public void ClearOption()
         {
             if (optionText != null) optionText.text = string.Empty;
+            if (optionButton != null) optionButton.interactable = false;
             SetOptionHighlight(false);
         }
 

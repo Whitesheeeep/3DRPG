@@ -15,7 +15,7 @@
                 <ui:Label text="Graph Nodes" class="dialogue-editor-panel__header" />
                 <ui:ScrollView name="NodeListContainer" class="dialogue-editor-node-list" />
                 <ui:VisualElement class="dialogue-editor-speaker-section">
-                    <ui:Label text="Speaker IDs" class="dialogue-editor-section__header" />
+                    <ui:Label text="Dialogue Speakers" class="dialogue-editor-section__header" />
                     <ui:ScrollView name="SpeakerListContainer" class="dialogue-editor-speaker-list" />
                 </ui:VisualElement>
             </ui:VisualElement>

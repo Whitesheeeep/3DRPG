@@ -89,6 +89,9 @@ namespace RPG.Game.UI
                 choiceWindow.ActivateInteractionController();
 
                 await PreloadWindowAsync<DialogueWindow>();
+                if (!UIManager.Instance.TryGetWindow(out DialogueWindow dialogueWindow))
+                    throw new InvalidOperationException("DialogueWindow 预加载后未找到窗口实例。");
+                await dialogueWindow.WaitUntilReadyAsync();
                 preloaded = true;
                 preloadCompletionSource.TrySetResult();
             }

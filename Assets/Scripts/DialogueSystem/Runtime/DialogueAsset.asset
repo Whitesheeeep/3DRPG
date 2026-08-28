@@ -1,73 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-9205286876743836971
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: afa82bc2ce69471a8fbb64b182a292ad, type: 3}
-  m_Name: SpeechNode_001
-  m_EditorClassIdentifier: 
-  nodeId: 7a4b0c2a-8ce8-4ba0-9df2-37f344c86d92
-  editorPosition: {x: -298.3999, y: -8.000011}
-  speakerId: Player
-  text: "\u4F60\u597D\u8010\u53D7"
-  animationClip: {fileID: 0}
-  voiceClip: {fileID: 0}
-  animationFadeDuration: 0
-  nextNode: {fileID: 0}
-  choices:
-  - {fileID: 5073623950196303487}
-  - {fileID: 7235644725578144120}
-  - {fileID: -1638778023917420227}
---- !u!114 &-8544304272583112388
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 17fb169762ea4f91bd4b4851eb8c50e2, type: 3}
-  m_Name: ChoiceNode
-  m_EditorClassIdentifier: 
-  nodeId: b936af77-9f29-4aad-b8d2-6b30addf15ee
-  editorPosition: {x: 915.1995, y: 417.67188}
-  choiceId: 
-  text: 
-  conditions: []
-  actions: []
-  targetNode: {fileID: 6269561098823344940}
-  references:
-    version: 2
-    RefIds: []
---- !u!114 &-1638778023917420227
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 17fb169762ea4f91bd4b4851eb8c50e2, type: 3}
-  m_Name: ChoiceNode
-  m_EditorClassIdentifier: 
-  nodeId: 06a0d1b7-5dba-4dd4-9009-49382476078d
-  editorPosition: {x: 220.80011, y: 92.79993}
-  choiceId: 
-  text: 
-  conditions: []
-  actions: []
-  targetNode: {fileID: 6269561098823344940}
-  references:
-    version: 2
-    RefIds: []
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -84,15 +16,12 @@ MonoBehaviour:
   entryNode: {fileID: 8989695120658477923}
   nodes:
   - {fileID: 8989695120658477923}
-  - {fileID: -9205286876743836971}
-  - {fileID: 6269561098823344940}
-  - {fileID: 5073623950196303487}
-  - {fileID: 7235644725578144120}
-  - {fileID: -1638778023917420227}
-  - {fileID: 9021492428874693476}
-  - {fileID: -8544304272583112388}
-  - {fileID: 8379647998110215438}
---- !u!114 &5073623950196303487
+  - {fileID: 5565974568186260539}
+  - {fileID: 3705990609346577972}
+  - {fileID: 18992911405151592}
+  - {fileID: 4639727489806924637}
+  - {fileID: 8275623721283719587}
+--- !u!114 &18992911405151592
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -102,19 +31,76 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 17fb169762ea4f91bd4b4851eb8c50e2, type: 3}
-  m_Name: ChoiceNode
+  m_Name: Choice 001
   m_EditorClassIdentifier: 
-  nodeId: 95667a79-30d3-445e-a580-5fbae11d2b84
-  editorPosition: {x: 411.20013, y: -234.40007}
-  choiceId: 
-  text: 
+  nodeId: 4bd13c38-0c0c-46fe-8a13-1ec46209860d
+  editorPosition: {x: -275.99988, y: -388.8}
+  nodeName: Choice 001
+  text: "\u65C5\u884C\u8005"
   conditions: []
   actions: []
-  targetNode: {fileID: -9205286876743836971}
+  targetNode: {fileID: 5565974568186260539}
   references:
     version: 2
     RefIds: []
---- !u!114 &6269561098823344940
+--- !u!114 &3705990609346577972
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afa82bc2ce69471a8fbb64b182a292ad, type: 3}
+  m_Name: Speech 001
+  m_EditorClassIdentifier: 
+  nodeId: 91106945-8dd0-4b2f-882a-4984c0397530
+  editorPosition: {x: -646.7346, y: -200.73607}
+  nodeName: Speech 001
+  speaker: {fileID: 11400000, guid: 4663cf08600c8fb4682d10fa508a0b57, type: 2}
+  text: "\u4F60\u662F\u8C01\uFF1F"
+  animationClip: {fileID: 0}
+  voiceClip: {fileID: 0}
+  animationFadeDuration: 0
+  nextNode: {fileID: 0}
+  choices:
+  - {fileID: 18992911405151592}
+  - {fileID: 4639727489806924637}
+  - {fileID: 8275623721283719587}
+--- !u!114 &4639727489806924637
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17fb169762ea4f91bd4b4851eb8c50e2, type: 3}
+  m_Name: Choice 002
+  m_EditorClassIdentifier: 
+  nodeId: 002cde49-3efd-4cc3-99bb-9f9e90f30c26
+  editorPosition: {x: -275.9743, y: -201.14192}
+  nodeName: Choice 002
+  text: "\u6F02\u6CCA\u8005"
+  conditions:
+  - rid: 3428734170830209024
+  actions:
+  - rid: 3428734170830209025
+  targetNode: {fileID: 5565974568186260539}
+  references:
+    version: 2
+    RefIds:
+    - rid: 3428734170830209024
+      type: {class: SampleDialogueCondition, ns: RPG.DialogueSystemModule.Test, asm: Assembly-CSharp}
+      data:
+        money: 100
+    - rid: 3428734170830209025
+      type: {class: SampleDialogueAction, ns: RPG.DialogueSystemModule.Test, asm: Assembly-CSharp}
+      data:
+        moneyChange: -10
+--- !u!114 &5565974568186260539
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -126,9 +112,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8553e8b9ae924407be47d6c9292d2d05, type: 3}
   m_Name: EndNode
   m_EditorClassIdentifier: 
-  nodeId: 22c12d62-d8e9-4d92-ba65-125626938050
-  editorPosition: {x: 1397.7499, y: 85.13722}
---- !u!114 &7235644725578144120
+  nodeId: 271f9d15-e6e2-4e78-83c8-6e79143ee1dd
+  editorPosition: {x: 128.09204, y: -201.10898}
+--- !u!114 &8275623721283719587
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -138,39 +124,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 17fb169762ea4f91bd4b4851eb8c50e2, type: 3}
-  m_Name: ChoiceNode
+  m_Name: Choice 003
   m_EditorClassIdentifier: 
-  nodeId: 351bcaa2-3f70-4098-92c0-0b0549d126ef
-  editorPosition: {x: 316.00003, y: 417.60004}
-  choiceId: 
-  text: 
+  nodeId: 7fed2602-6345-49b4-82b3-430fa000cf24
+  editorPosition: {x: -275.51788, y: -18.478073}
+  nodeName: Choice 003
+  text: "\u535A\u58EB"
   conditions: []
   actions: []
-  targetNode: {fileID: 9021492428874693476}
+  targetNode: {fileID: 5565974568186260539}
   references:
     version: 2
     RefIds: []
---- !u!114 &8379647998110215438
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: afa82bc2ce69471a8fbb64b182a292ad, type: 3}
-  m_Name: SpeechNode
-  m_EditorClassIdentifier: 
-  nodeId: a33a5463-c2e3-479c-9202-92fb45887a0f
-  editorPosition: {x: 340.4826, y: 634.7039}
-  speakerId: 
-  text: 
-  animationClip: {fileID: 0}
-  voiceClip: {fileID: 0}
-  animationFadeDuration: 0
-  nextNode: {fileID: 0}
-  choices: []
 --- !u!114 &8989695120658477923
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -184,27 +149,5 @@ MonoBehaviour:
   m_Name: EntryNode
   m_EditorClassIdentifier: 
   nodeId: c19ed02c-b981-422a-bbfd-9501b5b9eccd
-  editorPosition: {x: -569.6, y: 44.800007}
-  firstSpeechNode: {fileID: -9205286876743836971}
---- !u!114 &9021492428874693476
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: afa82bc2ce69471a8fbb64b182a292ad, type: 3}
-  m_Name: SpeechNode
-  m_EditorClassIdentifier: 
-  nodeId: 498e524c-ff05-418b-aed1-129460f5ca7e
-  editorPosition: {x: 600.7999, y: 417.59998}
-  speakerId: 
-  text: 
-  animationClip: {fileID: 0}
-  voiceClip: {fileID: 0}
-  animationFadeDuration: 0
-  nextNode: {fileID: 0}
-  choices:
-  - {fileID: -8544304272583112388}
+  editorPosition: {x: -964, y: -200.79997}
+  firstSpeechNode: {fileID: 3705990609346577972}

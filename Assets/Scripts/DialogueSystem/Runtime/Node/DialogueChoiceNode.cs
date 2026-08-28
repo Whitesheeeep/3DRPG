@@ -11,7 +11,7 @@ namespace RPG.DialogueSystemModule
     {
         #region 序列化字段
 
-        [SerializeField] private string choiceId = string.Empty;
+        [SerializeField] private string nodeName = string.Empty;
         [SerializeField, TextArea(2, 5)] private string text = string.Empty;
         [SerializeReference] private List<DialogueCondition> conditions =
             new List<DialogueCondition>();
@@ -23,8 +23,8 @@ namespace RPG.DialogueSystemModule
 
         #region 属性
 
-        /// <summary>获取同一 SpeechNode 内唯一的选项标识。</summary>
-        public string ChoiceId => choiceId;
+        /// <summary>获取编辑器显示用的节点名称。</summary>
+        public string NodeName => nodeName;
 
         /// <summary>获取选项显示文本。</summary>
         public string Text => text;
@@ -47,13 +47,17 @@ namespace RPG.DialogueSystemModule
         /// <summary>
         /// 设置 ChoiceNode 的基本展示字段。
         /// </summary>
-        /// <param name="id">同一 SpeechNode 内唯一的 ChoiceId。</param>
         /// <param name="choiceText">选项显示文本。</param>
-        public void Configure(string id, string choiceText)
+        public void Configure(string choiceText)
         {
-            choiceId = id ?? string.Empty;
             text = choiceText ?? string.Empty;
         }
+
+        /// <summary>
+        /// 设置编辑器显示用的节点名称；该名称不参与运行时寻址。
+        /// </summary>
+        /// <param name="value">新的节点名称。</param>
+        public void SetNodeName(string value) => nodeName = value ?? string.Empty;
 
         /// <summary>
         /// 设置 ChoiceNode 的目标节点直接引用。

@@ -1,60 +1,43 @@
 # 交互系统
 
-## 运行流程
+交互系统负责从玩家可编辑的物理检测区域发现 `IInteractable` Provider，收集多个 `InteractionOption`，完成可用性筛选、稳定排序、输入选择和统一执行。UI 只展示当前最终列表，不承担距离或业务校验。
 
 ```mermaid
 flowchart LR
-    Detector[玩家可编辑体积检测] --> Provider[IInteractable Provider]
+    Detector[InteractionDetector] --> Provider[IInteractable Provider]
     Provider --> Option[InteractionOption]
-    Option --> Filter[最大距离 / CanExecute]
-    Filter --> Sort[Priority / OptionId]
-    Sort --> UI[交互 HUD 列表]
-    UI --> Execute[TryExecute]
+    Option --> Interactor[PlayerInteractor]
+    Input[Previous / Next / Execute] --> Interactor
+    Interactor --> Choice[ChoiceWindow]
+    Choice --> Interactor
+    Interactor --> Execute[TryExecute]
 ```
 
-`IInteractable` 是交互选项 Provider，不再直接代表一次可执行行为。一个 Provider 可以贡献多个 `InteractionOption`，同一个场景对象也可以挂载多个 Provider。
+## 文档导航
 
-`InteractableObject` 是可选便利基类，只提供自身 `GameObject` 和 `Transform` 作为默认交互对象；业务组件也可以直接实现 `IInteractable`。
+| 文档 | 面向读者 | 内容 |
+| --- | --- | --- |
+| [技术文档](Documentation/InteractionSystem_Technical.md) | 核心系统维护者 | 扫描、筛选、输入、UI 生命周期、预加载和性能边界 |
+| [扩展指南](Documentation/InteractionSystem_ExtensionGuide.md) | 业务程序开发者 | Provider、Option、对话、拾取、商店、任务和 UI 扩展模板 |
+| [使用文档](Documentation/InteractionSystem_Usage.md) | 场景、策划和测试人员 | 玩家配置、Detector 编辑、对象接入、按键、Odin Tester 和排障 |
 
-`InteractionOption` 才是 UI 展示和最终执行的最小单位。Provider 负责缓存并收集 Option，`PlayerInteractor` 负责 Option 最大距离和业务可用性筛选，再按优先级降序、`InteractionOptionId` 升序稳定排序，UI 只负责展示和选中状态。
+## 术语速查
 
-Detector 每次扫描完成都会通知 `PlayerInteractor` 刷新列表，即使 Provider 集合没有变化；因此动态 `CanExecute` 和距离状态最多滞后一个扫描间隔（默认 `0.1s`）。`Update` 仅消费导航和执行 Intent，不再逐帧重复收集 Option。当前版本不启用镜头关注度、Viewport 和遮挡评分/筛选。
+- **Provider**：实现 `IInteractable`、负责贡献一个或多个 Option 的交互来源。
+- **InteractionObject**：Provider 所属的场景 `GameObject`，用于表达目标对象归属。
+- **Option**：真正可被选择和执行的 `InteractionOption`，例如 `Dialogue` 或 `Pickup`。
+- **ActionId**：Provider 内部动作的稳定身份，例如 `Dialogue`、`Pickup`；与显示名称和存档 ID 不同。
+- **Interactor**：玩家侧的 `PlayerInteractor`，负责最终列表、选中项和执行。
 
-## Provider 示例
+## 当前版本边界
 
-`DialogueInteractable` 直接实现 `IInteractable`，贡献一个 `Dialogue` Option。后续商店、任务和采集系统可以各自作为 Provider，或由同一个 Provider 贡献多个 Option。
+Detector 使用 `PhysicsShapeData` 做 Provider 粗筛，支持 Box、Sphere、Capsule 和 Sector。`PlayerInteractor` 当前按 `MaxDistance` 与 `CanExecute` 硬筛选，再按 `Priority` 降序、`InteractionOptionId` 升序排序；不启用 Viewport、遮挡、镜头关注度或距离评分。
 
-## 接入约束
+ChoiceWindow 当前只显示 Option 名称和选中高亮，领域层保留的 `InteractionOption.Icon` 暂不投影到该窗口。系统面向本地单玩家，不包含网络同步、多人抢占、失败原因展示和置灰选项。
 
-- `InteractionDetector` 与 `PlayerInteractor` 应挂载在玩家对象上；Detector 的交互区域由 `PhysicsShapeData` 配置，不依赖 `CharacterController`。
-- `PhysicsShapeData` 支持 Box、Sphere、Capsule 和 Sector；Inspector 的“开始编辑”按钮可在 Scene View 中调整位置、旋转和尺寸。
-- Detector 的“绘制 Gizmos”开关控制 Scene View 中的持续可视化；检测体积负责 Provider 粗筛，`InteractionOption.MaxDistance` 只负责进一步收紧选项距离。
-- 目标 Collider 可以位于 Provider 的子物体上，检测器会沿父级收集全部 `IInteractable`。
-- `CanExecute == false` 的 Option 不进入 HUD 列表。
-- 选项排序只使用 `Priority` 和 `InteractionOptionId`，不使用距离或镜头关注度评分。
-- `InteractionOptionId` 使用 Provider 运行时实例 ID 和稳定 ActionId，只保证当前运行期间稳定，不作为存档 ID。
+## 相关系统
 
-## ChoiceWindow 接入
-
-```mermaid
-sequenceDiagram
-    participant I as PlayerInteractor
-    participant C as InteractionUIController
-    participant W as ChoiceWindow
-    participant V as ChoiceWindowView
-    participant R as OptionChoice
-    I-->>C: OptionsChanged / SelectionChanged
-    C->>V: RefreshOptions(string list, selectedIndex)
-    R-->>V: ChoiceRequested(index)
-    V-->>C: ChoiceRequested(index)
-    C->>I: Select(OptionId)
-    C->>I: SubmitSelected()
-```
-
-`ChoiceWindow` 是 MVC 组合根，只负责组装和释放 `ChoiceWindowView` 与 `InteractionUIController`。View 第一次异步加载时预创建三个 `OptionChoice`，后续按需扩容并复用行；零 Option 时由 `UIManager` 隐藏窗口，不销毁窗口实例。
-
-项目窗口脚本位于 `Assets/Scripts/Game/Runtime/UI`，不再属于 WSFrame.UI 框架程序集。`IWindowPreloadService` 实现通用的 `IScenePreloadTask`，统一预加载 HUD、Choice 和 Dialogue 窗口，未来对象池等系统可以复用同一场景预热任务契约。
-
-## 物品 Provider
-
-`ItemInteractable` 贡献一个 `Pickup` Option。它不直接依赖背包实现，而是将 `ItemPickupRequest` 交给玩家对象上的 `IItemPickupReceiver`。只有接收器成功提交后，场景物品才会被停用。
+- [WSFrame UI 系统](../WSFrame/UISystem/Core/UISystem_Documentation.md)：`UIManager`、`WindowBase`、预加载和关闭生命周期。
+- [玩家输入预处理](../Input/PlayerInputPreprocessing.md)：Input Request、Intent 仲裁和消费确认。
+- [对话系统需求](../DialogueSystem/DialogueSystem_Requirements.md)：`DialogueInteractable` 与 DialogueSystem 的业务边界。
+- [ConfigInstaller 使用说明](../WSFrame/ConfigInstaller/ConfigInstaller_Usage.md)：GameplayTagDatabase 的初始化依赖。

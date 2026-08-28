@@ -16,12 +16,16 @@ namespace RPG.DialogueSystemModule.Editor
     internal sealed class DialogueGraphEditorController : IDisposable
     {
         #region 字段
+        private const string LastSpeakerFolderKey = "DialogueGraphEditor_LastSpeakerFolder";
 
         private readonly DialogueGraphEditorView editorView;
         private readonly DialogueGraphView graphView;
+        // Editor-only 状态依赖：保存最近资产和每个资产的 GraphView 视口，不写入业务资产。
+        private readonly DialogueGraphEditorState editorState;
         private DialogueAsset currentAsset;
         private DialogueNode selectedNode;
         private bool bound;
+        private bool restoringViewTransform;
 
         #endregion
 
@@ -32,10 +36,13 @@ namespace RPG.DialogueSystemModule.Editor
         /// </summary>
         /// <param name="editorView">窗口 UI View。</param>
         /// <param name="graphView">对话 GraphView。</param>
-        internal DialogueGraphEditorController(DialogueGraphEditorView editorView, DialogueGraphView graphView)
+        /// <param name="editorState">编辑器本地状态。</param>
+        internal DialogueGraphEditorController(DialogueGraphEditorView editorView, DialogueGraphView graphView,
+            DialogueGraphEditorState editorState)
         {
             this.editorView = editorView ?? throw new ArgumentNullException(nameof(editorView));
             this.graphView = graphView ?? throw new ArgumentNullException(nameof(graphView));
+            this.editorState = editorState ?? throw new ArgumentNullException(nameof(editorState));
         }
 
         /// <summary>
@@ -50,13 +57,15 @@ namespace RPG.DialogueSystemModule.Editor
             editorView.SaveRequested += SaveAsset;
             editorView.ValidateRequested += RefreshValidation;
             editorView.NodeSelected += SelectNode;
-            editorView.SpeakerAddRequested += AddSpeakerId;
-            editorView.SpeakerRemoveRequested += RemoveSpeakerId;
+            editorView.SpeakerSelected += SelectSpeaker;
+            editorView.SpeakerCreateRequested += CreateSpeaker;
+            editorView.SpeakerRenameRequested += RenameSpeaker;
             editorView.PropertiesChanged += OnPropertiesChanged;
             graphView.GraphChanged += OnGraphChanged;
             graphView.LayoutChanged += OnLayoutChanged;
             graphView.NodeSelected += SelectNodeFromGraph;
             graphView.NodeCreateRequested += CreateNodeFromMenu;
+            graphView.viewTransformChanged += OnViewTransformChanged;
             Undo.undoRedoPerformed += OnUndoRedoPerformed;
             RefreshAllPresentation();
         }
@@ -68,22 +77,28 @@ namespace RPG.DialogueSystemModule.Editor
         {
             if (!bound)
             {
+                editorState.SaveIfDirty();
                 editorView.Dispose();
                 return;
             }
 
+            // 关闭窗口或脚本域重载前捕获最后视口，避免只在切换资产时才保存。
+            CaptureCurrentViewport();
+            editorState.SaveIfDirty();
             editorView.AssetSelected -= OpenAsset;
             editorView.NewAssetRequested -= CreateNewAsset;
             editorView.SaveRequested -= SaveAsset;
             editorView.ValidateRequested -= RefreshValidation;
             editorView.NodeSelected -= SelectNode;
-            editorView.SpeakerAddRequested -= AddSpeakerId;
-            editorView.SpeakerRemoveRequested -= RemoveSpeakerId;
+            editorView.SpeakerSelected -= SelectSpeaker;
+            editorView.SpeakerCreateRequested -= CreateSpeaker;
+            editorView.SpeakerRenameRequested -= RenameSpeaker;
             editorView.PropertiesChanged -= OnPropertiesChanged;
             graphView.GraphChanged -= OnGraphChanged;
             graphView.LayoutChanged -= OnLayoutChanged;
             graphView.NodeSelected -= SelectNodeFromGraph;
             graphView.NodeCreateRequested -= CreateNodeFromMenu;
+            graphView.viewTransformChanged -= OnViewTransformChanged;
             Undo.undoRedoPerformed -= OnUndoRedoPerformed;
             editorView.Dispose();
             bound = false;
@@ -99,9 +114,19 @@ namespace RPG.DialogueSystemModule.Editor
         /// <param name="asset">待载入资产。</param>
         internal void OpenAsset(DialogueAsset asset)
         {
+            if (ReferenceEquals(currentAsset, asset))
+            {
+                editorState.SetLastAsset(asset);
+                return;
+            }
+
+            CaptureCurrentViewport();
+            editorState.SetLastAsset(asset);
+            editorState.SaveIfDirty();
             currentAsset = asset;
             selectedNode = null;
             RefreshAllPresentation();
+            RestoreViewport(asset);
         }
 
         /// <summary>
@@ -118,7 +143,8 @@ namespace RPG.DialogueSystemModule.Editor
             DialogueSpeechNode speech = UnityEngine.ScriptableObject.CreateInstance<DialogueSpeechNode>();
             asset.name = Path.GetFileNameWithoutExtension(path);
             entry.name = "EntryNode";
-            speech.name = "SpeechNode_001";
+            speech.SetNodeName(GenerateNodeName(asset.Nodes, DialogueNodeKind.Speech));
+            speech.name = speech.NodeName;
             asset.SetDialogueId(asset.name);
             asset.SetEntryNode(entry);
             asset.AddNode(speech);
@@ -132,14 +158,13 @@ namespace RPG.DialogueSystemModule.Editor
         }
 
         /// <summary>
-        /// 保存当前资产和 Editor-only SpeakerId 设置。
+        /// 保存当前对话资产。
         /// </summary>
         private void SaveAsset()
         {
             if (currentAsset == null) return;
             currentAsset.EnsureStableIds();
             EditorUtility.SetDirty(currentAsset);
-            DialogueSpeakerIdSettings.instance.SaveSettings();
             AssetDatabase.SaveAssets();
             RefreshValidation();
             RefreshStatus("已保存");
@@ -167,6 +192,111 @@ namespace RPG.DialogueSystemModule.Editor
             if (currentAsset == null) return;
             if (selectedNode != null && !currentAsset.Nodes.Contains(selectedNode)) selectedNode = null;
             RefreshAllPresentation();
+        }
+
+        #endregion
+
+        #region GraphView 视口状态
+
+        /// <summary>
+        /// 接收 GraphView 的平移和缩放变化，只更新当前资产的内存状态。
+        /// </summary>
+        /// <param name="changedGraphView">产生变化的 GraphView。</param>
+        private void OnViewTransformChanged(GraphView changedGraphView)
+        {
+            if (!bound || restoringViewTransform || currentAsset == null ||
+                !ReferenceEquals(changedGraphView, graphView)) return;
+
+            editorState.RecordViewport(currentAsset, graphView.viewTransform.position,
+                graphView.viewTransform.scale);
+        }
+
+        /// <summary>
+        /// 捕获当前资产最后的 GraphView 视口，以便切换或释放前保存。
+        /// </summary>
+        private void CaptureCurrentViewport()
+        {
+            if (currentAsset == null || !bound) return;
+            editorState.RecordViewport(currentAsset, graphView.viewTransform.position,
+                graphView.viewTransform.scale);
+        }
+
+        /// <summary>
+        /// 恢复指定资产的视口；首次打开时在布局完成后自动框选全部节点。
+        /// </summary>
+        /// <param name="asset">待恢复视口的对话资产。</param>
+        private void RestoreViewport(DialogueAsset asset)
+        {
+            if (asset == null)
+            {
+                ApplyViewTransform(Vector3.zero, Vector3.one);
+                return;
+            }
+
+            if (editorState.TryGetViewport(asset, out Vector3 position, out Vector3 scale))
+            {
+                ApplyViewTransform(position, scale);
+                return;
+            }
+
+            // 先清除上一个资产的镜头，避免新图在首次布局前短暂显示旧资产的视口。
+            ApplyViewTransform(Vector3.zero, Vector3.one);
+            if (graphView.GetNodeViews().Count == 0) return;
+
+            // OpenAsset 可能发生在 UI 布局前，延迟到下一次调度确保 FrameAll 能取得有效几何尺寸。
+            graphView.schedule.Execute(() => FrameInitialViewport(asset)).ExecuteLater(16);
+        }
+
+        /// <summary>
+        /// 在 GraphView 完成布局后为没有历史记录的资产执行一次自动框选。
+        /// </summary>
+        /// <param name="asset">等待初次框选的对话资产。</param>
+        private void FrameInitialViewport(DialogueAsset asset)
+        {
+            if (!bound || !ReferenceEquals(currentAsset, asset) ||
+                editorState.TryGetViewport(asset, out _, out _)) return;
+            if (graphView.GetNodeViews().Count == 0) return;
+
+            if (graphView.layout.width <= 0f || graphView.layout.height <= 0f)
+            {
+                graphView.schedule.Execute(() => FrameInitialViewport(asset)).ExecuteLater(16);
+                return;
+            }
+
+            // FrameAll 会触发 viewTransformChanged；此处暂时抑制回调，再明确记录最终结果。
+            restoringViewTransform = true;
+            try
+            {
+                graphView.FrameAll();
+            }
+            finally
+            {
+                restoringViewTransform = false;
+            }
+
+            editorState.RecordViewport(asset, graphView.viewTransform.position,
+                graphView.viewTransform.scale);
+        }
+
+        /// <summary>
+        /// 以生命周期标记包裹程序化视口恢复，防止恢复过程被误记为用户输入。
+        /// </summary>
+        /// <param name="position">目标平移位置。</param>
+        /// <param name="scale">目标缩放比例。</param>
+        private void ApplyViewTransform(Vector3 position, Vector3 scale)
+        {
+            if (graphView.viewTransform.position == position && graphView.viewTransform.scale == scale)
+                return;
+
+            restoringViewTransform = true;
+            try
+            {
+                graphView.UpdateViewTransform(position, scale);
+            }
+            finally
+            {
+                restoringViewTransform = false;
+            }
         }
 
         #endregion
@@ -202,26 +332,45 @@ namespace RPG.DialogueSystemModule.Editor
             RefreshStatus(null);
         }
 
-        /// <summary>
-        /// 添加全局 SpeakerId，并通过 Controller 触发相关面板刷新。
-        /// </summary>
-        /// <param name="speakerId">待添加的 SpeakerId。</param>
-        private void AddSpeakerId(string speakerId)
+        /// <summary>在 Project 窗口中选中并定位 Speaker 资产。</summary>
+        /// <param name="speaker">待选中的 Speaker 资产。</param>
+        private static void SelectSpeaker(DialogueSpeaker speaker) =>
+            DialogueSpeakerAssetUtility.Select(speaker);
+
+        /// <summary>选择路径并创建一个 DialogueSpeaker 资产。</summary>
+        private void CreateSpeaker()
         {
-            if (!DialogueSpeakerIdSettings.instance.AddSpeakerId(speakerId)) return;
+            string folder = EditorPrefs.GetString(LastSpeakerFolderKey, "Assets");
+
+            string path = EditorUtility.SaveFilePanelInProject(
+                "创建 DialogueSpeaker", "DialogueSpeaker", "asset", "选择 Speaker 资产保存位置", folder);
+            if (string.IsNullOrEmpty(path)) return;
+
+            // path 是 Assets/.../DialogueSpeaker.asset
+            string directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                // Unity Asset 路径统一用 /
+                directory = directory.Replace('\\', '/');
+                EditorPrefs.SetString(LastSpeakerFolderKey, directory);
+            }
+
+            DialogueSpeaker speaker = DialogueSpeakerAssetUtility.Create(path);
+            if (speaker == null) return;
             editorView.RefreshSpeakerList();
-            RefreshValidation();
+            RefreshStatus($"已创建 Speaker：{speaker.SpeakerName}");
         }
 
-        /// <summary>
-        /// 删除全局 SpeakerId，并保留资产中历史值以便 Validation 报告。
-        /// </summary>
-        /// <param name="speakerId">待删除的 SpeakerId。</param>
-        private void RemoveSpeakerId(string speakerId)
+        /// <summary>重命名 Speaker 资产并刷新编辑器中的名称显示。</summary>
+        /// <param name="speaker">待重命名的 Speaker 资产。</param>
+        /// <param name="newName">新的 SO.name。</param>
+        private void RenameSpeaker(DialogueSpeaker speaker, string newName)
         {
-            if (!DialogueSpeakerIdSettings.instance.RemoveSpeakerId(speakerId)) return;
+            if (!DialogueSpeakerAssetUtility.Rename(speaker, newName)) return;
             editorView.RefreshSpeakerList();
+            editorView.RefreshDetails(selectedNode);
             RefreshValidation();
+            RefreshStatus($"已重命名 Speaker：{speaker.SpeakerName}");
         }
 
         /// <summary>
@@ -396,6 +545,7 @@ namespace RPG.DialogueSystemModule.Editor
             if (currentAsset == null) return;
             DialogueNode node = CreateNode(kind);
             node.EditorPosition = position;
+            SetDefaultNodeName(node, GenerateNodeName(currentAsset.Nodes, kind));
             node.name = GetNodeDisplayName(node);
             Undo.RecordObject(currentAsset, "Create Dialogue Node");
             AssetDatabase.AddObjectToAsset(node, currentAsset);
@@ -425,11 +575,47 @@ namespace RPG.DialogueSystemModule.Editor
             };
         }
 
+        /// <summary>为新建的 Speech 或 Choice 节点写入同类型连续显示名称。</summary>
+        /// <param name="node">待命名节点。</param>
+        /// <param name="name">编辑器显示名称。</param>
+        private static void SetDefaultNodeName(DialogueNode node, string name)
+        {
+            if (node is DialogueSpeechNode speech) speech.SetNodeName(name);
+            else if (node is DialogueChoiceNode choice) choice.SetNodeName(name);
+        }
+
+        /// <summary>查找当前资产中同类型的首个未占用节点名称。</summary>
+        /// <param name="nodes">当前资产节点集合。</param>
+        /// <param name="kind">待命名节点类型。</param>
+        /// <returns>连续的编辑器显示名称。</returns>
+        private static string GenerateNodeName(IReadOnlyList<DialogueNode> nodes, DialogueNodeKind kind)
+        {
+            string prefix = kind == DialogueNodeKind.Speech ? "Speech" : "Choice";
+            HashSet<string> names = new HashSet<string>(StringComparer.Ordinal);
+            if (nodes != null)
+            {
+                for (int index = 0; index < nodes.Count; index++)
+                {
+                    DialogueNode node = nodes[index];
+                    if (node is DialogueSpeechNode speech && kind == DialogueNodeKind.Speech &&
+                        !string.IsNullOrWhiteSpace(speech.NodeName)) names.Add(speech.NodeName);
+                    else if (node is DialogueChoiceNode choice && kind == DialogueNodeKind.Choice &&
+                             !string.IsNullOrWhiteSpace(choice.NodeName)) names.Add(choice.NodeName);
+                }
+            }
+
+            for (int number = 1; ; number++)
+            {
+                string candidate = $"{prefix} {number:000}";
+                if (!names.Contains(candidate)) return candidate;
+            }
+        }
+
         #endregion
 
         #region 校验与状态
 
-        /// <summary>运行图校验并附加 SpeakerId 设置一致性检查。</summary>
+        /// <summary>运行图校验并检查 SpeechNode 的 Speaker 资产配置。</summary>
         private void RefreshValidation()
         {
             if (currentAsset == null)
@@ -439,15 +625,6 @@ namespace RPG.DialogueSystemModule.Editor
             }
 
             List<DialogueValidationMessage> messages = DialogueGraphValidator.Validate(currentAsset).ToList();
-            HashSet<string> speakerIds = new HashSet<string>(DialogueSpeakerIdSettings.instance.SpeakerIds,
-                StringComparer.Ordinal);
-            foreach (DialogueNode node in currentAsset.Nodes)
-            {
-                if (!(node is DialogueSpeechNode speech) || string.IsNullOrWhiteSpace(speech.SpeakerId) ||
-                    speakerIds.Contains(speech.SpeakerId)) continue;
-                messages.Add(new DialogueValidationMessage(DialogueValidationSeverity.Warning,
-                    $"SpeakerId 未在 Editor 设置中定义：{speech.SpeakerId}。", speech.NodeId));
-            }
             editorView.RefreshValidation(messages, true);
         }
 
@@ -467,9 +644,9 @@ namespace RPG.DialogueSystemModule.Editor
         {
             if (node is DialogueEntryNode) return "EntryNode";
             if (node is DialogueSpeechNode speech)
-                return string.IsNullOrWhiteSpace(speech.SpeakerId) ? "SpeechNode" : $"SpeechNode · {speech.SpeakerId}";
+                return string.IsNullOrWhiteSpace(speech.NodeName) ? "SpeechNode" : speech.NodeName;
             if (node is DialogueChoiceNode choice)
-                return string.IsNullOrWhiteSpace(choice.ChoiceId) ? "ChoiceNode" : $"ChoiceNode · {choice.ChoiceId}";
+                return string.IsNullOrWhiteSpace(choice.NodeName) ? "ChoiceNode" : choice.NodeName;
             if (node is DialogueEndNode) return "EndNode";
             return "DialogueNode";
         }
