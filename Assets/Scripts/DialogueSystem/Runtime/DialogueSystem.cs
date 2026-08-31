@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using UnityEngine;
 using WS_Modules.BusinessArchitecture;
 using WS_Modules.GAS.AbilitySystemComponent;
@@ -8,22 +9,22 @@ using WS_Modules.GAS.Generated;
 namespace RPG.DialogueSystemModule
 {
     /// <summary>
-    /// 作为 BusinessArchitecture 系统入口，编排同步对话会话与 Handler 注册表。
+    /// 作为 BusinessArchitecture 系统入口，编排同步对话会话与命令式 Condition/Action。
     /// </summary>
     public sealed class DialogueSystem : AbstractSystem
     {
         #region 字段与构造
 
-        private readonly Dictionary<Type, IDialogueConditionHandler> conditionHandlers =
-            new Dictionary<Type, IDialogueConditionHandler>();
-        private readonly Dictionary<Type, IDialogueActionHandler> actionHandlers =
-            new Dictionary<Type, IDialogueActionHandler>();
+        // 该列表只保存当前 Choice 的展示快照，不保存命令或运行时服务，避免 UI 反向持有领域对象。
+        private readonly List<DialogueChoiceSnapShot> currentChoicePresentations = new();
+        private readonly ReadOnlyCollection<DialogueChoiceSnapShot> readOnlyChoicePresentations;
 
         /// <summary>
-        /// 创建一个空的对话系统；业务层随后显式注册 Handler。
+        /// 创建一个由资产命令自身执行、无需额外注册入口的对话系统。
         /// </summary>
         public DialogueSystem()
         {
+            readOnlyChoicePresentations = currentChoicePresentations.AsReadOnly();
         }
 
         #endregion
@@ -31,22 +32,26 @@ namespace RPG.DialogueSystemModule
         #region Architecture 生命周期
 
         /// <summary>
-        /// 在业务架构初始化时保留显式 Handler 注册入口，不自动扫描业务类型。
+        /// 在业务架构初始化时保持空闲；具体命令依赖在每次执行时通过 Context 解析。
         /// </summary>
         protected override void OnInit()
         {
         }
 
         /// <summary>
-        /// 在业务架构注销时结束活动会话并清理 Handler 注册，避免跨架构持有运行时对象。
+        /// 在业务架构注销时结束活动会话并清理展示状态，避免跨架构持有运行时对象。
         /// </summary>
         protected override void OnDeinit()
         {
             if (CurrentSession is { IsEnded: false })
                 CurrentSession.End("DialogueSystem 所属架构已注销。");
 
-            conditionHandlers.Clear();
-            actionHandlers.Clear();
+            currentChoicePresentations.Clear();
+            // 架构注销后解除所有外部订阅，避免窗口或场景对象继续持有已失效的系统实例。
+            Started = null;
+            SpeechPresented = null;
+            ChoicePresented = null;
+            Ended = null;
         }
 
         #endregion
@@ -55,6 +60,10 @@ namespace RPG.DialogueSystemModule
 
         /// <summary>获取当前唯一活动会话。</summary>
         public DialogueSession CurrentSession { get; private set; }
+
+        /// <summary>获取当前 Choice 的只读展示快照。</summary>
+        public IReadOnlyList<DialogueChoiceSnapShot> CurrentChoicePresentations =>
+            readOnlyChoicePresentations;
 
         #endregion
 
@@ -71,32 +80,6 @@ namespace RPG.DialogueSystemModule
 
         /// <summary>对话结束后的事实事件。</summary>
         public event Action<DialogueEndedEvent> Ended;
-
-        #endregion
-
-        #region Handler 注册
-
-        /// <summary>
-        /// 注册一个按定义类型匹配的 Condition Handler；重复类型直接替换。
-        /// </summary>
-        /// <param name="handler">待注册 Handler。</param>
-        public void RegisterConditionHandler(IDialogueConditionHandler handler)
-        {
-            if (handler == null) throw new ArgumentNullException(nameof(handler));
-            ValidateDefinitionType<DialogueCondition>(handler.DefinitionType, "Condition");
-            conditionHandlers[handler.DefinitionType] = handler;
-        }
-
-        /// <summary>
-        /// 注册一个按定义类型匹配的 Action Handler；重复类型直接替换。
-        /// </summary>
-        /// <param name="handler">待注册 Handler。</param>
-        public void RegisterActionHandler(IDialogueActionHandler handler)
-        {
-            if (handler == null) throw new ArgumentNullException(nameof(handler));
-            ValidateDefinitionType<DialogueAction>(handler.DefinitionType, "Action");
-            actionHandlers[handler.DefinitionType] = handler;
-        }
 
         #endregion
 
@@ -119,7 +102,19 @@ namespace RPG.DialogueSystemModule
             CurrentSession = session;
             SubscribeSession(session);
             PublishLooseGameplayTagRequests(session, LooseGameplayTagChangeOperation.Add);
-            session.EnterSpeech(request.Asset.EntryNode.FirstSpeechNode);
+            try
+            {
+                session.EnterSpeech(request.Asset.EntryNode.FirstSpeechNode);
+            }
+            catch (Exception exception)
+            {
+                // Participant 的 AudioSource/AnimationPlayer 属于外部表现边界；异常必须对称结束会话并移除来源 Tag。
+                Debug.LogException(exception);
+                session.End($"首个 SpeechNode 执行失败：{exception.Message}");
+            }
+            if (session.IsEnded)
+                return new DialogueStartResult(DialogueStartStatus.Failed,
+                    "首个 SpeechNode 执行失败。", null);
             Started?.Invoke(new DialogueStartedEvent(session));
             return new DialogueStartResult(DialogueStartStatus.Started, "对话已开始。", session);
         }
@@ -143,36 +138,37 @@ namespace RPG.DialogueSystemModule
         /// <summary>
         /// 校验并选择当前 SpeechNode 的一个 Choice，触发 Action 后直接进入 TargetNode。
         /// </summary>
-        /// <param name="choiceId">当前 SpeechNode 内的稳定 ChoiceId。</param>
+        /// <param name="choiceNodeId">当前 SpeechNode 内 ChoiceNode 的稳定 NodeId。</param>
         /// <returns>选择处理结果。</returns>
-        public DialogueStepResult SelectChoice(string choiceId)
+        public DialogueStepResult SelectChoice(string choiceNodeId)
         {
             if (CurrentSession == null || CurrentSession.IsEnded)
                 return CreateStepResult(DialogueStepStatus.NotRunning, "当前没有运行中的对话。", null);
             if (CurrentSession.State != DialogueSessionState.WaitingForChoice)
                 return CreateStepResult(DialogueStepStatus.InvalidChoice, "当前对白没有可选择的 Choice。", CurrentSession);
 
-            DialogueChoiceNode choice = FindChoice(CurrentSession.CurrentChoices, choiceId);
+            DialogueChoiceNode choice = FindChoice(CurrentSession.CurrentChoices, choiceNodeId);
             if (choice == null)
-                return CreateStepResult(DialogueStepStatus.InvalidChoice, $"不存在 Choice：{choiceId}。", CurrentSession);
+                return CreateStepResult(DialogueStepStatus.InvalidChoice, $"不存在 ChoiceNode：{choiceNodeId}。", CurrentSession);
 
+            DialogueSession session = CurrentSession;
             DialogueStepStatus conditionStatus = EvaluateConditions(choice, out string conditionMessage);
             if (conditionStatus != DialogueStepStatus.Advanced)
             {
-                if (conditionStatus == DialogueStepStatus.MissingHandler)
+                if (conditionStatus == DialogueStepStatus.Failed)
+                    session.End(conditionMessage);
+                else
                 {
-                    DialogueSession failedSession = CurrentSession;
-                    failedSession.End(conditionMessage);
-                    return CreateStepResult(conditionStatus, conditionMessage, failedSession);
+                    if (!RefreshChoicePresentationsAfterConditionFailure(out string refreshMessage))
+                        return CreateStepResult(DialogueStepStatus.Failed, refreshMessage, session);
                 }
-                return CreateStepResult(conditionStatus, conditionMessage, CurrentSession);
+                return CreateStepResult(conditionStatus, conditionMessage, session);
             }
 
-            DialogueSession session = CurrentSession;
             DialogueStepStatus actionStatus = ExecuteActions(choice, out string actionMessage);
             if (actionStatus != DialogueStepStatus.Advanced)
             {
-                if (actionStatus == DialogueStepStatus.Failed || actionStatus == DialogueStepStatus.MissingHandler)
+                if (actionStatus == DialogueStepStatus.Failed)
                     session.End(actionMessage);
                 return CreateStepResult(actionStatus, actionMessage, session);
             }
@@ -192,17 +188,27 @@ namespace RPG.DialogueSystemModule
         private void SubscribeSession(DialogueSession session)
         {
             session.SpeechPresented += OnSpeechPresented;
-            session.ChoicePresented += OnChoicePresented;
             session.Ended += OnSessionEnded;
         }
 
-        /// <summary>转发 SpeechNode 展示事实。</summary>
+        /// <summary>转发 SpeechNode 展示事实，并计算当前 Choice 展示快照。</summary>
         /// <param name="eventArgs">对白展示事件。</param>
-        private void OnSpeechPresented(DialogueSpeechPresentedEvent eventArgs) => SpeechPresented?.Invoke(eventArgs);
+        private void OnSpeechPresented(DialogueSpeechPresentedEvent eventArgs)
+        {
+            currentChoicePresentations.Clear();
+            SpeechPresented?.Invoke(eventArgs);
+            if (eventArgs.Session.IsEnded || eventArgs.Session.CurrentChoices.Count == 0) return;
 
-        /// <summary>转发 Choice 展示事实。</summary>
-        /// <param name="eventArgs">选项展示事件。</param>
-        private void OnChoicePresented(DialogueChoicePresentedEvent eventArgs) => ChoicePresented?.Invoke(eventArgs);
+            if (!TryBuildChoicePresentations(eventArgs.Session, eventArgs.Speech,
+                    out string failureMessage))
+            {
+                eventArgs.Session.End(failureMessage);
+                return;
+            }
+
+            ChoicePresented?.Invoke(new DialogueChoicePresentedEvent(
+                eventArgs.Session, eventArgs.Speech, currentChoicePresentations));
+        }
 
         /// <summary>
         /// 转发结束事实并解除 Session 事件订阅，避免窗口关闭后保留旧会话引用。
@@ -212,9 +218,9 @@ namespace RPG.DialogueSystemModule
         {
             DialogueSession session = eventArgs.Session;
             session.SpeechPresented -= OnSpeechPresented;
-            session.ChoicePresented -= OnChoicePresented;
             session.Ended -= OnSessionEnded;
             PublishLooseGameplayTagRequests(session, LooseGameplayTagChangeOperation.Remove);
+            currentChoicePresentations.Clear();
             if (ReferenceEquals(CurrentSession, session)) CurrentSession = null;
             Ended?.Invoke(eventArgs);
         }
@@ -232,8 +238,21 @@ namespace RPG.DialogueSystemModule
         {
             if (targetNode is DialogueSpeechNode speech)
             {
-                CurrentSession.EnterSpeech(speech);
-                return CreateStepResult(DialogueStepStatus.Advanced, "已进入下一个 SpeechNode。", CurrentSession);
+                DialogueSession session = CurrentSession;
+                try
+                {
+                    session.EnterSpeech(speech);
+                }
+                catch (Exception exception)
+                {
+                    // 表现组件异常不能让对话系统跳过清理；End 会发布失败事件并移除会话来源 Tag。
+                    Debug.LogException(exception);
+                    session.End($"进入 SpeechNode 时执行失败：{exception.Message}");
+                }
+                // EnterSpeech 可能因命令异常立即结束会话，不能把失败伪装成 Advanced。
+                if (session.IsEnded)
+                    return CreateStepResult(DialogueStepStatus.Failed, "进入 SpeechNode 时执行失败。", session);
+                return CreateStepResult(DialogueStepStatus.Advanced, "已进入下一个 SpeechNode。", session);
             }
 
             if (targetNode is DialogueEndNode endNode)
@@ -248,17 +267,17 @@ namespace RPG.DialogueSystemModule
             return CreateStepResult(DialogueStepStatus.Failed, "对话目标节点无效。", failedSession);
         }
 
-        /// <summary>在当前选项集合中按稳定 ChoiceId 查找选项。</summary>
+        /// <summary>在当前选项集合中按 ChoiceNode 的稳定 NodeId 查找选项。</summary>
         /// <param name="choices">当前 SpeechNode 的选项。</param>
-        /// <param name="choiceId">待查找标识。</param>
+        /// <param name="choiceNodeId">待查找的 ChoiceNode NodeId。</param>
         /// <returns>匹配选项；不存在时为空。</returns>
-        private static DialogueChoiceNode FindChoice(IReadOnlyList<DialogueChoiceNode> choices, string choiceId)
+        private static DialogueChoiceNode FindChoice(IReadOnlyList<DialogueChoiceNode> choices, string choiceNodeId)
         {
             if (choices == null) return null;
             for (int index = 0; index < choices.Count; index++)
             {
                 DialogueChoiceNode choice = choices[index];
-                if (choice != null && string.Equals(choice.ChoiceId, choiceId, StringComparison.Ordinal)) return choice;
+                if (choice != null && string.Equals(choice.NodeId, choiceNodeId, StringComparison.Ordinal)) return choice;
             }
 
             return null;
@@ -266,29 +285,153 @@ namespace RPG.DialogueSystemModule
 
         #endregion
 
-        #region Handler 执行
+        #region Choice 展示
+
+        /// <summary>计算当前 Speech 的全部 Choice 展示状态。</summary>
+        /// <param name="session">当前会话。</param>
+        /// <param name="speech">当前 SpeechNode。</param>
+        /// <param name="failureMessage">命令异常或全部不可用时的失败说明。</param>
+        /// <returns>成功生成展示快照时返回 true。</returns>
+        private bool TryBuildChoicePresentations(DialogueSession session, DialogueSpeechNode speech,
+            out string failureMessage)
+        {
+            currentChoicePresentations.Clear();
+            bool hasAvailableChoice = false;
+            for (int index = 0; index < speech.Choices.Count; index++)
+            {
+                DialogueChoiceNode choice = speech.Choices[index];
+                if (choice == null)
+                {
+                    failureMessage = $"SpeechNode '{speech.NodeId}' 的 Choices[{index}] 为空。";
+                    return false;
+                }
+
+                DialogueStepStatus status = EvaluateConditionsForPresentation(
+                    session, choice, out string reason);
+                if (status == DialogueStepStatus.Failed)
+                {
+                    failureMessage = reason;
+                    return false;
+                }
+
+                bool available = status == DialogueStepStatus.Advanced;
+                hasAvailableChoice |= available;
+                currentChoicePresentations.Add(new DialogueChoiceSnapShot(
+                    choice.NodeId, choice.Text, available, available ? string.Empty : reason));
+            }
+
+            if (!hasAvailableChoice)
+            {
+                failureMessage = $"SpeechNode '{speech.NodeId}' 的全部 Choice 当前不可用。";
+                return false;
+            }
+
+            failureMessage = string.Empty;
+            return true;
+        }
+
+        /// <summary>为展示快照执行一次不产生副作用的 Condition 判断。</summary>
+        /// <param name="session">当前会话。</param>
+        /// <param name="choice">待计算的 Choice。</param>
+        /// <param name="message">不满足原因或异常说明。</param>
+        /// <returns>全部条件满足时返回 Advanced，正常不满足时返回 ConditionFailed。</returns>
+        private DialogueStepStatus EvaluateConditionsForPresentation(DialogueSession session,
+            DialogueChoiceNode choice, out string message)
+        {
+            DialogueCommandContext context = new DialogueCommandContext(
+                session, choice, ((IBelongToArchitecture)this).GetArchitecture());
+            for (int index = 0; index < choice.Conditions.Count; index++)
+            {
+                DialogueCondition condition = choice.Conditions[index];
+                if (condition == null)
+                {
+                    message = $"ChoiceNode '{choice.NodeId}' 的 Condition[{index}] 为空。";
+                    return DialogueStepStatus.Failed;
+                }
+
+                try
+                {
+                    DialogueConditionResult result = condition.Evaluate(context);
+                    if (result.IsMet) continue;
+                    message = string.IsNullOrWhiteSpace(result.FailureReason)
+                        ? $"Condition 不满足：{condition.GetType().Name}。"
+                        : result.FailureReason;
+                    return DialogueStepStatus.ConditionFailed;
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogException(exception);
+                    message = $"Condition 执行失败：{exception.Message}";
+                    return DialogueStepStatus.Failed;
+                }
+            }
+
+            message = string.Empty;
+            return DialogueStepStatus.Advanced;
+        }
+
+        /// <summary>条件在选择瞬间失败后重新生成当前展示状态。</summary>
+        /// <param name="failureMessage">刷新失败或会话结束时的诊断信息。</param>
+        /// <returns>成功重新发布 Choice 展示时返回 true。</returns>
+        private bool RefreshChoicePresentationsAfterConditionFailure(out string failureMessage)
+        {
+            DialogueSession session = CurrentSession;
+            if (session == null || session.IsEnded || session.CurrentSpeech == null)
+            {
+                failureMessage = "当前对话会话已结束，无法刷新 Choice。";
+                return false;
+            }
+            if (!TryBuildChoicePresentations(session, session.CurrentSpeech, out failureMessage))
+            {
+                session.End(failureMessage);
+                return false;
+            }
+
+            ChoicePresented?.Invoke(new DialogueChoicePresentedEvent(
+                session, session.CurrentSpeech, currentChoicePresentations));
+            failureMessage = string.Empty;
+            return true;
+        }
+
+        #endregion
+
+        #region 命令执行
 
         /// <summary>
-        /// 按 AND 规则执行当前 Choice 的全部 Condition。
+        /// 按 AND 规则执行当前 Choice 的全部 Condition 命令。
         /// </summary>
         /// <param name="choice">待检查的选项。</param>
-        /// <param name="message">失败或缺失 Handler 说明。</param>
+        /// <param name="message">失败或异常说明。</param>
         /// <returns>条件通过时返回 Advanced。</returns>
         private DialogueStepStatus EvaluateConditions(DialogueChoiceNode choice, out string message)
         {
-            DialogueConditionContext context = new DialogueConditionContext(CurrentSession);
+            DialogueCommandContext context = CreateCommandContext(choice);
             for (int index = 0; index < choice.Conditions.Count; index++)
             {
                 DialogueCondition definition = choice.Conditions[index];
-                if (definition == null ||
-                    !conditionHandlers.TryGetValue(definition.GetType(), out IDialogueConditionHandler handler))
+                if (definition == null)
                 {
-                    message = $"缺少 Condition Handler：{definition?.GetType().Name ?? "None"}。";
-                    return DialogueStepStatus.MissingHandler;
+                    message = $"ChoiceNode '{choice.NodeId}' 的 Condition[{index}] 为空。";
+                    return DialogueStepStatus.Failed;
                 }
 
-                if (!handler.Evaluate(context, definition, out message))
-                    return DialogueStepStatus.ConditionFailed;
+                try
+                {
+                    DialogueConditionResult result = definition.Evaluate(context);
+                    if (!result.IsMet)
+                    {
+                        message = string.IsNullOrWhiteSpace(result.FailureReason)
+                            ? $"Condition 不满足：{definition.GetType().Name}。"
+                            : result.FailureReason;
+                        return DialogueStepStatus.ConditionFailed;
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogException(exception);
+                    message = $"Condition 执行失败：{exception.Message}";
+                    return DialogueStepStatus.Failed;
+                }
             }
 
             message = string.Empty;
@@ -296,33 +439,32 @@ namespace RPG.DialogueSystemModule
         }
 
         /// <summary>
-        /// 按资产顺序触发当前 Choice 的全部 Action；动作不参与节点跳转判断。
+        /// 按资产顺序执行当前 Choice 的全部 Action 命令；动作不参与节点跳转判断。
         /// </summary>
         /// <param name="choice">待执行的选项。</param>
-        /// <param name="message">失败或缺失 Handler 说明。</param>
+        /// <param name="message">失败或异常说明。</param>
         /// <returns>全部动作已经触发时返回 Advanced。</returns>
         private DialogueStepStatus ExecuteActions(DialogueChoiceNode choice, out string message)
         {
-            DialogueActionContext context = new DialogueActionContext(CurrentSession);
+            DialogueCommandContext context = CreateCommandContext(choice);
             for (int index = 0; index < choice.Actions.Count; index++)
             {
                 DialogueAction definition = choice.Actions[index];
-                if (definition == null ||
-                    !actionHandlers.TryGetValue(definition.GetType(), out IDialogueActionHandler handler))
+                if (definition == null)
                 {
-                    message = $"缺少 Action Handler：{definition?.GetType().Name ?? "None"}。";
-                    return DialogueStepStatus.MissingHandler;
+                    message = $"ChoiceNode '{choice.NodeId}' 的 Action[{index}] 为空。";
+                    return DialogueStepStatus.Failed;
                 }
 
                 try
                 {
-                    handler.Execute(context, definition);
+                    definition.Execute(context);
                 }
                 catch (Exception exception)
                 {
                     // Action 是外部业务边界；异常结束当前会话，避免副作用失败后继续沿图推进。
                     Debug.LogException(exception);
-                    message = $"Action Handler 执行失败：{exception.Message}";
+                    message = $"Action 执行失败：{exception.Message}";
                     return DialogueStepStatus.Failed;
                 }
             }
@@ -335,19 +477,12 @@ namespace RPG.DialogueSystemModule
 
         #region 请求与结果辅助
 
-        /// <summary>校验 Handler 声明的定义类型属于指定基类。</summary>
-        /// <typeparam name="TDefinition">允许注册的定义基类。</typeparam>
-        /// <param name="definitionType">Handler 声明的定义类型。</param>
-        /// <param name="handlerName">Handler 所属类别名称。</param>
-        private static void ValidateDefinitionType<TDefinition>(Type definitionType, string handlerName)
-            where TDefinition : class
-        {
-            if (definitionType == null || !typeof(TDefinition).IsAssignableFrom(definitionType) ||
-                definitionType.IsAbstract)
-                throw new ArgumentException(
-                    $"{handlerName} Handler 必须声明可实例化的 {typeof(TDefinition).Name} 类型。",
-                    nameof(definitionType));
-        }
+        /// <summary>为指定 Choice 创建一次性的命令上下文。</summary>
+        /// <param name="choice">当前判断或执行的 Choice。</param>
+        /// <returns>绑定当前 Session 和架构的命令上下文。</returns>
+        private DialogueCommandContext CreateCommandContext(DialogueChoiceNode choice) =>
+            new DialogueCommandContext(CurrentSession, choice,
+                ((IBelongToArchitecture)this).GetArchitecture());
 
         /// <summary>校验启动请求的外部输入和 EntryNode 关键引用。</summary>
         /// <param name="request">待校验请求。</param>

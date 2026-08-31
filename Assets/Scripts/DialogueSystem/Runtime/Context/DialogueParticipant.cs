@@ -11,11 +11,11 @@ namespace RPG.DialogueSystemModule
     public sealed class DialogueParticipant : MonoBehaviour, IDialogueParticipantContext
     {
         #region 序列化配置
-        [InfoBox("请将该组件放到DialogueInteractable的ParticipantRoot节点或者其父节点上，并配置参与者的SpeakerId、语音AudioSource和动画接口。" +
+        [InfoBox("请将该组件放到DialogueInteractable的ParticipantRoot节点或者其父节点上，并配置参与者的Speaker资产、语音AudioSource和动画接口。" +
                  "如果是 Player 请放到 PlayerInteractor 的节点或者其父节点上")]
-        // 身份只保存稳定 SpeakerId；运行时通过 PropertyDrawer 从项目设置中选择。
-        [SerializeField, SpeakerId]
-        private string speakerId = string.Empty;
+        // 身份直接保存 Speaker ScriptableObject 引用，节点与场景参与者使用同一对象匹配。
+        [SerializeField]
+        private DialogueSpeaker speaker;
         // 语音和动画引用属于参与者表现，不携带 ASC 或业务 Manager 依赖。
         [SerializeField]
         private AudioSource voiceAudioSource;
@@ -27,7 +27,7 @@ namespace RPG.DialogueSystemModule
         #region Context 属性
 
         /// <inheritdoc />
-        public string SpeakerId => speakerId;
+        public DialogueSpeaker Speaker => speaker;
 
         /// <inheritdoc />
         public GameObject ParticipantObject => gameObject;
@@ -48,7 +48,16 @@ namespace RPG.DialogueSystemModule
         private void Reset()
         {
             voiceAudioSource = GetComponent<AudioSource>();
-            animationPlayerComponent = GetComponent<IAnimationPlayer>();
+            // Unity 的 GetComponent<T> 泛型约束要求 Component，接口能力通过同对象 MonoBehaviour 实例查找。
+            MonoBehaviour[] components = GetComponents<MonoBehaviour>();
+            for (int index = 0; index < components.Length; index++)
+            {
+                if (components[index] is IAnimationPlayer animationPlayer)
+                {
+                    animationPlayerComponent = animationPlayer;
+                    break;
+                }
+            }
         }
 
         #endregion

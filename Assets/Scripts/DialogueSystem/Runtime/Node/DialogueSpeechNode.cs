@@ -11,7 +11,8 @@ namespace RPG.DialogueSystemModule
     {
         #region 序列化字段
 
-        [SerializeField] private string speakerId = string.Empty;
+        [SerializeField] private string nodeName = string.Empty;
+        [SerializeField] private DialogueSpeaker speaker;
         [SerializeField, TextArea(3, 8)] private string text = string.Empty;
         [SerializeField] private AnimationClip animationClip;
         [SerializeField] private AudioClip voiceClip;
@@ -23,8 +24,11 @@ namespace RPG.DialogueSystemModule
 
         #region 属性
 
-        /// <summary>获取静态 SpeakerId。</summary>
-        public string SpeakerId => speakerId;
+        /// <summary>获取编辑器显示用的节点名称。</summary>
+        public string NodeName => nodeName;
+
+        /// <summary>获取当前对白使用的 Speaker 资产身份。</summary>
+        public DialogueSpeaker Speaker => speaker;
 
         /// <summary>获取直接保存的对白文本。</summary>
         public string Text => text;
@@ -52,24 +56,30 @@ namespace RPG.DialogueSystemModule
         /// <summary>
         /// 设置 Inspector 可编辑的 SpeechNode 字段。
         /// </summary>
-        /// <param name="value">SpeakerId。</param>
+        /// <param name="value">对白使用的 Speaker 资产。</param>
         /// <param name="speechText">对白文本。</param>
         /// <param name="clip">全身说话动画，可为空。</param>
         /// <param name="fadeDuration">动画淡入秒数。</param>
         /// <param name="voice">对白语音，可为空。</param>
         public void Configure(
-            string value,
+            DialogueSpeaker value,
             string speechText,
             AnimationClip clip,
             float fadeDuration,
             AudioClip voice = null)
         {
-            speakerId = value ?? string.Empty;
+            speaker = value;
             text = speechText ?? string.Empty;
             animationClip = clip;
             voiceClip = voice;
             animationFadeDuration = Mathf.Max(0f, fadeDuration);
         }
+
+        /// <summary>
+        /// 设置编辑器显示用的节点名称；该名称不参与运行时寻址。
+        /// </summary>
+        /// <param name="value">新的节点名称。</param>
+        public void SetNodeName(string value) => nodeName = value ?? string.Empty;
 
         /// <summary>
         /// 设置 SpeechNode 的线性后续节点引用。

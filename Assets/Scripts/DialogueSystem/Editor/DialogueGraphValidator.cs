@@ -52,7 +52,7 @@ namespace RPG.DialogueSystemModule
     #region 图校验服务
 
     /// <summary>
-    /// 执行 DialogueAsset 的结构、引用、标识和 Handler 注册校验。
+    /// 执行 DialogueAsset 的结构、引用、标识和命令配置校验。
     /// </summary>
     public static class DialogueGraphValidator
     {
@@ -62,18 +62,9 @@ namespace RPG.DialogueSystemModule
         /// 校验整个对话图；不自动修改资产内容。
         /// </summary>
         /// <param name="asset">待校验的对话资产。</param>
-        /// <param name="conditionDefinitionTypes">当前已注册的 Condition 定义类型。</param>
-        /// <param name="actionDefinitionTypes">当前已注册的 Action 定义类型。</param>
         /// <returns>按发现顺序排列的校验消息。</returns>
-        public static IReadOnlyList<DialogueValidationMessage> Validate(
-            DialogueAsset asset,
-            IEnumerable<Type> conditionDefinitionTypes = null,
-            IEnumerable<Type> actionDefinitionTypes = null)
+        public static IReadOnlyList<DialogueValidationMessage> Validate(DialogueAsset asset)
         {
-            bool validateConditionHandlers = conditionDefinitionTypes != null;
-            bool validateActionHandlers = actionDefinitionTypes != null;
-            HashSet<Type> conditionTypes = CreateTypeSet(conditionDefinitionTypes);
-            HashSet<Type> actionTypes = CreateTypeSet(actionDefinitionTypes);
             List<DialogueValidationMessage> messages = new List<DialogueValidationMessage>();
             if (asset == null)
             {
@@ -107,8 +98,7 @@ namespace RPG.DialogueSystemModule
             HashSet<string> nodeIds = new HashSet<string>(StringComparer.Ordinal);
             ValidateNodeList(nodes, nodeSet, nodeIds, messages);
             ValidateEntryReference(asset.EntryNode, nodeSet, messages);
-            ValidateNodeReferences(nodes, nodeSet, messages, conditionTypes, actionTypes,
-                validateConditionHandlers, validateActionHandlers);
+            ValidateNodeReferences(nodes, nodeSet, messages);
             ValidateTermination(asset.EntryNode, nodes, nodeSet, messages);
             return messages;
         }
@@ -189,43 +179,33 @@ namespace RPG.DialogueSystemModule
                     DialogueValidationSeverity.Error, "EntryNode 必须属于 DialogueAsset.Nodes。", entryNode.NodeId));
         }
 
-        /// <summary>校验各节点的直接引用、ChoiceId 和 Handler 定义。</summary>
+        /// <summary>校验各节点的直接引用和命令定义。</summary>
         /// <param name="nodes">资产节点集合。</param>
         /// <param name="nodeSet">资产节点引用集合。</param>
         /// <param name="messages">输出校验消息。</param>
-        /// <param name="conditionTypes">已注册 Condition 定义类型。</param>
-        /// <param name="actionTypes">已注册 Action 定义类型。</param>
-        /// <param name="validateConditionHandlers">是否检查 Condition 定义类型是否已注册。</param>
-        /// <param name="validateActionHandlers">是否检查 Action 定义类型是否已注册。</param>
         private static void ValidateNodeReferences(IReadOnlyList<DialogueNode> nodes, ISet<DialogueNode> nodeSet,
-            ICollection<DialogueValidationMessage> messages, ISet<Type> conditionTypes, ISet<Type> actionTypes,
-            bool validateConditionHandlers, bool validateActionHandlers)
+            ICollection<DialogueValidationMessage> messages)
         {
             for (int index = 0; index < nodes.Count; index++)
             {
                 DialogueNode node = nodes[index];
                 if (node is DialogueSpeechNode speech)
-                    ValidateSpeechNode(speech, nodeSet, messages, conditionTypes, actionTypes,
-                        validateConditionHandlers, validateActionHandlers);
+                    ValidateSpeechNode(speech, nodeSet, messages);
                 else if (node is DialogueChoiceNode choice)
-                    ValidateChoiceNode(choice, nodeSet, messages, conditionTypes, actionTypes,
-                        validateConditionHandlers, validateActionHandlers);
+                    ValidateChoiceNode(choice, nodeSet, messages);
             }
         }
 
-        /// <summary>校验 SpeechNode 的后续引用、SpeakerId 和 Choice 子节点。</summary>
+        /// <summary>校验 SpeechNode 的后续引用、Speaker 资产和 Choice 子节点。</summary>
         /// <param name="speech">待校验节点。</param>
         /// <param name="nodeSet">资产节点引用集合。</param>
         /// <param name="messages">输出校验消息。</param>
-        /// <param name="conditionTypes">已注册 Condition 定义类型。</param>
-        /// <param name="actionTypes">已注册 Action 定义类型。</param>
         private static void ValidateSpeechNode(DialogueSpeechNode speech, ISet<DialogueNode> nodeSet,
-            ICollection<DialogueValidationMessage> messages, ISet<Type> conditionTypes, ISet<Type> actionTypes,
-            bool validateConditionHandlers, bool validateActionHandlers)
+            ICollection<DialogueValidationMessage> messages)
         {
-            if (string.IsNullOrWhiteSpace(speech.SpeakerId))
+            if (speech.Speaker == null)
                 messages.Add(new DialogueValidationMessage(
-                    DialogueValidationSeverity.Warning, "SpeechNode 的 SpeakerId 为空。", speech.NodeId));
+                    DialogueValidationSeverity.Error, "SpeechNode 的 Speaker 资产为空。", speech.NodeId));
 
             IReadOnlyList<DialogueChoiceNode> choices = speech.Choices;
             if (choices == null || choices.Count == 0)
@@ -243,7 +223,6 @@ namespace RPG.DialogueSystemModule
                 // 混合结构本身非法，但仍校验 NextNode 的引用，避免一个错误掩盖另一个错误。
                 ValidateTarget(speech.NextNode, nodeSet, messages, speech.NodeId, "NextNode", true);
             }
-            HashSet<string> choiceIds = new HashSet<string>(StringComparer.Ordinal);
             for (int index = 0; index < choices.Count; index++)
             {
                 DialogueChoiceNode choice = choices[index];
@@ -254,28 +233,19 @@ namespace RPG.DialogueSystemModule
                     continue;
                 }
 
-                if (!choiceIds.Add(choice.ChoiceId))
-                    messages.Add(new DialogueValidationMessage(
-                        DialogueValidationSeverity.Error, $"ChoiceId 重复：{choice.ChoiceId}。", choice.NodeId));
                 if (!nodeSet.Contains(choice))
                     messages.Add(new DialogueValidationMessage(
                         DialogueValidationSeverity.Error, "ChoiceNode 必须属于 DialogueAsset.Nodes。", choice.NodeId));
             }
         }
 
-        /// <summary>校验 ChoiceNode 的目标和 Handler 配置。</summary>
+        /// <summary>校验 ChoiceNode 的目标和命令配置。</summary>
         /// <param name="choice">待校验选项。</param>
         /// <param name="nodeSet">资产节点引用集合。</param>
         /// <param name="messages">输出校验消息。</param>
-        /// <param name="conditionTypes">已注册 Condition 定义类型。</param>
-        /// <param name="actionTypes">已注册 Action 定义类型。</param>
         private static void ValidateChoiceNode(DialogueChoiceNode choice, ISet<DialogueNode> nodeSet,
-            ICollection<DialogueValidationMessage> messages, ISet<Type> conditionTypes, ISet<Type> actionTypes,
-            bool validateConditionHandlers, bool validateActionHandlers)
+            ICollection<DialogueValidationMessage> messages)
         {
-            if (string.IsNullOrWhiteSpace(choice.ChoiceId))
-                messages.Add(new DialogueValidationMessage(
-                    DialogueValidationSeverity.Error, "ChoiceId 不能为空。", choice.NodeId));
             if (string.IsNullOrWhiteSpace(choice.Text))
                 messages.Add(new DialogueValidationMessage(
                     DialogueValidationSeverity.Warning, "Choice 文本为空。", choice.NodeId));
@@ -284,14 +254,12 @@ namespace RPG.DialogueSystemModule
             for (int index = 0; index < choice.Conditions.Count; index++)
             {
                 DialogueCondition definition = choice.Conditions[index];
-                ValidateHandler(definition, conditionTypes, validateConditionHandlers,
-                    messages, choice.NodeId, "Condition");
+                ValidateDefinition(definition, messages, choice, "Condition", index);
             }
             for (int index = 0; index < choice.Actions.Count; index++)
             {
                 DialogueAction definition = choice.Actions[index];
-                ValidateHandler(definition, actionTypes, validateActionHandlers,
-                    messages, choice.NodeId, "Action");
+                ValidateDefinition(definition, messages, choice, "Action", index);
             }
         }
 
@@ -321,28 +289,26 @@ namespace RPG.DialogueSystemModule
                     DialogueValidationSeverity.Error, $"{fieldName} 只能指向 SpeechNode 或 EndNode。", nodeId));
         }
 
-        /// <summary>校验派生定义非空且存在于当前注册表。</summary>
+        /// <summary>校验命令定义非空并执行其静态配置校验。</summary>
         /// <param name="definition">待校验的派生定义。</param>
-        /// <param name="registeredTypes">当前注册的定义类型。</param>
         /// <param name="messages">输出校验消息。</param>
-        /// <param name="nodeId">关联节点标识。</param>
-        /// <param name="handlerName">Condition 或 Action 名称。</param>
-        private static void ValidateHandler(object definition, ISet<Type> registeredTypes, bool validateHandlers,
-            ICollection<DialogueValidationMessage> messages, string nodeId, string handlerName)
+        /// <param name="choice">关联的 Choice 节点。</param>
+        /// <param name="commandName">Condition 或 Action 名称。</param>
+        /// <param name="index">命令在 Choice 列表中的索引。</param>
+        private static void ValidateDefinition(object definition,
+            ICollection<DialogueValidationMessage> messages, DialogueChoiceNode choice,
+            string commandName, int index)
         {
             if (definition == null)
             {
                 messages.Add(new DialogueValidationMessage(
-                    DialogueValidationSeverity.Error, $"{handlerName} Definition 不能为空。", nodeId));
+                    DialogueValidationSeverity.Error,
+                    $"Choice '{choice.NodeName}' ({choice.NodeId}) 的 {commandName}[{index}] 不能为空。",
+                    choice.NodeId));
                 return;
             }
-            Type definitionType = definition.GetType();
-            if (validateHandlers && !registeredTypes.Contains(definitionType))
-                messages.Add(new DialogueValidationMessage(
-                    DialogueValidationSeverity.Error,
-                    $"未注册 {handlerName} Handler：{definitionType.FullName}。", nodeId));
 
-            // 先检查定义自身字段，再由注册表检查运行时 Handler；两类错误都只记录到校验结果，不修改资产。
+            // 命令 Validate 只检查序列化字段，不访问运行时架构或执行任何业务副作用。
             try
             {
                 if (definition is DialogueCondition condition)
@@ -350,11 +316,13 @@ namespace RPG.DialogueSystemModule
                 else if (definition is DialogueAction action)
                     action.Validate();
             }
-            catch (ArgumentException exception)
+            catch (Exception exception)
             {
                 messages.Add(new DialogueValidationMessage(
                     DialogueValidationSeverity.Error,
-                    $"{handlerName} Definition 配置无效：{exception.Message}", nodeId));
+                    $"Choice '{choice.NodeName}' ({choice.NodeId}) 的 {commandName}[{index}] " +
+                    $"({definition.GetType().FullName}) 配置无效：{exception.Message}",
+                    choice.NodeId));
             }
         }
 
@@ -468,18 +436,6 @@ namespace RPG.DialogueSystemModule
             }
 
             return edges;
-        }
-
-        /// <summary>复制 Handler 定义类型集合。</summary>
-        /// <param name="types">待复制的定义类型集合。</param>
-        /// <returns>定义类型集合。</returns>
-        private static HashSet<Type> CreateTypeSet(IEnumerable<Type> types)
-        {
-            HashSet<Type> result = new HashSet<Type>();
-            if (types == null) return result;
-            foreach (Type type in types)
-                if (type != null) result.Add(type);
-            return result;
         }
 
         #endregion

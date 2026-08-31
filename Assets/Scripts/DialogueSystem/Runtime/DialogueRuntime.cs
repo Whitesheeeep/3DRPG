@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using RPG.InteractionSystem;
+using WS_Modules.BusinessArchitecture;
 
 namespace RPG.DialogueSystemModule
 {
@@ -36,7 +37,10 @@ namespace RPG.DialogueSystemModule
         InvalidRequest,
 
         /// <summary>对话图校验失败。</summary>
-        InvalidGraph
+        InvalidGraph,
+
+        /// <summary>首个对白执行命令时发生运行错误。</summary>
+        Failed
     }
 
     /// <summary>
@@ -61,9 +65,6 @@ namespace RPG.DialogueSystemModule
 
         /// <summary>选择条件不满足。</summary>
         ConditionFailed,
-
-        /// <summary>Condition 或 Action Handler 未注册。</summary>
-        MissingHandler,
 
         /// <summary>会话或图在推进时失效。</summary>
         Failed
@@ -185,16 +186,18 @@ namespace RPG.DialogueSystemModule
         public IReadOnlyList<IDialogueParticipantContext> Participants { get; }
 
         /// <summary>
-        /// 按 SpeakerId 查找参与者 Context。
+        /// 按 Speaker 资产引用查找参与者 Context。
         /// </summary>
-        /// <param name="speakerId">SpeechNode 使用的 SpeakerId。</param>
+        /// <param name="speaker">SpeechNode 使用的 Speaker 资产。</param>
         /// <returns>匹配的 Context；找不到时为空。</returns>
-        public IDialogueParticipantContext FindParticipant(string speakerId)
+        public IDialogueParticipantContext FindParticipant(DialogueSpeaker speaker)
         {
+            if (speaker == null) return null;
             for (int index = 0; index < Participants.Count; index++)
             {
                 IDialogueParticipantContext participant = Participants[index];
-                if (participant != null && string.Equals(participant.SpeakerId, speakerId, StringComparison.Ordinal))
+                // UnityEngine.Object 的 == 同时处理资产对象身份和已销毁对象，避免比较托管包装器地址。
+                if (participant != null && participant.Speaker == speaker)
                     return participant;
             }
 
@@ -204,73 +207,122 @@ namespace RPG.DialogueSystemModule
 
     #endregion
 
-    #region Handler 契约
+    #region Dialogue 命令契约
 
-    /// <summary>
-    /// 为 Condition Handler 提供当前会话和请求上下文。
-    /// </summary>
-    public sealed class DialogueConditionContext
+    /// <summary>表示一次 Condition 命令的结构化判断结果。</summary>
+    public readonly struct DialogueConditionResult
     {
-        /// <summary>创建 Condition 上下文。</summary>
-        /// <param name="session">当前会话。</param>
-        public DialogueConditionContext(DialogueSession session) => Session = session ?? throw new ArgumentNullException(nameof(session));
+        /// <summary>创建条件判断结果。</summary>
+        /// <param name="isMet">条件是否满足。</param>
+        /// <param name="failureReason">条件不满足时的诊断原因。</param>
+        public DialogueConditionResult(bool isMet, string failureReason = null)
+        {
+            IsMet = isMet;
+            FailureReason = failureReason ?? string.Empty;
+        }
 
-        /// <summary>获取当前会话。</summary>
+        /// <summary>获取条件是否满足。</summary>
+        public bool IsMet { get; }
+
+        /// <summary>获取条件不满足时的诊断原因。</summary>
+        public string FailureReason { get; }
+
+        /// <summary>创建满足结果。</summary>
+        /// <returns>表示条件满足的结果。</returns>
+        public static DialogueConditionResult Met() => new DialogueConditionResult(true);
+
+        /// <summary>创建不满足结果。</summary>
+        /// <param name="failureReason">面向诊断或 UI 的失败原因。</param>
+        /// <returns>表示条件不满足的结果。</returns>
+        public static DialogueConditionResult NotMet(string failureReason) =>
+            new DialogueConditionResult(false, failureReason);
+    }
+
+    /// <summary>为 Dialogue Condition 和 Action 提供当前会话、Choice 与 IOC 入口。</summary>
+    public sealed class DialogueCommandContext
+    {
+        /// <summary>创建一次命令执行上下文；仅由 DialogueSystem 在运行时创建。</summary>
+        /// <param name="session">当前对话会话。</param>
+        /// <param name="choice">当前判断或执行的 Choice。</param>
+        /// <param name="architecture">当前 DialogueSystem 所属的 BusinessArchitecture。</param>
+        internal DialogueCommandContext(DialogueSession session, DialogueChoiceNode choice,
+            IArchitecture architecture)
+        {
+            Session = session ?? throw new ArgumentNullException(nameof(session));
+            Choice = choice;
+            Architecture = architecture ?? throw new ArgumentNullException(nameof(architecture));
+        }
+
+        /// <summary>获取当前对话会话。</summary>
         public DialogueSession Session { get; }
 
-        /// <summary>获取本次请求。</summary>
+        /// <summary>获取本次对话请求。</summary>
         public DialogueRequest Request => Session.Request;
+
+        /// <summary>获取当前正在判断或执行的 Choice。</summary>
+        public DialogueChoiceNode Choice { get; }
+
+        /// <summary>获取当前系统实际所属的 IOC 架构。</summary>
+        public IArchitecture Architecture { get; }
     }
 
-    /// <summary>
-    /// 为 Action Handler 提供当前会话和请求上下文。
-    /// </summary>
-    public sealed class DialogueActionContext
+    /// <summary>表示一个自身封装判断行为的对话 Condition 命令。</summary>
+    [Serializable]
+    public abstract class DialogueCondition
     {
-        /// <summary>创建 Action 上下文。</summary>
-        /// <param name="session">当前会话。</param>
-        public DialogueActionContext(DialogueSession session) => Session = session ?? throw new ArgumentNullException(nameof(session));
+        /// <summary>使用当前上下文判断条件是否满足。</summary>
+        /// <param name="context">当前会话命令上下文。</param>
+        /// <returns>结构化条件结果。</returns>
+        public abstract DialogueConditionResult Evaluate(DialogueCommandContext context);
 
-        /// <summary>获取当前会话。</summary>
-        public DialogueSession Session { get; }
-
-        /// <summary>获取本次请求。</summary>
-        public DialogueRequest Request => Session.Request;
+        /// <summary>校验序列化字段；不得访问运行时 IOC。</summary>
+        public virtual void Validate()
+        {
+        }
     }
 
-    /// <summary>
-    /// 定义一个按 Condition 配置具体类型判断 Choice 是否可用的 Handler。
-    /// </summary>
-    public interface IDialogueConditionHandler
+    /// <summary>表示一个自身封装副作用行为的对话 Action 命令。</summary>
+    [Serializable]
+    public abstract class DialogueAction
     {
-        /// <summary>获取该 Handler 支持的 Condition 定义类型。</summary>
-        Type DefinitionType { get; }
+        /// <summary>在当前上下文中同步执行动作。</summary>
+        /// <param name="context">当前会话命令上下文。</param>
+        public abstract void Execute(DialogueCommandContext context);
 
-        /// <summary>
-        /// 计算条件并返回失败原因，不修改游戏状态。
-        /// </summary>
-        /// <param name="context">当前会话上下文。</param>
-        /// <param name="definition">资产中的条件参数。</param>
-        /// <param name="failureReason">条件失败时的展示原因。</param>
-        /// <returns>条件满足时返回 true。</returns>
-        bool Evaluate(DialogueConditionContext context, DialogueCondition definition,
-            out string failureReason);
+        /// <summary>校验序列化字段；不得访问运行时 IOC。</summary>
+        public virtual void Validate()
+        {
+        }
     }
 
-    /// <summary>
-    /// 定义一个按 Action 配置具体类型触发 Choice 副作用的 Handler。
-    /// </summary>
-    public interface IDialogueActionHandler
+    /// <summary>表示一个供 UI 展示的当前 Choice 快照。</summary>
+    public readonly struct DialogueChoiceSnapShot
     {
-        /// <summary>获取该 Handler 支持的 Action 定义类型。</summary>
-        Type DefinitionType { get; }
+        /// <summary>创建 Choice 展示快照。</summary>
+        /// <param name="nodeId">ChoiceNode 稳定 NodeId。</param>
+        /// <param name="text">展示文本。</param>
+        /// <param name="isAvailable">当前是否可选。</param>
+        /// <param name="unavailableReason">不可选诊断原因。</param>
+        public DialogueChoiceSnapShot(string nodeId, string text, bool isAvailable,
+            string unavailableReason = null)
+        {
+            NodeId = nodeId ?? string.Empty;
+            Text = text ?? string.Empty;
+            IsAvailable = isAvailable;
+            UnavailableReason = unavailableReason ?? string.Empty;
+        }
 
-        /// <summary>
-        /// 触发动作；DialogueSystem 会把异常转换为 Failed 结束结果。
-        /// </summary>
-        /// <param name="context">当前会话上下文。</param>
-        /// <param name="definition">资产中的动作参数。</param>
-        void Execute(DialogueActionContext context, DialogueAction definition);
+        /// <summary>获取 ChoiceNode 稳定 ID。</summary>
+        public string NodeId { get; }
+
+        /// <summary>获取 Choice 文本。</summary>
+        public string Text { get; }
+
+        /// <summary>获取当前是否可用。</summary>
+        public bool IsAvailable { get; }
+
+        /// <summary>获取不可用原因。</summary>
+        public string UnavailableReason { get; }
     }
 
     #endregion
@@ -313,10 +365,16 @@ namespace RPG.DialogueSystemModule
         /// <summary>创建选项展示事实事件。</summary>
         /// <param name="session">当前会话。</param>
         /// <param name="speech">拥有这些选项的 SpeechNode。</param>
-        public DialogueChoicePresentedEvent(DialogueSession session, DialogueSpeechNode speech)
+        /// <param name="choices">已经计算完成的选项展示快照。</param>
+        public DialogueChoicePresentedEvent(DialogueSession session, DialogueSpeechNode speech,
+            IReadOnlyList<DialogueChoiceSnapShot> choices)
         {
             Session = session ?? throw new ArgumentNullException(nameof(session));
             Speech = speech ?? throw new ArgumentNullException(nameof(speech));
+            // 事件保存独立快照，避免 DialogueSystem 下一次计算时清空内部复用列表影响订阅者。
+            Choices = choices == null
+                ? throw new ArgumentNullException(nameof(choices))
+                : new List<DialogueChoiceSnapShot>(choices);
         }
 
         /// <summary>获取会话。</summary>
@@ -324,6 +382,9 @@ namespace RPG.DialogueSystemModule
 
         /// <summary>获取包含选项的对白节点。</summary>
         public DialogueSpeechNode Speech { get; }
+
+        /// <summary>获取按资产顺序排列的选项展示快照。</summary>
+        public IReadOnlyList<DialogueChoiceSnapShot> Choices { get; }
     }
 
     /// <summary>表示一个对话会话已经结束。</summary>

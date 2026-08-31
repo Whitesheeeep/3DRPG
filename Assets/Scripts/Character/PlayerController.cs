@@ -140,7 +140,11 @@ namespace RPG.Character
         }
 
         /// <summary>在 Animator 求值完成后让当前 Active Ability 决定是否消费根运动。</summary>
-        private void OnAnimatorMove() => abilitySystemComponent.UpdateAnimationMove();
+        public void OnAnimatorMove()
+        {
+            abilitySystemComponent.UpdateAnimationMove();
+            Debug.Log(animator.deltaPosition);
+        }
 
         /// <summary>在普通更新和 Animator 求值后推进 ASC 延迟阶段。</summary>
         private void LateUpdate() => abilitySystemComponent.LateTick(Time.deltaTime);

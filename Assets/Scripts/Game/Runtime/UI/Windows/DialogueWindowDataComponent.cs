@@ -10,6 +10,9 @@ using TMPro;
 
 namespace WS_Modules.UIModule
 {
+    /// <summary>
+    /// DialogueWindow 的生成绑定数据，保存对白控件、Choice 根节点和行资源配置。
+    /// </summary>
 	public class DialogueWindowDataComponent : MonoBehaviour
 	{
 		//窗口配置
@@ -17,12 +20,24 @@ namespace WS_Modules.UIModule
 		public bool DoAnimation = true;
 
 		//自定义字段
-		public Image JumpBKImage;
+		public Button AdvanceButton;
 
 		public TMP_Text SpeakerNameTMP_Text;
 
 		public TMP_Text SpeakContentTMP_Text;
 
+		// 与 SpeakContentTMP_Text 同一对象上的文字表现组件，由窗口组合根显式注入 SpeechView。
+		public TMProTypeWriter SpeakContentTypeWriter;
+
+		public Transform DialogueChoiceRootTransform;
+
+		[WSAddressableKey]
+		public string OptionPrefabPath = "OptionChoice";
+
+		public int InitialChoiceRowCount = 3;
+
+		/// <summary>由生成代码在窗口初始化阶段绑定本组件对应的 Window。</summary>
+		/// <param name="target">承载本组件的 DialogueWindow。</param>
 		public void InitComponent(WindowBase target)
 		{
 		     //组件事件绑定

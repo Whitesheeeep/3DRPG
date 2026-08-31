@@ -609,7 +609,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b99dd9aa66dea9d4fb1fbd01f0f79c07, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speakerId: Speaker
+  speaker: {fileID: 0}
   voiceAudioSource: {fileID: 1052568509}
 --- !u!114 &1052568511
 MonoBehaviour:
@@ -711,6 +711,36 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!21 &1141121828
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: MMD4Mecanim/MMDLit-NEXTEdge-Pass8
+  m_Shader: {fileID: 4800000, guid: ff1e1d0bbf6980244a107d25ff535f9a, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: 2001
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _EdgeSize: 0.005
+    - _PostfixRenderQueue: 1
+    m_Colors:
+    - _EdgeColor: {r: 0.39999998, g: 1, b: 1, a: 1}
+  m_BuildTextureStacks: []
 --- !u!1 &1262078569
 GameObject:
   m_ObjectHideFlags: 0
@@ -829,36 +859,6 @@ MonoBehaviour:
   m_LightCookieSize: {x: 1, y: 1}
   m_LightCookieOffset: {x: 0, y: 0}
   m_SoftShadowQuality: 0
---- !u!21 &1329076794
-Material:
-  serializedVersion: 8
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: MMD4Mecanim/MMDLit-NEXTEdge-Pass8
-  m_Shader: {fileID: 4800000, guid: ff1e1d0bbf6980244a107d25ff535f9a, type: 3}
-  m_Parent: {fileID: 0}
-  m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
-  m_InvalidKeywords: []
-  m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
-  m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 2001
-  stringTagMap: {}
-  disabledShaderPasses: []
-  m_LockedProperties: 
-  m_SavedProperties:
-    serializedVersion: 3
-    m_TexEnvs: []
-    m_Ints: []
-    m_Floats:
-    - _EdgeSize: 0.005
-    - _PostfixRenderQueue: 1
-    m_Colors:
-    - _EdgeColor: {r: 0.39999998, g: 1, b: 1, a: 1}
-  m_BuildTextureStacks: []
 --- !u!1 &1614250080
 GameObject:
   m_ObjectHideFlags: 0
@@ -993,7 +993,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b99dd9aa66dea9d4fb1fbd01f0f79c07, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speakerId: Speaker
+  speaker: {fileID: 0}
   voiceAudioSource: {fileID: 1614250087}
 --- !u!82 &1614250087
 AudioSource:
@@ -1188,7 +1188,71 @@ MonoBehaviour:
   m_PointerBehavior: 0
   m_CursorLockBehavior: 0
   m_ScrollDeltaPerTick: 6
---- !u!21 &1798231805
+--- !u!1001 &1760853926
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: f44f3849f93f0244e80cad9819f38cb4, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f44f3849f93f0244e80cad9819f38cb4, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f44f3849f93f0244e80cad9819f38cb4, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f44f3849f93f0244e80cad9819f38cb4, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f44f3849f93f0244e80cad9819f38cb4, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f44f3849f93f0244e80cad9819f38cb4, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f44f3849f93f0244e80cad9819f38cb4, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f44f3849f93f0244e80cad9819f38cb4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f44f3849f93f0244e80cad9819f38cb4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f44f3849f93f0244e80cad9819f38cb4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: f44f3849f93f0244e80cad9819f38cb4, type: 3}
+      propertyPath: m_Name
+      value: Rusk_ver1.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: f44f3849f93f0244e80cad9819f38cb4, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: 005bc46c11e2d654086778642c25cef0, type: 2}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: f44f3849f93f0244e80cad9819f38cb4, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2026835413}
+  m_SourcePrefab: {fileID: 100100000, guid: f44f3849f93f0244e80cad9819f38cb4, type: 3}
+--- !u!21 &1769206207
 Material:
   serializedVersion: 8
   m_ObjectHideFlags: 0
@@ -1348,7 +1412,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b99dd9aa66dea9d4fb1fbd01f0f79c07, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speakerId: Speaker
+  speaker: {fileID: 0}
   voiceAudioSource: {fileID: 1915843860}
 --- !u!114 &1915843862
 MonoBehaviour:
@@ -1507,6 +1571,23 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 8dedcd1e5691a9843961a89f7683e315, type: 3}
+--- !u!1 &2026835409 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: f44f3849f93f0244e80cad9819f38cb4, type: 3}
+  m_PrefabInstance: {fileID: 1760853926}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2026835413
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2026835409}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa948cb1a37642cd9c17b889bf304fdf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &5255901476360784226
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1519,14 +1600,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: Player
       objectReference: {fileID: 0}
-    - target: {fileID: 1971363019322105255, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
-      propertyPath: nextEdgeMaterial_Pass4
-      value: 
-      objectReference: {fileID: 1798231805}
-    - target: {fileID: 1971363019322105255, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
-      propertyPath: nextEdgeMaterial_Pass8
-      value: 
-      objectReference: {fileID: 1329076794}
     - target: {fileID: 2828693446668169376, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -1567,10 +1640,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 3099740409819100938, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
-      propertyPath: viewCamera
-      value: 
-      objectReference: {fileID: 344798904}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -1591,3 +1660,4 @@ SceneRoots:
   - {fileID: 1915843866}
   - {fileID: 635949474}
   - {fileID: 5255901476360784226}
+  - {fileID: 1760853926}

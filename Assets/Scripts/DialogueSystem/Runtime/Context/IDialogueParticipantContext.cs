@@ -8,8 +8,8 @@ namespace RPG.DialogueSystemModule
     /// </summary>
     public interface IDialogueParticipantContext
     {
-        /// <summary>获取与 SpeechNode 匹配的稳定 SpeakerId。</summary>
-        string SpeakerId { get; }
+        /// <summary>获取与 SpeechNode 匹配的 Speaker 资产身份。</summary>
+        DialogueSpeaker Speaker { get; }
 
         /// <summary>获取参与者所属的场景对象，用于事件目标和日志。</summary>
         GameObject ParticipantObject { get; }

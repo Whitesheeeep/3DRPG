@@ -240,10 +240,7 @@
 .dialogue-editor-speaker-row {
     min-height: 28px;
     margin-bottom: 2px;
-    padding-left: 7px;
-    padding-right: 7px;
-    padding-top: 4px;
-    padding-bottom: 4px;
+    padding: 4px 7px;
     border-radius: 3px;
     color: rgb(200, 200, 200);
 }

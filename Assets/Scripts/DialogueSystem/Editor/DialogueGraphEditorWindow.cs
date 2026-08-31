@@ -52,7 +52,11 @@ namespace RPG.DialogueSystemModule.Editor
             window.ConfigureWindow();
             window.pendingAsset = asset;
             window.Show();
-            window.controller?.OpenAsset(asset);
+            if (window.controller != null)
+            {
+                window.controller.OpenAsset(asset);
+                window.pendingAsset = null;
+            }
         }
 
         #endregion
@@ -77,9 +81,15 @@ namespace RPG.DialogueSystemModule.Editor
             DialogueGraphEditorView editorView = new DialogueGraphEditorView(rootVisualElement);
             DialogueGraphView graphView = new DialogueGraphView();
             editorView.GraphContainer.Add(graphView);
-            controller = new DialogueGraphEditorController(editorView, graphView);
+            DialogueGraphEditorState editorState = DialogueGraphEditorState.instance;
+            controller = new DialogueGraphEditorController(editorView, graphView, editorState);
             controller.Bind();
-            if (pendingAsset != null) controller.OpenAsset(pendingAsset);
+
+            // 显式双击资产优先；普通菜单打开时恢复上次资产，应用后清空临时字段。
+            DialogueAsset assetToOpen = pendingAsset;
+            pendingAsset = null;
+            if (assetToOpen == null) assetToOpen = editorState.ResolveLastAsset();
+            if (assetToOpen != null) controller.OpenAsset(assetToOpen);
         }
 
         /// <summary>释放 Controller，避免事件跨窗口生命周期残留。</summary>

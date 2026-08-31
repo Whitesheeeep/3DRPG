@@ -34,7 +34,7 @@ namespace RPG.DialogueSystemModule.Editor
         {
             Model = model;
             NodeKind = GetNodeKind(model);
-            title = NodeKind;
+            title = GetNodeDisplayName(model);
         }
 
         #endregion
@@ -49,17 +49,14 @@ namespace RPG.DialogueSystemModule.Editor
         {
             if (Model is DialogueSpeechNode speech)
             {
-                contentContainer.Add(new Label(string.IsNullOrWhiteSpace(speech.SpeakerId)
-                    ? "SpeakerId: <empty>"
-                    : $"SpeakerId: {speech.SpeakerId}"));
+                contentContainer.Add(new Label(speech.Speaker == null
+                    ? "Speaker: <empty>"
+                    : $"Speaker: {speech.Speaker.SpeakerName}"));
                 contentContainer.Add(new Label(TrimText(speech.Text)));
                 contentContainer.Add(new Label($"Choices: {speech.Choices.Count}"));
             }
             else if (Model is DialogueChoiceNode choice)
             {
-                contentContainer.Add(new Label(string.IsNullOrWhiteSpace(choice.ChoiceId)
-                    ? "ChoiceId: <empty>"
-                    : choice.ChoiceId));
                 contentContainer.Add(new Label(TrimText(choice.Text)));
                 contentContainer.Add(new Label($"Conditions: {choice.Conditions.Count}"));
                 contentContainer.Add(new Label($"Actions: {choice.Actions.Count}"));
@@ -77,6 +74,7 @@ namespace RPG.DialogueSystemModule.Editor
         /// </summary>
         internal void RefreshContent()
         {
+            title = GetNodeDisplayName(Model);
             extensionContainer.Clear();
             PopulateContent(extensionContainer);
             RefreshExpandedState();
@@ -156,6 +154,18 @@ namespace RPG.DialogueSystemModule.Editor
             if (node is DialogueChoiceNode) return "ChoiceNode";
             if (node is DialogueEndNode) return "EndNode";
             return "DialogueNode";
+        }
+
+        /// <summary>获取节点在 GraphView 标题中的编辑器显示名称。</summary>
+        /// <param name="node">领域节点。</param>
+        /// <returns>显示名称。</returns>
+        private static string GetNodeDisplayName(DialogueNode node)
+        {
+            if (node is DialogueSpeechNode speech)
+                return string.IsNullOrWhiteSpace(speech.NodeName) ? "SpeechNode" : speech.NodeName;
+            if (node is DialogueChoiceNode choice)
+                return string.IsNullOrWhiteSpace(choice.NodeName) ? "ChoiceNode" : choice.NodeName;
+            return GetNodeKind(node);
         }
 
         /// <summary>把多行对白压缩为节点摘要，避免节点内容撑开画布。</summary>
