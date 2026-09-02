@@ -18,9 +18,9 @@ flowchart LR
     Interactor --> DomainEvents[OptionsChanged / SelectionChanged]
     DomainEvents --> Controller[InteractionUIController]
     Controller --> View[ChoiceWindowView]
-    Input[InputAction] --> Arbiter[InteractionInputIntentArbiter]
-    Arbiter --> Blackboard[PlayerStateBlackboard]
-    Blackboard --> Interactor
+    UI[EventSystem Navigate / Submit] --> View
+    View -->|SelectionRequested / ChoiceRequested| Controller
+    Controller -->|Select / SubmitSelected| Interactor
     Interactor --> Execute[InteractionOption.TryExecute]
 ```
 
@@ -35,7 +35,7 @@ flowchart LR
 | `InteractableObject` | 为 MonoBehaviour Provider 提供自身 `GameObject` 和 `Transform` 默认实现 | 不承载具体业务执行逻辑 |
 | `InteractionOption` | 保存展示数据、空间约束、业务校验和执行回调 | 不管理 UI 行实例，不保存玩家选择 |
 | `InteractionOptionId` | 由 Provider Unity 运行时实例 ID 与稳定 `ActionId` 组成，用于去重、排序和保留选择 | 不作为存档 ID，不保证跨运行稳定 |
-| `InteractionQueryContext` | 向 Provider 传递玩家对象、玩家 Transform 和查询摄像机 | 不代表最终筛选结果 |
+| `InteractionQueryContext` | 向 Provider 传递稳定 Player 对象、移动 CharacterRoot Transform 和查询摄像机 | 不代表最终筛选结果；两个身份不要求是同一 GameObject |
 | `PlayerInteractor` | 收集、硬筛选、排序、选择、执行并发布领域事件 | 不负责窗口资源加载和 UI 行创建 |
 | `InteractionUIController` | 将领域 Option 投影为字符串和 ID，并协调 ChoiceWindow 显隐 | 不执行距离、遮挡或业务判断 |
 
@@ -122,34 +122,38 @@ NonAlloc 缓冲区满时会扩容并立即重查，不能把“返回数量等�
 
 只有最终 Option ID 顺序发生变化时才发送 `OptionsChanged`；只有选中 ID 发生变化时才发送 `SelectionChanged`。这两个事件都不会因为重复刷新而无条件发送。
 
-## 5. 输入 Intent 链
+## 5. 输入与 ChoiceWindow
 
-交互输入采用“请求产生 Intent、业务成功后确认消费”的输入模型。默认交互导航使用 `InteractionPrevious`、`InteractionNext`，执行使用现有 `Interact` 映射到 `Interaction.Execute`。
+场景交互选项由 `ChoiceWindow` 通过 Unity EventSystem 直接接收 UI `Navigate` 和 `Submit`。上下键、手柄方向键
+和 UI 导航动作由 EventSystem 根据每个 `OptionChoice.Button.navigation` 的显式链移动 Selection；
+`ChoiceWindowView` 在收到 `ISelectHandler` 后通过 `SelectionRequested` 同步 `PlayerInteractor.Select`。
+点击或 Submit 则走同一条路径：先选择稳定 `InteractionOptionId`，再调用 `SubmitSelected()`。
+
+`PlayerInteractor` 不再在 `Update` 中自动读取 `PlayerStateBlackboard` 的交互 Intent，也不负责消费
+`InteractionPrevious`、`InteractionNext` 或 `Interaction.Execute`。保留 `SelectPrevious`、`SelectNext`、
+`SubmitSelected` 等公开方法，供业务代码和兼容测试直接调用。这样 UI 选择不会和角色输入仲裁重复消费，
+鼠标和键盘/手柄最终都归一到同一个 EventSystem Selection。
 
 ```mermaid
 sequenceDiagram
-    participant I as InputAction
-    participant PC as PlayerInputController
-    participant M as GameplayInputIntentArbiterManager
-    participant A as InteractionInputIntentArbiter
-    participant B as PlayerStateBlackboard
+    participant I as UI Navigate / Submit
+    participant E as EventSystem
+    participant V as ChoiceWindowView
+    participant C as InteractionUIController
     participant P as PlayerInteractor
 
-    I->>PC: performed
-    PC->>M: PlayerInputRequest
-    M->>A: 当前帧仲裁
-    A->>B: 发布 Previous / Next / Execute Intent
-    P->>B: 先处理 Previous，再处理 Next，再处理 Execute
-    P->>P: SelectPrevious / SelectNext / SubmitSelected
-    alt 导航发生变化或执行成功
-        P->>B: TryConfirmIntentConsumed
-        B-->>PC: 回传来源 Request 消费确认
-    else 列表为空、选择未变化或执行失败
-        P-->>B: 不确认，等待帧末或 Buffer 自然过期
-    end
+    I->>E: 移动 Navigation 或提交 Button
+    E->>V: Select / Click
+    V->>C: SelectionRequested / ChoiceRequested
+    C->>P: Select(optionId)
+    C->>P: SubmitSelected()
 ```
 
-导航只有真正改变选择时才确认消费；执行只有 `SubmitSelected()` 成功时才确认消费。`GameplayTagDatabase` 由 `GameplayTagDatabaseConfigProvider` 通过 ConfigInstaller 在业务使用前注册，否则黑板无法正常写入交互 Intent。
+`OptionChoice` 会在 `Awake` 保存原始 ColorBlock，并把 Highlighted 颜色复用为普通颜色，因此鼠标 Hover 不会形成独立的
+持续高亮；`Selected` 颜色只由 EventSystem Selection 对应的 View 状态写入。不可用行使用 Button 的
+`interactable = false` 并从显式上下导航链排除。旧的 `InteractionInputIntentArbiter` 与输入 Action 保留用于兼容
+和未来非 UI 场景，但不再由 `GameplayInputIntentArbiterManager.RegisterDefaultArbiters` 自动注册，也不会驱动
+`PlayerInteractor`。
 
 ## 6. ChoiceWindow MVC 与预加载
 
@@ -173,6 +177,8 @@ sequenceDiagram
     else 零 Option
         C->>U: HideWindow<ChoiceWindow>()
     end
+    V-->>C: SelectionRequested(index)
+    C->>P: Select(optionId)
     V-->>C: ChoiceRequested(index)
     C->>P: Select(optionId)
     C->>P: SubmitSelected()
@@ -186,16 +192,18 @@ sequenceDiagram
 
 ## 7. 依赖、性能与边界
 
+Player 是稳定的业务身份，CharacterRoot 是移动空间基准。交互组件与 Detector 保持在 CharacterRoot；查询上下文的
+`Interactor`、`CanExecute` 和 `TryExecute` 参数统一使用 PlayerController 所在对象，MaxDistance 继续使用交互组件的世界位置。
+
+`PlayerInteractor` 是普通 MonoBehaviour，提供本地单玩家 `Instance` 与 `InstanceChanged`，不继承会对自身调用 `DontDestroyOnLoad` 的单例基类。父级 Player 负责跨场景保留；重复交互实例或父级控制器缺失会在 Awake 明确报错。只有依赖就绪才发布实例并允许 OnEnable 订阅扫描；销毁时清空当前实例并通知 UI 解绑。
+
 ```mermaid
 flowchart TD
     Root[WSFrameRoot] --> Config[ConfigInstaller]
     Config --> Tags[GameplayTagManager]
     Root --> UI[UIManager]
     UI --> Preload[GameWindowPreloadService]
-    Player[PlayerController] --> Blackboard[PlayerStateBlackboard]
     Player --> Interactor[PlayerInteractor]
-    Tags --> Blackboard
-    Blackboard --> Interactor
     Interactor --> Controller[InteractionUIController]
 ```
 

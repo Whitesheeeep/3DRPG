@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
 using WS_Modules.ResLoadModule;
 
 namespace WS_Modules.UIModule
 {
     /// <summary>
-    /// ChoiceWindow 的纯 C# View，负责选项行资源、文本、高亮、显隐和用户点击转发。
+    /// ChoiceWindow 的纯 C# View，负责选项行资源、文本、显隐和用户点击转发。
     /// </summary>
     public sealed class ChoiceWindowView : IDisposable
     {
@@ -26,6 +28,7 @@ namespace WS_Modules.UIModule
         private GameObject optionPrefab;
         private UniTask initializationTask;
         private bool initializationStarted;
+        private bool applyingState;
         private bool disposed;
 
         #endregion
@@ -34,6 +37,9 @@ namespace WS_Modules.UIModule
 
         /// <summary>用户点击选项行时发送当前行索引。</summary>
         public event Action<int> ChoiceRequested;
+
+        /// <summary>EventSystem 通过键盘或手柄选中选项时发送当前行索引。</summary>
+        public event Action<int> SelectionRequested;
 
         #endregion
 
@@ -124,7 +130,8 @@ namespace WS_Modules.UIModule
                 if (row == null)
                     throw new InvalidOperationException("OptionChoice prefab 必须包含 OptionChoice 组件。");
 
-                row.Initialize(HandleChoiceRequested);
+                row.Initialize(HandleChoiceRequested, HandleSelectionRequested,
+                    HandlePointerSelectionRequested);
                 rows.Add(row);
             }
         }
@@ -136,16 +143,73 @@ namespace WS_Modules.UIModule
         {
             if (optionPrefab == null || disposed) return;
 
-            EnsureRowCount(Mathf.Max(initialRowCount, pendingOptionNames.Count));
+            applyingState = true;
+            try
+            {
+                EnsureRowCount(Mathf.Max(initialRowCount, pendingOptionNames.Count));
+                for (int index = 0; index < rows.Count; index++)
+                {
+                    OptionChoice row = rows[index];
+                    bool visible = index < pendingOptionNames.Count;
+                    row.gameObject.SetActive(visible);
+                    if (visible)
+                        row.SetOption(index, pendingOptionNames[index], true);
+                    else
+                        row.ClearOption();
+                }
+
+                ConfigureNavigation();
+                if (pendingSelectedIndex >= 0 && pendingSelectedIndex < pendingOptionNames.Count)
+                    TrySelectRow(rows[pendingSelectedIndex].gameObject);
+                else
+                    ClearSelectionIfOwned();
+            }
+            finally
+            {
+                applyingState = false;
+            }
+        }
+
+        /// <summary>为当前可见 Option 建立只允许上下移动的显式 UI 导航。</summary>
+        private void ConfigureNavigation()
+        {
+            List<int> visibleIndices = new();
+            for (int index = 0; index < pendingOptionNames.Count; index++)
+                visibleIndices.Add(index);
+
             for (int index = 0; index < rows.Count; index++)
             {
                 OptionChoice row = rows[index];
-                bool visible = index < pendingOptionNames.Count;
-                row.gameObject.SetActive(visible);
-                if (visible)
-                    row.SetOption(index, pendingOptionNames[index], index == pendingSelectedIndex);
+                Navigation navigation = row.Button.navigation;
+                if (index >= pendingOptionNames.Count)
+                {
+                    navigation.mode = Navigation.Mode.None;
+                    navigation.selectOnUp = null;
+                    navigation.selectOnDown = null;
+                    navigation.selectOnLeft = null;
+                    navigation.selectOnRight = null;
+                }
                 else
-                    row.ClearOption();
+                {
+                    navigation.mode = Navigation.Mode.Explicit;
+                    navigation.selectOnLeft = null;
+                    navigation.selectOnRight = null;
+                    if (visibleIndices.Count <= 1)
+                    {
+                        navigation.selectOnUp = row.Button;
+                        navigation.selectOnDown = row.Button;
+                    }
+                    else
+                    {
+                        int currentPosition = visibleIndices.IndexOf(index);
+                        int upPosition = (currentPosition - 1 + visibleIndices.Count) % visibleIndices.Count;
+                        int downPosition = (currentPosition + 1) % visibleIndices.Count;
+                        navigation.selectOnUp = rows[visibleIndices[upPosition]].Button;
+                        navigation.selectOnDown = rows[visibleIndices[downPosition]].Button;
+                    }
+                }
+
+                row.Button.navigation = navigation;
             }
         }
 
@@ -157,6 +221,50 @@ namespace WS_Modules.UIModule
         /// <param name="index">被点击行的索引。</param>
         private void HandleChoiceRequested(int index) => ChoiceRequested?.Invoke(index);
 
+        /// <summary>将 EventSystem 选中结果转换为 View 的 Selection 请求事件。</summary>
+        /// <param name="index">被选中行的索引。</param>
+        private void HandleSelectionRequested(int index)
+        {
+            if (applyingState || index < 0 || index >= pendingOptionNames.Count) return;
+            SelectionRequested?.Invoke(index);
+        }
+
+        /// <summary>
+        /// 响应 OptionChoice 的鼠标移动选中请求；View 负责验证行状态并复用统一的安全焦点入口。
+        /// </summary>
+        /// <param name="index">请求切换焦点的行索引。</param>
+        private void HandlePointerSelectionRequested(int index)
+        {
+            if (applyingState || index < 0 || index >= pendingOptionNames.Count) return;
+            OptionChoice row = rows[index];
+            if (row == null || !row.gameObject.activeInHierarchy || !row.Button.IsInteractable()) return;
+            TrySelectRow(row.gameObject);
+        }
+
+        /// <summary>
+        /// 在 EventSystem 未处理另一轮 Selection 时同步焦点；Selection 回调重入期间只保留当前焦点。
+        /// </summary>
+        /// <param name="target">需要聚焦的选项行。</param>
+        private static void TrySelectRow(GameObject target)
+        {
+            EventSystem eventSystem = EventSystem.current;
+            if (eventSystem == null || target == null || !target.activeInHierarchy) return;
+
+            // EventSystem 先检查选择保护，再判断目标是否相同；因此相同目标也必须提前返回。
+            if (eventSystem.alreadySelecting || eventSystem.currentSelectedGameObject == target) return;
+            eventSystem.SetSelectedGameObject(target);
+        }
+
+        /// <summary>仅当 EventSystem 当前焦点属于本 View 时清除焦点，避免影响其他窗口。</summary>
+        private void ClearSelectionIfOwned()
+        {
+            EventSystem eventSystem = EventSystem.current;
+            GameObject selected = eventSystem?.currentSelectedGameObject;
+            if (eventSystem == null || eventSystem.alreadySelecting) return;
+            if (selected != null && selected.transform.IsChildOf(choiceRoot))
+                eventSystem.SetSelectedGameObject(null);
+        }
+
         /// <summary>
         /// 释放行实例、事件和异步资源；异步加载尚未完成时由完成回调补偿释放资源。
         /// </summary>
@@ -165,6 +273,8 @@ namespace WS_Modules.UIModule
             if (disposed) return;
             disposed = true;
             ChoiceRequested = null;
+            SelectionRequested = null;
+            ClearSelectionIfOwned();
 
             for (int index = 0; index < rows.Count; index++)
             {

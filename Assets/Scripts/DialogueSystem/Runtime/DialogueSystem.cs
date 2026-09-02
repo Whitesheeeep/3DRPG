@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using RPG.Game.UI.Events;
 using UnityEngine;
 using WS_Modules.BusinessArchitecture;
 using WS_Modules.GAS.AbilitySystemComponent;
@@ -101,21 +102,34 @@ namespace RPG.DialogueSystemModule
             DialogueSession session = new DialogueSession(request);
             CurrentSession = session;
             SubscribeSession(session);
-            PublishLooseGameplayTagRequests(session, LooseGameplayTagChangeOperation.Add);
             try
             {
+                // 先发布阻断请求，再进入首句；任一外部接收器异常都由同一清理路径收口。
+                PublishLooseGameplayTagRequests(session, LooseGameplayTagChangeOperation.Add);
+                PublishGameUILockRequest(session, GameUILockOperation.Acquire);
                 session.EnterSpeech(request.Asset.EntryNode.FirstSpeechNode);
             }
             catch (Exception exception)
             {
-                // Participant 的 AudioSource/AnimationPlayer 属于外部表现边界；异常必须对称结束会话并移除来源 Tag。
+                // Participant 表现和锁定事件都属于外部边界；异常必须对称结束会话并移除来源。
                 Debug.LogException(exception);
-                session.End($"首个 SpeechNode 执行失败：{exception.Message}");
+                session.End($"对话初始化或首个 SpeechNode 执行失败：{exception.Message}");
             }
             if (session.IsEnded)
                 return new DialogueStartResult(DialogueStartStatus.Failed,
-                    "首个 SpeechNode 执行失败。", null);
-            Started?.Invoke(new DialogueStartedEvent(session));
+                    "对话初始化或首个 SpeechNode 执行失败。", null);
+            try
+            {
+                // Started 属于外部 UI 表现边界；订阅者异常也必须结束会话并释放独占来源。
+                Started?.Invoke(new DialogueStartedEvent(session));
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+                session.End($"对话开始表现失败：{exception.Message}");
+                return new DialogueStartResult(DialogueStartStatus.Failed,
+                    "对话开始表现失败。", null);
+            }
             return new DialogueStartResult(DialogueStartStatus.Started, "对话已开始。", session);
         }
 
@@ -220,6 +234,7 @@ namespace RPG.DialogueSystemModule
             session.SpeechPresented -= OnSpeechPresented;
             session.Ended -= OnSessionEnded;
             PublishLooseGameplayTagRequests(session, LooseGameplayTagChangeOperation.Remove);
+            PublishGameUILockRequest(session, GameUILockOperation.Release);
             currentChoicePresentations.Clear();
             if (ReferenceEquals(CurrentSession, session)) CurrentSession = null;
             Ended?.Invoke(eventArgs);
@@ -534,6 +549,19 @@ namespace RPG.DialogueSystemModule
                 session.SessionId,
                 GameplayTags.Tag_State_Block_AbilityActivation,
                 operation));
+        }
+
+        /// <summary>
+        /// 通过 GameUILock 事件通知交互与 HUD 消费者进入或退出对话独占状态。
+        /// </summary>
+        /// <param name="session">当前对话会话。</param>
+        /// <param name="operation">申请或释放操作。</param>
+        private void PublishGameUILockRequest(
+            DialogueSession session,
+            GameUILockOperation operation)
+        {
+            this.SendEvent(new GameUILockChangeRequestedEventArgs(
+                $"Dialogue:{session.SessionId}", operation));
         }
 
         /// <summary>创建与当前系统会话关联的推进结果。</summary>

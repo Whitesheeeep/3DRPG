@@ -1,5 +1,6 @@
 using System;
 using Animancer;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace RPG.Character.Animation
@@ -9,12 +10,14 @@ namespace RPG.Character.Animation
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Animator), typeof(AnimancerComponent))]
+    [InfoBox("依赖同节点 Animator 与 AnimancerComponent；AnimationLayerProfile 决定四个固定动画层的蒙版、权重和 IK 配置。")]
     public sealed class AnimationController : MonoBehaviour, IAnimationPlayer
     {
         #region 配置与状态
 
         private const int LayerCount = 4;
 
+        // 同节点 Animator/Animancer 负责实际播放，Profile 提供固定层配置。
         [SerializeField] private AnimancerComponent animancer;
         [SerializeField] private AnimationLayerProfile profile;
 
@@ -32,6 +35,7 @@ namespace RPG.Character.Animation
             InitializeIfNeeded();
         }
 
+        /// <summary>在 Inspector 新增组件时自动填充同节点 Animancer 引用。</summary>
         private void Reset()
         {
             animancer = GetComponent<AnimancerComponent>();
@@ -77,6 +81,15 @@ namespace RPG.Character.Animation
             AnimancerState state = animancerLayer.Play(transition);
             ActivateLayer(animancerLayer, transition.FadeDuration);
             return state;
+        }
+
+        /// <summary>将浮点参数写入当前角色的 Animancer 参数表。</summary>
+        /// <param name="parameter">参数资产；为空时直接暴露配置错误。</param>
+        /// <param name="value">参数值。</param>
+        public void SetFloatParameter(StringAsset parameter, float value)
+        {
+            if (parameter == null) throw new ArgumentNullException(nameof(parameter));
+            animancer.Parameters.SetValue(parameter, value);
         }
 
         #endregion

@@ -7,8 +7,10 @@ using WS_Modules.FSM;
 namespace RPG.Character.DirectionalLocomotion
 {
     /// <summary>驱动 UnifiedFSM，并提供方向移动状态所需的输入、动画和运动能力。</summary>
+    [DefaultExecutionOrder(-850)]
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(PlayerController), typeof(CharacterController), typeof(Animator))]
+    [InfoBox("临时 Demo 依赖父级 CharacterActor、PlayerController、共享 CharacterController，以及同节点 Animator 与 AnimancerComponent。")]
+    [RequireComponent(typeof(Animator))]
     [RequireComponent(typeof(AnimancerComponent))]
     public sealed class DirectionalLocomotionController : MonoBehaviour
     {
@@ -18,7 +20,9 @@ namespace RPG.Character.DirectionalLocomotion
         [SerializeField] private InputActionReference moveAction;
 
         private CharacterController _characterController;
+        private CharacterActor _characterActor;
         private IMotionDriver _motionDriver;
+        private MotionControlHandle _gravityHandle;
         private Animator _animator;
         private AnimancerComponent _animancer;
         private StateMachine<DirectionalLocomotionStateId, DirectionalLocomotionController> _stateMachine;
@@ -103,8 +107,9 @@ namespace RPG.Character.DirectionalLocomotion
         /// <summary>缓存方向移动依赖，并构建仅负责输入和动画状态的 Locomotion 状态机。</summary>
         private void Awake()
         {
-            _characterController = GetComponent<CharacterController>();
-            _motionDriver = GetComponent<PlayerController>().MotionDriver;
+            _characterController = GetComponentInParent<CharacterController>();
+            _characterActor = GetComponentInParent<CharacterActor>();
+            _motionDriver = GetComponentInParent<PlayerController>().MotionDriver;
             _animator = GetComponent<Animator>();
             _animancer = GetComponent<AnimancerComponent>();
             if (_animancer == null)
@@ -112,10 +117,11 @@ namespace RPG.Character.DirectionalLocomotion
             _animancer.Animator = _animator;
 
             _animator.runtimeAnimatorController = null;
-            _animator.applyRootMotion = false;
+            _animator.applyRootMotion = true;
             BuildStateMachine();
         }
 
+        /// <summary>校验 Demo 配置并进入初始状态。</summary>
         private void Start()
         {
             if (setting == null || !setting.IsValid)
@@ -124,9 +130,12 @@ namespace RPG.Character.DirectionalLocomotion
                 enabled = false;
                 return;
             }
+            _gravityHandle = _motionDriver.RequestControl(new MotionControlRequest(
+                _characterActor, MotionPriority.Gravity, MotionChannels.Vertical, false));
             _stateMachine.OnEnter();
         }
 
+        /// <summary>恢复此 Demo 独占的输入动作。</summary>
         private void OnEnable()
         {
             if (moveAction != null && !moveAction.action.enabled)
@@ -136,37 +145,45 @@ namespace RPG.Character.DirectionalLocomotion
             }
         }
 
+        /// <summary>停用输入并释放 Demo 持有的重力控制权。</summary>
         private void OnDisable()
         {
             if (_enabledMoveAction && moveAction != null)
                 moveAction.action.Disable();
             _enabledMoveAction = false;
+            _gravityHandle?.Dispose();
+            _gravityHandle = null;
         }
 
+        /// <summary>退出状态树并释放当前状态运动请求。</summary>
         private void OnDestroy()
         {
             _stateMachine?.OnExit();
         }
 
+        /// <summary>读取连续输入并推进 Demo 普通阶段。</summary>
         private void Update()
         {
             if (setting == null) return;
             ReadInput();
             UpdateMoveIntent();
-            UpdateGravity(Time.deltaTime);
             _stateMachine.OnUpdate();
         }
 
+        /// <summary>在 PlayerController 结算前提交 Demo 的物理运动。</summary>
         private void FixedUpdate()
         {
+            UpdateGravity(Time.fixedDeltaTime);
             _stateMachine?.OnFixedUpdate();
         }
 
+        /// <summary>推进 Demo 表现延迟阶段。</summary>
         private void LateUpdate()
         {
             _stateMachine?.OnLateUpdate();
         }
 
+        /// <summary>只推进临时状态动画回调；正式根运动由 CharacterActor 转交 Player。</summary>
         private void OnAnimatorMove()
         {
             _stateMachine?.OnAnimationMove();
@@ -193,6 +210,7 @@ namespace RPG.Character.DirectionalLocomotion
             _externalInput = Vector2.zero;
         }
 
+        /// <summary>建立临时 Demo 的 Idle、起步和行走状态树。</summary>
         private void BuildStateMachine()
         {
             _stateMachine = new StateMachine<DirectionalLocomotionStateId, DirectionalLocomotionController>(
@@ -204,6 +222,7 @@ namespace RPG.Character.DirectionalLocomotion
             _stateMachine.SetDefaultState(DirectionalLocomotionStateId.Idle);
         }
 
+        /// <summary>读取手动覆盖或输入动作并限制方向长度。</summary>
         private void ReadInput()
         {
             _moveInput = _externalInputEnabled
@@ -230,6 +249,9 @@ namespace RPG.Character.DirectionalLocomotion
             _wasMoving = IsMoving;
         }
 
+        /// <summary>将平面输入变换为摄像机相对的世界方向。</summary>
+        /// <param name="input">二维方向输入。</param>
+        /// <returns>归一化世界方向。</returns>
         private Vector3 CalculateWorldDirection(Vector2 input)
         {
             if (cameraTransform == null)
@@ -253,9 +275,12 @@ namespace RPG.Character.DirectionalLocomotion
 
             GravityMoveY = _verticalSpeed * deltaTime;
             GravityBeforeY = transform.position.y;
-            _motionDriver.FixedUpdateMove(Vector3.up * GravityMoveY);
+            if (_gravityHandle != null)
+                _motionDriver.SubmitFixed(_gravityHandle,
+                    FixedMotionRequest.TranslationOnly(Vector3.up * GravityMoveY));
+            // 最终位移由稍后执行的 PlayerController.ResolveFixedMotion 统一产生。
             GravityAfterY = transform.position.y;
-            GravityActualDeltaY = GravityAfterY - GravityBeforeY;
+            GravityActualDeltaY = 0f;
         }
     }
 }

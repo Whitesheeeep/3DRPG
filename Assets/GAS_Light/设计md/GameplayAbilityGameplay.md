@@ -472,4 +472,4 @@ flowchart LR
     T --> M["MotionDriver"]
 ```
 
-`SkillConfig.IsRootMotion` 是单个技能的作者配置。`PlaySkillConfigGameplayAbilityTask` 仅在该配置启用时直接调用角色 `MotionDriver.UpdateAnimationMove`；`SkillRuntimeHost` 仍只负责时间轴 Module，不参与角色移动。
+`SkillConfig.IsRootMotion` 可以保留为技能作者的时间轴或表现配置，但不会自动调用 MotionDriver。需要移动的 GameplayAbility Runtime 或运动专用 Task 通过现有 `IMotionDriver` 申请 Skill 优先级控制并提交阶段请求；PlayerController 负责在 Fixed/AnimatorMove 阶段统一调用具体 MotionDriver 结算，`SkillRuntimeHost` 仍只负责时间轴 Module、命中、表现和完成事件。

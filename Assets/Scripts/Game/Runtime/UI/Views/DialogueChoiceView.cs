@@ -4,11 +4,12 @@ using Cysharp.Threading.Tasks;
 using RPG.DialogueSystemModule;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 using WS_Modules.ResLoadModule;
 
 namespace WS_Modules.UIModule
 {
-    /// <summary>DialogueWindow 内的 Choice View，负责行复用、置灰和稳定 NodeId 转发。</summary>
+    /// <summary>DialogueWindow 内的 Choice View，负责行复用、置灰、焦点和稳定 NodeId 转发。</summary>
     public sealed class DialogueChoiceView : IDisposable
     {
         #region 资源与状态
@@ -87,6 +88,7 @@ namespace WS_Modules.UIModule
         public void RefreshChoices(IReadOnlyList<DialogueChoiceSnapShot> choices)
         {
             ThrowIfDisposed();
+            string selectedNodeId = GetSelectedNodeId();
             pendingChoices.Clear();
             if (choices != null)
             {
@@ -94,7 +96,7 @@ namespace WS_Modules.UIModule
                     pendingChoices.Add(choices[index]);
             }
 
-            ApplyPendingState();
+            ApplyPendingState(selectedNodeId);
         }
 
         /// <summary>设置整个 Choice 区域显隐。</summary>
@@ -125,18 +127,20 @@ namespace WS_Modules.UIModule
                 OptionChoice row = rowObject.GetComponent<OptionChoice>();
                 if (row == null)
                     throw new InvalidOperationException("OptionChoice prefab 必须包含 OptionChoice 组件。");
-                row.Initialize(HandleChoiceRequested);
+                // Dialogue Choice 不维护第二份颜色状态；按钮的 Selected 视觉直接由 EventSystem 驱动。
+                row.Initialize(HandleChoiceRequested, null, HandlePointerSelectionRequested);
                 rows.Add(row);
             }
         }
 
         /// <summary>把缓存 Choice 状态应用到所有行并聚焦第一个可用选项。</summary>
-        private void ApplyPendingState()
+        private void ApplyPendingState(string preferredNodeId = null)
         {
             if (optionPrefab == null || disposed) return;
 
             EnsureRowCount(Mathf.Max(initialRowCount, pendingChoices.Count));
             int firstAvailableIndex = -1;
+            int preferredIndex = -1;
             for (int index = 0; index < rows.Count; index++)
             {
                 OptionChoice row = rows[index];
@@ -149,15 +153,73 @@ namespace WS_Modules.UIModule
                 }
 
                 DialogueChoiceSnapShot choice = pendingChoices[index];
-                row.SetOption(index, choice.Text, false, choice.IsAvailable);
-                if (firstAvailableIndex < 0 && choice.IsAvailable) firstAvailableIndex = index;
+                row.SetOption(index, choice.Text, choice.IsAvailable);
+                if (choice.IsAvailable)
+                {
+                    if (firstAvailableIndex < 0) firstAvailableIndex = index;
+                    if (!string.IsNullOrEmpty(preferredNodeId) && choice.NodeId == preferredNodeId)
+                        preferredIndex = index;
+                }
             }
 
-            if (pendingChoices.Count > 0)
+            ConfigureNavigation();
+            int selectedIndex = preferredIndex >= 0 ? preferredIndex : firstAvailableIndex;
+
+            if (pendingChoices.Count == 0)
             {
-                SetVisible(true);
-                if (firstAvailableIndex >= 0 && EventSystem.current != null)
-                    EventSystem.current.SetSelectedGameObject(rows[firstAvailableIndex].gameObject);
+                ClearSelectionIfOwned();
+                choiceRoot.gameObject.SetActive(false);
+            }
+            else
+            {
+                choiceRoot.gameObject.SetActive(true);
+                if (selectedIndex >= 0)
+                    TrySelectRow(rows[selectedIndex].gameObject);
+                else
+                    ClearSelectionIfOwned();
+            }
+        }
+
+        /// <summary>为当前可用 Choice 建立只允许上下移动的循环 UI 导航。</summary>
+        private void ConfigureNavigation()
+        {
+            List<int> availableIndices = new();
+            for (int index = 0; index < pendingChoices.Count; index++)
+                if (pendingChoices[index].IsAvailable) availableIndices.Add(index);
+
+            for (int index = 0; index < rows.Count; index++)
+            {
+                OptionChoice row = rows[index];
+                Navigation navigation = row.Button.navigation;
+                if (index >= pendingChoices.Count || !pendingChoices[index].IsAvailable)
+                {
+                    navigation.mode = Navigation.Mode.None;
+                    navigation.selectOnUp = null;
+                    navigation.selectOnDown = null;
+                    navigation.selectOnLeft = null;
+                    navigation.selectOnRight = null;
+                }
+                else
+                {
+                    navigation.mode = Navigation.Mode.Explicit;
+                    navigation.selectOnLeft = null;
+                    navigation.selectOnRight = null;
+                    if (availableIndices.Count <= 1)
+                    {
+                        navigation.selectOnUp = row.Button;
+                        navigation.selectOnDown = row.Button;
+                    }
+                    else
+                    {
+                        int currentPosition = availableIndices.IndexOf(index);
+                        int upPosition = (currentPosition - 1 + availableIndices.Count) % availableIndices.Count;
+                        int downPosition = (currentPosition + 1) % availableIndices.Count;
+                        navigation.selectOnUp = rows[availableIndices[upPosition]].Button;
+                        navigation.selectOnDown = rows[availableIndices[downPosition]].Button;
+                    }
+                }
+
+                row.Button.navigation = navigation;
             }
         }
 
@@ -174,12 +236,53 @@ namespace WS_Modules.UIModule
             if (choice.IsAvailable) ChoiceRequested?.Invoke(choice.NodeId);
         }
 
+        /// <summary>
+        /// 响应 OptionChoice 的鼠标移动选中请求；只有当前快照中的可用行可以取得焦点。
+        /// </summary>
+        /// <param name="index">请求切换焦点的行索引。</param>
+        private void HandlePointerSelectionRequested(int index)
+        {
+            if (index < 0 || index >= pendingChoices.Count) return;
+            DialogueChoiceSnapShot choice = pendingChoices[index];
+            OptionChoice row = rows[index];
+            if (!choice.IsAvailable || row == null || !row.gameObject.activeInHierarchy || !row.Button.IsInteractable()) return;
+            TrySelectRow(row.gameObject);
+        }
+
+        /// <summary>
+        /// 在 EventSystem 未处理另一轮 Selection 时同步 Choice 焦点，避免 Selection 回调嵌套选择。
+        /// </summary>
+        /// <param name="target">需要聚焦的 Choice 行。</param>
+        private static void TrySelectRow(GameObject target)
+        {
+            EventSystem eventSystem = EventSystem.current;
+            if (eventSystem == null || target == null || !target.activeInHierarchy) return;
+
+            // SetSelectedGameObject 的选择保护先于目标比较执行，重入时必须完全跳过调用。
+            if (eventSystem.alreadySelecting || eventSystem.currentSelectedGameObject == target) return;
+            eventSystem.SetSelectedGameObject(target);
+        }
+
+        /// <summary>读取当前 View 所属 EventSystem Selection 对应的 NodeId。</summary>
+        /// <returns>当前 Choice NodeId；没有属于本 View 的 Selection 时返回 null。</returns>
+        private string GetSelectedNodeId()
+        {
+            GameObject selected = EventSystem.current?.currentSelectedGameObject;
+            if (selected == null) return null;
+            for (int index = 0; index < rows.Count && index < pendingChoices.Count; index++)
+                if (rows[index].gameObject == selected && pendingChoices[index].IsAvailable)
+                    return pendingChoices[index].NodeId;
+            return null;
+        }
+
         /// <summary>仅当 EventSystem 当前焦点属于本 View 时清除焦点。</summary>
         private void ClearSelectionIfOwned()
         {
-            GameObject selected = EventSystem.current?.currentSelectedGameObject;
-            if (selected != null && selected.transform.IsChildOf(choiceRoot) && EventSystem.current != null)
-                EventSystem.current.SetSelectedGameObject(null);
+            EventSystem eventSystem = EventSystem.current;
+            GameObject selected = eventSystem?.currentSelectedGameObject;
+            if (eventSystem == null || eventSystem.alreadySelecting) return;
+            if (selected != null && selected.transform.IsChildOf(choiceRoot))
+                eventSystem.SetSelectedGameObject(null);
         }
 
         /// <summary>释放行对象、资源引用和用户意图事件。</summary>

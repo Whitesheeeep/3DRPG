@@ -18,8 +18,11 @@ namespace WS_Modules.GAS.AbilitySystemComponent
 
         /// <inheritdoc />
         public IMarkerProvider MarkerProvider => markerProvider;
-        public ISkillRuntimeHost SkillRuntimeHost { get; }
-        public IMotionDriver MotionDriver { get; }
+        /// <inheritdoc />
+        public ISkillRuntimeHost SkillRuntimeHost => skillRuntimeHost;
+
+        /// <inheritdoc />
+        public IMotionDriver MotionDriver => motionDriver;
 
         /// <summary>缓存测试对象根节点的 Marker Provider。</summary>
         private void Awake()

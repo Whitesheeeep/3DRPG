@@ -14607,20 +14607,6 @@ MonoBehaviour:
     inputType: 7
     pressBufferDuration: 2
     releaseBufferDuration: 2
-  - action: {fileID: 1781555164194001046, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    inputType: 8
-    pressBufferDuration: 2
-    releaseBufferDuration: 2
-  - action: {fileID: 0, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    actionName: Previous
-    inputType: 9
-    pressBufferDuration: 2
-    releaseBufferDuration: 2
-  - action: {fileID: 0, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    actionName: Next
-    inputType: 10
-    pressBufferDuration: 2
-    releaseBufferDuration: 2
 --- !u!114 &1733374005
 MonoBehaviour:
   m_ObjectHideFlags: 0

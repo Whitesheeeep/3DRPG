@@ -25,6 +25,15 @@ MonoBehaviour:
   - guid: 262c03ccb17c4ba080d6765cd9ad7bee
     name: MP
     description: 
+  - guid: 8e27c9af125d439a8cac3a81a490838b
+    name: Speed
+    description: 
+  - guid: 7861af57721c4f48b433cabfbb03dda9
+    name: AttackPower
+    description: "\u653B\u51FB\u529B"
+  - guid: a8cbe7f8445244a7b34ae972e95acbb6
+    name: CriticalChance
+    description: "\u66B4\u51FB\u7387"
   idRecords:
   - guid: e3508c9a368a4a41a3bac0bb9153ef23
     id: 0
@@ -34,6 +43,12 @@ MonoBehaviour:
     id: 2
   - guid: 262c03ccb17c4ba080d6765cd9ad7bee
     id: 3
+  - guid: 8e27c9af125d439a8cac3a81a490838b
+    id: 4
+  - guid: 7861af57721c4f48b433cabfbb03dda9
+    id: 5
+  - guid: a8cbe7f8445244a7b34ae972e95acbb6
+    id: 6
   retiredIds: 
-  nextId: 4
+  nextId: 7
   bakeDirty: 0

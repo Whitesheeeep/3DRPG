@@ -1,4 +1,3 @@
-using RPG.Character;
 using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.GameplayAbilitySystem;
@@ -15,7 +14,6 @@ namespace RPG.SkillSystem
 
         private readonly SkillConfig skillConfig;
         private ISkillRuntimeHost host;
-        private IMotionDriver motionDriver;
         private bool subscribed;
         private GameplayTag appliedPhaseTag;
         private GameplayTag appliedInterruptTag;
@@ -64,21 +62,6 @@ namespace RPG.SkillSystem
                 return;
             }
 
-            if (skillConfig.IsRootMotion)
-            {
-                if (skillOwner.MotionDriver == null)
-                {
-                    Debug.LogError(
-                        $"Ability '{Runtime.Data.name}' 的 RootMotion SkillConfig 需要宿主提供 MotionDriver。",
-                        Runtime.SourceASC);
-                    Complete();
-                    return;
-                }
-
-                // Task 直接缓存角色移动接口；SkillRuntimeHost 只负责时间轴执行职责。
-                motionDriver = skillOwner.MotionDriver;
-            }
-
             Subscribe();
             SkillStartResult result = host.TryPlay(skillConfig);
             if (result.Succeeded) return;
@@ -120,12 +103,6 @@ namespace RPG.SkillSystem
         /// <summary>在动画姿态稳定后处理挂点、攻击检测和自然结束。</summary>
         /// <param name="deltaTime">本帧延迟更新的时间，仅用于保持阶段接口一致。</param>
         protected override void OnLateTick(float deltaTime) => host.LateTick();
-
-        /// <summary>仅为启用根运动的 SkillConfig 消费 Animator 当前帧位移与旋转。</summary>
-        protected override void OnUpdateAnimationMove()
-        {
-            if (skillConfig.IsRootMotion) motionDriver.UpdateAnimationMove();
-        }
 
         #endregion
 

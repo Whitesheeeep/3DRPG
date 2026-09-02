@@ -7,11 +7,11 @@ namespace RPG.PlayerInputSystem
     public readonly struct InputRequestHandle : IEquatable<InputRequestHandle>
     {
         #region 属性
-        /// <summary>获取输入类型。</summary>
+        /// <summary>获取输入类型。是哪个意思：跳跃？</summary>
         public PlayerInputType InputType { get; }
         /// <summary>获取手势版本。</summary>
         public uint GestureVersion { get; }
-        /// <summary>获取请求阶段。</summary>
+        /// <summary>获取请求阶段。按下还是释放。</summary>
         public PlayerInputRequestStage Stage { get; }
         #endregion
 

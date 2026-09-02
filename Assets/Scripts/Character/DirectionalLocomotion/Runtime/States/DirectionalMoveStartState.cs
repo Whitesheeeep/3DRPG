@@ -9,6 +9,7 @@ namespace RPG.Character.DirectionalLocomotion
     {
         private AnimancerState _animationState;
         private bool _active;
+        private MotionControlHandle _handle;
 
         /// <summary>创建带起步动画根运动的方向移动状态。</summary>
         public DirectionalMoveStartState() : base(DirectionalLocomotionStateId.MoveStart) { }
@@ -17,6 +18,9 @@ namespace RPG.Character.DirectionalLocomotion
         public override void OnEnter()
         {
             _active = true;
+            _handle = Owner.MotionDriver.RequestControl(new MotionControlRequest(
+                Owner.GetComponentInParent<CharacterActor>(), MotionPriority.Locomotion,
+                MotionChannels.Horizontal | MotionChannels.Rotation, true));
             Owner.SelectedStartAngle = 0f;
             Owner.SelectedStartClipName = Owner.Setting.startForward.name;
             Owner.StartNormalizedTime = 0f;
@@ -44,9 +48,8 @@ namespace RPG.Character.DirectionalLocomotion
                 : Vector3.zero;
 
             Owner.RootMotionBeforeY = Owner.transform.position.y;
-            Owner.MotionDriver.FixedUpdateMove(Owner.AppliedRootMovement);
             Owner.RootMotionAfterY = Owner.transform.position.y;
-            Owner.RootMotionActualDeltaY = Owner.RootMotionAfterY - Owner.RootMotionBeforeY;
+            Owner.RootMotionActualDeltaY = 0f;
 
             Owner.RootVelocity = Time.deltaTime > 0f
                 ? Owner.AppliedRootMovement / Time.deltaTime
@@ -57,6 +60,8 @@ namespace RPG.Character.DirectionalLocomotion
         public override void OnExit()
         {
             _active = false;
+            _handle?.Dispose();
+            _handle = null;
             _animationState = null;
         }
 

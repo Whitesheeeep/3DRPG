@@ -6,30 +6,31 @@
 
 ## 1. 玩家节点配置
 
-交互系统要求 `InteractionDetector` 与 `PlayerInteractor` 位于玩家根节点。当前 `PlayerInteractor` 是玩家单例，并从同一根节点读取 `PlayerController` 的 `PlayerStateBlackboard`；不要只把它挂在玩家的 `Interactor` 子节点上。
+保留稳定的 Player 与移动的 CharacterRoot 分层。`InteractionDetector` 和 `PlayerInteractor` 挂在 CharacterRoot，检测形状和 MaxDistance 随角色移动；`PlayerInteractor` 通过 `GetComponentInParent<PlayerController>(true)` 从自身或父级获取稳定的玩家对象。旧的所有组件同节点布局也可解析，但不要把不移动的 Player 作为新布局的检测位置。
 
 ```mermaid
 flowchart TD
     Player[Player 根节点]
     Player --> Controller[PlayerController]
-    Player --> Detector[InteractionDetector]
-    Player --> Interactor[PlayerInteractor]
+    Player --> CharacterRoot[CharacterRoot 移动节点]
+    CharacterRoot --> Detector[InteractionDetector]
+    CharacterRoot --> Interactor[PlayerInteractor]
     Player --> Receiver[可选 IItemPickupReceiver]
-    Controller --> Blackboard[PlayerStateBlackboard]
     Detector --> Interactor
-    Interactor --> Blackboard
 ```
 
 配置检查：
 
-- `PlayerController`：提供移动和输入黑板。
+- `PlayerController`：提供稳定玩家对象、移动和角色能力输入编排。
 - `InteractionDetector`：提供交互区域和 Provider 候选扫描。
 - `PlayerInteractor`：收集、筛选、排序和执行当前玩家的 Option。
-- `PlayerInteractor.detector`：通常引用同一根节点上的 `InteractionDetector`；为空时会尝试从同节点获取。
+- `PlayerInteractor.detector`：引用同一 CharacterRoot 上的 `InteractionDetector`；为空时从同节点获取。
 - `PlayerInteractor.viewCamera`：可配置主摄像机。当前版本只把它传给查询上下文，不执行 Viewport、遮挡或镜头评分筛选。
 - 物品拾取场景还需要玩家根节点上的背包或接收组件实现 `IItemPickupReceiver`。
 
-如果玩家由场景或对象池替换，保持新实例的 `PlayerInteractor` 仍位于根节点；窗口 Controller 会通过 `PlayerInteractor.InstanceChanged` 自动重新绑定。
+`PlayerInteractor` 只保留 `Instance` 引用及变化事件，不对 CharacterRoot 单独执行 `DontDestroyOnLoad`，由父级 Player 管理整个层级的跨场景保留。替换玩家时先销毁旧实例，再创建新实例，窗口通过 `InstanceChanged` 重新绑定；重复实例会明确报错，不会删除 CharacterRoot。缺少 PlayerController 时会在 Awake 报错，请先修复玩家初始化问题。
+
+交互查询和执行传入的是 PlayerController 所在的 Player 对象，距离使用 CharacterRoot 的世界位置，因此玩家侧对话参与者、物品接收器仍放在 Player 上。
 
 ## 2. 配置 InteractionDetector
 
@@ -103,15 +104,21 @@ Scan Interval = 0.1
 
 ### 4.1 默认操作
 
-当前输入资产中的交互导航和执行如下：
+当前输入资产中的 ChoiceWindow UI 导航和执行如下：
 
-| 操作 | `PlayerInputType` | 默认绑定 |
+| 操作 | Unity UI Action | 默认绑定 |
 | --- | --- | --- |
-| 上一项 | `InteractionPrevious` | 键盘 `Up Arrow`、`1`；手柄 D-Pad Left |
-| 下一项 | `InteractionNext` | 键盘 `Down Arrow`、`2`；手柄 D-Pad Right |
-| 执行 | `Interact` | 输入资产中 `Interact` 对应的绑定；测试配置通常为键盘 `G` |
+| 上一项 | `Navigate` | 键盘 `W`/`Up Arrow`；手柄左摇杆或方向键 |
+| 下一项 | `Navigate` | 键盘 `S`/`Down Arrow`；手柄左摇杆或方向键 |
+| 执行 | `Submit` | 通用 Submit 绑定；额外支持键盘 `G` |
 
-输入经过 `PlayerInputController`、`GameplayInputIntentArbiter` 和 `PlayerStateBlackboard` 后才由 `PlayerInteractor` 消费。导航先于执行处理；只有选择发生变化或 Option 执行成功时才确认消费输入请求。
+`InteractionPrevious`、`InteractionNext` 和 `Interact` 仍保留在 PlayerInputType 与输入资产中，供
+兼容代码或未来非 UI 交互使用，但不会自动写入 PlayerInteractor 的选择状态。
+
+ChoiceWindow 不再依赖 PlayerInteractor 自动消费 Blackboard Intent。上下键、手柄方向键和其他 UI Navigate 输入
+由 Unity EventSystem 移动当前 Button Selection；OptionChoice 的 `ISelectHandler` 将 Selection 同步到
+`PlayerInteractor.Select`。鼠标点击和 UI Submit 也先同步 Selection，再调用 `SubmitSelected`。因此鼠标、键盘和
+手柄共用一条 UI 交互链，鼠标 Hover 不会单独改变持久高亮。
 
 ### 4.2 窗口行为
 
@@ -129,7 +136,9 @@ stateDiagram-v2
     Executed --> Hidden: 执行后列表为空
 ```
 
-ChoiceWindow 只展示 Option 名称和选中高亮。鼠标点击行时，Controller 先按行索引调用 `PlayerInteractor.Select(optionId)`，选择成功后再调用 `SubmitSelected()`；无效索引或已消失的 Option 不会提交其他行。Option 的 Icon 字段当前不投影到该窗口。
+ChoiceWindow 只展示 Option 名称和选中高亮。EventSystem Selection 变化时，Controller 按行索引调用
+`PlayerInteractor.Select(optionId)`；鼠标点击或 UI Submit 时，选择成功后再调用 `SubmitSelected()`。
+无效索引或已消失的 Option 不会提交其他行。Option 的 Icon 字段当前不投影到该窗口。
 
 ## 5. 运行时控制
 
@@ -161,7 +170,7 @@ Detector 的 `StartDetect()` 与 `PlayerInteractor.StartDetect()` 都会立即�
 | 现象 | 检查项 |
 | --- | --- |
 | 没有显示 Option | Detector 是否在扫描；形状是否有效；LayerMask 是否包含目标；Collider 父级是否存在 Provider；`CanExecute`/`CanReceive` 是否返回 `true` |
-| 上下键无法切换 | `PlayerInteractor` 是否在玩家根节点；`GameplayTagDatabase` 是否已由 ConfigInstaller 初始化；Input Action 是否绑定到 `InteractionPrevious`/`InteractionNext` |
+| 上下键无法切换 | EventSystem 是否存在并有当前选中 Button；`ChoiceWindowView` 是否已初始化行；OptionChoice Button 的 Navigation 是否为 Explicit；不可用项是否被正确置灰；Console 是否有 UI 初始化错误 |
 | Option 顺序异常 | 检查 `Priority`；同优先级由运行时 `InteractionOptionId` 排序，不要依赖场景组件顺序 |
 | 物品无法拾取 | `Item Definition` 是否配置；玩家根节点是否有 `IItemPickupReceiver`；`CanReceive` 是否允许；容量不足时 `TryReceive` 是否返回 `false` |
 | 窗口没有显示 | 是否已创建并初始化 UIManager；GameWindowPreloadService 是否运行；是否仍有有效 Option；零 Option 时窗口会被 Hide 而不是销毁 |
@@ -169,14 +178,14 @@ Detector 的 `StartDetect()` 与 `PlayerInteractor.StartDetect()` 都会立即�
 
 ## 8. 场景交付检查清单
 
-- 玩家根节点包含 `PlayerController`、`InteractionDetector` 和 `PlayerInteractor`。
+- Player 包含 `PlayerController`；移动的 CharacterRoot 包含 `InteractionDetector` 和 `PlayerInteractor`，父级控制器已完成初始化。
 - Detector 形状、尺寸、LayerMask、扫描间隔和 Gizmo 已配置并在 Scene View 验证。
 - 每个 Provider 的交互 Collider 可被 Detector 命中，Provider 位于 Collider 父级链上。
 - 对话资源和参与者、物品定义和接收器均已配置。
 - 多 Option 的 Priority、显示名称和稳定 ActionId 已确认。
-- 键盘/手柄上一项、下一项和执行输入已在 Play Mode 测试。
-- `GameplayTagDatabaseConfigProvider` 已注册到 ConfigInstaller，交互 Intent 可以写入黑板。
+- 键盘/手柄 UI Navigate、Submit 和鼠标点击已在 Play Mode 测试。
+- 角色能力输入仍可通过 `PlayerInputController` 与 `GameplayInputIntentArbiterManager` 处理；ChoiceWindow 不再把交互导航写入玩家黑板。
 - ChoiceWindow 预加载后创建三个初始行，零 Option 时隐藏，重新出现 Option 时复用同一窗口。
-- 测试了 Option 列表动态变化、点击选择、执行失败和停止运行释放流程。
+- 测试了 Option 列表动态变化、UI Navigate/Submit、鼠标点击、执行失败和停止运行释放流程。
 
 相关文档：[WSFrame UI 文档](../../WSFrame/UISystem/Core/UISystem_Documentation.md)、[玩家输入预处理文档](../../Input/PlayerInputPreprocessing.md)、[对话系统需求文档](../../DialogueSystem/DialogueSystem_Requirements.md)、[ConfigInstaller 使用文档](../../WSFrame/ConfigInstaller/ConfigInstaller_Usage.md)。

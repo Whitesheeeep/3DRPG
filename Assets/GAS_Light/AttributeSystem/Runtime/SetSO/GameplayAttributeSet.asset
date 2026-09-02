@@ -49,3 +49,30 @@ MonoBehaviour:
     baseValue: 0
     currentValue: 0
     ownerSet: {fileID: 0}
+  - attribute:
+      id: 4
+    type: 0
+    defaultValue: 2
+    minValue: 0
+    maxValue: 100
+    baseValue: 0
+    currentValue: 0
+    ownerSet: {fileID: 0}
+  - attribute:
+      id: 5
+    type: 0
+    defaultValue: 0
+    minValue: -Infinity
+    maxValue: Infinity
+    baseValue: 0
+    currentValue: 0
+    ownerSet: {fileID: 0}
+  - attribute:
+      id: 6
+    type: 0
+    defaultValue: 0
+    minValue: -Infinity
+    maxValue: Infinity
+    baseValue: 0
+    currentValue: 0
+    ownerSet: {fileID: 0}

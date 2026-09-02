@@ -15,7 +15,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         // 提供接收 Tag 事件的 ASC 和事件目标，桥接器不直接依赖具体角色类型。
         private readonly ILooseGameplayTagEventTarget target;
         // 记录本桥接器已经提交给 ASC 的来源，保证 Add/Remove 对称且可安全注销。
-        private readonly HashSet<LooseGameplayTagSourceKey> activeSources = new();
+        private readonly Dictionary<LooseGameplayTagSourceKey, GameplayAbilitySystemComponent> activeSources = new();
         private IUnRegister unregister;
 
         #endregion
@@ -45,17 +45,32 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         {
             unregister?.UnRegister();
             unregister = null;
-            if (target.AbilitySystemComponent != null)
-            {
-                foreach (LooseGameplayTagSourceKey source in activeSources)
-                    target.AbilitySystemComponent.RemoveLooseGameplayTag(source.Tag);
-            }
+            foreach (KeyValuePair<LooseGameplayTagSourceKey, GameplayAbilitySystemComponent> source in activeSources)
+                source.Value.RemoveLooseGameplayTag(source.Key.Tag);
 
             activeSources.Clear();
         }
 
         /// <inheritdoc />
         public void Dispose() => Disable();
+
+        /// <summary>角色切换后把已登记的 LooseTag 来源迁移到新的 Active ASC。</summary>
+        public void RebindActiveAbilitySystem()
+        {
+            GameplayAbilitySystemComponent current = target.AbilitySystemComponent;
+            if (current == null) return;
+
+            // 先从旧 ASC 对称移除，再写入新 ASC；失败来源被丢弃，避免桥接器伪造激活 Tag。
+            var sources = new List<LooseGameplayTagSourceKey>(activeSources.Keys);
+            foreach (LooseGameplayTagSourceKey source in sources)
+            {
+                GameplayAbilitySystemComponent previous = activeSources[source];
+                if (ReferenceEquals(previous, current)) continue;
+                previous.RemoveLooseGameplayTag(source.Tag);
+                if (current.AddLooseGameplayTag(source.Tag)) activeSources[source] = current;
+                else activeSources.Remove(source);
+            }
+        }
 
         #endregion
 
@@ -72,13 +87,16 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             LooseGameplayTagSourceKey source = new LooseGameplayTagSourceKey(eventArgs.SourceId, eventArgs.Tag);
             if (eventArgs.Operation == LooseGameplayTagChangeOperation.Add)
             {
-                if (!activeSources.Add(source)) return;
-                if (!target.AbilitySystemComponent.AddLooseGameplayTag(eventArgs.Tag)) activeSources.Remove(source);
+                if (activeSources.ContainsKey(source)) return;
+                GameplayAbilitySystemComponent abilitySystem = target.AbilitySystemComponent;
+                activeSources.Add(source, abilitySystem);
+                if (!abilitySystem.AddLooseGameplayTag(eventArgs.Tag)) activeSources.Remove(source);
                 return;
             }
 
-            if (!activeSources.Remove(source)) return;
-            if (!target.AbilitySystemComponent.RemoveLooseGameplayTag(eventArgs.Tag)) activeSources.Add(source);
+            if (!activeSources.TryGetValue(source, out GameplayAbilitySystemComponent sourceAbilitySystem)) return;
+            activeSources.Remove(source);
+            if (!sourceAbilitySystem.RemoveLooseGameplayTag(eventArgs.Tag)) activeSources.Add(source, sourceAbilitySystem);
         }
 
         /// <summary>判断事件目标是否属于当前角色根对象层级。</summary>

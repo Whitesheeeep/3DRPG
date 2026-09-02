@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.TAG;
 using RPG.PlayerInputSystem;
+using UnityEngine;
 
 namespace RPG.Character.State
 {
@@ -18,14 +19,16 @@ namespace RPG.Character.State
         #endregion
 
         #region 属性
-        /// <summary>获取同对象上的 ASC；所有 GAS 写操作仍应使用 ASC 公开 API。</summary>
-        public GameplayAbilitySystemComponent AbilitySystem { get; }
+        /// <summary>获取当前 ActiveCharacter 的 ASC；所有 GAS 写操作仍应使用 ASC 公开 API。</summary>
+        public GameplayAbilitySystemComponent AbilitySystem { get; private set; }
         /// <summary>直接代理 ASC 当前 Tag，不复制也不修改其内容。</summary>
         public IReadOnlyGameplayTagContainer AbilityTags => AbilitySystem.Tags;
         /// <summary>获取由环境监测模块维护的只读 Tag。</summary>
         public IReadOnlyGameplayTagContainer EnvironmentTags => environmentTags;
         /// <summary>获取仅在当前帧有效的仲裁 Intent Tag。</summary>
         public IReadOnlyGameplayTagContainer IntentTags => intentTags;
+        /// <summary>获取当前帧镜头转换后的世界水平移动意图。</summary>
+        public Vector3 MoveWorldInput { get; internal set; }
         #endregion
 
         #region 构造
@@ -55,6 +58,14 @@ namespace RPG.Character.State
 
         /// <summary>移除一个环境 Tag 来源计数。</summary>
         public bool RemoveEnvironmentTag(GameplayTag tag) => environmentTags.UpdateTagCount(tag, -1);
+
+        /// <summary>只切换 AbilityTags 的只读来源，不改变稳定 Player 已发布的输入意图。</summary>
+        /// <param name="abilitySystem">新 ActiveCharacter ASC。</param>
+        internal void BindAbilitySystem(GameplayAbilitySystemComponent abilitySystem)
+        {
+            AbilitySystem = abilitySystem ?? throw new ArgumentNullException(nameof(abilitySystem));
+            // EnvironmentTags、IntentTags 与 Move 都属于稳定 Player；切人不会篡改本帧玩家输入。
+        }
         #endregion
 
         #region 仲裁协调
@@ -79,6 +90,12 @@ namespace RPG.Character.State
         {
             intentSources.Clear();
             intentTags.Reset();
+        }
+
+        /// <summary>仅清理连续移动意图，用于 PlayerController 整体停用的生命周期边界。</summary>
+        internal void ClearMoveInput()
+        {
+            MoveWorldInput = Vector3.zero;
         }
 
         /// <summary>清空帧级 Intent、来源映射和全部环境状态，用于所属 Controller 停用时结束生命周期。</summary>

@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
 using RPG.Character.State;
-using RPG.InteractionSystem;
+using UnityEngine;
 using WS_Modules.GAS.TAG;
 
 namespace RPG.PlayerInputSystem
 {
-    /// <summary>按注册顺序统一执行输入仲裁策略，并把首个命中的结果发布为帧级 Intent。</summary>
+    /// <summary>统一仲裁离散输入 Request 与连续移动输入，并把最终意图写入玩家黑板。</summary>
     public sealed class GameplayInputIntentArbiterManager
     {
         #region 字段与属性
@@ -40,11 +40,12 @@ namespace RPG.PlayerInputSystem
         #endregion
 
         #region 注册与仲裁
-        /// <summary>注册项目约定的默认仲裁策略。</summary>
+        /// <summary>
+        /// 保留默认注册入口以兼容旧启动代码；当前选项窗口由 Unity EventSystem 导航，
+        /// 因此不再注册 InteractionInputIntentArbiter。
+        /// </summary>
         public void RegisterDefaultArbiters()
         {
-            var interactionInputIntentArbiter = new InteractionInputIntentArbiter();
-            RegisterArbiter(interactionInputIntentArbiter);
         }
 
         /// <summary>清除当前全部仲裁策略注册。</summary>
@@ -72,9 +73,11 @@ namespace RPG.PlayerInputSystem
             return arbiter != null && arbiters.Remove(arbiter);
         }
 
-        /// <summary>对当前 Request 快照执行一帧仲裁，每个阶段采用首个命中的注册策略。</summary>
-        public void ArbitrateFrame()
+        /// <summary>对离散 Request 和连续移动采样执行一帧统一仲裁。</summary>
+        /// <param name="cameraTransform">提供水平前方与右方的当前镜头基准；为空时使用世界 X/Z。</param>
+        public void ArbitrateFrame(Transform cameraTransform)
         {
+            // 离散输入先按策略顺序发布 IntentTag；它与连续 Move 共用同一个帧级仲裁入口。
             for (int i = 0; i < inputController.Requests.Count; i++)
             {
                 IReadOnlyPlayerInputRequest request = inputController.Requests[i];
@@ -83,6 +86,10 @@ namespace RPG.PlayerInputSystem
                 if (request.HasBufferedRelease)
                     TryPublishFirstMatch(request, PlayerInputRequestStage.Release, request.ReleaseHandle);
             }
+
+            // Move 只记录 Player 当前真实输入，不读取 GameplayTag，也不判断场景或控制锁。
+            // 是否允许当前角色响应由 PlayerController/Locomotion 业务层决定，最终运动阻断仍由 MotionDriver 处理。
+            blackboard.MoveWorldInput = ConvertMoveToCameraRelativeWorld(inputController.MoveInput, cameraTransform);
         }
 
         /// <summary>按注册顺序发布首个成功策略的 Intent。</summary>
@@ -97,6 +104,24 @@ namespace RPG.PlayerInputSystem
                 IntentPublicationReported?.Invoke(intentTag, sourceHandle, published);
                 if (published) return;
             }
+        }
+
+        /// <summary>把输入平面向量转换为保留输入强度的镜头相对世界水平向量。</summary>
+        /// <param name="input">Input System 采样到的 X/Y 连续输入。</param>
+        /// <param name="cameraTransform">用于确定水平前方与右方的镜头 Transform。</param>
+        /// <returns>世界 X/Z 平面中的连续移动意图。</returns>
+        private static Vector3 ConvertMoveToCameraRelativeWorld(Vector2 input, Transform cameraTransform)
+        {
+            if (cameraTransform == null) return new Vector3(input.x, 0f, input.y);
+
+            Vector3 forward = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up);
+            if (forward.sqrMagnitude < 0.0001f)
+                forward = Vector3.ProjectOnPlane(cameraTransform.up, Vector3.up);
+            if (forward.sqrMagnitude < 0.0001f) forward = Vector3.forward;
+            forward.Normalize();
+
+            Vector3 right = Vector3.Cross(Vector3.up, forward).normalized;
+            return right * input.x + forward * input.y;
         }
 
         #endregion

@@ -143,7 +143,7 @@ protected override bool TryResolveIntent(
 4. 在仲裁器中定义该输入在不同状态下产生的 Intent。
 5. 为 Intent 配置对应 Gameplay Tag，并由业务消费者处理。
 
-Move、Look 等连续值输入不适合直接加入当前离散 Request 模型。它们应继续由连续输入通道处理，除非先明确定义采样、死区、方向变化和消费语义。
+Move、Look 等连续值输入不加入当前离散 Request 模型，也不产生可确认消费的 Handle。Move 仍由同一个 `GameplayInputIntentArbiterManager` 在帧级入口统一读取、转换并写入 Blackboard 的连续字段；未来的 Look 可沿用连续字段，但需要先明确采样、死区和视角所有权。
 
 ### 3.2 增加新的仲裁器
 
@@ -290,8 +290,10 @@ sequenceDiagram
     IS->>IC: performed / canceled
     IC->>IC: Advance(unscaledDeltaTime)
     PC->>PC: ASC Tick
-    PC->>AM: ArbitrateFrame()
+    PC->>AM: ArbitrateFrame(camera)
     AM->>BB: PublishFrameIntent(tag, handle)
+    AM->>BB: 写入 MoveWorldInput
+    PC->>PC: 按玩家业务状态决定 Locomotion 是否响应 Move
     BC->>BB: HasIntent(tag)
     BC->>BC: 尝试业务操作
     BC->>BB: TryConfirmIntentConsumed(tag)

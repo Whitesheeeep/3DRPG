@@ -1,21 +1,25 @@
 using System;
 using System.Collections.Generic;
 using RPG.Character;
-using RPG.Character.State;
+using RPG.Game.UI.Events;
+using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.Serialization;
-using WS_Modules.GAS.Generated;
-using WS_Modules.Singleton;
+using WS_Modules.CustomEventSystem;
 
 namespace RPG.InteractionSystem
 {
     /// <summary>
-    /// 玩家的交互编排组件，负责从 Provider 收集、筛选、排序并维护当前 Option 选择。
+    /// 挂载在移动角色节点的交互编排组件，从父级玩家读取输入并维护 Option 列表与选择。
+    /// 跨场景生命周期由所属 Player 管理，本组件不单独保留或移动 CharacterRoot。
     /// </summary>
     [DefaultExecutionOrder(-700)]
     [DisallowMultipleComponent]
     [RequireComponent(typeof(InteractionDetector))]
-    public sealed class PlayerInteractor : SingletonMonoBase<PlayerInteractor>
+    [InfoBox("挂载于移动的 CharacterRoot；依赖同节点 InteractionDetector，以及自身或父级的 PlayerController。" +
+        "PlayerController 只用于提供稳定玩家对象（执行序 -800，交互组件 -700）；缺失时立即报错。" +
+        "业务执行使用 PlayerController 所在对象，空间检测与距离计算使用当前角色节点。")]
+    public sealed class PlayerInteractor : MonoBehaviour
     {
         #region 序列化引用与状态
 
@@ -33,14 +37,21 @@ namespace RPG.InteractionSystem
 
         private readonly List<InteractionOption> filteredOptions = new();
         private readonly List<InteractionOptionId> previousOptionIds = new();
+        // GameUILock 来源按 SourceId 去重；每个独占流程只拥有自己的一份锁定引用。
+        private readonly HashSet<string> gameUILockSources = new();
         private bool isDetecting;
+        // 只在锁定从 0 变为 1 时记录，最后一个来源释放后按此状态决定是否恢复。
+        private bool resumeDetectionAfterGameUIUnlock;
         private RaycastHit[] occlusionHits = new RaycastHit[16];
-        // 用于在 Update 中按玩家控制器之后消费 Intent，避免在同一帧中被控制器重置。
-        private PlayerStateBlackboard stateBlackboard;
+        // 依赖父级 PlayerController 的稳定玩家身份；角色节点只承担移动空间基准。
+        private GameObject interactorObject;
 
         #endregion
 
         #region 事件与属性
+
+        /// <summary>获取当前本地玩家的交互组件；只记录引用，不单独管理对象的跨场景保留。</summary>
+        public static PlayerInteractor Instance { get; private set; }
 
         /// <summary>玩家交互单例建立或销毁时触发，供跨场景 UI 组合根重新绑定模型。</summary>
         public static event Action<PlayerInteractor> InstanceChanged;
@@ -64,47 +75,55 @@ namespace RPG.InteractionSystem
 
         #region Unity 生命周期
 
-        /// <summary>注册玩家单例、解析同节点依赖并缓存玩家帧级 Intent 黑板。</summary>
-        protected override void Awake()
+        /// <summary>解析同节点检测器和父级玩家控制器，再发布可供窗口绑定的本地玩家实例。</summary>
+        /// <exception cref="InvalidOperationException">存在重复交互实例，或玩家控制器未就绪。</exception>
+        private void Awake()
         {
-            base.Awake();
-            if (Instance != this) return;
+            // 重复配置不能销毁 CharacterRoot，否则会连带删除角色、碰撞器和队伍管理器。
+            if (Instance != null && Instance != this)
+                throw new InvalidOperationException("[PlayerInteractor] 本地玩家只能存在一个交互实例。");
 
             if (detector == null) detector = GetComponent<InteractionDetector>();
             if (viewCamera == null) viewCamera = Camera.main;
 
-            PlayerController playerController = GetComponent<PlayerController>();
-            stateBlackboard = playerController != null ? playerController.StateBlackboard : null;
+            PlayerController playerController = GetComponentInParent<PlayerController>(true);
+            if (playerController == null)
+                throw new InvalidOperationException(
+                    $"[PlayerInteractor] '{name}' 的自身或父级缺少 PlayerController。");
+            // 业务接收器位于稳定 Player 上；查询位置仍取本组件所在的移动 CharacterRoot。
+            interactorObject = playerController.gameObject;
+            EventSystem
+                .Register_Type<GameUILockChangeRequestedEventArgs>(
+                    typeof(GameUILockChangeRequestedEventArgs),
+                    OnGameUILockChangeRequested)
+                .UnRegisterWhenGameObjectDestroyed(gameObject);
+            Instance = this;
             InstanceChanged?.Invoke(this);
         }
 
-        /// <summary>清空玩家单例并通知窗口 Controller 解除模型绑定。</summary>
-        protected override void OnDestroy()
+        /// <summary>当前实例随所属玩家销毁时清空静态引用，并通知窗口 Controller 解除模型绑定。</summary>
+        private void OnDestroy()
         {
-            bool isCurrentInstance = Instance == this;
-            base.OnDestroy();
-            if (isCurrentInstance) InstanceChanged?.Invoke(null);
+            if (Instance != this) return;
+            Instance = null;
+            InstanceChanged?.Invoke(null);
         }
 
         /// <summary>订阅检测结果并按组件配置启动范围检测。</summary>
         private void OnEnable()
         {
+            // Awake 配置失败的实例未发布，不能继续扫描或订阅事件。
+            if (Instance != this) return;
             if (detector != null) detector.ScanCompleted += OnScanCompleted;
-            if (startDetectOnEnable) StartDetect();
+            if (gameUILockSources.Count == 0 && startDetectOnEnable) StartDetect();
         }
 
         /// <summary>解绑检测事件、暂停检测并清理当前交互状态。</summary>
         private void OnDisable()
         {
+            if (Instance != this) return;
             if (detector != null) detector.ScanCompleted -= OnScanCompleted;
             PauseDetect();
-        }
-
-        /// <summary>仅在玩家控制器之后处理帧级 Interaction Intent；Option 列表由 Detector 扫描事件刷新。</summary>
-        private void Update()
-        {
-            if (!isDetecting) return;
-            ConsumeInputIntents();
         }
 
         #endregion
@@ -114,6 +133,7 @@ namespace RPG.InteractionSystem
         /// <summary>开启交互检测并立即刷新 Option 列表。</summary>
         public void StartDetect()
         {
+            if (gameUILockSources.Count != 0) return;
             isDetecting = true;
             detector.StartDetect();
         }
@@ -127,7 +147,42 @@ namespace RPG.InteractionSystem
         }
 
         /// <summary>响应检测器扫描完成，重建包含动态业务状态的最终 Option 列表。</summary>
-        private void OnScanCompleted() => RefreshOptions();
+        private void OnScanCompleted()
+        {
+            // PauseDetect 后可能仍有同帧扫描回调，锁定期间不得重新暴露交互选项。
+            if (gameUILockSources.Count != 0) return;
+            RefreshOptions();
+        }
+
+        #endregion
+
+        #region GameUILock 处理
+
+        /// <summary>
+        /// 按来源接收独占 Game UI 请求；第一个来源暂停检测，最后一个来源释放时恢复原状态。
+        /// </summary>
+        /// <param name="eventArgs">GameUILock 变更请求。</param>
+        private void OnGameUILockChangeRequested(GameUILockChangeRequestedEventArgs eventArgs)
+        {
+            if (eventArgs.Operation == GameUILockOperation.Acquire)
+            {
+                if (!gameUILockSources.Add(eventArgs.SourceId)) return;
+                if (gameUILockSources.Count != 1) return;
+
+                // 只有从无锁到首个锁定时记录状态，避免后续来源覆盖恢复依据。
+                resumeDetectionAfterGameUIUnlock = isDetecting;
+                PauseDetect();
+                return;
+            }
+
+            if (!gameUILockSources.Remove(eventArgs.SourceId) || gameUILockSources.Count != 0)
+                return;
+
+            bool shouldResume = resumeDetectionAfterGameUIUnlock;
+            resumeDetectionAfterGameUIUnlock = false;
+            // Disable 状态不主动启动检测；重新启用时由 OnEnable 按原有配置处理。
+            if (shouldResume && isActiveAndEnabled) StartDetect();
+        }
 
         #endregion
 
@@ -175,7 +230,7 @@ namespace RPG.InteractionSystem
         /// <returns>当前存在选项且业务执行成功时返回 true。</returns>
         public bool SubmitSelected()
         {
-            return SelectedOption != null && SelectedOption.TryExecute(gameObject);
+            return SelectedOption != null && SelectedOption.TryExecute(interactorObject);
         }
 
         /// <summary>查找当前选中 Option 的列表索引。</summary>
@@ -205,7 +260,7 @@ namespace RPG.InteractionSystem
 
         #region Option 刷新
 
-        /// <summary>从 Provider 重建候选 Option，并执行视野、遮挡、最大距离和业务筛选。</summary>
+        /// <summary>从 Provider 重建候选 Option，并按角色节点的最大距离与玩家业务状态筛选。</summary>
         private void RefreshOptions()
         {
             IReadOnlyList<IInteractable> providers = detector.Providers;
@@ -219,7 +274,7 @@ namespace RPG.InteractionSystem
             collectedOptions.Clear();
             optionIds.Clear();
             filteredOptions.Clear();
-            InteractionQueryContext context = new(gameObject, transform, viewCamera);
+            InteractionQueryContext context = new(interactorObject, transform, viewCamera);
 
             // 收集所有 Provider 的 Option，允许 Provider 自行筛选和生成。
             foreach (var provider in providers)
@@ -303,7 +358,7 @@ namespace RPG.InteractionSystem
             Vector3 toOrigin = option.InteractionOrigin.position - transform.position;
             float distanceSqr = toOrigin.sqrMagnitude;
             if (option.MaxDistance > 0f && distanceSqr > option.MaxDistance * option.MaxDistance) return false;
-            if (!option.CanExecute(gameObject)) return false;
+            if (!option.CanExecute(interactorObject)) return false;
             return true;
         }
 
@@ -367,28 +422,6 @@ namespace RPG.InteractionSystem
             int priorityComparison = right.Priority.CompareTo(left.Priority);
             if (priorityComparison != 0) return priorityComparison;
             return left.Id.CompareTo(right.Id);
-        }
-
-        #endregion
-
-        #region Intent 消费
-
-        /// <summary>按导航优先、执行其次的顺序消费当前帧交互 Intent。</summary>
-        private void ConsumeInputIntents()
-        {
-            if (stateBlackboard == null) return;
-            ConsumeNavigationIntent(GameplayTags.Tag_Intent_Interaction_Previous, SelectPrevious);
-            ConsumeNavigationIntent(GameplayTags.Tag_Intent_Interaction_Next, SelectNext);
-            if (stateBlackboard.HasIntent(GameplayTags.Tag_Intent_Interaction_Execute) && SubmitSelected())
-                stateBlackboard.TryConfirmIntentConsumed(GameplayTags.Tag_Intent_Interaction_Execute);
-        }
-
-        /// <summary>执行一个导航 Intent，并只在选择实际变化时确认输入消费。</summary>
-        /// <param name="intentTag">导航 Intent 标签。</param>
-        /// <param name="select">导航操作。</param>
-        private void ConsumeNavigationIntent(WS_Modules.GAS.TAG.GameplayTag intentTag, Func<bool> select)
-        {
-            if (stateBlackboard.HasIntent(intentTag) && select()) stateBlackboard.TryConfirmIntentConsumed(intentTag);
         }
 
         #endregion

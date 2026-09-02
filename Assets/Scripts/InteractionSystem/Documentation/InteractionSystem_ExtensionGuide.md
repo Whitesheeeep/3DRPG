@@ -189,21 +189,20 @@ sequenceDiagram
 
 ### 5.2 增加交互输入
 
-交互输入走现有输入预处理链：
+ChoiceWindow 的交互输入直接走 Unity EventSystem：
 
 ```text
-InputAction
-→ PlayerInputController.binding
-→ PlayerInputType
-→ GameplayInputIntentArbiter
-→ GameplayTag Intent
-→ PlayerStateBlackboard
-→ PlayerInteractor
+UI Navigate / Submit
+→ EventSystem Selection / Button Submit
+→ ChoiceWindowView
+→ InteractionUIController
+→ PlayerInteractor.Select / SubmitSelected
 ```
 
-新增 Previous/Next 类输入时，需要同时更新 `PlayerInputType`、Input Actions、玩家绑定、仲裁器映射和 Gameplay Tag 数据库。业务消费成功后才确认 Intent，失败时不要强制清除来源 Request。
-
-详细规则见：[玩家输入预处理系统](../../Input/PlayerInputPreprocessing.md)。
+新增 UI 导航方向或提交方式时，优先配置 Button 的 `Navigation` 和 InputSystem UI Action；不需要增加
+`PlayerInputType`、Gameplay Tag 或 PlayerStateBlackboard 消费逻辑。旧的交互 Intent 仲裁类型仅为兼容
+非 UI 场景保留，当前不会由 `GameplayInputIntentArbiterManager` 自动注册。详细规则见技术文档中的
+ChoiceWindow 输入章节。
 
 ## 6. 扩展 UI 与预加载
 
@@ -211,6 +210,7 @@ InputAction
 
 - 订阅 `PlayerInteractor.OptionsChanged` 和 `SelectionChanged`。
 - 只投影展示所需的数据，如名称、ID 和选中索引。
+- 通过 View 的 `SelectionRequested` 同步 UI EventSystem 选中项，不在 PlayerInteractor.Update 中读取输入黑板。
 - 点击后先调用 `PlayerInteractor.Select(optionId)`，成功后再调用 `SubmitSelected()`。
 - 不在 UI 中重复执行 MaxDistance、CanExecute 或业务逻辑。
 

@@ -8,11 +8,17 @@ namespace WS_Modules.GAS.Generated
     {
         /// <summary>Armor</summary>
         public static readonly GameplayAttribute Attribute_Armor = new GameplayAttribute(2);
+        /// <summary>AttackPower</summary>
+        public static readonly GameplayAttribute Attribute_AttackPower = new GameplayAttribute(5);
+        /// <summary>CriticalChance</summary>
+        public static readonly GameplayAttribute Attribute_CriticalChance = new GameplayAttribute(6);
         /// <summary>Health</summary>
         public static readonly GameplayAttribute Attribute_Health = new GameplayAttribute(0);
         /// <summary>MP</summary>
         public static readonly GameplayAttribute Attribute_MP = new GameplayAttribute(3);
         /// <summary>MaxHealth</summary>
         public static readonly GameplayAttribute Attribute_MaxHealth = new GameplayAttribute(1);
+        /// <summary>Speed</summary>
+        public static readonly GameplayAttribute Attribute_Speed = new GameplayAttribute(4);
     }
 }

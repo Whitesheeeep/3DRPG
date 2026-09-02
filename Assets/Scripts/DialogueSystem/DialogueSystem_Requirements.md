@@ -439,10 +439,33 @@ DialogueWindow 显示：
 输入行为：
 
 - `DialogueSpeechView` 的背景 Button 同时响应鼠标点击和 Unity EventSystem Submit；正文仍在打字或淡入时只调用 `TMProTypeWriter.Skip` 并吞掉本次输入，文本完整后才调用 `Advance`。
-- `DialogueChoiceView` 是 DialogueWindow 内部 View，复用 `OptionChoice` 行 prefab，按 `DialogueChoiceSnapShot` 原始顺序显示；不可用项置灰且不可点击，可用项点击或 Submit 只发送 ChoiceNode `NodeId`，由 Controller 调用 `SelectChoice`。
+- `DialogueChoiceView` 是 DialogueWindow 内部 View，复用 `OptionChoice` 行 prefab，按 `DialogueChoiceSnapShot` 原始顺序显示；不可用项置灰且不可点击，可用项点击或 Submit 只发送 ChoiceNode `NodeId`，由 Controller 调用 `SelectChoice`。上下移动使用每个 Button 的 Unity EventSystem `Navigate`，View 将不可用项从显式导航链中跳过，并把当前 EventSystem Selection 作为唯一持续高亮来源。
+- `ChoiceWindowView` 与 `DialogueChoiceView` 在刷新时必须遵守 EventSystem 的 Selection 保护：如果目标已经是当前 Selection，或 EventSystem 正在派发 `OnSelect`/`OnDeselect`，View 只刷新文本和可用状态，不再次调用 `SetSelectedGameObject`。按钮的 Selected 颜色由 `OptionChoice` prefab 和 Unity Selectable 自动刷新，这样 `OnSelect -> SelectionChanged -> Refresh` 的同步链不会产生 `already selecting` 重入错误。
+- 所有正式场景继承同一个 `UIEventSystem` 预制体。`InputSystemUIInputModule` 使用 `Assets/InputSystem/InputSystem_Actions.inputactions` 的 `UI/Navigate` 与 `UI/Submit`；不允许场景额外添加第二个 UI 输入模块。`Deselect On Background Click` 关闭，点击非按钮区域不会清除当前 Selection，键盘/手柄可以继续上下导航。
 - 带 Choice 的对白在正文自然显示完成或成功 Skip 后才显示 Choice；完成前保留背景 Button 用于 Skip，完成后禁用推进按钮并将焦点放到首个可用选项。
 - 有 Choice 时不能使用 Advance 默认推进。
 - 不显示头像和左右站位。
+
+场景交互的 `ChoiceWindow` 采用同一套 UI Navigate/Submit 规则。`InteractionUIController` 只把
+`ChoiceWindowView.SelectionRequested` 同步为 `PlayerInteractor.SelectedOption`，把点击或 Submit
+转换为 `Select` 后的 `SubmitSelected`；`PlayerInteractor` 不再自动消费
+`InteractionPrevious`、`InteractionNext` 或 `Interaction.Execute` Blackboard Intent。鼠标移动到
+选项时不会持久改变高亮，只有 EventSystem Selection 才会改变高亮；键盘、手柄导航和鼠标点击
+都会先形成同一个 Selection 状态。
+
+`OptionChoice` 的持续高亮完全由 Unity Button 的 `Selected` 状态驱动。其 prefab 将蓝色配置在
+`selectedColor`，`normalColor` 与 `highlightedColor` 保持一致；View 只更新文本、可用性和
+EventSystem 焦点，不再运行时改写 `ColorBlock`。因此鼠标悬停不会产生第二个高亮，键盘或手柄
+上下导航后，实际渲染颜色会随当前 `currentSelectedGameObject` 一起切换。
+
+鼠标指针不会因为单纯进入或静止悬停而抢走键盘/手柄 Selection。`OptionChoice` 在
+`PointerEnter` 时记录该行的屏幕坐标锚点，`PointerMove` 中比较当前位置与锚点的净位移；当
+位移达到 Prefab 配置的默认 `8` 像素后，才向所属 View 请求安全切换 EventSystem Selection。
+`PointerExit` 清除锚点，重新进入必须重新移动完整阈值。当前行已经是 Selection 时，行内移动只
+更新锚点；键盘将 Selection 移到另一行后，鼠标仍停在原行时再次移动达到阈值即可切回原行，
+随后上下导航继续从该行执行。该逻辑只处理 Input System 的 `MouseOrPen` 指针，鼠标移动只
+改变高亮，不自动提交 Choice。运行时过滤 `UIPointerType.MouseOrPen` 中的真实 `Mouse` 设备；
+没有设备的合成 Pointer 仅用于 Editor 自动化测试。
 
 Choice 展示由 DialogueSystem 在进入 SpeechNode 后计算并发布 `DialogueChoicePresentedEvent.Choices`。UI 不接触 Condition，也不重复访问 IOC；选择瞬间 DialogueSystem 会重新计算 Condition，展示快照不等于业务授权。`DialogueChoiceView` 的 Addressable 行资源初始化和 `DialogueSpeechView` 对现有 `TMProTypeWriter.ShowText` 的等待可以使用 UniTask，但 DialogueSystem、DialogueSession 和 Controller 对外仍保持同步 API。
 
@@ -765,14 +788,91 @@ Condition 展示计算采用 AND 短路；Condition 异常直接结束会话。�
 - DialogueSpeaker 重命名后所有引用自动显示新的 SpeakerName。
 - SpeechNode VoiceClip 在对应 Participant AudioSource 播放；推进、选择、结束和失败立即停止当前语音。
 - 失效 Speaker、NodeId 和节点引用能在 ValidationView 中报告。
-- 对话运行时核心不使用 UniTask；仅 DialogueChoiceView 的行资源初始化允许使用 UniTask。
+- 对话运行时核心不使用 UniTask；DialogueChoiceView 的行资源初始化和 DialogueSpeechView 等待现有 TMProTypeWriter 允许使用 UniTask。
 
-### 13.2 后续扩展
+### 13.2 Editor 自动化测试入口
+
+`DialogueEditorTestRunner` 是仅在 Editor 程序集中编译的集成测试入口。它通过
+`DialogueSystem/Tests/运行完整测试` 菜单或 MCP 调用 `StartRun()` 启动，自动打开
+`TestInteractableScene`、进入 Play Mode，等待 `GameArchitecture`、`UIManager` 和
+`DialogueWindow` 预加载完成后，使用真实 `DialogueInteractable`、`EventSystem`、
+`DialogueSystem`、`DialogueUIController` 和 `TMProTypeWriter` 执行测试。
+
+```mermaid
+sequenceDiagram
+    participant AI as AI / Unity MCP
+    participant Runner as DialogueEditorTestRunner
+    participant Unity as Unity Play Mode
+    participant Runtime as DialogueSystem + Window
+    AI->>Runner: StartRun()
+    Runner->>Unity: 打开 TestInteractableScene 并进入 Play Mode
+    Unity-->>Runner: Architecture/UI 预加载完成
+    Runner->>Runtime: 构造内存 DialogueAsset 并启动真实链路
+    Runner->>Runtime: PointerClick / Submit / Advance / SelectChoice
+    Runtime-->>Runner: 事件、窗口、TypeWriter、语音和会话状态
+    Runner-->>AI: GetStatusJson(runId)
+    Runner->>Unity: 清理临时对象、退出 Play Mode、恢复原场景
+```
+
+测试数据全部使用内存 `ScriptableObject` 和临时场景对象，不创建或修改项目资产。
+没有公开测试入口的序列化字段通过集中反射辅助准备或读取；反射成员不存在时用例立即
+失败并报告类型、成员和堆栈。测试不伪造领域事件，不直接调用 Controller 的完成回调，
+以免绕过打字机、按钮交互和事件顺序。
+
+覆盖内容包括：单窗口 Prefab 绑定、Initiator 与 Speaker 匹配、首句事件顺序、Typing
+自然完成、`NoSkipDuration`、Skip 与二次推进、Choice 延迟展示和禁用状态、Condition
+短路、Action Context、Direct/Fade 模式、语音生命周期、旧打字任务失效以及窗口销毁
+后重新预加载。声音听感、动画美术效果和实体硬件输入不宣称由自动测试覆盖；动画使用
+接口替身记录调用，报告会区分真实组件和替身观测。
+
+每次运行以 `runId` 标识，状态通过 `GetStatusJson(runId)` 查询。最终报告写入：
+
+```text
+Library/DialogueTests/<RunId>/report.json
+Library/DialogueTests/<RunId>/report.md
+```
+
+报告逐用例保存阶段、耗时、断言、NodeId、SessionId、窗口显隐、焦点、打字机和 Choice
+状态。测试启动前拒绝编译中、导入中、Play Mode 中、场景未保存或已有测试运行的编辑器
+状态；测试取消、超时、外部停止和清理失败均不能标记为通过。测试发现的运行时缺陷只
+记录在报告中，不由测试代码自动修复。
+
+### 13.3 GameUILock 与独占 UI
+
+对话、交易和过场等需要独占普通游戏输入的流程，通过 WSFrame Type EventCenter 发布
+`GameUILockChangeRequestedEventArgs`。事件只携带稳定 `SourceId` 与 `Acquire/Release`
+操作，不维护 Scope 或窗口枚举；PlayerInteractor、HUDWindowController 和其他窗口各自
+订阅并决定如何响应。
+
+```mermaid
+flowchart LR
+    Source[独占 UI 流程] -->|Acquire / Release + SourceId| Event[GameUILock Type Event]
+    Event --> Player[PlayerInteractor]
+    Event --> HUD[HUDWindowController]
+    Event --> Future[未来窗口 Controller]
+    Player --> Pause[PauseDetect / 恢复检测]
+    HUD --> Hide[隐藏 HUD / 恢复原可见状态]
+```
+
+每个消费者自己保存 `HashSet<SourceId>`。第一个来源申请时记录进入前状态，之后的来源
+只增加集合；释放任意一个非最后来源都继续保持锁定，只有集合清空才恢复进入前状态。
+重复 Acquire 和未知来源 Release 都是幂等操作，避免多个独占流程交叉结束时提前恢复。
+
+`HUDWindowController` 直接挂载在 `HUDWindow` prefab 根对象上，使用
+`UnRegisterWhenGameObjectDestroyed(gameObject)` 自动解除事件订阅；窗口通过 CanvasGroup
+隐藏时 Controller 保持存活，因此可以接收到最后一个 Release。`PlayerInteractor` 同样使用
+销毁触发器解除订阅，不保存额外 `IUnRegister` 字段。
+
+`DialogueChoiceRoot` 的布局与 `ChoiceWindow` 的 `ChoiceRoot` 完全一致，使用底部居中锚点、
+`(143, 154.5)` 位置和 `160 × 30` 尺寸，Dialogue Choice 仍由 DialogueWindow 内部的
+`DialogueChoiceView` 管理，不重新创建 ChoiceWindow。
+
+### 13.4 后续扩展
 
 - GraphView 编辑器的自动布局、批量编辑和运行时节点高亮。
 - SpeakerName 颜色和动画默认配置。
 - 本地化 Key 和多语言文本。
-- 语音和打字机效果。
+- 可配置打字速度、跳过策略和语音表现。
 - 动画 Transition、动画事件和更复杂的 3D 演出。
 - 对话会话存档和断点恢复。
 - 任务、背包、奖励等正式业务命令实现。

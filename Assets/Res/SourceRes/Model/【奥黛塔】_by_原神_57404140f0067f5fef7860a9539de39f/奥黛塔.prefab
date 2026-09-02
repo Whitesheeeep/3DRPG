@@ -1513,12 +1513,12 @@ GameObject:
   - component: {fileID: 1409053514334479820}
   - component: {fileID: 1019898161904821886}
   - component: {fileID: 8950656010603875041}
+  - component: {fileID: 1271356610209557883}
   - component: {fileID: 4461358281767004648}
   - component: {fileID: 7301905860177499315}
   - component: {fileID: 8777541346422888540}
-  - component: {fileID: 1213415971484390052}
   - component: {fileID: 1576526441935178862}
-  - component: {fileID: 1271356610209557883}
+  - component: {fileID: 1213415971484390052}
   m_Layer: 0
   m_Name: "\u5965\u9EDB\u5854"
   m_TagString: Untagged
@@ -5906,6 +5906,22 @@ MonoBehaviour:
   - {fileID: 1637803979989441892}
   - {fileID: 3570482046379434185}
   - {fileID: 5698979816233906565}
+--- !u!114 &1271356610209557883
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 489151478970449378}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fff0960ef4ea6e04eac66b4a7fd2189d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_RigLayers:
+  - m_Rig: {fileID: 2366848124092873960}
+    m_Active: 1
+  m_Effectors: []
 --- !u!114 &4461358281767004648
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5947,18 +5963,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4b0799f21e062a46bc8ef0c1cb35599, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &1213415971484390052
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 489151478970449378}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bb4e55a2427d8f84eae93cc22bc76890, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &1576526441935178862
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5971,9 +5975,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b99dd9aa66dea9d4fb1fbd01f0f79c07, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speakerId: Player
+  speaker: {fileID: 0}
   voiceAudioSource: {fileID: 0}
---- !u!114 &1271356610209557883
+--- !u!114 &1213415971484390052
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -5982,13 +5986,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 489151478970449378}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fff0960ef4ea6e04eac66b4a7fd2189d, type: 3}
+  m_Script: {fileID: 11500000, guid: bb4e55a2427d8f84eae93cc22bc76890, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_RigLayers:
-  - m_Rig: {fileID: 2366848124092873960}
-    m_Active: 1
-  m_Effectors: []
+  requiredMarkerKeys: []
 --- !u!1 &491445322983487563
 GameObject:
   m_ObjectHideFlags: 0

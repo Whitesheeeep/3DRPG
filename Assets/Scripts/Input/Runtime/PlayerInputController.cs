@@ -13,6 +13,12 @@ namespace RPG.PlayerInputSystem
         [SerializeField, Min(0f)] private float defaultPressBufferDuration = 0.2f;
         [SerializeField, Min(0f)] private float defaultReleaseBufferDuration = 0.1f;
         [SerializeField] private List<PlayerInputBinding> bindings = new();
+        // 连续移动输入仅由本组件采样，离散 Request 的缓冲与消费不共用该状态。
+        [SerializeField] private InputActionReference moveAction;
+        // 资产根引用与动作路径是 InputActionReference 子资源尚未生成时的稳定回退。
+        [SerializeField] private InputActionAsset moveActionAsset;
+        [SerializeField] private string moveActionName = "Character/Move";
+        [SerializeField, Range(0f, 1f)] private float moveDeadzone = 0.1f;
         #endregion
 
         #region 请求状态
@@ -20,14 +26,25 @@ namespace RPG.PlayerInputSystem
         private readonly Dictionary<PlayerInputType, PlayerInputRequest> requestsByType = new();
         private readonly Dictionary<InputAction, ResolvedBinding> bindingsByAction = new();
         private readonly List<PlayerInputRequest> requests = new();
+        private InputAction resolvedMoveAction;
 
         /// <inheritdoc />
         public IReadOnlyList<IReadOnlyPlayerInputRequest> Requests => requests;
+
+        /// <summary>获取当前帧采样的连续移动输入；该值保留模拟摇杆幅度。</summary>
+        public Vector2 MoveInput { get; private set; }
         #endregion
 
         #region Unity 生命周期
         /// <summary>校验序列化输入配置并建立无分配回调查询表。</summary>
-        private void Awake() => BuildBindingLookup();
+        private void Awake()
+        {
+            BuildBindingLookup();
+            // 优先使用可直接拖拽的 InputActionReference；同时保留 Asset+ActionName 回退，避免新导入资产的子资源 fileID 尚未生成时丢失移动输入。
+            resolvedMoveAction = moveAction?.action;
+            if (resolvedMoveAction == null && moveActionAsset != null && !string.IsNullOrWhiteSpace(moveActionName))
+                resolvedMoveAction = moveActionAsset.FindAction(moveActionName, false);
+        }
 
         /// <summary>订阅并启用由当前 Controller 独占管理的全部离散动作。</summary>
         private void OnEnable()
@@ -38,10 +55,19 @@ namespace RPG.PlayerInputSystem
                 action.canceled += OnCanceled;
                 action.Enable();
             }
+            resolvedMoveAction?.Enable();
         }
 
         /// <summary>在 Intent 仲裁前按真实时间推进全部输入 Request。</summary>
-        private void Update() => Advance(Time.unscaledDeltaTime, Time.frameCount);
+        private void Update()
+        {
+            Advance(Time.unscaledDeltaTime, Time.frameCount);
+            // 连续输入是状态快照，不走离散 Request 的消费生命周期，供多个 FixedUpdate 读取。
+            Vector2 value = resolvedMoveAction == null ? Vector2.zero : resolvedMoveAction.ReadValue<Vector2>();
+            MoveInput = value.sqrMagnitude <= moveDeadzone * moveDeadzone
+                ? Vector2.zero
+                : Vector2.ClampMagnitude(value, 1f);
+        }
 
         /// <summary>退订并停用全部动作，再清除可能残留的按住状态和阶段句柄。</summary>
         private void OnDisable()
@@ -53,8 +79,14 @@ namespace RPG.PlayerInputSystem
                 action.Disable();
             }
 
+            resolvedMoveAction?.Disable();
+            MoveInput = Vector2.zero;
+
             Clear();
         }
+
+        /// <summary>清除连续输入，使失焦、停用和场景迁移不会复用旧摇杆状态。</summary>
+        public void ClearMoveInput() => MoveInput = Vector2.zero;
         #endregion
 
         #region 输入回调

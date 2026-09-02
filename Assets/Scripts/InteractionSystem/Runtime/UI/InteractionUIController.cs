@@ -39,6 +39,7 @@ namespace RPG.InteractionSystem.UI
             this.view = view ?? throw new ArgumentNullException(nameof(view));
 
             view.ChoiceRequested += OnChoiceRequested;
+            view.SelectionRequested += OnSelectionRequested;
             PlayerInteractor.InstanceChanged += OnPlayerInstanceChanged;
         }
 
@@ -65,6 +66,7 @@ namespace RPG.InteractionSystem.UI
 
             PlayerInteractor.InstanceChanged -= OnPlayerInstanceChanged;
             view.ChoiceRequested -= OnChoiceRequested;
+            view.SelectionRequested -= OnSelectionRequested;
             UnbindInteractor();
             optionNames.Clear();
             optionIds.Clear();
@@ -259,6 +261,14 @@ namespace RPG.InteractionSystem.UI
             if (interactor == null || index < 0 || index >= optionIds.Count) return;
             if (!interactor.Select(optionIds[index])) return;
             interactor.SubmitSelected();
+        }
+
+        /// <summary>响应 UI Navigate 选中结果，只更新 PlayerInteractor 的领域 Selection，不执行 Option。</summary>
+        /// <param name="index">被选中行在当前投影列表中的索引。</param>
+        private void OnSelectionRequested(int index)
+        {
+            if (interactor == null || index < 0 || index >= optionIds.Count) return;
+            interactor.Select(optionIds[index]);
         }
 
         #endregion

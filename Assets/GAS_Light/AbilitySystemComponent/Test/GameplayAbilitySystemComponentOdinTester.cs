@@ -115,7 +115,6 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         private GameObject targetObject;
         private GameplayAbilitySystemComponent source;
         private GameplayAbilitySystemComponent target;
-        private PlayerController sourcePlayerController;
         private GameplayAbilitySystemComponentTestVisualizer visualizer;
         private ISkillRuntimeHost skillRuntimeHost;
         private bool cueEventSubscribed;
@@ -138,7 +137,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         private void Update()
         {
             if (!running) return;
-            if (sourcePlayerController == null) source?.Tick(Time.deltaTime);
+            source?.Tick(Time.deltaTime);
             target?.Tick(Time.deltaTime);
         }
 
@@ -146,7 +145,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         private void FixedUpdate()
         {
             if (!running) return;
-            if (sourcePlayerController == null) source?.FixedTick(Time.fixedDeltaTime);
+            source?.FixedTick(Time.fixedDeltaTime);
             target?.FixedTick(Time.fixedDeltaTime);
         }
 
@@ -154,7 +153,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         private void LateUpdate()
         {
             if (!running) return;
-            if (sourcePlayerController == null) source?.LateTick(Time.deltaTime);
+            source?.LateTick(Time.deltaTime);
             target?.LateTick(Time.deltaTime);
         }
 
@@ -1136,9 +1135,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
                 sourceCollider.enabled = false;
             if (IsSkillConfigScenario(scenario))
             {
-                sourcePlayerController = sourceObject.AddComponent<PlayerController>();
-                source = sourceObject.GetComponent<GameplayAbilitySystemComponent>();
-                skillRuntimeHost = sourcePlayerController.SkillRuntimeHost;
+                skillRuntimeHost = sourceObject.AddComponent<SkillRuntimeHost>();
+                sourceObject.AddComponent<GameplayAbilitySystemTestOwner>();
+                source = sourceObject.AddComponent<GameplayAbilitySystemComponent>();
             }
             else
             {
@@ -1302,7 +1301,6 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             if (targetObject != null) Destroy(targetObject);
             source = null;
             target = null;
-            sourcePlayerController = null;
             sourceObject = null;
             targetObject = null;
             skillRuntimeHost = null;

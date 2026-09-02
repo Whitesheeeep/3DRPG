@@ -146,13 +146,15 @@ flowchart LR
 测试组件整体由 `#if UNITY_EDITOR`包裹，不进入 Player 构建。
 ## GAS 根运动边界
 
-SkillConfig 通过 `IsRootMotion` 声明是否消费动画根运动。GAS 集成路径由 `PlaySkillConfigGameplayAbilityTask` 在 `UpdateAnimationMove` 阶段直接调用角色 `MotionDriver`，不会经过 `SkillRuntimeHost`。Host 与 Module 只负责时间轴执行、命中、表现和完成事件。
+`SkillRuntimeHost` 与 `PlaySkillConfigGameplayAbilityTask` 只负责技能时间轴、命中、表现和完成事件，不直接决定角色运动。具体 GameplayAbility Runtime 或运动专用 Task 通过现有 `IMotionDriver` 申请 Skill 优先级控制，并在 Fixed 阶段提交代码位移；根运动技能只申请 Animator 根运动消费权，由 PlayerController 在 AnimatorMove 阶段统一结算。`SkillConfig.IsRootMotion` 可以继续作为技能作者的时间轴/表现数据，但不会自动驱动 MotionDriver。
 
 ```mermaid
 flowchart LR
-    Task["PlaySkillConfig Task"] --> Check{"IsRootMotion"}
-    Check -->|true| Driver["MotionDriver.UpdateAnimationMove"]
-    Check -->|false| Skip["不消费 Animator Delta"]
+    GA["具体 GameplayAbility / Motion Task"] --> Request["IMotionDriver.RequestControl"]
+    Request --> Resolve["PlayerController AnimatorMove / Fixed 时序"]
+    Resolve --> Driver["MotionDriver 仲裁并最终移动"]
+    Skill["PlaySkillConfig Task"] --> Timeline["SkillRuntimeHost 时间轴"]
+    Timeline -.不直接驱动运动.-> Driver
 ```
 ## Projectile Track
 

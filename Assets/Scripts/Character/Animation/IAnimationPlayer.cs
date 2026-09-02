@@ -27,6 +27,11 @@ namespace RPG.Character.Animation
         /// <returns>本次播放得到的 Animancer 状态。</returns>
         AnimancerState Play(AnimationLayerType layer, ITransition transition);
 
+        /// <summary>设置指定 Animancer 参数的浮点值。</summary>
+        /// <param name="parameter">共享的参数资产。</param>
+        /// <param name="value">要写入的参数值。</param>
+        void SetFloatParameter(StringAsset parameter, float value);
+
         /// <summary>
         /// 将指定固定层平滑调整到目标权重，不停止该层当前状态。
         /// </summary>

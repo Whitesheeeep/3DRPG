@@ -7,9 +7,9 @@ flowchart LR
     Detector[InteractionDetector] --> Provider[IInteractable Provider]
     Provider --> Option[InteractionOption]
     Option --> Interactor[PlayerInteractor]
-    Input[Previous / Next / Execute] --> Interactor
     Interactor --> Choice[ChoiceWindow]
-    Choice --> Interactor
+    Input[UI Navigate / Submit / Mouse Click] --> Choice
+    Choice -->|SelectionRequested / ChoiceRequested| Interactor
     Interactor --> Execute[TryExecute]
 ```
 
@@ -33,7 +33,7 @@ flowchart LR
 
 Detector 使用 `PhysicsShapeData` 做 Provider 粗筛，支持 Box、Sphere、Capsule 和 Sector。`PlayerInteractor` 当前按 `MaxDistance` 与 `CanExecute` 硬筛选，再按 `Priority` 降序、`InteractionOptionId` 升序排序；不启用 Viewport、遮挡、镜头关注度或距离评分。
 
-ChoiceWindow 当前只显示 Option 名称和选中高亮，领域层保留的 `InteractionOption.Icon` 暂不投影到该窗口。系统面向本地单玩家，不包含网络同步、多人抢占、失败原因展示和置灰选项。
+ChoiceWindow 当前只显示 Option 名称和选中高亮，领域层保留的 `InteractionOption.Icon` 暂不投影到该窗口。上下移动、提交和鼠标点击统一使用 Unity EventSystem；系统面向本地单玩家，不包含网络同步、多人抢占、失败原因展示和置灰选项。
 
 ## 相关系统
 

@@ -19,7 +19,7 @@ namespace RPG.DialogueSystemModule
         // 语音和动画引用属于参与者表现，不携带 ASC 或业务 Manager 依赖。
         [SerializeField]
         private AudioSource voiceAudioSource;
-        [SerializeField]
+
         private IAnimationPlayer animationPlayerComponent;
 
         #endregion
@@ -37,6 +37,14 @@ namespace RPG.DialogueSystemModule
 
         /// <inheritdoc />
         public IAnimationPlayer AnimationPlayer => animationPlayerComponent as IAnimationPlayer;
+
+        #endregion
+
+        #region 表现目标
+
+        /// <summary>切换稳定 Player 参与者当前使用的角色动画播放器。</summary>
+        /// <param name="animationPlayer">新 ActiveCharacter 的动画播放器；无动画角色可以为空。</param>
+        public void SetAnimationPlayer(IAnimationPlayer animationPlayer) => animationPlayerComponent = animationPlayer;
 
         #endregion
 
