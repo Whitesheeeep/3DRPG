@@ -1,0 +1,148 @@
+.item-editor-definition-summary {
+    flex-direction: row;
+    flex-grow: 0;
+    min-width: 0;
+    min-height: 104px;
+    padding: 10px;
+    border-width: 1px;
+    border-color: rgb(80, 80, 80);
+    background-color: rgb(40, 40, 40);
+}
+
+.item-editor-summary-icon-container {
+    width: 86px;
+    height: 86px;
+    min-width: 86px;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    background-color: rgb(52, 52, 52);
+    border-width: 1px;
+    border-color: rgb(95, 95, 95);
+}
+
+.item-editor-summary-icon-image {
+    width: 78px;
+    height: 78px;
+}
+
+.item-editor-summary-icon-fallback {
+    width: 78px;
+    height: 78px;
+    font-size: 40px;
+    -unity-text-align: middle-center;
+    color: rgb(94, 190, 255);
+}
+
+.item-editor-summary-content {
+    flex-grow: 1;
+    min-width: 0;
+    justify-content: center;
+}
+
+.item-editor-summary-name-line {
+    flex-direction: row;
+    min-width: 0;
+    align-items: center;
+}
+
+.item-editor-summary-name {
+    min-width: 0;
+    flex-shrink: 1;
+    font-size: 19px;
+    -unity-font-style: bold;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.item-editor-summary-kind,
+.item-editor-summary-category {
+    flex-shrink: 0;
+    margin-left: 8px;
+    padding-left: 5px;
+    padding-right: 5px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    font-size: 10px;
+    color: rgb(215, 230, 245);
+    background-color: rgb(47, 77, 108);
+}
+
+.item-editor-summary-category {
+    background-color: rgb(65, 65, 65);
+    color: rgb(205, 205, 205);
+}
+
+.item-editor-summary-rarity {
+    margin-top: 3px;
+    font-size: 14px;
+    letter-spacing: 1px;
+}
+
+.item-editor-summary-id {
+    margin-top: 3px;
+    font-size: 11px;
+    color: rgb(180, 180, 180);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.item-editor-summary-hint {
+    margin-top: 5px;
+    font-size: 10px;
+    color: rgb(145, 145, 145);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.item-editor-definition-summary--rarity-one {
+    border-color: rgb(145, 145, 145);
+}
+
+.item-editor-definition-summary--rarity-two {
+    border-color: rgb(83, 166, 91);
+    background-color: rgb(36, 50, 38);
+}
+
+.item-editor-definition-summary--rarity-three {
+    border-color: rgb(75, 137, 205);
+    background-color: rgb(34, 43, 55);
+}
+
+.item-editor-definition-summary--rarity-four {
+    border-color: rgb(155, 100, 210);
+    background-color: rgb(46, 37, 55);
+}
+
+.item-editor-definition-summary--rarity-five {
+    border-color: rgb(210, 155, 70);
+    background-color: rgb(55, 45, 32);
+}
+
+.item-editor-definition-summary--rarity-one .item-editor-summary-name,
+.item-editor-definition-summary--rarity-one .item-editor-summary-rarity {
+    color: rgb(180, 180, 180);
+}
+
+.item-editor-definition-summary--rarity-two .item-editor-summary-name,
+.item-editor-definition-summary--rarity-two .item-editor-summary-rarity {
+    color: rgb(115, 205, 125);
+}
+
+.item-editor-definition-summary--rarity-three .item-editor-summary-name,
+.item-editor-definition-summary--rarity-three .item-editor-summary-rarity {
+    color: rgb(105, 175, 240);
+}
+
+.item-editor-definition-summary--rarity-four .item-editor-summary-name,
+.item-editor-definition-summary--rarity-four .item-editor-summary-rarity {
+    color: rgb(190, 130, 235);
+}
+
+.item-editor-definition-summary--rarity-five .item-editor-summary-name,
+.item-editor-definition-summary--rarity-five .item-editor-summary-rarity {
+    color: rgb(245, 190, 90);
+}

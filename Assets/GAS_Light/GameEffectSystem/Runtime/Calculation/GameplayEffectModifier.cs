@@ -50,6 +50,16 @@ namespace WS_Modules.GAS.GameplayEffect
             GameplayAbilitySystemComponent target,
             GameEffectRuntime runtime);
 
+        /// <summary>尝试在不创建运行时对象的情况下计算指定等级的静态 Magnitude。</summary>
+        /// <param name="level">用于等级型 Modifier 的输入等级。</param>
+        /// <param name="magnitude">成功时返回静态数值。</param>
+        /// <returns>该 Modifier 支持静态计算时返回 true。</returns>
+        internal virtual bool TryCalculateStaticMagnitude(int level, out float magnitude)
+        {
+            magnitude = default;
+            return false;
+        }
+
         // 只有依赖调用方动态值的 Modifier 才登记 Key；Controller 在计算前统一检查。
         protected internal virtual void CollectRequiredSetByCallerKeys(ISet<GameplayTag> keys)
         {

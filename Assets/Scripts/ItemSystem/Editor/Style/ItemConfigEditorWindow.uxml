@@ -1,0 +1,59 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/ItemSystem/Editor/Style/ItemConfigEditorWindow.uss" />
+    <ui:VisualElement name="ItemEditorRoot" class="item-editor-root">
+        <ui:VisualElement class="item-editor-toolbar">
+            <uie:ObjectField name="DatabaseField" label="物品数据库" class="item-editor-database-field" />
+            <ui:Button name="NewStackableButton" text="新建物品" />
+            <ui:Button name="NewWeaponButton" text="新建武器" />
+            <ui:Button name="NewDevelopmentItemButton" text="新建养成道具" />
+            <ui:Button name="NewArtifactButton" text="新建圣遗物" />
+            <ui:Button name="DuplicateButton" text="复制" />
+            <ui:Button name="RemoveButton" text="移出数据库" />
+            <ui:Button name="DeleteButton" text="删除资产" />
+            <ui:Button name="ApplyDefaultsButton" text="应用当前物品类型默认值" />
+            <ui:Button name="ValidateButton" text="验证" />
+            <ui:Button name="PingButton" text="定位资产" />
+        </ui:VisualElement>
+        <WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView name="ItemEditorSplitView" class="item-editor-body" fixed-pane-index="0" fixed-pane-initial-dimension="360" orientation="Horizontal">
+            <ui:VisualElement class="item-editor-sidebar">
+                <uie:ToolbarSearchField name="SearchField" label="搜索" />
+                <ui:VisualElement class="item-editor-filter-row">
+                    <ui:VisualElement class="item-editor-filter-field">
+                        <ui:Label text="类型" class="item-editor-filter-label" />
+                        <ui:DropdownField name="CategoryField" class="item-editor-filter-dropdown" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="item-editor-filter-field">
+                        <ui:Label text="定义" class="item-editor-filter-label" />
+                        <ui:DropdownField name="KindField" class="item-editor-filter-dropdown" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement class="item-editor-filter-row item-editor-sort-row">
+                    <ui:VisualElement class="item-editor-filter-field">
+                        <ui:Label text="排序依据" class="item-editor-filter-label" />
+                        <ui:DropdownField name="SortField" class="item-editor-filter-dropdown" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="item-editor-filter-field item-editor-filter-field--last">
+                        <ui:Label text="排序方向" class="item-editor-filter-label" />
+                        <ui:DropdownField name="SortDirection" class="item-editor-filter-dropdown" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:ListView name="DefinitionList" class="item-editor-definition-list" />
+                <ui:Label name="EmptyListLabel" text="暂无物品定义" class="item-editor-empty-list" />
+            </ui:VisualElement>
+            <ui:VisualElement class="item-editor-details-pane">
+                <ui:VisualElement name="DefinitionSummary" class="item-editor-definition-summary-host" />
+                <ui:VisualElement name="EmptyDetailsState" class="item-editor-empty-details">
+                    <ui:Label text="请从左侧列表选择一个物品定义" />
+                </ui:VisualElement>
+                <ui:ScrollView name="DetailsContainer" class="item-editor-details">
+                    <ui:VisualElement name="CommonDetailsPage" class="item-editor-details-page" />
+                    <ui:VisualElement name="StackableDetailsPage" class="item-editor-details-page" />
+                    <ui:VisualElement name="DevelopmentItemDetailsPage" class="item-editor-details-page" />
+                    <ui:VisualElement name="WeaponDetailsPage" class="item-editor-details-page" />
+                    <ui:VisualElement name="ArtifactDetailsPage" class="item-editor-details-page" />
+                </ui:ScrollView>
+            </ui:VisualElement>
+        </WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView>
+        <ui:Label name="StatusLabel" class="item-editor-status" />
+    </ui:VisualElement>
+</ui:UXML>

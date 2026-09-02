@@ -13,6 +13,9 @@ namespace RPG.Character
         /// <param name="value">跨场景保持不变的角色键。</param>
         public CharacterId(string value) => this.value = value;
 
+        /// <summary>判断角色标识是否包含有效的非空键。</summary>
+        public bool IsValid => !string.IsNullOrWhiteSpace(value);
+
         /// <inheritdoc />
         public bool Equals(CharacterId other) => string.Equals(value, other.value, StringComparison.Ordinal);
 

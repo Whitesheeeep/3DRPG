@@ -1,0 +1,205 @@
+.item-editor-definition-row-host {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    min-height: 0;
+}
+
+.item-editor-definition-row {
+    position: relative;
+    flex-direction: row;
+    align-items: center;
+    min-width: 0;
+    padding-left: 8px;
+    padding-right: 6px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(60, 60, 60);
+    border-left-width: 3px;
+    border-left-color: rgb(100, 100, 100);
+}
+
+.item-editor-row-selection-frame {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: none;
+    border-width: 2px;
+    border-color: rgb(95, 180, 255);
+    background-color: rgba(95, 180, 255, 0.06);
+}
+
+.item-editor-definition-row:hover {
+    background-color: rgb(48, 48, 48);
+}
+
+.item-editor-definition-row--selected {
+    border-right-width: 2px;
+    border-right-color: rgb(230, 230, 230);
+}
+
+/* 选中外框覆盖整行但不参与布局；颜色继续由稀有度状态类决定。 */
+.item-editor-definition-row--selected .item-editor-row-selection-frame {
+    display: flex;
+    border-color: rgb(230, 230, 230);
+}
+
+.item-editor-definition-row--rarity-one.item-editor-definition-row--selected .item-editor-row-selection-frame {
+    border-color: rgb(170, 170, 170);
+}
+
+.item-editor-definition-row--rarity-two.item-editor-definition-row--selected .item-editor-row-selection-frame {
+    border-color: rgb(95, 190, 105);
+}
+
+.item-editor-definition-row--rarity-three.item-editor-definition-row--selected .item-editor-row-selection-frame {
+    border-color: rgb(90, 155, 225);
+}
+
+.item-editor-definition-row--rarity-four.item-editor-definition-row--selected .item-editor-row-selection-frame {
+    border-color: rgb(175, 115, 225);
+}
+
+.item-editor-definition-row--rarity-five.item-editor-definition-row--selected .item-editor-row-selection-frame {
+    border-color: rgb(235, 175, 80);
+}
+
+.item-editor-row-icon-container {
+    width: 34px;
+    height: 40px;
+    min-width: 34px;
+    align-items: center;
+    justify-content: center;
+    margin-right: 6px;
+}
+
+.item-editor-row-icon-image {
+    width: 32px;
+    height: 32px;
+}
+
+.item-editor-row-icon-fallback {
+    width: 32px;
+    height: 32px;
+    font-size: 20px;
+    -unity-text-align: middle-center;
+    color: rgb(94, 190, 255);
+}
+
+.item-editor-row-content {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.item-editor-row-name-line {
+    flex-direction: row;
+    min-width: 0;
+    align-items: center;
+}
+
+.item-editor-row-name {
+    flex-grow: 1;
+    min-width: 0;
+    -unity-font-style: bold;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.item-editor-row-id {
+    font-size: 10px;
+    color: rgb(150, 150, 150);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.item-editor-row-meta-line {
+    flex-direction: row;
+    min-width: 0;
+    align-items: center;
+}
+
+.item-editor-row-kind {
+    margin-right: 6px;
+    font-size: 10px;
+    color: rgb(180, 180, 180);
+}
+
+.item-editor-row-meta {
+    flex-grow: 1;
+    min-width: 0;
+    font-size: 11px;
+    color: rgb(170, 170, 170);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.item-editor-row-rarity {
+    width: 58px;
+    min-width: 58px;
+    font-size: 11px;
+    -unity-text-align: middle-right;
+}
+
+.item-editor-inline-name {
+    display: none;
+    flex-grow: 1;
+    min-width: 0;
+    margin-top: -2px;
+    margin-bottom: -2px;
+}
+
+.item-editor-definition-row--rarity-one {
+    background-color: rgb(42, 42, 42);
+    border-left-color: rgb(145, 145, 145);
+}
+
+.item-editor-definition-row--rarity-two {
+    background-color: rgb(36, 50, 38);
+    border-left-color: rgb(83, 166, 91);
+}
+
+.item-editor-definition-row--rarity-three {
+    background-color: rgb(34, 43, 55);
+    border-left-color: rgb(75, 137, 205);
+}
+
+.item-editor-definition-row--rarity-four {
+    background-color: rgb(46, 37, 55);
+    border-left-color: rgb(155, 100, 210);
+}
+
+.item-editor-definition-row--rarity-five {
+    background-color: rgb(55, 45, 32);
+    border-left-color: rgb(210, 155, 70);
+}
+
+.item-editor-definition-row--rarity-one .item-editor-row-name,
+.item-editor-definition-row--rarity-one .item-editor-row-rarity {
+    color: rgb(180, 180, 180);
+}
+
+.item-editor-definition-row--rarity-two .item-editor-row-name,
+.item-editor-definition-row--rarity-two .item-editor-row-rarity {
+    color: rgb(115, 205, 125);
+}
+
+.item-editor-definition-row--rarity-three .item-editor-row-name,
+.item-editor-definition-row--rarity-three .item-editor-row-rarity {
+    color: rgb(105, 175, 240);
+}
+
+.item-editor-definition-row--rarity-four .item-editor-row-name,
+.item-editor-definition-row--rarity-four .item-editor-row-rarity {
+    color: rgb(190, 130, 235);
+}
+
+.item-editor-definition-row--rarity-five .item-editor-row-name,
+.item-editor-definition-row--rarity-five .item-editor-row-rarity {
+    color: rgb(245, 190, 90);
+}

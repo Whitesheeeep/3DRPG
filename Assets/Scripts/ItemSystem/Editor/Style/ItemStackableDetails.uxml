@@ -1,0 +1,9 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/ItemSystem/Editor/Style/ItemStackableDetails.uss" />
+    <ui:VisualElement name="StackableDetailsRoot" class="item-editor-stackable-details">
+        <ui:Label name="StackableSectionTitle" text="堆叠与使用" class="item-editor-section-title" />
+        <uie:PropertyField name="MaxQuantityField" binding-path="maxQuantity" label="单种最大数量" class="item-editor-property-field" />
+        <uie:PropertyField name="UseEffectsField" binding-path="useEffects" label="使用时效果列表" class="item-editor-property-field" />
+        <ui:Label text="UseEffects 的 GE Level 由物品使用系统在运行时确定；空列表表示使用时不应用 GE。" class="item-editor-help-text" />
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,5 +1,7 @@
 using System.IO;
+using RPG.CurrencySystem;
 using RPG.DialogueSystemModule;
+using RPG.ItemSystem;
 using RPG.SaveSystem;
 using RPG.TaskSystem;
 using UnityEngine;
@@ -40,11 +42,19 @@ namespace RPG.Game
             // TaskProgressSystem 只协调任务实例运行时，并在初始化时注册 TaskSaveModule。
             RegisterSystem(new TaskProgressSystem(new TaskObjectiveHandlerRegistry()));
             RegisterSystem(new DialogueSystem());
+            RegisterSystem(new StackableInventorySystem());
+            RegisterSystem(new WeaponInventorySystem());
+            RegisterSystem(new ArtifactInventorySystem());
+            RegisterSystem(new RPG.CurrencySystem.CurrencySystem());
 
             // 角色、背包等跨业务 System 在这里继续注册；
             // 它们对应的 SaveModule 由各自 System 在 OnInit 中注册到 SaveManager。
             TaskSaveModule taskSaveModule = new TaskSaveModule(TaskManager.Instance);
             snapshotTypeRegistry.Register<TaskSaveSnapshot>(taskSaveModule.ModuleId, taskSaveModule.CurrentVersion);
+            snapshotTypeRegistry.Register<StackableInventorySaveSnapshot>(new SaveModuleId("stackable-inventory"), 1);
+            snapshotTypeRegistry.Register<WeaponInventorySaveSnapshot>(new SaveModuleId("weapon-inventory"), 1);
+            snapshotTypeRegistry.Register<ArtifactInventorySaveSnapshot>(new SaveModuleId("artifact-inventory"), 1);
+            snapshotTypeRegistry.Register<CurrencySaveSnapshot>(new SaveModuleId("currency"), 1);
             #endregion
         }
     }

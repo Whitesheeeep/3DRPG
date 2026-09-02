@@ -1,0 +1,428 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a4f1c7e3b8d46a0c5e2f9b1d7a63824, type: 3}
+  m_Name: NewWeaponGrowthProfile 3
+  m_EditorClassIdentifier: 
+  maxLevel: 90
+  cumulativeExperienceCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 20224.719
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 90
+      value: 1800000
+      inSlope: 20224.719
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  currencyCostCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 1
+      value: 1200
+      inSlope: 698.82355
+      outSlope: 698.82355
+      tangentMode: 0
+      weightedMode: 1
+      inWeight: 0
+      outWeight: 0.110995024
+    - serializedVersion: 3
+      time: 90
+      value: 40000
+      inSlope: -13.483146
+      outSlope: -13.483146
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  levelOverrides:
+  - level: 40
+    nextExperience: 40
+    currencyCost: 40
+  bakedProgressions:
+  - level: 1
+    cumulativeExperience: 0
+    nextExperience: 20225
+    currencyCost: 1200
+  - level: 2
+    cumulativeExperience: 20225
+    nextExperience: 20224
+    currencyCost: 1898
+  - level: 3
+    cumulativeExperience: 40449
+    nextExperience: 20225
+    currencyCost: 2594
+  - level: 4
+    cumulativeExperience: 60674
+    nextExperience: 20225
+    currencyCost: 3288
+  - level: 5
+    cumulativeExperience: 80899
+    nextExperience: 20225
+    currencyCost: 3980
+  - level: 6
+    cumulativeExperience: 101124
+    nextExperience: 20224
+    currencyCost: 4670
+  - level: 7
+    cumulativeExperience: 121348
+    nextExperience: 20225
+    currencyCost: 5357
+  - level: 8
+    cumulativeExperience: 141573
+    nextExperience: 20225
+    currencyCost: 6042
+  - level: 9
+    cumulativeExperience: 161798
+    nextExperience: 20224
+    currencyCost: 6724
+  - level: 10
+    cumulativeExperience: 182022
+    nextExperience: 20225
+    currencyCost: 7403
+  - level: 11
+    cumulativeExperience: 202247
+    nextExperience: 20225
+    currencyCost: 8079
+  - level: 12
+    cumulativeExperience: 222472
+    nextExperience: 20225
+    currencyCost: 8752
+  - level: 13
+    cumulativeExperience: 242697
+    nextExperience: 20224
+    currencyCost: 9422
+  - level: 14
+    cumulativeExperience: 262921
+    nextExperience: 20225
+    currencyCost: 10088
+  - level: 15
+    cumulativeExperience: 283146
+    nextExperience: 20225
+    currencyCost: 10751
+  - level: 16
+    cumulativeExperience: 303371
+    nextExperience: 20225
+    currencyCost: 11410
+  - level: 17
+    cumulativeExperience: 323596
+    nextExperience: 20224
+    currencyCost: 12065
+  - level: 18
+    cumulativeExperience: 343820
+    nextExperience: 20225
+    currencyCost: 12717
+  - level: 19
+    cumulativeExperience: 364045
+    nextExperience: 20225
+    currencyCost: 13364
+  - level: 20
+    cumulativeExperience: 384270
+    nextExperience: 20224
+    currencyCost: 14007
+  - level: 21
+    cumulativeExperience: 404494
+    nextExperience: 20225
+    currencyCost: 14645
+  - level: 22
+    cumulativeExperience: 424719
+    nextExperience: 20225
+    currencyCost: 15279
+  - level: 23
+    cumulativeExperience: 444944
+    nextExperience: 20225
+    currencyCost: 15908
+  - level: 24
+    cumulativeExperience: 465169
+    nextExperience: 20224
+    currencyCost: 16533
+  - level: 25
+    cumulativeExperience: 485393
+    nextExperience: 20225
+    currencyCost: 17152
+  - level: 26
+    cumulativeExperience: 505618
+    nextExperience: 20225
+    currencyCost: 17767
+  - level: 27
+    cumulativeExperience: 525843
+    nextExperience: 20224
+    currencyCost: 18376
+  - level: 28
+    cumulativeExperience: 546067
+    nextExperience: 20225
+    currencyCost: 18980
+  - level: 29
+    cumulativeExperience: 566292
+    nextExperience: 20225
+    currencyCost: 19578
+  - level: 30
+    cumulativeExperience: 586517
+    nextExperience: 20225
+    currencyCost: 20170
+  - level: 31
+    cumulativeExperience: 606742
+    nextExperience: 20224
+    currencyCost: 20757
+  - level: 32
+    cumulativeExperience: 626966
+    nextExperience: 20225
+    currencyCost: 21338
+  - level: 33
+    cumulativeExperience: 647191
+    nextExperience: 20225
+    currencyCost: 21913
+  - level: 34
+    cumulativeExperience: 667416
+    nextExperience: 20224
+    currencyCost: 22481
+  - level: 35
+    cumulativeExperience: 687640
+    nextExperience: 20225
+    currencyCost: 23043
+  - level: 36
+    cumulativeExperience: 707865
+    nextExperience: 20225
+    currencyCost: 23599
+  - level: 37
+    cumulativeExperience: 728090
+    nextExperience: 20225
+    currencyCost: 24148
+  - level: 38
+    cumulativeExperience: 748315
+    nextExperience: 20224
+    currencyCost: 24690
+  - level: 39
+    cumulativeExperience: 768539
+    nextExperience: 20225
+    currencyCost: 25225
+  - level: 40
+    cumulativeExperience: 788764
+    nextExperience: 40
+    currencyCost: 40
+  - level: 41
+    cumulativeExperience: 808989
+    nextExperience: 20225
+    currencyCost: 26274
+  - level: 42
+    cumulativeExperience: 829214
+    nextExperience: 20224
+    currencyCost: 26787
+  - level: 43
+    cumulativeExperience: 849438
+    nextExperience: 20225
+    currencyCost: 27293
+  - level: 44
+    cumulativeExperience: 869663
+    nextExperience: 20225
+    currencyCost: 27792
+  - level: 45
+    cumulativeExperience: 889888
+    nextExperience: 20224
+    currencyCost: 28282
+  - level: 46
+    cumulativeExperience: 910112
+    nextExperience: 20225
+    currencyCost: 28765
+  - level: 47
+    cumulativeExperience: 930337
+    nextExperience: 20225
+    currencyCost: 29239
+  - level: 48
+    cumulativeExperience: 950562
+    nextExperience: 20224
+    currencyCost: 29706
+  - level: 49
+    cumulativeExperience: 970786
+    nextExperience: 20225
+    currencyCost: 30163
+  - level: 50
+    cumulativeExperience: 991011
+    nextExperience: 20225
+    currencyCost: 30613
+  - level: 51
+    cumulativeExperience: 1011236
+    nextExperience: 20225
+    currencyCost: 31054
+  - level: 52
+    cumulativeExperience: 1031461
+    nextExperience: 20224
+    currencyCost: 31486
+  - level: 53
+    cumulativeExperience: 1051685
+    nextExperience: 20225
+    currencyCost: 31909
+  - level: 54
+    cumulativeExperience: 1071910
+    nextExperience: 20225
+    currencyCost: 32323
+  - level: 55
+    cumulativeExperience: 1092135
+    nextExperience: 20225
+    currencyCost: 32728
+  - level: 56
+    cumulativeExperience: 1112360
+    nextExperience: 20224
+    currencyCost: 33123
+  - level: 57
+    cumulativeExperience: 1132584
+    nextExperience: 20225
+    currencyCost: 33509
+  - level: 58
+    cumulativeExperience: 1152809
+    nextExperience: 20225
+    currencyCost: 33886
+  - level: 59
+    cumulativeExperience: 1173034
+    nextExperience: 20224
+    currencyCost: 34252
+  - level: 60
+    cumulativeExperience: 1193258
+    nextExperience: 20225
+    currencyCost: 34609
+  - level: 61
+    cumulativeExperience: 1213483
+    nextExperience: 20225
+    currencyCost: 34956
+  - level: 62
+    cumulativeExperience: 1233708
+    nextExperience: 20224
+    currencyCost: 35292
+  - level: 63
+    cumulativeExperience: 1253932
+    nextExperience: 20225
+    currencyCost: 35618
+  - level: 64
+    cumulativeExperience: 1274157
+    nextExperience: 20225
+    currencyCost: 35934
+  - level: 65
+    cumulativeExperience: 1294382
+    nextExperience: 20225
+    currencyCost: 36239
+  - level: 66
+    cumulativeExperience: 1314607
+    nextExperience: 20225
+    currencyCost: 36533
+  - level: 67
+    cumulativeExperience: 1334832
+    nextExperience: 20224
+    currencyCost: 36816
+  - level: 68
+    cumulativeExperience: 1355056
+    nextExperience: 20225
+    currencyCost: 37089
+  - level: 69
+    cumulativeExperience: 1375281
+    nextExperience: 20225
+    currencyCost: 37350
+  - level: 70
+    cumulativeExperience: 1395506
+    nextExperience: 20224
+    currencyCost: 37600
+  - level: 71
+    cumulativeExperience: 1415730
+    nextExperience: 20225
+    currencyCost: 37838
+  - level: 72
+    cumulativeExperience: 1435955
+    nextExperience: 20225
+    currencyCost: 38065
+  - level: 73
+    cumulativeExperience: 1456180
+    nextExperience: 20224
+    currencyCost: 38280
+  - level: 74
+    cumulativeExperience: 1476404
+    nextExperience: 20225
+    currencyCost: 38483
+  - level: 75
+    cumulativeExperience: 1496629
+    nextExperience: 20225
+    currencyCost: 38674
+  - level: 76
+    cumulativeExperience: 1516854
+    nextExperience: 20225
+    currencyCost: 38853
+  - level: 77
+    cumulativeExperience: 1537079
+    nextExperience: 20224
+    currencyCost: 39019
+  - level: 78
+    cumulativeExperience: 1557303
+    nextExperience: 20225
+    currencyCost: 39173
+  - level: 79
+    cumulativeExperience: 1577528
+    nextExperience: 20225
+    currencyCost: 39315
+  - level: 80
+    cumulativeExperience: 1597753
+    nextExperience: 20225
+    currencyCost: 39444
+  - level: 81
+    cumulativeExperience: 1617978
+    nextExperience: 20224
+    currencyCost: 39560
+  - level: 82
+    cumulativeExperience: 1638202
+    nextExperience: 20225
+    currencyCost: 39663
+  - level: 83
+    cumulativeExperience: 1658427
+    nextExperience: 20225
+    currencyCost: 39752
+  - level: 84
+    cumulativeExperience: 1678652
+    nextExperience: 20224
+    currencyCost: 39829
+  - level: 85
+    cumulativeExperience: 1698876
+    nextExperience: 20225
+    currencyCost: 39892
+  - level: 86
+    cumulativeExperience: 1719101
+    nextExperience: 20225
+    currencyCost: 39941
+  - level: 87
+    cumulativeExperience: 1739326
+    nextExperience: 20224
+    currencyCost: 39977
+  - level: 88
+    cumulativeExperience: 1759550
+    nextExperience: 20225
+    currencyCost: 39999
+  - level: 89
+    cumulativeExperience: 1779775
+    nextExperience: 20225
+    currencyCost: 40006
+  - level: 90
+    cumulativeExperience: 1800000
+    nextExperience: 0
+    currencyCost: 0
