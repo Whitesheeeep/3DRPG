@@ -1,0 +1,53 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <Style src="project://database/Assets/Scripts/ItemSystem/Editor/Style/ItemWeaponDetails.uss?fileID=7433441132597879392&amp;guid=1181ee7bc2a9b6845b952b085fed3e9c&amp;type=3#ItemWeaponDetails" />
+    <ui:Label text="武器基础配置" class="item-editor-section-title" />
+    <ui:VisualElement name="WeaponBaseFields" class="item-editor-weapon-field-group">
+        <uie:PropertyField name="WeaponTypeField" binding-path="weaponType" label="武器类型" class="item-editor-property-field" />
+        <uie:PropertyField name="MaxLevelField" binding-path="maxLevel" label="最大等级" class="item-editor-property-field" />
+        <uie:PropertyField name="MaxAscensionRankField" binding-path="maxAscensionRank" label="最大突破阶数" class="item-editor-property-field" />
+        <uie:PropertyField name="MaxRefinementRankField" binding-path="maxRefinementRank" label="最大精炼阶数" class="item-editor-property-field" />
+        <uie:ObjectField name="GrowthProfileField" binding-path="growthProfile" label="成长配置" type="RPG.ItemSystem.WeaponGrowthProfile, Assembly-CSharp" allow-scene-objects="false" class="item-editor-property-field" />
+        <uie:PropertyField name="LevelEffectsField" binding-path="levelEffects" label="武器等级属性效果列表" class="item-editor-property-field" />
+        <uie:PropertyField name="RefinementEffectsField" binding-path="refinementEffects" label="武器精炼属性效果列表" class="item-editor-property-field" />
+    </ui:VisualElement>
+    <ui:VisualElement name="GameplayEffectHelp" class="item-editor-weapon-help">
+        <ui:Label text="一个 GameplayEffect 可以包含多个属性 Modifier，例如同时配置攻击力、暴击率和暴击伤害。等级属性效果使用武器等级作为 GE 等级；精炼属性效果使用精炼阶数作为 GE 等级。Magnitude 为 0 表示效果仍会应用但数值为零；缺少合法等级或产生非有限值属于配置错误。" class="item-editor-weapon-help-text" />
+    </ui:VisualElement>
+    <ui:VisualElement name="WeaponStageFields" class="item-editor-weapon-stage-groups">
+        <ui:Label name="AscensionStageTitle" text="突破配置" class="item-editor-subsection-title" />
+        <ui:VisualElement name="AscensionStageHost" class="item-editor-weapon-field-group">
+            <uie:PropertyField name="AscensionStagesField" binding-path="ascensionStages" label="突破阶段与消耗" class="item-editor-property-field" />
+        </ui:VisualElement>
+        <ui:Label name="RefinementStageTitle" text="精炼配置" class="item-editor-subsection-title" />
+        <ui:VisualElement name="RefinementStageHost" class="item-editor-weapon-field-group">
+            <uie:PropertyField name="RefinementStagesField" binding-path="refinementStages" label="精炼阶段与消耗" class="item-editor-property-field" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+    <ui:Label text="武器成长配置" class="item-editor-section-title" />
+    <ui:VisualElement name="GrowthProfileFields" class="item-editor-weapon-field-group">
+        <ui:VisualElement name="MissingGrowthProfileWarning" class="item-editor-weapon-warning">
+            <ui:Label text="当前武器没有成长配置，请先创建并绑定成长配置资产。" class="item-editor-weapon-warning-text" />
+        </ui:VisualElement>
+        <ui:VisualElement name="GrowthProfileContent" class="item-editor-weapon-field-group">
+            <uie:PropertyField name="GrowthProfileMaxLevelField" binding-path="maxLevel" label="最大等级" enabled="false" class="item-editor-property-field" />
+            <uie:PropertyField name="CumulativeExperienceCurveField" binding-path="cumulativeExperienceCurve" label="累计经验曲线" class="item-editor-property-field" />
+            <uie:PropertyField name="CurrencyCostCurveField" binding-path="currencyCostCurve" label="货币消耗曲线" class="item-editor-property-field" />
+            <uie:PropertyField name="LevelOverridesField" binding-path="levelOverrides" label="特殊等级覆盖" class="item-editor-property-field" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+    <ui:VisualElement name="BakedResultHost" class="item-editor-weapon-field-group">
+        <ui:Label text="烘焙结果（只读）" class="item-editor-section-title" />
+        <ui:VisualElement name="BakedSummary" class="item-editor-baked-summary">
+            <ui:Label name="BakedSummaryLabel" text="烘焙结果：未配置成长配置。" />
+            <ui:Button name="BakeButton" text="烘焙成长表" />
+        </ui:VisualElement>
+        <ui:VisualElement name="BakedHeader" class="item-editor-baked-header">
+            <ui:Label name="Level" text="等级" class="item-editor-baked-cell item-editor-baked-cell--level" />
+            <ui:Label name="CumulativeExperience" text="累计经验" class="item-editor-baked-cell item-editor-baked-cell--cumulative" />
+            <ui:Label name="NextExperience" text="下一级经验" class="item-editor-baked-cell item-editor-baked-cell--next" />
+            <ui:Label name="CurrencyCost" text="货币消耗" class="item-editor-baked-cell item-editor-baked-cell--currency" />
+            <ui:Label name="Breakthrough" text="突破状态" class="item-editor-baked-cell item-editor-baked-cell--breakthrough" />
+        </ui:VisualElement>
+        <ui:ListView name="BakedProgressionList" fixed-item-height="24" selection-type="None" class="item-editor-baked-list" />
+    </ui:VisualElement>
+</ui:UXML>

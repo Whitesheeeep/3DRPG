@@ -1,0 +1,39 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <Style src="project://database/Assets/Scripts/ItemSystem/Editor/Style/ItemArtifactDetails.uss" />
+    <ui:VisualElement name="ArtifactDetailsRoot" class="item-editor-artifact-details">
+        <ui:Label text="圣遗物基础配置" class="item-editor-section-title" />
+        <ui:VisualElement name="ArtifactBaseFields" class="item-editor-artifact-field-group">
+            <uie:PropertyField name="ArtifactSlotField" binding-path="slot" label="圣遗物部位" class="item-editor-property-field" />
+            <uie:PropertyField name="ArtifactMaxLevelField" binding-path="maxLevel" label="最大等级" class="item-editor-property-field" />
+            <uie:PropertyField name="ArtifactGrowthProfileField" binding-path="growthProfile" label="成长配置" class="item-editor-property-field" />
+            <uie:PropertyField name="ArtifactLevelEffectsField" binding-path="levelEffects" label="圣遗物等级属性效果列表" class="item-editor-property-field" />
+            <ui:Label text="等级属性效果使用圣遗物当前等级作为 GE Level；Magnitude 为 0 表示效果仍存在但数值为零。" class="item-editor-help-text" />
+        </ui:VisualElement>
+        <ui:Label text="圣遗物成长配置" class="item-editor-section-title" />
+        <ui:VisualElement name="ArtifactGrowthFields" class="item-editor-artifact-field-group">
+            <ui:VisualElement name="MissingArtifactGrowthProfileWarning" class="item-editor-artifact-warning">
+                <ui:Label text="当前圣遗物没有成长配置，请先创建并绑定成长配置资产。" class="item-editor-artifact-warning-text" />
+            </ui:VisualElement>
+            <ui:VisualElement name="ArtifactGrowthProfileContent" class="item-editor-artifact-field-group">
+                <uie:PropertyField name="ArtifactGrowthProfileMaxLevelField" binding-path="maxLevel" label="最大等级" enabled="false" class="item-editor-property-field" />
+                <uie:PropertyField name="ArtifactCumulativeExperienceCurveField" binding-path="cumulativeExperienceCurve" label="累计经验曲线" class="item-editor-property-field" />
+                <uie:PropertyField name="ArtifactCurrencyCostCurveField" binding-path="currencyCostCurve" label="货币消耗曲线" class="item-editor-property-field" />
+                <uie:PropertyField name="ArtifactLevelOverridesField" binding-path="levelOverrides" label="特殊等级覆盖" class="item-editor-property-field" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="ArtifactBakedResultHost" class="item-editor-artifact-field-group">
+            <ui:Label text="烘焙结果（只读）" class="item-editor-section-title" />
+            <ui:VisualElement name="ArtifactBakedSummary" class="item-editor-baked-summary">
+                <ui:Label name="ArtifactBakedSummaryLabel" text="烘焙结果：未配置成长配置。" />
+                <ui:Button name="ArtifactBakeButton" text="烘焙成长表" />
+            </ui:VisualElement>
+            <ui:VisualElement name="ArtifactBakedHeader" class="item-editor-baked-header">
+                <ui:Label name="ArtifactLevel" text="等级" class="item-editor-baked-cell item-editor-baked-cell--level" />
+                <ui:Label name="ArtifactCumulativeExperience" text="累计经验" class="item-editor-baked-cell" />
+                <ui:Label name="ArtifactNextExperience" text="下一级经验" class="item-editor-baked-cell" />
+                <ui:Label name="ArtifactCurrencyCost" text="货币消耗" class="item-editor-baked-cell" />
+            </ui:VisualElement>
+            <ui:ListView name="ArtifactBakedProgressionList" fixed-item-height="24" selection-type="None" class="item-editor-baked-list" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

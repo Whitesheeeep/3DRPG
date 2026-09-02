@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f2c6a1e4b7d43a8c0e5f1b6d9a20374, type: 3}
+  m_Name: "\u661F\u950B\u5251"
+  m_EditorClassIdentifier: 
+  itemId:
+    value: weapon_270082f28c264bfebd8dd0d3c8fa8032
+  displayName: "\u661F\u950B\u5251"
+  description: 
+  category: 4
+  rarity: 3
+  sortPriority: 500
+  iconAddress: Bag
+  iconSpriteName: "\u661F\u950B\u5251_11211"
+  worldPrefabAddress: 
+  editorPreviewIcon: {fileID: 21300000, guid: baf0b007ba272e548a6052efd7f38000, type: 3}
+  weaponType: 0
+  maxLevel: 90
+  maxAscensionRank: 6
+  maxRefinementRank: 5
+  growthProfile: {fileID: 11400000, guid: 28d498b19f3930b4c822ae935539a474, type: 2}
+  levelEffects: []
+  refinementEffects: []
+  ascensionStages: []
+  refinementStages: []

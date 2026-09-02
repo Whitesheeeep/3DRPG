@@ -1,0 +1,23 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/ItemSystem/Editor/Style/ItemDefinitionListRow.uss" />
+    <ui:VisualElement name="DefinitionRow" class="item-editor-definition-row">
+        <ui:VisualElement class="item-editor-row-icon-container">
+            <ui:Image name="IconImage" class="item-editor-row-icon-image" />
+            <ui:Label name="IconFallback" class="item-editor-row-icon-fallback" />
+        </ui:VisualElement>
+        <ui:VisualElement class="item-editor-row-content">
+            <ui:VisualElement class="item-editor-row-name-line">
+                <ui:Label name="Name" class="item-editor-row-name" />
+                <ui:TextField name="InlineName" class="item-editor-inline-name" />
+            </ui:VisualElement>
+            <ui:Label name="Id" class="item-editor-row-id" />
+            <ui:VisualElement class="item-editor-row-meta-line">
+                <ui:Label name="Kind" class="item-editor-row-kind" />
+                <ui:Label name="Meta" class="item-editor-row-meta" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:Label name="Rarity" class="item-editor-row-rarity" />
+        <!-- 选择框放在内容之后，兼容 Unity UI Toolkit 且不依赖额外层级样式。 -->
+        <ui:VisualElement name="SelectionFrame" class="item-editor-row-selection-frame" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

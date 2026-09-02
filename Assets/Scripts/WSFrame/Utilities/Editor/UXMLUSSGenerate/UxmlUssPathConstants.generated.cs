@@ -40,6 +40,30 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsGASLightTagSystemEditorStyleGameplayTagEditor = "Assets/GAS_Light/TagSystem/Editor/Style/GameplayTagEditor.uxml";
             /// <summary>资源路径：Assets/GAS_Light/TagSystem/Editor/Style/GameplayTagTreeRow.uxml</summary>
             public const string AssetsGASLightTagSystemEditorStyleGameplayTagTreeRow = "Assets/GAS_Light/TagSystem/Editor/Style/GameplayTagTreeRow.uxml";
+            /// <summary>资源路径：Assets/Scripts/DialogueSystem/Editor/Style/DialogueGraphEditorWindow.uxml</summary>
+            public const string AssetsScriptsDialogueSystemEditorStyleDialogueGraphEditorWindow = "Assets/Scripts/DialogueSystem/Editor/Style/DialogueGraphEditorWindow.uxml";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemArtifactDetails.uxml</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemArtifactDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemArtifactDetails.uxml";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemBakedArtifactProgressionRow.uxml</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemBakedArtifactProgressionRow = "Assets/Scripts/ItemSystem/Editor/Style/ItemBakedArtifactProgressionRow.uxml";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemBakedProgressionRow.uxml</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemBakedProgressionRow = "Assets/Scripts/ItemSystem/Editor/Style/ItemBakedProgressionRow.uxml";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemCommonDetails.uxml</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemCommonDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemCommonDetails.uxml";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemConfigEditorWindow.uxml</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemConfigEditorWindow = "Assets/Scripts/ItemSystem/Editor/Style/ItemConfigEditorWindow.uxml";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemDefinitionListRow.uxml</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemDefinitionListRow = "Assets/Scripts/ItemSystem/Editor/Style/ItemDefinitionListRow.uxml";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemDefinitionSummary.uxml</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemDefinitionSummary = "Assets/Scripts/ItemSystem/Editor/Style/ItemDefinitionSummary.uxml";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemDevelopmentDetails.uxml</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemDevelopmentDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemDevelopmentDetails.uxml";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemStackableDetails.uxml</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemStackableDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemStackableDetails.uxml";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemWeaponDetails.uxml</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemWeaponDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemWeaponDetails.uxml";
+            /// <summary>资源路径：Assets/Scripts/SaveSystem/Editor/SaveJsonViewerWindow.uxml</summary>
+            public const string AssetsScriptsSaveSystemEditorSaveJsonViewerWindow = "Assets/Scripts/SaveSystem/Editor/SaveJsonViewerWindow.uxml";
             /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/EditorWindowStyle/SkillTimelineEditorWindow.uxml</summary>
             public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowEditorWindowStyleSkillTimelineEditorWindow = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/EditorWindowStyle/SkillTimelineEditorWindow.uxml";
             /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/Item/SkillTimelineItem.uxml</summary>
@@ -80,6 +104,30 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsGASLightGameplayCueSystemEditorStyleGameplayCueEditor = "Assets/GAS_Light/GameplayCueSystem/Editor/Style/GameplayCueEditor.uss";
             /// <summary>资源路径：Assets/GAS_Light/TagSystem/Editor/Style/GameplayTagEditor.uss</summary>
             public const string AssetsGASLightTagSystemEditorStyleGameplayTagEditor = "Assets/GAS_Light/TagSystem/Editor/Style/GameplayTagEditor.uss";
+            /// <summary>资源路径：Assets/Scripts/DialogueSystem/Editor/Style/DialogueGraphEditor.uss</summary>
+            public const string AssetsScriptsDialogueSystemEditorStyleDialogueGraphEditor = "Assets/Scripts/DialogueSystem/Editor/Style/DialogueGraphEditor.uss";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemArtifactDetails.uss</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemArtifactDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemArtifactDetails.uss";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemBakedArtifactProgressionRow.uss</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemBakedArtifactProgressionRow = "Assets/Scripts/ItemSystem/Editor/Style/ItemBakedArtifactProgressionRow.uss";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemBakedProgressionRow.uss</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemBakedProgressionRow = "Assets/Scripts/ItemSystem/Editor/Style/ItemBakedProgressionRow.uss";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemCommonDetails.uss</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemCommonDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemCommonDetails.uss";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemConfigEditorWindow.uss</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemConfigEditorWindow = "Assets/Scripts/ItemSystem/Editor/Style/ItemConfigEditorWindow.uss";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemDefinitionListRow.uss</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemDefinitionListRow = "Assets/Scripts/ItemSystem/Editor/Style/ItemDefinitionListRow.uss";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemDefinitionSummary.uss</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemDefinitionSummary = "Assets/Scripts/ItemSystem/Editor/Style/ItemDefinitionSummary.uss";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemDevelopmentDetails.uss</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemDevelopmentDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemDevelopmentDetails.uss";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemStackableDetails.uss</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemStackableDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemStackableDetails.uss";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemWeaponDetails.uss</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemWeaponDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemWeaponDetails.uss";
+            /// <summary>资源路径：Assets/Scripts/SaveSystem/Editor/SaveJsonViewerWindow.uss</summary>
+            public const string AssetsScriptsSaveSystemEditorSaveJsonViewerWindow = "Assets/Scripts/SaveSystem/Editor/SaveJsonViewerWindow.uss";
             /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/EditorWindowStyle/SkillTimelineEditorWindow.uss</summary>
             public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowEditorWindowStyleSkillTimelineEditorWindow = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/EditorWindowStyle/SkillTimelineEditorWindow.uss";
             /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineActionPhaseClipItem.uss</summary>

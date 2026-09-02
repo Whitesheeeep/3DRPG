@@ -1,0 +1,15 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/ItemSystem/Editor/Style/ItemCommonDetails.uss" />
+    <ui:VisualElement name="CommonDetailsRoot" class="item-editor-common-details">
+        <uie:PropertyField name="ItemIdField" binding-path="itemId" label="稳定物品标识" enabled="false" class="item-editor-property-field" />
+        <ui:TextField name="DisplayNameField" label="显示名称" is-delayed="true" class="item-editor-property-field" />
+        <uie:PropertyField name="DescriptionField" binding-path="description" label="物品描述" class="item-editor-property-field" />
+        <uie:PropertyField name="CategoryField" binding-path="category" label="物品类型" class="item-editor-property-field" />
+        <uie:PropertyField name="RarityField" binding-path="rarity" label="稀有度" class="item-editor-property-field" />
+        <uie:PropertyField name="SortPriorityField" binding-path="sortPriority" label="默认排序优先级" class="item-editor-property-field" />
+        <uie:PropertyField name="EditorPreviewIconField" binding-path="editorPreviewIcon" label="编辑器预览图标" class="item-editor-property-field" />
+        <uie:PropertyField name="IconAddressField" binding-path="iconAddress" label="图标图集资源地址" class="item-editor-property-field" />
+        <uie:PropertyField name="IconSpriteNameField" binding-path="iconSpriteName" label="图集内图片名称" class="item-editor-property-field" />
+        <uie:PropertyField name="WorldPrefabAddressField" binding-path="worldPrefabAddress" label="世界预制体资源地址" class="item-editor-property-field" />
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,19 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/ItemSystem/Editor/Style/ItemDefinitionSummary.uss" />
+    <ui:VisualElement name="SummaryCard" class="item-editor-definition-summary">
+        <ui:VisualElement class="item-editor-summary-icon-container">
+            <ui:Image name="SummaryIconImage" class="item-editor-summary-icon-image" />
+            <ui:Label name="SummaryIconFallback" class="item-editor-summary-icon-fallback" />
+        </ui:VisualElement>
+        <ui:VisualElement class="item-editor-summary-content">
+            <ui:VisualElement class="item-editor-summary-name-line">
+                <ui:Label name="SummaryName" class="item-editor-summary-name" />
+                <ui:Label name="SummaryKind" class="item-editor-summary-kind" />
+                <ui:Label name="SummaryCategory" class="item-editor-summary-category" />
+            </ui:VisualElement>
+            <ui:Label name="SummaryRarity" class="item-editor-summary-rarity" />
+            <ui:Label name="SummaryId" class="item-editor-summary-id" />
+            <ui:Label name="SummaryHint" class="item-editor-summary-hint" text="双击左侧列表中的名称可快速重命名；稳定物品标识不会随名称变化。" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

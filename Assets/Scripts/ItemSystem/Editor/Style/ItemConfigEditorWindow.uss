@@ -1,0 +1,227 @@
+.item-editor-root {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    min-height: 0;
+    background-color: rgb(30, 30, 30);
+    color: rgb(225, 225, 225);
+}
+
+.item-editor-toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    min-width: 0;
+    padding: 6px 8px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(72, 72, 72);
+}
+
+.item-editor-toolbar Button {
+    flex-shrink: 0;
+    margin-left: 4px;
+    margin-top: 2px;
+    margin-bottom: 2px;
+}
+
+.item-editor-database-field {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 220px;
+    margin-right: 6px;
+}
+
+.item-editor-body {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    min-height: 0;
+}
+
+.item-editor-body > .unity-two-pane-split-view__content-container,
+.item-editor-body > .unity-two-pane-split-view__pane,
+.item-editor-body > .unity-two-pane-split-view__dragline-anchor {
+    min-width: 0;
+    min-height: 0;
+}
+
+.item-editor-sidebar {
+    width: 360px;
+    min-width: 320px;
+    max-width: 360px;
+    min-height: 0;
+    padding: 8px;
+    border-right-width: 1px;
+    border-right-color: rgb(70, 70, 70);
+}
+
+.item-editor-filter-row {
+    flex-direction: row;
+    min-width: 0;
+    margin-top: 6px;
+}
+
+.item-editor-filter-field {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    margin-right: 6px;
+}
+
+.item-editor-filter-field--last {
+    margin-right: 0;
+}
+
+.item-editor-filter-label {
+    margin-bottom: 2px;
+    color: rgb(165, 165, 165);
+}
+
+.item-editor-filter-dropdown {
+    min-width: 0;
+    width: auto;
+}
+
+.item-editor-filter-dropdown .unity-base-field__label {
+    min-width: 0;
+    width: 0;
+    flex-grow: 0;
+}
+
+.item-editor-filter-dropdown .unity-base-field__input {
+    min-width: 0;
+    flex-grow: 1;
+}
+
+.item-editor-sort-row {
+    margin-top: 2px;
+}
+
+.item-editor-definition-list {
+    flex-grow: 1;
+    min-height: 100px;
+    min-width: 0;
+    margin-top: 6px;
+}
+
+.item-editor-definition-list .unity-list-view__empty-label {
+    display: none;
+}
+
+.item-editor-empty-list {
+    flex-grow: 1;
+    min-height: 120px;
+    align-items: center;
+    justify-content: center;
+    color: rgb(150, 150, 150);
+}
+
+.item-editor-details-pane {
+    flex-grow: 1;
+    min-width: 0;
+    min-height: 0;
+    padding: 12px 16px 8px 16px;
+}
+
+.item-editor-definition-summary-host {
+    flex-grow: 0;
+    flex-shrink: 0;
+    min-width: 0;
+    margin-bottom: 10px;
+}
+
+.item-editor-empty-details {
+    flex-grow: 1;
+    align-items: center;
+    justify-content: center;
+    color: rgb(150, 150, 150);
+}
+
+.item-editor-details {
+    flex-grow: 1;
+    min-width: 0;
+    min-height: 0;
+}
+
+.item-editor-details-page {
+    flex-direction: column;
+    min-width: 0;
+    max-width: 100%;
+    flex-shrink: 1;
+}
+
+.item-editor-details .unity-scroll-view__content-container {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.item-editor-details .unity-scroll-view__horizontal-scroller {
+    display: none;
+}
+
+.item-editor-details .item-editor-property-field {
+    min-width: 0;
+    max-width: 100%;
+    flex-shrink: 1;
+    margin-bottom: 4px;
+}
+
+.item-editor-details .unity-property-field,
+.item-editor-details .unity-property-field__input,
+.item-editor-details .unity-property-field__value,
+.item-editor-details .unity-property-field__container {
+    min-width: 0;
+    max-width: 100%;
+    flex-shrink: 1;
+}
+
+.item-editor-details .item-editor-property-field .unity-base-field {
+    min-width: 0;
+    max-width: 100%;
+    flex-shrink: 1;
+}
+
+.item-editor-details .item-editor-property-field .unity-base-field__label {
+    width: 160px;
+    min-width: 160px;
+    max-width: 160px;
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+.item-editor-details .item-editor-property-field .unity-base-field__input {
+    min-width: 0;
+    max-width: 100%;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.item-editor-details .item-editor-property-field .unity-list-view,
+.item-editor-details .item-editor-property-field .unity-scroll-view,
+.item-editor-details .item-editor-property-field .unity-foldout {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.item-editor-section-title {
+    margin-top: 12px;
+    margin-bottom: 4px;
+    padding-bottom: 3px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(83, 83, 83);
+    -unity-font-style: bold;
+    color: rgb(125, 195, 255);
+}
+
+.item-editor-status {
+    min-height: 22px;
+    padding-left: 10px;
+    padding-top: 4px;
+    color: rgb(160, 190, 160);
+    border-top-width: 1px;
+    border-top-color: rgb(70, 70, 70);
+}
+
+.item-editor-status--error {
+    color: rgb(255, 130, 130);
+}

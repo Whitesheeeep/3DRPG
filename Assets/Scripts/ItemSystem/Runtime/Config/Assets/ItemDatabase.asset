@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4adf310f1da34ae7a7e5f36d7c4d2b91, type: 3}
+  m_Name: ItemDatabase
+  m_EditorClassIdentifier: 
+  definitions:
+  - {fileID: 11400000, guid: d66c99f27e8540d45bcd3b973b2d4889, type: 2}
+  - {fileID: 11400000, guid: 371829421fb4dbc4b97b9aa139de391b, type: 2}
+  - {fileID: 11400000, guid: 1303ced24d9d700418fa5644e7dd934e, type: 2}
+  - {fileID: 11400000, guid: 32d6e344cc5d898469ba5bfdd7b7bfe3, type: 2}
+  - {fileID: 11400000, guid: 766ed4bd2e34310428076c61553f6778, type: 2}
+  categoryDefaults:
+  - category: 0
+    defaultRarity: 1
+    defaultSortPriority: 100
+    defaultMaxQuantity: 9999
+  - category: 1
+    defaultRarity: 1
+    defaultSortPriority: 200
+    defaultMaxQuantity: 9999
+  - category: 2
+    defaultRarity: 2
+    defaultSortPriority: 300
+    defaultMaxQuantity: 200
+  - category: 3
+    defaultRarity: 3
+    defaultSortPriority: 400
+    defaultMaxQuantity: 99
+  - category: 4
+    defaultRarity: 4
+    defaultSortPriority: 500
+    defaultMaxQuantity: 1
+  - category: 5
+    defaultRarity: 5
+    defaultSortPriority: 500
+    defaultMaxQuantity: 1
+  - category: 6
+    defaultRarity: 1
+    defaultSortPriority: 600
+    defaultMaxQuantity: 9999

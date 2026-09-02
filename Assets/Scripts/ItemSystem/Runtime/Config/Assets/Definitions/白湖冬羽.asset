@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f2c6a1e4b7d43a8c0e5f1b6d9a20374, type: 3}
+  m_Name: "\u767D\u6E56\u51AC\u7FBD"
+  m_EditorClassIdentifier: 
+  itemId:
+    value: weapon_90e37aa1419e460b93e5afebbae0ae18
+  displayName: "\u767D\u6E56\u51AC\u7FBD"
+  description: "\u8FD9\u662F\u4E00\u4E2A\u5200"
+  category: 4
+  rarity: 5
+  sortPriority: 500
+  iconAddress: Bag
+  iconSpriteName: "\u767D\u6E56\u51AC\u7FBD_11210"
+  worldPrefabAddress: 
+  editorPreviewIcon: {fileID: 21300000, guid: 91df821d9dcbb3b499239864e744b8dc, type: 3}
+  weaponType: 0
+  maxLevel: 90
+  maxAscensionRank: 6
+  maxRefinementRank: 6
+  growthProfile: {fileID: 11400000, guid: 2d9691121d98a3a4690df892bd671a07, type: 2}
+  levelEffects: []
+  refinementEffects: []
+  ascensionStages:
+  - requiredLevel: 20
+    maxLevelAfter: 40
+    cost:
+      itemCosts: []
+      currencyCosts: []
+  refinementStages:
+  - rank: 1
+    requiredDuplicateCount: 1
+    cost:
+      itemCosts: []
+      currencyCosts: []

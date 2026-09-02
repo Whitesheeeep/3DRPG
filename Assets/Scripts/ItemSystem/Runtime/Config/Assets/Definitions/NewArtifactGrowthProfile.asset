@@ -1,0 +1,149 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d75947f27cbfbd3418d2959258de862b, type: 3}
+  m_Name: NewArtifactGrowthProfile
+  m_EditorClassIdentifier: 
+  maxLevel: 20
+  cumulativeExperienceCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 13523.75
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 20
+      value: 270475
+      inSlope: 13523.75
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  currencyCostCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 20
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  levelOverrides: []
+  bakedProgressions:
+  - level: 0
+    cumulativeExperience: 0
+    nextExperience: 13524
+    currencyCost: 0
+  - level: 1
+    cumulativeExperience: 13524
+    nextExperience: 13524
+    currencyCost: 0
+  - level: 2
+    cumulativeExperience: 27048
+    nextExperience: 13523
+    currencyCost: 0
+  - level: 3
+    cumulativeExperience: 40571
+    nextExperience: 13524
+    currencyCost: 0
+  - level: 4
+    cumulativeExperience: 54095
+    nextExperience: 13524
+    currencyCost: 0
+  - level: 5
+    cumulativeExperience: 67619
+    nextExperience: 13523
+    currencyCost: 0
+  - level: 6
+    cumulativeExperience: 81142
+    nextExperience: 13524
+    currencyCost: 0
+  - level: 7
+    cumulativeExperience: 94666
+    nextExperience: 13524
+    currencyCost: 0
+  - level: 8
+    cumulativeExperience: 108190
+    nextExperience: 13524
+    currencyCost: 0
+  - level: 9
+    cumulativeExperience: 121714
+    nextExperience: 13524
+    currencyCost: 0
+  - level: 10
+    cumulativeExperience: 135238
+    nextExperience: 13523
+    currencyCost: 0
+  - level: 11
+    cumulativeExperience: 148761
+    nextExperience: 13524
+    currencyCost: 0
+  - level: 12
+    cumulativeExperience: 162285
+    nextExperience: 13524
+    currencyCost: 0
+  - level: 13
+    cumulativeExperience: 175809
+    nextExperience: 13523
+    currencyCost: 0
+  - level: 14
+    cumulativeExperience: 189332
+    nextExperience: 13524
+    currencyCost: 0
+  - level: 15
+    cumulativeExperience: 202856
+    nextExperience: 13524
+    currencyCost: 0
+  - level: 16
+    cumulativeExperience: 216380
+    nextExperience: 13524
+    currencyCost: 0
+  - level: 17
+    cumulativeExperience: 229904
+    nextExperience: 13524
+    currencyCost: 0
+  - level: 18
+    cumulativeExperience: 243428
+    nextExperience: 13523
+    currencyCost: 0
+  - level: 19
+    cumulativeExperience: 256951
+    nextExperience: 13524
+    currencyCost: 0
+  - level: 20
+    cumulativeExperience: 270475
+    nextExperience: 0
+    currencyCost: 0

@@ -1,0 +1,147 @@
+.item-editor-weapon-details {
+    flex-direction: column;
+    min-width: 0;
+    max-width: 100%;
+    flex-shrink: 1;
+}
+
+.item-editor-weapon-field-group {
+    flex-direction: column;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.item-editor-weapon-stage-groups {
+    flex-direction: column;
+    min-width: 0;
+    max-width: 100%;
+    margin-top: 8px;
+    padding-top: 2px;
+    border-top-width: 1px;
+    border-top-color: rgb(72, 72, 72);
+}
+
+.item-editor-subsection-title {
+    margin-top: 8px;
+    margin-bottom: 4px;
+    padding-bottom: 3px;
+    color: rgb(180, 205, 225);
+    -unity-font-style: bold;
+}
+
+.item-editor-stage-list {
+    min-width: 0;
+    max-width: 100%;
+    flex-shrink: 1;
+}
+
+.item-editor-weapon-field-group > .item-editor-property-field {
+    width: auto;
+    margin-bottom: 6px;
+}
+
+.item-editor-weapon-field-group .unity-list-view,
+.item-editor-weapon-field-group .unity-list-view__reorderable-item,
+.item-editor-weapon-field-group .unity-list-view__reorderable-item-content,
+.item-editor-weapon-field-group .unity-base-field__input {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.item-editor-weapon-help {
+    margin-top: 6px;
+    margin-bottom: 8px;
+    min-width: 0;
+    max-width: 100%;
+    padding: 6px 8px;
+    background-color: rgb(42, 59, 70);
+    border-left-width: 3px;
+    border-left-color: rgb(90, 170, 220);
+}
+
+.item-editor-weapon-help-text {
+    min-width: 0;
+    white-space: normal;
+    color: rgb(190, 220, 235);
+}
+
+.item-editor-weapon-warning {
+    margin-top: 6px;
+    margin-bottom: 8px;
+    min-width: 0;
+    max-width: 100%;
+    padding: 6px 8px;
+    background-color: rgb(74, 59, 42);
+    border-left-width: 3px;
+    border-left-color: rgb(220, 160, 75);
+}
+
+.item-editor-weapon-warning-text {
+    min-width: 0;
+    white-space: normal;
+    color: rgb(245, 215, 165);
+}
+
+.item-editor-baked-summary,
+.item-editor-baked-header,
+.item-editor-baked-list {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.item-editor-baked-summary {
+    margin-top: 8px;
+    padding: 8px;
+    background-color: rgb(45, 66, 78);
+    color: rgb(190, 225, 245);
+}
+
+.item-editor-baked-header {
+    flex-direction: row;
+    min-width: 0;
+    align-items: center;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    background-color: rgb(54, 54, 54);
+    color: rgb(190, 190, 190);
+    -unity-font-style: bold;
+}
+
+.item-editor-baked-header .item-editor-baked-cell {
+    color: rgb(190, 190, 190);
+}
+
+/* 表头不在动态行 UXML 的样式作用域内，因此在详情页再次声明列宽，保证表头与数据行对齐。 */
+.item-editor-baked-header .item-editor-baked-cell {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 72px;
+    padding-left: 6px;
+    padding-right: 6px;
+    font-size: 11px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.item-editor-baked-header .item-editor-baked-cell--level {
+    flex-grow: 0;
+    width: 58px;
+    min-width: 58px;
+}
+
+.item-editor-baked-header .item-editor-baked-cell--breakthrough {
+    flex-grow: 0;
+    width: 78px;
+    min-width: 78px;
+    -unity-text-align: middle-center;
+}
+
+.item-editor-baked-list {
+    min-height: 80px;
+    max-height: 320px;
+}
+
+.item-editor-baked-list .unity-scroll-view__horizontal-scroller {
+    display: none;
+}

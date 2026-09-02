@@ -21,17 +21,17 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: 7.mekou2
-  m_Shader: {fileID: 4800000, guid: dbfab398bab503a4e87654d5c7bf6230, type: 3}
+  m_Shader: {fileID: 4800000, guid: 650dd9526735d5b46b79224bc6e94025, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
-  m_InvalidKeywords:
-  - _TOON
+  m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
-  stringTagMap: {}
+  stringTagMap:
+    RenderType: Opaque
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -135,6 +135,7 @@ Material:
     - _AmbientToDiffuse: 5
     - _Blend: 0
     - _BlendModePreserveSpecular: 1
+    - _BlendOp: 0
     - _BumpScale: 1
     - _ClearCoatMask: 0
     - _ClearCoatSmoothness: 0
@@ -171,6 +172,7 @@ Material:
     - _RimIntensity: 1
     - _RimOffset: 1
     - _RimThreshold: 1
+    - _SampleGI: 0
     - _ShadowLum: 1.5
     - _ShadowOffset: 0
     - _ShadowSmoothness: 0
