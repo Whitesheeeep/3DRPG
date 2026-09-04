@@ -94,6 +94,8 @@ namespace WS_Modules.UIModule.Editor
         {
             /// <summary>资源路径：Assets/GAS_Light/AbilitySystem/Editor/Style/GameplayAbilityEditor.uss</summary>
             public const string AssetsGASLightAbilitySystemEditorStyleGameplayAbilityEditor = "Assets/GAS_Light/AbilitySystem/Editor/Style/GameplayAbilityEditor.uss";
+            /// <summary>资源路径：Assets/GAS_Light/AbilitySystemComponent/Editor/Style/GameplayAbilitySystemComponentInspector.uss</summary>
+            public const string AssetsGASLightAbilitySystemComponentEditorStyleGameplayAbilitySystemComponentInspector = "Assets/GAS_Light/AbilitySystemComponent/Editor/Style/GameplayAbilitySystemComponentInspector.uss";
             /// <summary>资源路径：Assets/GAS_Light/AttributeSystem/Editor/Style/GameplayAttributeEditor.uss</summary>
             public const string AssetsGASLightAttributeSystemEditorStyleGameplayAttributeEditor = "Assets/GAS_Light/AttributeSystem/Editor/Style/GameplayAttributeEditor.uss";
             /// <summary>资源路径：Assets/GAS_Light/Editor/Style/GASSettingWindow.uss</summary>
@@ -160,8 +162,6 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsScriptsWSFrameFrameControlEditorFrameSettingWindowUISystemViewUISystemView = "Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/UISystemView/UISystemView.uss";
             /// <summary>资源路径：Assets/Scripts/WSFrame/UIToolkitExtensions/Editor/GeneralLabel.uss</summary>
             public const string AssetsScriptsWSFrameUIToolkitExtensionsEditorGeneralLabel = "Assets/Scripts/WSFrame/UIToolkitExtensions/Editor/GeneralLabel.uss";
-            /// <summary>资源路径：Assets/Scripts/WSFrame/UIToolkitExtensions/Editor/GraphView/Samples/GraphViewFrameworkSampleNode.uss</summary>
-            public const string AssetsScriptsWSFrameUIToolkitExtensionsEditorGraphViewSamplesGraphViewFrameworkSampleNode = "Assets/Scripts/WSFrame/UIToolkitExtensions/Editor/GraphView/Samples/GraphViewFrameworkSampleNode.uss";
             /// <summary>资源路径：Assets/Scripts/WSFrame/UIToolkitExtensions/Editor/GraphView/WSGraphNode.uss</summary>
             public const string AssetsScriptsWSFrameUIToolkitExtensionsEditorGraphViewWSGraphNode = "Assets/Scripts/WSFrame/UIToolkitExtensions/Editor/GraphView/WSGraphNode.uss";
         }

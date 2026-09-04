@@ -108,11 +108,36 @@ namespace WS_Modules.Utilities
         #endregion
 
         #region 构造
+
         /// <summary>
         /// 创建使用默认 Box 参数的通用 Physics 形状。
         /// </summary>
         public PhysicsShapeData()
         {
+        }
+
+        #endregion
+
+        #region 调试可视化
+
+        /// <summary>
+        /// 在运行时按 Physics 查询的世界空间换算绘制当前形状的 Debug 线框。
+        /// </summary>
+        /// <param name="attachedTransform">局部位置和旋转所属的宿主 Transform。</param>
+        /// <param name="color">线框颜色。</param>
+        /// <param name="duration">线段持续显示的秒数；零表示仅显示当前帧。</param>
+        /// <param name="depthTest">是否允许线段被场景中的遮挡物隐藏。</param>
+        /// <param name="segments">曲线形状的离散线段数，必须不小于 4。</param>
+        /// <exception cref="ArgumentNullException">attachedTransform 为空。</exception>
+        public void DrawDebug(Transform attachedTransform, Color color, float duration = 0f,
+            bool depthTest = true, int segments = 24)
+        {
+            if (attachedTransform == null)
+                throw new ArgumentNullException(nameof(attachedTransform));
+
+            // 显式 Debug 调用不受 CanDrawGizmos 控制，避免把编辑器显示开关误当作运行时开关。
+            DebugUtility.DrawPhysicsShape(attachedTransform, this, color, duration,
+                depthTest, segments);
         }
 
         /// <summary>
@@ -126,6 +151,7 @@ namespace WS_Modules.Utilities
             if (!CanDrawGizmos) return;
             PhysicsShapeGizmoDrawer.Draw(attachedTransform, this);
         }
+
         #endregion
     }
 }

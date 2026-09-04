@@ -167,50 +167,61 @@ namespace WS_Modules.Utilities
             float angle, float height, Quaternion rotation, Color color, float duration = 0f,
             bool depthTest = true, int segments = DefaultSegments)
         {
+            Matrix4x4 localToWorld = Matrix4x4.TRS(center, rotation, Vector3.one);
+            DrawSectorGeometry(localToWorld, innerRadius, outerRadius, angle, height,
+                color, duration, depthTest, segments);
+        }
+
+        #endregion
+
+        #region PhysicsShapeData 联动
+
+        /// <summary>
+        /// 将 PhysicsShapeData 的局部形状转换为世界空间并提交调试线框。
+        /// </summary>
+        /// <param name="root">局部形状所属的宿主 Transform。</param>
+        /// <param name="data">需要绘制的局部 Physics 形状数据。</param>
+        /// <param name="color">线框颜色。</param>
+        /// <param name="duration">线段持续显示的秒数；零表示仅显示当前帧。</param>
+        /// <param name="depthTest">是否允许线段被场景中的遮挡物隐藏。</param>
+        /// <param name="segments">曲线形状的离散线段数。</param>
+        internal static void DrawPhysicsShape(Transform root, PhysicsShapeData data, Color color,
+            float duration, bool depthTest, int segments)
+        {
+            if (data.Type == PhysicsShapeType.None) return;
+
             ValidateDuration(duration);
-            ValidateFiniteNonNegative(innerRadius, nameof(innerRadius));
-            ValidateFinitePositive(outerRadius, nameof(outerRadius));
-            ValidateFinitePositive(angle, nameof(angle));
-            ValidateFinitePositive(height, nameof(height));
-            if (innerRadius > outerRadius)
-                throw new ArgumentOutOfRangeException(nameof(innerRadius), innerRadius,
-                    "Sector 内半径不能大于外半径。");
-            if (angle > FullCircleDegrees)
-                throw new ArgumentOutOfRangeException(nameof(angle), angle,
-                    "Sector 角度不能大于 360 度。");
-            ValidateSegments(segments);
+            Vector3 scale = GetScale(root);
+            Vector3 center = root.TransformPoint(data.LocalPosition);
+            Quaternion rotation = root.rotation * Quaternion.Euler(data.LocalEulerAngles);
 
-            Vector3 up = rotation * Vector3.up;
-            Vector3 from = rotation * (Quaternion.Euler(0f, -angle * 0.5f, 0f) * Vector3.forward);
-            Vector3 to = rotation * (Quaternion.Euler(0f, angle * 0.5f, 0f) * Vector3.forward);
-            float halfHeight = height * 0.5f;
-            Vector3 bottom = center - up * halfHeight;
-            Vector3 top = center + up * halfHeight;
-
-            // 上下两层共享同一组局部方向，保证旋转后的扇形边界完全重合。
-            DrawSectorLevel(bottom, up, from, innerRadius, outerRadius, angle, segments,
-                color, duration, depthTest);
-            DrawSectorLevel(top, up, from, innerRadius, outerRadius, angle, segments,
-                color, duration, depthTest);
-
-            // 连接扇形边界的高度线；实心扇形在中心补一条竖线以闭合尖端。
-            DrawSegment(bottom + from * outerRadius, top + from * outerRadius,
-                color, duration, depthTest);
-            if (!ApproximatelySameDirection(from, to))
-                DrawSegment(bottom + to * outerRadius, top + to * outerRadius,
-                    color, duration, depthTest);
-
-            if (innerRadius > Mathf.Epsilon)
+            switch (data.Type)
             {
-                DrawSegment(bottom + from * innerRadius, top + from * innerRadius,
-                    color, duration, depthTest);
-                if (!ApproximatelySameDirection(from, to))
-                    DrawSegment(bottom + to * innerRadius, top + to * innerRadius,
-                        color, duration, depthTest);
-            }
-            else
-            {
-                DrawSegment(bottom, top, color, duration, depthTest);
+                case PhysicsShapeType.Box:
+                    DrawCube(center, Vector3.Scale(data.Size, scale), rotation, color,
+                        duration, depthTest);
+                    break;
+                case PhysicsShapeType.Sphere:
+                    DrawSphere(center, data.Radius * MaxComponent(scale), color,
+                        duration, depthTest, segments);
+                    break;
+                case PhysicsShapeType.Capsule:
+                    DrawCapsule(center, data.Radius * GetPerpendicularScale(scale,
+                            data.CapsuleAxis),
+                        Mathf.Max(data.Height * GetScaleComponent(scale, data.CapsuleAxis),
+                            data.Radius * GetPerpendicularScale(scale, data.CapsuleAxis) * 2f),
+                        rotation * GetCapsuleAxisRotation(data.CapsuleAxis), color,
+                        duration, depthTest, segments);
+                    break;
+                case PhysicsShapeType.Sector:
+                    Matrix4x4 sectorMatrix = root.localToWorldMatrix * Matrix4x4.TRS(
+                        data.LocalPosition, Quaternion.Euler(data.LocalEulerAngles), Vector3.one);
+                    DrawSectorGeometry(sectorMatrix, data.InnerRadius, data.OuterRadius,
+                        data.Angle, data.Height, color, duration, depthTest, segments);
+                    break;
+                case PhysicsShapeType.Ray:
+                    DrawPhysicsRay(root, data, color, duration, depthTest);
+                    break;
             }
         }
 
@@ -275,36 +286,72 @@ namespace WS_Modules.Utilities
         }
 
         /// <summary>
-        /// 绘制水平圆弧，圆弧旋转轴由世界空间 up 向量确定。
+        /// 绘制 Sector 扇形柱体的局部几何，并将每个采样点变换到世界空间。
         /// </summary>
-        /// <param name="center">圆弧圆心。</param>
-        /// <param name="up">圆弧平面的法线方向。</param>
-        /// <param name="from">圆弧起始方向。</param>
-        /// <param name="radius">圆弧半径。</param>
-        /// <param name="angle">圆弧角度。</param>
-        /// <param name="segments">圆弧线段数。</param>
-        /// <param name="color">线段颜色。</param>
+        /// <param name="localToWorld">Sector 局部坐标到世界坐标的矩阵。</param>
+        /// <param name="innerRadius">内半径。</param>
+        /// <param name="outerRadius">外半径。</param>
+        /// <param name="angle">展开角度。</param>
+        /// <param name="height">完整高度。</param>
+        /// <param name="color">线框颜色。</param>
         /// <param name="duration">线段持续显示的秒数。</param>
         /// <param name="depthTest">是否进行深度测试。</param>
-        private static void DrawArc(Vector3 center, Vector3 up, Vector3 from, float radius,
-            float angle, int segments, Color color, float duration, bool depthTest)
+        /// <param name="segments">弧线线段数。</param>
+        private static void DrawSectorGeometry(Matrix4x4 localToWorld, float innerRadius,
+            float outerRadius, float angle, float height, Color color, float duration,
+            bool depthTest, int segments)
         {
-            Vector3 previous = center + from * radius;
-            for (int index = 1; index <= segments; index++)
+            ValidateDuration(duration);
+            ValidateFiniteNonNegative(innerRadius, nameof(innerRadius));
+            ValidateFinitePositive(outerRadius, nameof(outerRadius));
+            ValidateFinitePositive(angle, nameof(angle));
+            ValidateFinitePositive(height, nameof(height));
+            if (innerRadius > outerRadius)
+                throw new ArgumentOutOfRangeException(nameof(innerRadius), innerRadius,
+                    "Sector 内半径不能大于外半径。");
+            if (angle > FullCircleDegrees)
+                throw new ArgumentOutOfRangeException(nameof(angle), angle,
+                    "Sector 角度不能大于 360 度。");
+            ValidateSegments(segments);
+
+            float halfHeight = height * 0.5f;
+            Vector3 from = Quaternion.Euler(0f, -angle * 0.5f, 0f) * Vector3.forward;
+            Vector3 to = Quaternion.Euler(0f, angle * 0.5f, 0f) * Vector3.forward;
+            Vector3 bottom = Vector3.down * halfHeight;
+            Vector3 top = Vector3.up * halfHeight;
+
+            // 先绘制上下两个局部高度层，再统一通过矩阵转换线段端点，保留非均匀缩放。
+            DrawSectorLevel(localToWorld, bottom, from, innerRadius, outerRadius, angle,
+                segments, color, duration, depthTest);
+            DrawSectorLevel(localToWorld, top, from, innerRadius, outerRadius, angle,
+                segments, color, duration, depthTest);
+
+            // 连接外边界的高度线；完整圆只保留一条接缝，避免同一方向重复绘制。
+            DrawTransformedSegment(localToWorld, bottom + from * outerRadius,
+                top + from * outerRadius, color, duration, depthTest);
+            if (!ApproximatelySameDirection(from, to))
+                DrawTransformedSegment(localToWorld, bottom + to * outerRadius,
+                    top + to * outerRadius, color, duration, depthTest);
+
+            if (innerRadius > Mathf.Epsilon)
             {
-                float currentAngle = angle * index / segments;
-                Vector3 direction = Quaternion.AngleAxis(currentAngle, up) * from;
-                Vector3 current = center + direction * radius;
-                DrawSegment(previous, current, color, duration, depthTest);
-                previous = current;
+                DrawTransformedSegment(localToWorld, bottom + from * innerRadius,
+                    top + from * innerRadius, color, duration, depthTest);
+                if (!ApproximatelySameDirection(from, to))
+                    DrawTransformedSegment(localToWorld, bottom + to * innerRadius,
+                        top + to * innerRadius, color, duration, depthTest);
+            }
+            else
+            {
+                DrawTransformedSegment(localToWorld, bottom, top, color, duration, depthTest);
             }
         }
 
         /// <summary>
-        /// 绘制 Sector 的一个高度层，包括内外圆弧和两条径向边。
+        /// 绘制一个高度层上的 Sector 外弧、内弧和径向边。
         /// </summary>
-        /// <param name="center">当前高度层的世界空间中心。</param>
-        /// <param name="up">Sector 的世界空间高度轴。</param>
+        /// <param name="localToWorld">Sector 局部坐标到世界坐标的矩阵。</param>
+        /// <param name="center">当前高度层的局部中心。</param>
         /// <param name="from">扇形起始方向。</param>
         /// <param name="innerRadius">内半径。</param>
         /// <param name="outerRadius">外半径。</param>
@@ -313,21 +360,146 @@ namespace WS_Modules.Utilities
         /// <param name="color">线段颜色。</param>
         /// <param name="duration">线段持续显示的秒数。</param>
         /// <param name="depthTest">是否进行深度测试。</param>
-        private static void DrawSectorLevel(Vector3 center, Vector3 up, Vector3 from,
-            float innerRadius, float outerRadius, float angle, int segments, Color color,
+        private static void DrawSectorLevel(Matrix4x4 localToWorld, Vector3 center,
+            Vector3 from, float innerRadius, float outerRadius, float angle, int segments,
+            Color color, float duration, bool depthTest)
+        {
+            DrawArc(localToWorld, center, from, outerRadius, angle, segments,
+                color, duration, depthTest);
+            if (innerRadius > Mathf.Epsilon)
+                DrawArc(localToWorld, center, from, innerRadius, angle, segments,
+                    color, duration, depthTest);
+
+            Vector3 to = Quaternion.AngleAxis(angle, Vector3.up) * from;
+            DrawTransformedSegment(localToWorld, center + from * innerRadius,
+                center + from * outerRadius, color, duration, depthTest);
+            if (!ApproximatelySameDirection(from, to))
+                DrawTransformedSegment(localToWorld, center + to * innerRadius,
+                    center + to * outerRadius, color, duration, depthTest);
+        }
+
+        /// <summary>
+        /// 绘制以局部 +Z 为起始方向的水平圆弧，并逐点应用形状变换矩阵。
+        /// </summary>
+        /// <param name="localToWorld">Sector 局部坐标到世界坐标的矩阵。</param>
+        /// <param name="center">圆弧圆心局部坐标。</param>
+        /// <param name="from">圆弧起始方向。</param>
+        /// <param name="radius">圆弧半径。</param>
+        /// <param name="angle">圆弧角度。</param>
+        /// <param name="segments">圆弧线段数。</param>
+        /// <param name="color">线段颜色。</param>
+        /// <param name="duration">线段持续显示的秒数。</param>
+        /// <param name="depthTest">是否进行深度测试。</param>
+        private static void DrawArc(Matrix4x4 localToWorld, Vector3 center, Vector3 from,
+            float radius, float angle, int segments, Color color, float duration,
+            bool depthTest)
+        {
+            Vector3 previous = localToWorld.MultiplyPoint3x4(center + from * radius);
+            for (int index = 1; index <= segments; index++)
+            {
+                float currentAngle = angle * index / segments;
+                Vector3 direction = Quaternion.Euler(0f, currentAngle, 0f) * from;
+                Vector3 current = localToWorld.MultiplyPoint3x4(center + direction * radius);
+                DrawSegment(previous, current, color, duration, depthTest);
+                previous = current;
+            }
+        }
+
+        /// <summary>
+        /// 将局部线段端点变换到世界空间后提交绘制。
+        /// </summary>
+        /// <param name="localToWorld">局部坐标到世界坐标的矩阵。</param>
+        /// <param name="start">局部线段起点。</param>
+        /// <param name="end">局部线段终点。</param>
+        /// <param name="color">线段颜色。</param>
+        /// <param name="duration">线段持续显示的秒数。</param>
+        /// <param name="depthTest">是否进行深度测试。</param>
+        private static void DrawTransformedSegment(Matrix4x4 localToWorld, Vector3 start,
+            Vector3 end, Color color, float duration, bool depthTest)
+        {
+            DrawSegment(localToWorld.MultiplyPoint3x4(start),
+                localToWorld.MultiplyPoint3x4(end), color, duration, depthTest);
+        }
+
+        /// <summary>
+        /// 按 PhysicsUtility 的坐标和缩放规则绘制 PhysicsShapeData 的 Ray。
+        /// </summary>
+        /// <param name="root">局部射线所属的宿主 Transform。</param>
+        /// <param name="data">类型必须为 Ray 的形状数据。</param>
+        /// <param name="color">线段颜色。</param>
+        /// <param name="duration">线段持续显示的秒数。</param>
+        /// <param name="depthTest">是否进行深度测试。</param>
+        private static void DrawPhysicsRay(Transform root, PhysicsShapeData data, Color color,
             float duration, bool depthTest)
         {
-            DrawArc(center, up, from, outerRadius, angle, segments, color, duration, depthTest);
-            if (innerRadius > Mathf.Epsilon)
-                DrawArc(center, up, from, innerRadius, angle, segments, color, duration, depthTest);
+            ValidateFinitePositive(data.Length, nameof(data.Length));
 
-            Vector3 to = Quaternion.AngleAxis(angle, up) * from;
-            DrawSegment(center + from * innerRadius, center + from * outerRadius,
+            Vector3 start = root.TransformPoint(data.LocalPosition);
+            Vector3 scaledDirection = root.TransformVector(
+                Quaternion.Euler(data.LocalEulerAngles) * Vector3.forward);
+            float directionScale = scaledDirection.magnitude;
+            if (directionScale <= Mathf.Epsilon)
+                throw new ArgumentException("Ray 的宿主 Transform 不能在方向上缩放为零。",
+                    nameof(root));
+
+            // TransformVector 已把宿主缩放折算到方向；乘以局部长度即可得到查询使用的世界终点。
+            DrawSegment(start, start + scaledDirection * data.Length,
                 color, duration, depthTest);
-            if (!ApproximatelySameDirection(from, to))
-                DrawSegment(center + to * innerRadius, center + to * outerRadius,
-                    color, duration, depthTest);
         }
+
+        /// <summary>
+        /// 取得宿主 Transform 的绝对缩放，避免负缩放改变查询尺寸。
+        /// </summary>
+        /// <param name="root">需要读取缩放的宿主 Transform。</param>
+        /// <returns>各轴缩放绝对值组成的向量。</returns>
+        private static Vector3 GetScale(Transform root) => new(Mathf.Abs(root.lossyScale.x),
+            Mathf.Abs(root.lossyScale.y), Mathf.Abs(root.lossyScale.z));
+
+        /// <summary>
+        /// 取得胶囊轴向对应的宿主缩放分量。
+        /// </summary>
+        /// <param name="scale">宿主绝对缩放。</param>
+        /// <param name="axis">胶囊局部轴向。</param>
+        /// <returns>轴向缩放分量。</returns>
+        private static float GetScaleComponent(Vector3 scale, PhysicsCapsuleAxis axis) => axis switch
+        {
+            PhysicsCapsuleAxis.X => scale.x,
+            PhysicsCapsuleAxis.Z => scale.z,
+            _ => scale.y
+        };
+
+        /// <summary>
+        /// 取得垂直于胶囊轴向的最大缩放，保证半径与 Physics 查询一致。
+        /// </summary>
+        /// <param name="scale">宿主绝对缩放。</param>
+        /// <param name="axis">胶囊局部轴向。</param>
+        /// <returns>垂直方向的最大缩放分量。</returns>
+        private static float GetPerpendicularScale(Vector3 scale, PhysicsCapsuleAxis axis) => axis switch
+        {
+            PhysicsCapsuleAxis.X => Mathf.Max(scale.y, scale.z),
+            PhysicsCapsuleAxis.Z => Mathf.Max(scale.x, scale.y),
+            _ => Mathf.Max(scale.x, scale.z)
+        };
+
+        /// <summary>
+        /// 取得向量三个分量中的最大值。
+        /// </summary>
+        /// <param name="value">需要比较的向量。</param>
+        /// <returns>三个分量中的最大值。</returns>
+        private static float MaxComponent(Vector3 value) =>
+            Mathf.Max(value.x, Mathf.Max(value.y, value.z));
+
+        /// <summary>
+        /// 将指定胶囊局部轴旋转到 DrawCapsule 使用的局部 Y 轴。
+        /// </summary>
+        /// <param name="axis">PhysicsShapeData 的胶囊局部轴向。</param>
+        /// <returns>把局部 Y 映射到目标轴的旋转。</returns>
+        private static Quaternion GetCapsuleAxisRotation(PhysicsCapsuleAxis axis) => axis switch
+        {
+            PhysicsCapsuleAxis.X => Quaternion.FromToRotation(Vector3.up, Vector3.right),
+            PhysicsCapsuleAxis.Z => Quaternion.FromToRotation(Vector3.up, Vector3.forward),
+            _ => Quaternion.identity
+        };
 
         /// <summary>
         /// 将单条几何边提交给 Unity，并统一传递持续时间和深度测试选项。
