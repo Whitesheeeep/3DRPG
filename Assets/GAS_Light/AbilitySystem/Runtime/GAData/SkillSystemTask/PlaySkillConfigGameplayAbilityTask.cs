@@ -66,7 +66,7 @@ namespace RPG.SkillSystem
             SkillStartResult result = host.TryPlay(skillConfig);
             if (result.Succeeded) return;
 
-            Debug.LogError(
+            Debug.Log(
                 $"Ability '{Runtime.Data.name}' 无法播放 SkillConfig：{result.Message}",
                 Runtime.SourceASC);
             Unsubscribe();

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.GameplayEffect;
 using WS_Modules.GAS.TAG;
+using WS_Modules.LogModule;
 
 namespace WS_Modules.GAS.GameplayAbilitySystem
 {
@@ -75,6 +76,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
 
             var handle = new GameplayAbilityHandle(AllocateHandleId());
             grantedAbilities.Add(new GameplayAbilitySpec(handle, data, level));
+            WSLog.LogSuccess($"ASC {Owner.name} 授予 Ability {data.name}，Handle={handle.Id}，Level={level}");
             return handle;
         }
 
@@ -127,6 +129,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <inheritdoc />
         public bool TryRemoveAbility(GameplayAbilityHandle handle)
         {
+            WSLog.LogSuccess($"ASC {Owner.name} 移除 Ability，Handle={handle.Id}");
             if (!TryGetAbilitySpec(handle, out GameplayAbilitySpec spec) || HasActiveRuntime(spec))
                 return false;
             return grantedAbilities.Remove(spec);
@@ -174,6 +177,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             runtime = null;
             if (!TryGetAbilitySpec(handle, out GameplayAbilitySpec spec)) return false;
 
+            WSLog.Log($"ASC {Owner.name} 尝试激活 Ability {spec.Data.name}，Handle={handle.Id}，Level={spec.Level}");
             // 重复激活策略必须先于 Cost、Cooldown 和条件检查处理，Toggle 关闭不会产生新的激活副作用。
             GameplayAbilityRuntime existing = FindActiveRuntime(spec);
             if (existing != null)
@@ -187,15 +191,19 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 }
             }
 
+            WSLog.Log($"ASC {Owner.name} 检查激活条件，Ability {spec.Data.name}，Handle={handle.Id}，Level={spec.Level}");
+
             // 全局阻断规则位于具体 Ability 条件之前，统一拦截对话、眩晕等状态下的新激活。
             if (IsActivationBlockedByOwnerTags()) return false;
 
+            WSLog.Log($"ASC {Owner.name} 统一激活条件检查通过，Ability {spec.Data.name}，Handle={handle.Id}，Level={spec.Level}");
             if (spec.Level < 1 ||
                 !spec.Data.ActivationTagQuery.Matches(Owner.Tags) ||
                 !HasValidActivationPolicies(spec.Data) ||
                 !spec.Data.IsRuntimeConfigurationValid)
                 return false;
 
+            WSLog.Log($"ASC {Owner.name} 激活条件通过，Ability {spec.Data.name}，Handle={handle.Id}，Level={spec.Level}");
             GameplayEffectData cooldown = spec.Data.CooldownEffect;
             if (cooldown != null && HasActiveCooldown(cooldown)) return false;
 
@@ -204,6 +212,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             if (candidate == null)
                 throw new InvalidOperationException("GameplayAbilityData 不能返回空 Runtime。");
 
+            WSLog.LogSuccess(
+                $"ASC {Owner.name} 激活 Ability {spec.Data.name}，Handle={handle.Id}，ActivationId={candidate.ActivationId}");
             // 应用冷却效果
             GameEffectRuntime cooldownRuntime = null;
             if (cooldown != null &&
@@ -225,12 +235,15 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             runtime.Finished += OnRuntimeFinished;
             activeRuntimes.Add(runtime);
             runtime.Activate();
+            WSLog.LogSuccess(
+                $"ASC {Owner.name} 激活 Ability {spec.Data.name}，Handle={handle.Id}，ActivationId={runtime.ActivationId}");
             if (cooldownRuntime != null)
             {
                 // Cooldown Runtime 是独立于 Ability 生命周期的 GE，只保存关联关系供结束事件还原技能身份。
                 cooldownOwners.Add(cooldownRuntime, runtime);
                 CooldownStarted?.Invoke(CreateCooldownEventArgs(runtime, cooldownRuntime));
             }
+
             AbilityActivated?.Invoke(runtime);
             // Activated 回调可能已经取消新 Runtime；只有仍成立的激活才能发出取消指令。
             if (runtime.State == GameplayAbilityRuntimeState.Active)
@@ -290,7 +303,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <returns>命中任意阻断 Tag 时返回 true。</returns>
         private bool IsActivationBlockedByOwnerTags()
         {
-            return activationBlockedOwnerTags.IsValid &&
+            // 统一阻断规则为空或无效时不阻断任何激活。
+            return activationBlockedOwnerTags is { IsEmpty: false, IsValid: true } &&
                    activationBlockedOwnerTags.Matches(Owner.Tags);
         }
 
@@ -310,7 +324,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         {
             IReadOnlyList<GameplayTag> tags = cooldown.GrantedTags;
             for (int i = 0; i < tags.Count; i++)
-                if (Owner.HasTag(tags[i])) return true;
+                if (Owner.HasTag(tags[i]))
+                    return true;
             return false;
         }
 
@@ -323,7 +338,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             IReadOnlyList<GameplayTag> tags = cooldown.GrantedTags;
             if (tags == null || tags.Count == 0) return false;
             for (int i = 0; i < tags.Count; i++)
-                if (!GameplayTagManager.Instance.IsValidTag(tags[i])) return false;
+                if (!GameplayTagManager.Instance.IsValidTag(tags[i]))
+                    return false;
             return true;
         }
 
@@ -393,9 +409,9 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             IReadOnlyList<GameplayTag> cancelTags)
         {
             for (int i = 0; i < abilityTags.Count; i++)
-                for (int j = 0; j < cancelTags.Count; j++)
-                    if (abilityTags[i].MatchesTag(cancelTags[j]))
-                        return true;
+            for (int j = 0; j < cancelTags.Count; j++)
+                if (abilityTags[i].MatchesTag(cancelTags[j]))
+                    return true;
             return false;
         }
 
