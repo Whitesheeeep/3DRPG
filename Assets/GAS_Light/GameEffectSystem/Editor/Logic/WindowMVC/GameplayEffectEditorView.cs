@@ -90,6 +90,18 @@ namespace WS_Modules.GAS.Editor
             add => detailsView.ValidateRequested += value;
             remove => detailsView.ValidateRequested -= value;
         }
+        /// <inheritdoc />
+        public event Action BakeCurvePreviewRequested
+        {
+            add => detailsView.BakeCurvePreviewRequested += value;
+            remove => detailsView.BakeCurvePreviewRequested -= value;
+        }
+        /// <inheritdoc />
+        public event Action ViewBakedResultRequested
+        {
+            add => detailsView.ViewBakedResultRequested += value;
+            remove => detailsView.ViewBakedResultRequested -= value;
+        }
 
         #endregion
 

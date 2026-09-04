@@ -36,6 +36,10 @@ namespace WS_Modules.GAS.Editor
         event Action<GameplayEffectModifierMoveRequest> MoveModifierRequested;
         /// <summary>请求重新校验当前 GE。</summary>
         event Action ValidateRequested;
+        /// <summary>请求烘焙当前 GE 的 Curve 预览。</summary>
+        event Action BakeCurvePreviewRequested;
+        /// <summary>请求打开当前 GE 的通用烘焙结果窗口。</summary>
+        event Action ViewBakedResultRequested;
 
         #endregion
 

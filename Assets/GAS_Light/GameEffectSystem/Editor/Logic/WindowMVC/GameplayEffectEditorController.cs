@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using UnityEditor;
 using WS_Modules.GAS.GameplayEffect;
+using WS_Modules.Baking.Editor;
 
 namespace WS_Modules.GAS.Editor
 {
@@ -13,6 +14,8 @@ namespace WS_Modules.GAS.Editor
 
         private readonly IGameplayEffectEditorView view;
         private readonly GameplayEffectEditorService service;
+        // 通用烘焙事务服务负责 Undo、Dirty 与保存，GE Controller 只编排当前数据源。
+        private readonly BakedResultEditorService bakedResultService;
         private readonly List<GameplayEffectData> allEffects = new();
         private readonly List<Type> modifierTypes;
         private readonly Dictionary<GameplayEffectData, GameplayEffectValidationSeverity>
@@ -46,6 +49,7 @@ namespace WS_Modules.GAS.Editor
         {
             this.view = view ?? throw new ArgumentNullException(nameof(view));
             service = new GameplayEffectEditorService();
+            bakedResultService = new BakedResultEditorService();
             modifierTypes = service.FindModifierTypes();
             search = GameplayEffectEditorSession.Search;
             selectedModifierIndex = GameplayEffectEditorSession.SelectedModifierIndex;
@@ -354,6 +358,27 @@ namespace WS_Modules.GAS.Editor
             RefreshCurrentValidation();
         }
 
+        /// <summary>烘焙当前 GE 的 Curve 预览快照并刷新结果窗口。</summary>
+        private void OnBakeCurvePreviewRequested()
+        {
+            if (effect == null) return;
+            try
+            {
+                bakedResultService.Bake(effect);
+                RefreshCurrentValidation();
+            }
+            catch (Exception exception)
+            {
+                view.ShowError("Bake Curve Preview", exception.Message);
+            }
+        }
+
+        /// <summary>打开当前 GE 的通用烘焙结果窗口，不隐式执行 Bake。</summary>
+        private void OnViewBakedResultRequested()
+        {
+            if (effect != null) BakedResultViewerWindow.Open(effect);
+        }
+
         // 项目资产变化后重新扫描；当前 GUID 丢失时清空详情。
         private void OnProjectChanged()
         {
@@ -569,6 +594,8 @@ namespace WS_Modules.GAS.Editor
             view.RemoveModifierRequested += OnRemoveModifierRequested;
             view.MoveModifierRequested += OnMoveModifierRequested;
             view.ValidateRequested += OnValidateRequested;
+            view.BakeCurvePreviewRequested += OnBakeCurvePreviewRequested;
+            view.ViewBakedResultRequested += OnViewBakedResultRequested;
             Undo.undoRedoPerformed += OnUndoRedo;
             EditorApplication.projectChanged += OnProjectChanged;
         }
@@ -589,6 +616,8 @@ namespace WS_Modules.GAS.Editor
             view.RemoveModifierRequested -= OnRemoveModifierRequested;
             view.MoveModifierRequested -= OnMoveModifierRequested;
             view.ValidateRequested -= OnValidateRequested;
+            view.BakeCurvePreviewRequested -= OnBakeCurvePreviewRequested;
+            view.ViewBakedResultRequested -= OnViewBakedResultRequested;
             Undo.undoRedoPerformed -= OnUndoRedo;
             EditorApplication.projectChanged -= OnProjectChanged;
         }

@@ -5,7 +5,8 @@
 
 .ge-toolbar,
 .ge-modifier-header,
-.ge-validation-header {
+.ge-validation-header,
+.ge-bake-actions {
     flex-direction: row;
     align-items: center;
     padding: 6px;

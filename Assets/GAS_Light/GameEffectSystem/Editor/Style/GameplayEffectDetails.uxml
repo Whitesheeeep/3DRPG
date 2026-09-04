@@ -36,6 +36,17 @@
                     <ui:VisualElement name="ModifierPropertyHost" />
                 </ui:VisualElement>
             </ui:TwoPaneSplitView>
+            <ui:VisualElement name="CurveBakeGroup" class="ge-config-group ge-curve-bake-group">
+                <ui:Label text="Curve 烘焙预览" class="ge-section-title" />
+                <uie:PropertyField name="CurveBakeXAxisLabelField" binding-path="curveBakeXAxisLabel" label="X 轴名称" />
+                <uie:PropertyField name="CurveBakeStartXField" binding-path="curveBakeStartX" label="起始 X" />
+                <uie:PropertyField name="CurveBakeEndXField" binding-path="curveBakeEndX" label="结束 X" />
+                <uie:PropertyField name="CurveBakeStepField" binding-path="curveBakeStep" label="步长" />
+                <ui:VisualElement class="ge-bake-actions">
+                    <ui:Button name="BakeCurvePreviewButton" text="烘焙 Curve 预览" />
+                    <ui:Button name="ViewBakedResultButton" text="查看烘焙结果" />
+                </ui:VisualElement>
+            </ui:VisualElement>
             <ui:VisualElement class="ge-validation-header">
                 <ui:Label text="Validation" class="ge-section-title" />
                 <ui:VisualElement class="ge-grow" />

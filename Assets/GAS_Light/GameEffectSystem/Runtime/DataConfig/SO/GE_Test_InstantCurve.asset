@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ea401299909b4bb199d79ae4b9da5407, type: 3}
   m_Name: GE_Test_InstantCurve
   m_EditorClassIdentifier: 
-  description: "Instant Curve GE: Base 10, Level 1/2/3 => Magnitude 10/20/30"
+  description: 'Instant Curve GE: Base 10, Level 1/2/3 => Magnitude 10/20/30'
   durationType: 0
   duration: 0
   period: 0
@@ -20,12 +20,291 @@ MonoBehaviour:
   targetTagQuery:
     allTags: []
     anyTags: []
-    noneTags: []
+    banedTags: []
   grantedTags: []
+  cueTags: []
   modifiers:
   - rid: 7552782473606201367
   validationSets:
   - {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
+  curveBakeXAxisLabel: Level / X
+  curveBakeStartX: 1
+  curveBakeEndX: 90
+  curveBakeStep: 1
+  bakedCurveXAxisLabel: Level / X
+  bakedCurveHeaders:
+  - Modifier 1 / AttributeId 2
+  bakedCurveRows:
+  - x: 1
+    magnitudes:
+    - 10
+  - x: 2
+    magnitudes:
+    - 20
+  - x: 3
+    magnitudes:
+    - 30
+  - x: 4
+    magnitudes:
+    - 30
+  - x: 5
+    magnitudes:
+    - 30
+  - x: 6
+    magnitudes:
+    - 30
+  - x: 7
+    magnitudes:
+    - 30
+  - x: 8
+    magnitudes:
+    - 30
+  - x: 9
+    magnitudes:
+    - 30
+  - x: 10
+    magnitudes:
+    - 30
+  - x: 11
+    magnitudes:
+    - 30
+  - x: 12
+    magnitudes:
+    - 30
+  - x: 13
+    magnitudes:
+    - 30
+  - x: 14
+    magnitudes:
+    - 30
+  - x: 15
+    magnitudes:
+    - 30
+  - x: 16
+    magnitudes:
+    - 30
+  - x: 17
+    magnitudes:
+    - 30
+  - x: 18
+    magnitudes:
+    - 30
+  - x: 19
+    magnitudes:
+    - 30
+  - x: 20
+    magnitudes:
+    - 30
+  - x: 21
+    magnitudes:
+    - 30
+  - x: 22
+    magnitudes:
+    - 30
+  - x: 23
+    magnitudes:
+    - 30
+  - x: 24
+    magnitudes:
+    - 30
+  - x: 25
+    magnitudes:
+    - 30
+  - x: 26
+    magnitudes:
+    - 30
+  - x: 27
+    magnitudes:
+    - 30
+  - x: 28
+    magnitudes:
+    - 30
+  - x: 29
+    magnitudes:
+    - 30
+  - x: 30
+    magnitudes:
+    - 30
+  - x: 31
+    magnitudes:
+    - 30
+  - x: 32
+    magnitudes:
+    - 30
+  - x: 33
+    magnitudes:
+    - 30
+  - x: 34
+    magnitudes:
+    - 30
+  - x: 35
+    magnitudes:
+    - 30
+  - x: 36
+    magnitudes:
+    - 30
+  - x: 37
+    magnitudes:
+    - 30
+  - x: 38
+    magnitudes:
+    - 30
+  - x: 39
+    magnitudes:
+    - 30
+  - x: 40
+    magnitudes:
+    - 30
+  - x: 41
+    magnitudes:
+    - 30
+  - x: 42
+    magnitudes:
+    - 30
+  - x: 43
+    magnitudes:
+    - 30
+  - x: 44
+    magnitudes:
+    - 30
+  - x: 45
+    magnitudes:
+    - 30
+  - x: 46
+    magnitudes:
+    - 30
+  - x: 47
+    magnitudes:
+    - 30
+  - x: 48
+    magnitudes:
+    - 30
+  - x: 49
+    magnitudes:
+    - 30
+  - x: 50
+    magnitudes:
+    - 30
+  - x: 51
+    magnitudes:
+    - 30
+  - x: 52
+    magnitudes:
+    - 30
+  - x: 53
+    magnitudes:
+    - 30
+  - x: 54
+    magnitudes:
+    - 30
+  - x: 55
+    magnitudes:
+    - 30
+  - x: 56
+    magnitudes:
+    - 30
+  - x: 57
+    magnitudes:
+    - 30
+  - x: 58
+    magnitudes:
+    - 30
+  - x: 59
+    magnitudes:
+    - 30
+  - x: 60
+    magnitudes:
+    - 30
+  - x: 61
+    magnitudes:
+    - 30
+  - x: 62
+    magnitudes:
+    - 30
+  - x: 63
+    magnitudes:
+    - 30
+  - x: 64
+    magnitudes:
+    - 30
+  - x: 65
+    magnitudes:
+    - 30
+  - x: 66
+    magnitudes:
+    - 30
+  - x: 67
+    magnitudes:
+    - 30
+  - x: 68
+    magnitudes:
+    - 30
+  - x: 69
+    magnitudes:
+    - 30
+  - x: 70
+    magnitudes:
+    - 30
+  - x: 71
+    magnitudes:
+    - 30
+  - x: 72
+    magnitudes:
+    - 30
+  - x: 73
+    magnitudes:
+    - 30
+  - x: 74
+    magnitudes:
+    - 30
+  - x: 75
+    magnitudes:
+    - 30
+  - x: 76
+    magnitudes:
+    - 30
+  - x: 77
+    magnitudes:
+    - 30
+  - x: 78
+    magnitudes:
+    - 30
+  - x: 79
+    magnitudes:
+    - 30
+  - x: 80
+    magnitudes:
+    - 30
+  - x: 81
+    magnitudes:
+    - 30
+  - x: 82
+    magnitudes:
+    - 30
+  - x: 83
+    magnitudes:
+    - 30
+  - x: 84
+    magnitudes:
+    - 30
+  - x: 85
+    magnitudes:
+    - 30
+  - x: 86
+    magnitudes:
+    - 30
+  - x: 87
+    magnitudes:
+    - 30
+  - x: 88
+    magnitudes:
+    - 30
+  - x: 89
+    magnitudes:
+    - 30
+  - x: 90
+    magnitudes:
+    - 30
   stackingType: 0
   maxStackCount: 1
   denyOverflowApplication: 1
@@ -67,3 +346,4 @@ MonoBehaviour:
           m_PreInfinity: 2
           m_PostInfinity: 2
           m_RotationOrder: 4
+        bakedResultLabel: 

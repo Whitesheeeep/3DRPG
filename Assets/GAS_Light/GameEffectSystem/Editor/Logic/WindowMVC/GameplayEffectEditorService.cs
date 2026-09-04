@@ -276,7 +276,59 @@ namespace WS_Modules.GAS.Editor
             GameplayAttributeRegistry registry = ResolveRegistry(issues);
             List<GameplayAttributeSet> sets = ResolveValidationSets(effect, issues);
             ValidateModifiers(effect, registry, sets, issues);
+            ValidateCurveBakePreview(effect, issues);
             return issues;
+        }
+
+        /// <summary>校验 GE Curve 预览的采样范围，避免错误步长阻塞编辑器。</summary>
+        /// <param name="effect">待校验的 GE。</param>
+        /// <param name="issues">用于追加校验结果的集合。</param>
+        private static void ValidateCurveBakePreview(
+            GameplayEffectData effect,
+            ICollection<GameplayEffectValidationIssue> issues)
+        {
+            if (!IsFinite(effect.CurveBakeStartX) || !IsFinite(effect.CurveBakeEndX) ||
+                !IsFinite(effect.CurveBakeStep))
+            {
+                AddError(issues, "Curve 预览的起始 X、结束 X 和步长必须是有限数值。");
+                return;
+            }
+
+            if (effect.CurveBakeStep <= 0f)
+                AddError(issues, "Curve 预览的步长必须大于零。");
+            if (effect.CurveBakeEndX < effect.CurveBakeStartX)
+                AddError(issues, "Curve 预览的结束 X 不能小于起始 X。");
+            if (effect.CurveBakeStep <= 0f || effect.CurveBakeEndX < effect.CurveBakeStartX)
+                return;
+
+            const int maxSampleCount = 10000;
+            const float tolerance = 0.00001f;
+            float current = effect.CurveBakeStartX;
+            for (int count = 1; count <= maxSampleCount; count++)
+            {
+                if (Mathf.Abs(current - effect.CurveBakeEndX) <= tolerance) return;
+                float next = current + effect.CurveBakeStep;
+                if (!IsFinite(next))
+                {
+                    AddError(issues, "Curve 预览采样步长导致坐标溢出，无法继续递增。");
+                    return;
+                }
+                if (next <= current)
+                {
+                    AddError(issues, "Curve 预览采样步长无法使 X 坐标递增。");
+                    return;
+                }
+                if (next > effect.CurveBakeEndX ||
+                    Mathf.Abs(next - effect.CurveBakeEndX) <= tolerance)
+                {
+                    if (Mathf.Abs(current - effect.CurveBakeEndX) > tolerance && count >= maxSampleCount)
+                        AddError(issues, "Curve 预览采样点超过 10000 个，请增大步长或缩小范围。");
+                    return;
+                }
+                current = next;
+            }
+
+            AddError(issues, "Curve 预览采样点超过 10000 个，请增大步长或缩小范围。");
         }
 
         // 校验策略本身的有限数值和必要组合，不处理被 UI 隐藏的无关字段。

@@ -10,6 +10,13 @@ namespace WS_Modules.GAS.GameplayEffect
     {
         [SerializeField] private float baseMagnitude;
         [SerializeField] private AnimationCurve levelCurve;
+#if UNITY_EDITOR
+        [SerializeField, Tooltip("结果窗口中该 Curve Modifier 的列标题；留空时使用 Modifier 索引和 AttributeId。")]
+        private string bakedResultLabel;
+
+        /// <summary>获取结果窗口中的可选列标题。</summary>
+        public string BakedResultLabel => bakedResultLabel;
+#endif
 
         // 使用 Runtime.Level 采样倍率；未配置曲线时保持基础值。
         protected override float CalculateMagnitude(
@@ -18,11 +25,11 @@ namespace WS_Modules.GAS.GameplayEffect
             GameEffectRuntime runtime) => CalculateConfiguredMagnitude(runtime.Level);
 
         /// <summary>使用指定等级计算曲线 Modifier 的作者数值。</summary>
-        /// <param name="level">曲线采样等级。</param>
+        /// <param name="x">曲线采样坐标。</param>
         /// <returns>基础 Magnitude 与曲线倍率的乘积。</returns>
-        private float CalculateConfiguredMagnitude(int level)
+        internal float CalculateConfiguredMagnitude(float x)
         {
-            float multiplier = levelCurve == null ? 1f : levelCurve.Evaluate(level);
+            float multiplier = levelCurve == null ? 1f : levelCurve.Evaluate(x);
             return baseMagnitude * multiplier;
         }
 

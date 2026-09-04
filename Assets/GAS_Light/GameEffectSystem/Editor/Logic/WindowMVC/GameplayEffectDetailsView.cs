@@ -41,6 +41,8 @@ namespace WS_Modules.GAS.Editor
         private readonly VisualElement modifierPropertyHost;
         private readonly Label modifierEmptyLabel;
         private readonly Button validateButton;
+        private readonly Button bakeCurvePreviewButton;
+        private readonly Button viewBakedResultButton;
         private readonly VisualElement validationContainer;
         private readonly List<GameplayEffectModifier> renderedModifiers = new();
         private readonly List<Type> availableModifierTypes = new();
@@ -74,6 +76,10 @@ namespace WS_Modules.GAS.Editor
         public event Action<GameplayEffectModifierMoveRequest> MoveModifierRequested;
         /// <inheritdoc />
         public event Action ValidateRequested;
+        /// <inheritdoc />
+        public event Action BakeCurvePreviewRequested;
+        /// <inheritdoc />
+        public event Action ViewBakedResultRequested;
 
         #endregion
 
@@ -114,6 +120,8 @@ namespace WS_Modules.GAS.Editor
             modifierPropertyHost = Require<VisualElement>("ModifierPropertyHost");
             modifierEmptyLabel = Require<Label>("ModifierEmptyLabel");
             validateButton = Require<Button>("ValidateButton");
+            bakeCurvePreviewButton = Require<Button>("BakeCurvePreviewButton");
+            viewBakedResultButton = Require<Button>("ViewBakedResultButton");
             validationContainer = Require<VisualElement>("ValidationContainer");
 
             ConfigureModifierList();
@@ -163,6 +171,8 @@ namespace WS_Modules.GAS.Editor
                 detailsRoot.style.display = hasEffect ? DisplayStyle.Flex : DisplayStyle.None;
                 emptySelectionLabel.style.display = hasEffect ? DisplayStyle.None : DisplayStyle.Flex;
                 addModifierButton.SetEnabled(hasEffect && availableModifierTypes.Count > 0);
+                bakeCurvePreviewButton.SetEnabled(hasEffect);
+                viewBakedResultButton.SetEnabled(hasEffect);
                 effectTitle.text = hasEffect ? currentEffect.name : string.Empty;
                 SetModifierDetailsVisible(false);
                 if (!hasEffect) return;
@@ -389,6 +399,12 @@ namespace WS_Modules.GAS.Editor
         // 手动刷新只请求重新校验。
         private void OnValidateClicked() => ValidateRequested?.Invoke();
 
+        // Curve 预览烘焙交给通用 Editor Service，Details View 不直接写资产。
+        private void OnBakeCurvePreviewClicked() => BakeCurvePreviewRequested?.Invoke();
+
+        // 结果查看只表达用户意图，窗口创建由 Controller 负责。
+        private void OnViewBakedResultClicked() => ViewBakedResultRequested?.Invoke();
+
         #endregion
 
         #region 绑定与显示辅助
@@ -579,6 +595,8 @@ namespace WS_Modules.GAS.Editor
             addModifierButton.clicked += OnAddModifierClicked;
             removeModifierButton.clicked += OnRemoveModifierClicked;
             validateButton.clicked += OnValidateClicked;
+            bakeCurvePreviewButton.clicked += OnBakeCurvePreviewClicked;
+            viewBakedResultButton.clicked += OnViewBakedResultClicked;
         }
 
         // 释放时对称注销全部右侧 UI 回调。
@@ -602,6 +620,8 @@ namespace WS_Modules.GAS.Editor
             addModifierButton.clicked -= OnAddModifierClicked;
             removeModifierButton.clicked -= OnRemoveModifierClicked;
             validateButton.clicked -= OnValidateClicked;
+            bakeCurvePreviewButton.clicked -= OnBakeCurvePreviewClicked;
+            viewBakedResultButton.clicked -= OnViewBakedResultClicked;
         }
 
         #endregion
