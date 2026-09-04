@@ -33,7 +33,7 @@ namespace RPG.Game.Tests
         #region 异步验收
 
         /// <summary>
-        /// 等待服务完成后确认三个窗口实例均已注册且仍处于隐藏状态。
+        /// 等待服务完成后确认 HUD 可见而 Choice 与 Dialogue 仍处于隐藏状态。
         /// </summary>
         /// <param name="service">待验收的窗口预加载服务。</param>
         private async UniTaskVoid PreloadAllWindowsAsync(GameWindowPreloadService service)
@@ -43,10 +43,10 @@ namespace RPG.Game.Tests
             bool hasHud = UIManager.Instance.TryGetWindow<HUDWindow>(out HUDWindow hudWindow);
             bool hasChoice = UIManager.Instance.TryGetWindow<ChoiceWindow>(out ChoiceWindow choiceWindow);
             bool hasDialogue = UIManager.Instance.TryGetWindow<DialogueWindow>(out DialogueWindow dialogueWindow);
-            bool hidden = hasHud && hasChoice && hasDialogue &&
-                          !hudWindow.Visible && !choiceWindow.Visible && !dialogueWindow.Visible;
+            bool visible = hasHud && hasChoice && hasDialogue &&
+                           hudWindow.Visible && !choiceWindow.Visible && !dialogueWindow.Visible;
 
-            Debug.Log($"[WindowPreloadTest] preloaded={service.IsPreloaded}, hud={hasHud}, choice={hasChoice}, dialogue={hasDialogue}, hidden={hidden}", this);
+            Debug.Log($"[WindowPreloadTest] preloaded={service.IsPreloaded}, hud={hasHud}, choice={hasChoice}, dialogue={hasDialogue}, expectedVisible={visible}", this);
         }
 
         #endregion
