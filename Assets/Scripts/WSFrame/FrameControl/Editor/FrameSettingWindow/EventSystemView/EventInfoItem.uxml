@@ -3,16 +3,18 @@
     <ui:VisualElement name="EventInfo" class="event-card">
         <ui:VisualElement name="EventTitle" class="event-card-header">
             <ui:Label name="EventName" text="Event" display-tooltip-when-elided="true" class="event-name-label" />
+            <ui:Label name="EventCenter" text="Type" class="event-count event-center-tag" />
+            <ui:Label name="GenericForwarding" text="泛型转发" class="event-count event-generic-tag event-generic-tag-hidden" />
             <ui:Label name="ListenerCount" text="Listeners: 0" class="event-count" />
             <ui:Label name="PublisherCount" text="Publishers: 0" class="event-count" />
         </ui:VisualElement>
         <ui:VisualElement name="EventSections" class="event-section-row">
-            <ui:VisualElement name="Listener" class="event-section">
+            <ui:VisualElement name="Listener" class="event-section listener-section">
                 <ui:Foldout text="Listeners" value="true" class="event-foldout">
                     <WS_Modules.UIToolkitExtensions.Editor.CustomScrollView name="ListenerScrollContainer" class="event-script-list" />
                 </ui:Foldout>
             </ui:VisualElement>
-            <ui:VisualElement name="Publisher" class="event-section">
+            <ui:VisualElement name="Publisher" class="event-section publisher-section">
                 <ui:Foldout text="Publishers" value="true" class="event-foldout">
                     <WS_Modules.UIToolkitExtensions.Editor.CustomScrollView name="PublisherScrollContainer" class="event-script-list" />
                 </ui:Foldout>

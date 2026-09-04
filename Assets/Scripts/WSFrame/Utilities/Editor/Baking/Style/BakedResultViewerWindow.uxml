@@ -1,0 +1,16 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/WSFrame/Utilities/Editor/Baking/Style/BakedResultViewerWindow.uss" />
+    <ui:VisualElement class="baked-result-window">
+        <ui:VisualElement class="baked-result-header">
+            <ui:Label name="TitleLabel" class="baked-result-title" />
+            <ui:Label name="SourceLabel" class="baked-result-source" />
+        </ui:VisualElement>
+        <ui:VisualElement class="baked-result-toolbar">
+            <ui:Button name="BakeButton" text="重新烘焙" />
+            <ui:Button name="RefreshButton" text="刷新结果" />
+            <ui:Button name="PingButton" text="定位源资产" />
+        </ui:VisualElement>
+        <ui:Label name="StatusLabel" class="baked-result-status" />
+        <ui:MultiColumnListView name="ResultTable" fixed-item-height="24" selection-type="None" class="baked-result-table" />
+    </ui:VisualElement>
+</ui:UXML>

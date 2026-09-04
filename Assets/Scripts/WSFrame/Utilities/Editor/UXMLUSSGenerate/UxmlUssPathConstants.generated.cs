@@ -44,10 +44,6 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsScriptsDialogueSystemEditorStyleDialogueGraphEditorWindow = "Assets/Scripts/DialogueSystem/Editor/Style/DialogueGraphEditorWindow.uxml";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemArtifactDetails.uxml</summary>
             public const string AssetsScriptsItemSystemEditorStyleItemArtifactDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemArtifactDetails.uxml";
-            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemBakedArtifactProgressionRow.uxml</summary>
-            public const string AssetsScriptsItemSystemEditorStyleItemBakedArtifactProgressionRow = "Assets/Scripts/ItemSystem/Editor/Style/ItemBakedArtifactProgressionRow.uxml";
-            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemBakedProgressionRow.uxml</summary>
-            public const string AssetsScriptsItemSystemEditorStyleItemBakedProgressionRow = "Assets/Scripts/ItemSystem/Editor/Style/ItemBakedProgressionRow.uxml";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemCommonDetails.uxml</summary>
             public const string AssetsScriptsItemSystemEditorStyleItemCommonDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemCommonDetails.uxml";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemConfigEditorWindow.uxml</summary>
@@ -88,6 +84,8 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsScriptsWSFrameFrameControlEditorFrameSettingWindowPoolSystemViewPoolSystemView = "Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/PoolSystemView/PoolSystemView.uxml";
             /// <summary>资源路径：Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/UISystemView/UISystemView.uxml</summary>
             public const string AssetsScriptsWSFrameFrameControlEditorFrameSettingWindowUISystemViewUISystemView = "Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/UISystemView/UISystemView.uxml";
+            /// <summary>资源路径：Assets/Scripts/WSFrame/Utilities/Editor/Baking/Style/BakedResultViewerWindow.uxml</summary>
+            public const string AssetsScriptsWSFrameUtilitiesEditorBakingStyleBakedResultViewerWindow = "Assets/Scripts/WSFrame/Utilities/Editor/Baking/Style/BakedResultViewerWindow.uxml";
         }
         /// <summary>所有 Uss 资源路径。</summary>
         public static class Uss
@@ -108,10 +106,6 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsScriptsDialogueSystemEditorStyleDialogueGraphEditor = "Assets/Scripts/DialogueSystem/Editor/Style/DialogueGraphEditor.uss";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemArtifactDetails.uss</summary>
             public const string AssetsScriptsItemSystemEditorStyleItemArtifactDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemArtifactDetails.uss";
-            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemBakedArtifactProgressionRow.uss</summary>
-            public const string AssetsScriptsItemSystemEditorStyleItemBakedArtifactProgressionRow = "Assets/Scripts/ItemSystem/Editor/Style/ItemBakedArtifactProgressionRow.uss";
-            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemBakedProgressionRow.uss</summary>
-            public const string AssetsScriptsItemSystemEditorStyleItemBakedProgressionRow = "Assets/Scripts/ItemSystem/Editor/Style/ItemBakedProgressionRow.uss";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemCommonDetails.uss</summary>
             public const string AssetsScriptsItemSystemEditorStyleItemCommonDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemCommonDetails.uss";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemConfigEditorWindow.uss</summary>
@@ -164,6 +158,8 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsScriptsWSFrameUIToolkitExtensionsEditorGraphViewSamplesGraphViewFrameworkSampleNode = "Assets/Scripts/WSFrame/UIToolkitExtensions/Editor/GraphView/Samples/GraphViewFrameworkSampleNode.uss";
             /// <summary>资源路径：Assets/Scripts/WSFrame/UIToolkitExtensions/Editor/GraphView/WSGraphNode.uss</summary>
             public const string AssetsScriptsWSFrameUIToolkitExtensionsEditorGraphViewWSGraphNode = "Assets/Scripts/WSFrame/UIToolkitExtensions/Editor/GraphView/WSGraphNode.uss";
+            /// <summary>资源路径：Assets/Scripts/WSFrame/Utilities/Editor/Baking/Style/BakedResultViewerWindow.uss</summary>
+            public const string AssetsScriptsWSFrameUtilitiesEditorBakingStyleBakedResultViewerWindow = "Assets/Scripts/WSFrame/Utilities/Editor/Baking/Style/BakedResultViewerWindow.uss";
         }
     }
 }

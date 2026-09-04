@@ -5,6 +5,7 @@ using System.Text;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using WS_Modules.BusinessArchitecture;
+using WS_Modules.LogModule;
 using WSEventSystem = WS_Modules.CustomEventSystem.EventSystem;
 
 namespace WS_Modules.BusinessArchitecture.Tests
@@ -64,6 +65,15 @@ namespace WS_Modules.BusinessArchitecture.Tests
 
             LogStep($"全部测试完成：通过={passedCount}, 失败={failedCount}");
             FlushTraceText();
+        }
+
+        [Button("测试：事件控制台捕获")]
+        private void TestEventConsoleCapture()
+        {
+            Debug.Log("[WSFrame.Event] 发送 TestBusinessEvent Value=99");
+            WSLog.Log("[WSFrame.Event] 发送 TestBusinessEvent Value=99");
+            WSLog.Log("[Event] 发送 TestBusinessEvent Value=99");
+            WSLog.Log("[Event] 发送 TestBusinessEvent Value=99");
         }
 
         /// <summary>
@@ -306,7 +316,6 @@ namespace WS_Modules.BusinessArchitecture.Tests
 
             LogStep("调用 Architecture.Deinit");
             architecture.Deinit();
-
             Check(!system.Initialized, "System 已反初始化");
             Check(!manager.Initialized, "Manager 已反初始化");
             CheckOrder("System.Deinit: DefaultSystem", "Manager.Deinit: DefaultManager", "System.Deinit 早于 Manager.Deinit");
