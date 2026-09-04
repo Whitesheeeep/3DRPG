@@ -2,22 +2,20 @@
 
 ## 1. 系统定位
 
-本系统位于 Unity Input System 与 GAS、FSM 等业务系统之间，负责把一次真实输入整理为可跨帧重试、可结合玩家状态仲裁、可在业务成功后确认消费的输入意图。
+本系统位于 Unity Input System 与 GAS、FSM 等业务系统之间，负责维护可跨帧重试的真实 Request，并为需要转换的连续输入提供分析策略。并非所有输入都必须先转换成 Intent。
 
 它不是按键队列，也不会直接向 ASC 写入 Gameplay Tag。系统的数据流分为三层：
 
 - `PlayerInputRequest`：保存一次物理手势，以及独立的 Press、Release 缓冲阶段。
-- `GameplayInputIntentArbiter`：结合 Request、ASC 状态和环境状态，判断当前帧应产生什么 Intent。
-- `PlayerStateBlackboard`：保存当前帧 Intent，并在业务成功后把消费确认回传到来源 Request。
+- `GameplayInputIntentArbiter`：仅对需要空间转换、合并或上下文分析的输入生成 Blackboard 结果。
+- `PlayerStateBlackboard`：保存当前帧 Intent、来源 Handle 和连续 Move，并在业务成功后把消费确认回传到来源 Request。
 
 ```mermaid
 flowchart LR
     A["InputAction performed / canceled"] --> B["PlayerInputController"]
     B --> C["PlayerInputRequest<br/>Press / Held / Release"]
     C --> D["GameplayInputIntentArbiterManager"]
-    E["ASC Ability Tags"] --> D
-    F["Environment Tags"] --> D
-    D --> G["PlayerStateBlackboard<br/>Frame Intent Tags"]
+    D --> G["PlayerStateBlackboard<br/>Frame Intent + Move"]
     G --> H["GAS / FSM / 其他业务消费者"]
     H -->|"业务成功后确认"| G
     G -->|"来源 Handle"| I["PlayerController"]
@@ -32,9 +30,9 @@ flowchart LR
 
 - `PlayerInputController`：监听 Input Action，管理 Request。
 - `PlayerController`：创建 `PlayerStateBlackboard` 和 `GameplayInputIntentArbiterManager`，执行仲裁及帧末清理。
-- `GameplayAbilitySystemComponent`：向黑板提供只读 Ability Tag 状态。
+- `CharacterManager` 与角色 Actor：提供当前角色配置；角色 ASC 仍由角色自身持有。
 
-`PlayerController` 已通过 `RequireComponent` 要求存在 `PlayerInputController`。
+`PlayerController` 会在 `Awake` 解析同一 Player 上的 `PlayerInputController`；缺少该组件时会立即暴露配置错误。CharacterManager 和 CharacterActor 在 PlayerController 的显式 Tick 阶段直接读取输入 Request。
 
 ### 2.2 配置输入绑定
 
@@ -60,7 +58,7 @@ flowchart LR
 
 ### 2.3 注册仲裁器
 
-仲裁器是普通 C# 策略，不是 `MonoBehaviour`。业务组件负责创建实例，并在启用、禁用时向所属玩家的 Manager 注册和注销：
+仲裁器是普通 C# 策略，不是 `MonoBehaviour`。运行时默认仲裁器由 Manager 统一注册；额外业务策略仍可由组件在启用、禁用时注册和注销：
 
 ```csharp
 private GameplayInputIntentArbiter arbiter;
@@ -81,7 +79,9 @@ private void OnDisable()
 }
 ```
 
-Manager 按注册顺序执行策略。同一个 Request 阶段只采用第一个成功返回 Intent 的仲裁器，因此注册顺序就是优先级顺序。
+Manager 按注册顺序调用每个策略。每个策略直接读取 `PlayerInputController` 的持续输入或 Request，并把自己的结果写入 Blackboard；Manager 不执行 Request 匹配、Tag 检查或业务状态过滤。
+
+生产 Arbiter 不遍历 `Requests` 列表。对于固定离散输入，业务使用 `PlayerInputController.TryGetRequest(inputType, out request)` 通过输入类型索引查询；`Requests` 列表只供调试界面展示。当前默认策略只有需要镜头转换的 Move，技能由 CharacterActor 直接处理，角色槽位由 CharacterManager 直接处理，交互选择由 EventSystem 处理。
 
 ### 2.4 业务消费 Intent
 
@@ -103,26 +103,39 @@ if (accepted)
 - 查询本身不等于消费，`HasIntent` 不会改变任何状态。
 - 同一个具体 Intent Tag 默认应只有一个业务所有者，避免多个消费者先执行再竞争确认。
 
-### 2.5 长按与蓄力
+### 2.4.1 简单离散输入直接消费
 
-长按不需要单独的 Held Tag。仲裁器读取 Request 的物理状态和持续时间即可：
+技能和角色切换不经过 Blackboard Frame Intent。业务按固定 InputType 查询 Request，并在操作成功后直接确认对应阶段句柄：
 
 ```csharp
-protected override bool TryResolveIntent(
-    IReadOnlyPlayerInputRequest request,
-    PlayerInputRequestStage stage,
-    PlayerStateBlackboard stateBlackboard,
-    out GameplayTag intentTag)
-{
-    intentTag = chargeSkillIntent;
+if (!inputController.TryGetRequest(
+        PlayerInputType.Skill1,
+        out IReadOnlyPlayerInputRequest request) ||
+    !request.HasBufferedPress)
+    return;
 
-    return stage == PlayerInputRequestStage.Press &&
-           request.PhysicalState == PlayerInputPhysicalState.Held &&
-           request.HeldDuration >= chargeThreshold;
-}
+if (TryActivateSkill())
+    inputController.TryConfirmConsumed(request.PressHandle);
 ```
 
-释放后 `HeldDuration` 会保留，因此 Release 仲裁可以根据最终按住时长决定释放普通技能、蓄力技能或取消技能。Press 和 Release 是两个独立阶段，消费 Press 不会自动消费 Release。
+CharacterManager 对 CharacterSlot1-4 使用同样的查询方式；切换成功、已是当前角色或空槽位时确认 Press，Busy 时保留 Request 以便缓冲期重试。简单业务不创建 Ability 或 CharacterSwitch IntentTag。
+
+### 2.5 长按与蓄力
+
+长按不需要单独的 Held Tag。具体技能业务直接读取 Request 的物理状态和持续时间即可：
+
+```csharp
+if (!inputController.TryGetRequest(PlayerInputType.Skill1,
+        out IReadOnlyPlayerInputRequest request) ||
+    !request.HasBufferedPress ||
+    request.PhysicalState != PlayerInputPhysicalState.Held ||
+    request.HeldDuration < chargeThreshold)
+    return;
+
+// 这里由蓄力 Ability 自己记录开始/释放，不经过通用 Intent Arbiter。
+```
+
+释放后 `HeldDuration` 会保留，因此具体蓄力 Ability 可以根据最终按住时长决定释放普通技能、蓄力技能或取消技能。Press 和 Release 是两个独立阶段，消费 Press 不会自动消费 Release。
 
 ### 2.6 调试
 
@@ -130,7 +143,7 @@ protected override bool TryResolveIntent(
 
 - `Manual`：通过 OnGUI 按钮模拟业务成功后的确认。
 - `Interval`：每隔指定真实时间确认当前 Intent。
-- `HeldThreshold`：达到按住阈值后才发布并确认 Intent。
+- `HeldThreshold`：达到按住阈值后才发布并确认测试 Intent。
 - Odin 按钮“切换 Input OnGUI”：测试完成后可关闭调试面板，不影响输入链路。
 
 ## 3. 扩展说明
@@ -140,64 +153,47 @@ protected override bool TryResolveIntent(
 1. 在 `PlayerInputType` 中增加枚举值。
 2. 在 Input Actions 资产中创建或选择对应 Action。
 3. 在玩家对象的 `PlayerInputController.bindings` 中显式绑定。
-4. 在仲裁器中定义该输入在不同状态下产生的 Intent。
-5. 为 Intent 配置对应 Gameplay Tag，并由业务消费者处理。
+4. 如果输入只需固定业务查询，直接在对应业务中调用 `TryGetRequest`；只有需要转换或合并时才实现 Arbiter。
+5. 只有接入 Frame Intent 的复杂输入才配置对应 Gameplay Tag，并由业务消费者处理。
 
-Move、Look 等连续值输入不加入当前离散 Request 模型，也不产生可确认消费的 Handle。Move 仍由同一个 `GameplayInputIntentArbiterManager` 在帧级入口统一读取、转换并写入 Blackboard 的连续字段；未来的 Look 可沿用连续字段，但需要先明确采样、死区和视角所有权。
+Move、Look 等连续值输入不加入当前离散 Request 模型，也不产生可确认消费的 Handle。Move 由 `MoveInputIntentArbiter` 从 `PlayerInputController.MoveInput` 读取，转换为镜头相对世界方向后写入 Blackboard 的连续字段；未来的 Look 可沿用独立连续字段，但需要先明确采样、死区和视角所有权。
 
 ### 3.2 增加新的仲裁器
 
-继承 `GameplayInputIntentArbiter`，实现 `TryResolveIntent`：
+继承 `GameplayInputIntentArbiter`，实现唯一的 `ArbitrateFrame`：
 
 ```csharp
 public sealed class CombatInputArbiter : GameplayInputIntentArbiter
 {
-    protected override bool TryResolveIntent(
-        IReadOnlyPlayerInputRequest request,
-        PlayerInputRequestStage stage,
-        PlayerStateBlackboard stateBlackboard,
-        out GameplayTag intentTag)
+    protected internal override void ArbitrateFrame(
+        PlayerInputController inputController,
+        PlayerStateBlackboard blackboard,
+        Transform cameraTransform)
     {
-        intentTag = GameplayTag.Empty;
+        if (!inputController.TryGetRequest(PlayerInputType.Skill1,
+                out IReadOnlyPlayerInputRequest request) ||
+            !request.HasBufferedPress)
+            return;
 
-        if (stage != PlayerInputRequestStage.Press)
-            return false;
-
-        if (stateBlackboard.AbilityTags.HasTag(blockInputTag))
-            return false;
-
-        if (request.InputType != PlayerInputType.Skill1)
-            return false;
-
-        intentTag = activateSkillSlot1Intent;
-        return intentTag.IsValid;
+        blackboard.TryPublishFrameIntent(activateSkillSlot1Intent, request.PressHandle);
     }
 }
 ```
 
-仲裁器只负责判断和返回 Tag，不应：
+仲裁器只负责分析需要转换的输入并写入 Blackboard，不应：
 
-- 直接发布 Intent。
 - 直接消费 Request。
-- 修改 ASC Tag。
+- 读取或修改 ASC、EnvironmentTag 或 MotionDriver 状态。
+- 根据对话、场景迁移或输入锁清零玩家输入。
 - 在仲裁遍历期间注册或注销仲裁器。
 
-Intent 发布由 Manager 统一处理；业务确认后的来源 Handle 由持有黑板与输入组件的 `PlayerController` 回传，以保证仲裁判断和生命周期协调相互独立。
+技能和角色切换不属于该 Arbiter 协议：它们由 CharacterActor、CharacterManager 直接读取 Request，不调用 `TryPublishFrameIntent`。
 
-### 3.3 扩展环境状态
-
-环境检测模块通过以下接口维护黑板状态：
-
-```csharp
-blackboard.AddEnvironmentTag(inWaterTag);
-blackboard.RemoveEnvironmentTag(inWaterTag);
-```
-
-环境 Tag 使用计数容器，同一 Tag 可以有多个来源。每个来源进入时增加一次，退出时移除一次。仲裁器只读取 `EnvironmentTags`，不应直接维护环境检测生命周期。
+`TryPublishFrameIntent` 的返回值只用于当前策略的同步控制，不发送发布诊断事件。业务确认后的来源 Handle 仍由 `IntentSourceConsumed` 回传给持有黑板与输入组件的 `PlayerController`，以保证意图分析和 Request 生命周期相互独立。
 
 ### 3.4 扩展业务消费者
 
-消费者可以是 GAS、FSM、交互系统或其他业务模块，但都应遵循相同提交协议：
+消费者可以是 GAS、Locomotion/FSM 或其他仍接入 Blackboard 的业务模块；交互选择由 Unity EventSystem 驱动，不走这条 Intent 消费协议。接入 Blackboard 的消费者都应遵循相同提交协议：
 
 1. 查询 Intent。
 2. 尝试业务操作。
@@ -291,9 +287,10 @@ sequenceDiagram
     IC->>IC: Advance(unscaledDeltaTime)
     PC->>PC: ASC Tick
     PC->>AM: ArbitrateFrame(camera)
-    AM->>BB: PublishFrameIntent(tag, handle)
-    AM->>BB: 写入 MoveWorldInput
-    PC->>PC: 按玩家业务状态决定 Locomotion 是否响应 Move
+    AM->>A: 调用各个 ArbitrateFrame(input, BB, camera)
+    A->>BB: TryPublishFrameIntent(tag, handle)
+    A->>BB: 写入 MoveWorldInput
+    PC->>PC: 进入当前角色 Tick，Locomotion 读取 MoveWorldInput
     BC->>BB: HasIntent(tag)
     BC->>BC: 尝试业务操作
     BC->>BB: TryConfirmIntentConsumed(tag)
@@ -304,7 +301,7 @@ sequenceDiagram
 
 `PlayerInputController` 的执行顺序为 `-900`，`PlayerController` 为 `-800`。普通默认顺序的 `Update` 消费者会在仲裁完成后读取本帧 Intent。帧末清理只移除临时 Intent 和来源映射，不会误认为业务已经消费 Request。
 
-输入测试面板会同时显示三种结果：`Current Intent` 只表示当前帧是否仍存在未确认 Tag；`Last Publication` 表示仲裁管理器最近一次发布尝试及其来源 Handle；`Last Press/Release Confirmation` 则分别显示黑板确认结果和 `PlayerInputController` 实际接受的 Request 阶段数量。因此自动模式中当前 Intent 变为 `false`，并不代表 Intent 没有发布，必须结合最近发布和消费记录判断完整链路。
+输入测试面板显示当前 Intent、连续 Move 和 Press/Release 消费结果。发布过程没有独立诊断事件；`TryPublishFrameIntent` 的返回值只在仲裁策略内部用于同步处理。自动模式中当前 Intent 变为 `false`，表示该帧意图已被业务确认或帧末清理。
 
 ### 4.5 数据所有权
 
@@ -313,9 +310,8 @@ sequenceDiagram
 | Input Action 绑定 | `PlayerInputController` | 组件生命周期 |
 | Request 与 Buffer | `PlayerInputController` | 一次物理手势及其待消费阶段 |
 | 仲裁器顺序 | `GameplayInputIntentArbiterManager` | PlayerController 生命周期 |
-| Ability Tags | ASC | GAS 生命周期，黑板只读代理 |
-| Environment Tags | `PlayerStateBlackboard` | 环境来源计数生命周期 |
 | Intent Tags | `PlayerStateBlackboard` | 当前帧 |
+| MoveWorldInput | `PlayerStateBlackboard` | 当前帧连续输入事实 |
 | Intent 来源 Handle | `PlayerStateBlackboard` | 与对应帧级 Intent 相同 |
 
 ## 5. 常见问题
@@ -338,4 +334,4 @@ Held 是物理状态的持续变化，不是第二次输入。Pressed 转 Held �
 
 ### 禁用组件时会发生什么？
 
-`PlayerInputController` 会退订并停用 Action，同时清空全部 Request。`PlayerController` 会停止消费回调、停止帧末协程，并重置 Intent 与 Environment 状态。
+`PlayerInputController` 会退订并停用 Action，同时清空全部 Request。`PlayerController` 会停止消费回调、停止帧末协程，并清理当前帧 Intent 与连续 Move 快照。

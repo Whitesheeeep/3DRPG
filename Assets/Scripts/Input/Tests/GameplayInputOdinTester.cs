@@ -9,7 +9,7 @@ using RPG.Character.State;
 
 namespace RPG.PlayerInputSystem.Tests
 {
-    /// <summary>使用真实 InputAction 验证 Request 仲裁、Intent 发布和三种消费模式。</summary>
+    /// <summary>使用真实 InputAction 验证 Request 仲裁、Intent 消费和三种消费模式。</summary>
     public sealed class GameplayInputOdinTester : MonoBehaviour
     {
         #region 测试配置
@@ -25,7 +25,6 @@ namespace RPG.PlayerInputSystem.Tests
         [SerializeField, Min(0f)] private float heldThreshold = 0.5f;
         [SerializeField, ReadOnly] private bool showOnGui;
         [SerializeField, ReadOnly] private string lastConfirmationResult = "尚未确认 Intent";
-        [SerializeField, ReadOnly] private string lastPublicationResult = "尚未尝试发布 Intent";
         [SerializeField, ReadOnly] private string lastPressConfirmationResult = "尚未确认 Press Intent";
         [SerializeField, ReadOnly] private string lastReleaseConfirmationResult = "尚未确认 Release Intent";
 
@@ -57,14 +56,12 @@ namespace RPG.PlayerInputSystem.Tests
             observedMode = consumeMode;
         }
 
-        /// <summary>初始化测试 Tag 数据库、订阅诊断事件并注册测试仲裁策略。</summary>
+        /// <summary>初始化测试 Tag 数据库并注册测试仲裁策略。</summary>
         private void OnEnable()
         {
             InitializeTagDatabase();
-            playerController.InputIntentArbiterManager.IntentPublicationReported += OnIntentPublicationReported;
             playerController.InputRequestConsumptionForwarded += OnInputRequestConsumptionForwarded;
             playerController.InputIntentArbiterManager.RegisterArbiter(testArbiter);
-            ValidateIntentTags();
         }
 
         /// <summary>在 PlayerController 完成本帧仲裁后推进自动消费测试。</summary>
@@ -81,7 +78,7 @@ namespace RPG.PlayerInputSystem.Tests
             else if (consumeMode == IntentConsumeTestMode.HeldThreshold) ConfirmAvailableIntents("HeldThreshold");
         }
 
-        /// <summary>注销测试策略和诊断事件，并恢复进入测试前的 Tag 数据库。</summary>
+        /// <summary>注销测试策略和消费观察事件，并恢复进入测试前的 Tag 数据库。</summary>
         private void OnDisable()
         {
             if (playerController != null)
@@ -89,7 +86,6 @@ namespace RPG.PlayerInputSystem.Tests
                 GameplayInputIntentArbiterManager manager = playerController.InputIntentArbiterManager;
                 if (manager != null)
                 {
-                    manager.IntentPublicationReported -= OnIntentPublicationReported;
                     manager.UnregisterArbiter(testArbiter);
                 }
 
@@ -120,20 +116,6 @@ namespace RPG.PlayerInputSystem.Tests
             ownsTagDatabase = false;
         }
 
-        /// <summary>检查测试 Intent 是否存在于当前数据库，并把错误直接显示到面板。</summary>
-        private void ValidateIntentTags()
-        {
-            if (!GameplayTagManager.Instance.IsInitialized)
-            {
-                lastPublicationResult = "Tag Database 未初始化，Intent 不会发布";
-                return;
-            }
-
-            bool pressValid = GameplayTagManager.Instance.IsValidTag(pressIntentTag);
-            bool releaseValid = GameplayTagManager.Instance.IsValidTag(releaseIntentTag);
-            if (!pressValid || !releaseValid)
-                lastPublicationResult = $"Tag 无效：Press={pressValid}, Release={releaseValid}";
-        }
         #endregion
 
         #region 自动消费
@@ -193,22 +175,12 @@ namespace RPG.PlayerInputSystem.Tests
         private void ResetDiagnostics(string reason)
         {
             lastConfirmationResult = reason;
-            lastPublicationResult = "尚未尝试发布 Intent";
             lastPressConfirmationResult = "尚未确认 Press Intent";
             lastReleaseConfirmationResult = "尚未确认 Release Intent";
         }
         #endregion
 
-        #region 诊断事件
-        /// <summary>记录仲裁管理器尝试发布 Intent 的结果。</summary>
-        /// <param name="intentTag">尝试发布的 Intent Tag。</param>
-        /// <param name="sourceHandle">Intent 来源句柄。</param>
-        /// <param name="published">黑板是否成功接收该 Intent。</param>
-        private void OnIntentPublicationReported(GameplayTag intentTag, InputRequestHandle sourceHandle, bool published)
-        {
-            lastPublicationResult = $"Frame={Time.frameCount}, Tag={intentTag}, Handle={sourceHandle}, Published={published}";
-        }
-
+        #region 消费观察
         /// <summary>记录 PlayerController 转交来源句柄后的真实 Request 接受结果。</summary>
         /// <param name="intentTag">来源对应的 Intent Tag。</param>
         /// <param name="handle">被转交的 Request 阶段句柄。</param>
@@ -236,7 +208,7 @@ namespace RPG.PlayerInputSystem.Tests
         #endregion
 
         #region OnGUI 调试面板
-        /// <summary>绘制 Tag 状态、当前 Intent、历史发布、消费结果和真实 Request。</summary>
+        /// <summary>绘制 Tag 状态、当前 Intent、连续移动、消费结果和真实 Request。</summary>
         private void OnGUI()
         {
             if (!showOnGui || blackboard == null) return;
@@ -249,7 +221,7 @@ namespace RPG.PlayerInputSystem.Tests
             GUILayout.Label($"Registered Arbiters: {playerController.InputIntentArbiterManager.Arbiters.Count}");
             GUILayout.Label($"Current Press Intent: {blackboard.HasIntent(pressIntentTag)} ({pressIntentTag})");
             GUILayout.Label($"Current Release Intent: {blackboard.HasIntent(releaseIntentTag)} ({releaseIntentTag})");
-            GUILayout.Label($"Last Publication: {lastPublicationResult}", GUI.skin.box);
+            GUILayout.Label($"Move World Input: {blackboard.MoveWorldInput}", GUI.skin.box);
             GUILayout.Label($"Last Press Confirmation: {lastPressConfirmationResult}", GUI.skin.box);
             GUILayout.Label($"Last Release Confirmation: {lastReleaseConfirmationResult}", GUI.skin.box);
             GUILayout.Label($"Last Confirm Summary: {lastConfirmationResult}");
@@ -301,17 +273,46 @@ namespace RPG.PlayerInputSystem.Tests
             /// <param name="owner">提供模式、阈值和测试 Tag 的宿主。</param>
             public TestIntentArbiter(GameplayInputOdinTester owner) => this.owner = owner;
 
-            /// <summary>根据测试模式决定当前阶段是否发布测试 Intent。</summary>
-            protected override bool TryResolveIntent(IReadOnlyPlayerInputRequest request,
-                PlayerInputRequestStage stage, PlayerStateBlackboard stateBlackboard, out GameplayTag intentTag)
+            /// <summary>根据测试模式将符合条件的 Request 发布为测试 Intent。</summary>
+            protected internal override void ArbitrateFrame(
+                PlayerInputController inputController,
+                PlayerStateBlackboard stateBlackboard,
+                Transform cameraTransform)
             {
-                intentTag = stage == PlayerInputRequestStage.Press ? owner.pressIntentTag : owner.releaseIntentTag;
-                if (!intentTag.IsValid || !GameplayTagManager.Instance.IsValidTag(intentTag)) return false;
-                if (owner.consumeMode != IntentConsumeTestMode.HeldThreshold) return true;
-                if (request.HeldDuration < owner.heldThreshold) return false;
-                return stage == PlayerInputRequestStage.Press
-                    ? request.PhysicalState == PlayerInputPhysicalState.Held
-                    : request.PhysicalState == PlayerInputPhysicalState.Released;
+                Array inputTypes = Enum.GetValues(typeof(PlayerInputType));
+                for (int inputIndex = 0; inputIndex < inputTypes.Length; inputIndex++)
+                {
+                    PlayerInputType inputType = (PlayerInputType)inputTypes.GetValue(inputIndex);
+                    if (!inputController.TryGetRequest(inputType, out IReadOnlyPlayerInputRequest request)) continue;
+                    Publish(request, PlayerInputRequestStage.Press, request.PressHandle,
+                        request.HasBufferedPress, stateBlackboard);
+                    Publish(request, PlayerInputRequestStage.Release, request.ReleaseHandle,
+                        request.HasBufferedRelease, stateBlackboard);
+                }
+            }
+
+            /// <summary>按测试模式和输入阶段尝试登记一个测试 Intent。</summary>
+            /// <param name="request">当前输入 Request。</param>
+            /// <param name="stage">待处理的输入阶段。</param>
+            /// <param name="handle">该阶段来源句柄。</param>
+            /// <param name="buffered">该阶段是否仍在缓冲期内。</param>
+            /// <param name="stateBlackboard">接收测试 Intent 的黑板。</param>
+            private void Publish(IReadOnlyPlayerInputRequest request, PlayerInputRequestStage stage,
+                InputRequestHandle handle, bool buffered, PlayerStateBlackboard stateBlackboard)
+            {
+                if (!buffered) return;
+                GameplayTag intentTag = stage == PlayerInputRequestStage.Press
+                    ? owner.pressIntentTag
+                    : owner.releaseIntentTag;
+                if (!intentTag.IsValid) return;
+                if (owner.consumeMode == IntentConsumeTestMode.HeldThreshold &&
+                    (request.HeldDuration < owner.heldThreshold ||
+                     (stage == PlayerInputRequestStage.Press
+                         ? request.PhysicalState != PlayerInputPhysicalState.Held
+                         : request.PhysicalState != PlayerInputPhysicalState.Released)))
+                    return;
+
+                stateBlackboard.TryPublishFrameIntent(intentTag, handle);
             }
         }
         #endregion
