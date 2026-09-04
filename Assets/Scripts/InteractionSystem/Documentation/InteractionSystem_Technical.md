@@ -47,14 +47,14 @@ Provider 应长期缓存不会变化的 Option 对象。周期扫描只把缓存
 
 ### 2.2 Option 执行契约
 
-`PlayerInteractor` 刷新列表时调用 `CanExecute`。用户点击或输入执行时，`InteractionOption.TryExecute` 会再次调用 `CanExecute`，通过后才调用执行回调：
+`PlayerInteractor` 刷新列表时调用 `CanExecute`。用户点击或 EventSystem 提交执行时，`InteractionOption.TryExecute` 会再次调用 `CanExecute`，通过后才调用执行回调：
 
 ```text
 扫描刷新 → CanExecute
 用户选择 → 保存 SelectedOption
 用户执行 → CanExecute 再校验 → Execute
-成功     → 由业务入口确认对应 Intent
-失败     → 不确认输入消费
+成功     → 由业务调用方处理执行结果
+失败     → 保留当前选择，等待下一次 EventSystem 提交
 ```
 
 因此，刷新时可用不代表执行时一定成功；执行入口必须保持幂等和实时校验。
@@ -99,7 +99,7 @@ NonAlloc 缓冲区满时会扩容并立即重查，不能把“返回数量等�
 
 ### 4.1 刷新时机
 
-`PlayerInteractor.Update()` 只消费当前帧的输入 Intent，不再逐帧调用 `RefreshOptions()`。Option 列表由 Detector 的 `ScanCompleted` 驱动，因此 Provider 集合不变时，业务状态仍会在下一次扫描时重新筛选。
+`PlayerInteractor.Update()` 不再读取或消费玩家输入 Intent，也不逐帧调用 `RefreshOptions()`。Option 列表由 Detector 的 `ScanCompleted` 驱动，因此 Provider 集合不变时，业务状态仍会在下一次扫描时重新筛选。
 
 ### 4.2 硬筛选顺序
 
@@ -151,9 +151,8 @@ sequenceDiagram
 
 `OptionChoice` 会在 `Awake` 保存原始 ColorBlock，并把 Highlighted 颜色复用为普通颜色，因此鼠标 Hover 不会形成独立的
 持续高亮；`Selected` 颜色只由 EventSystem Selection 对应的 View 状态写入。不可用行使用 Button 的
-`interactable = false` 并从显式上下导航链排除。旧的 `InteractionInputIntentArbiter` 与输入 Action 保留用于兼容
-和未来非 UI 场景，但不再由 `GameplayInputIntentArbiterManager.RegisterDefaultArbiters` 自动注册，也不会驱动
-`PlayerInteractor`。
+`interactable = false` 并从显式上下导航链排除。交互选择、导航和提交完全由 EventSystem 及
+`InputSystemUIInputModule` 驱动，不经过玩家输入 Intent Arbiter 或 PlayerStateBlackboard。
 
 ## 6. ChoiceWindow MVC 与预加载
 
@@ -186,7 +185,7 @@ sequenceDiagram
 
 当前 ChoiceWindow 不读取 `InteractionOption.Icon`。领域层保留图标字段供未来 View 使用，ChoiceWindow 只投影 Option 名称和选中索引；`OptionChoice` prefab 中的 ChatIcon 是固定装饰。
 
-`GameWindowPreloadService` 通过 `IWindowPreloadService : IScenePreloadTask` 依次预加载 HUD、Choice 和 Dialogue，并等待 ChoiceWindow 的三行 View 初始化完成。预加载只初始化，不自动显示窗口。
+`GameWindowPreloadService` 通过 `IWindowPreloadService : IScenePreloadTask` 依次预加载 HUD、Choice 和 Dialogue，并等待 ChoiceWindow 的三行 View 初始化完成；全部依赖就绪后显式显示 HUD，Choice 和 Dialogue 保持隐藏。
 
 停止运行时，`WSFrameRoot` 先调用 `UIManager.Shutdown()`，窗口统一释放 Controller、View、行实例和资源，避免玩家销毁事件刷新已经被 Unity 销毁的 UI 行。
 
