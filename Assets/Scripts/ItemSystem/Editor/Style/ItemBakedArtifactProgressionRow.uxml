@@ -1,9 +1,0 @@
-<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
-    <Style src="project://database/Assets/Scripts/ItemSystem/Editor/Style/ItemBakedArtifactProgressionRow.uss" />
-    <ui:VisualElement name="BakedRow" class="item-editor-baked-row">
-        <ui:Label name="Level" class="item-editor-baked-cell item-editor-baked-cell--level" />
-        <ui:Label name="CumulativeExperience" class="item-editor-baked-cell item-editor-baked-cell--cumulative" />
-        <ui:Label name="NextExperience" class="item-editor-baked-cell item-editor-baked-cell--next" />
-        <ui:Label name="CurrencyCost" class="item-editor-baked-cell item-editor-baked-cell--currency" />
-    </ui:VisualElement>
-</ui:UXML>

@@ -18,32 +18,66 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1303ced24d9d700418fa5644e7dd934e, type: 2}
   - {fileID: 11400000, guid: 32d6e344cc5d898469ba5bfdd7b7bfe3, type: 2}
   - {fileID: 11400000, guid: 766ed4bd2e34310428076c61553f6778, type: 2}
+  - {fileID: 11400000, guid: c722d73da1b0f734e8fdc82d7b4222e7, type: 2}
+  - {fileID: 11400000, guid: a0ec1c4f230acc24580d9835339ae9a4, type: 2}
+  - {fileID: 11400000, guid: 9103015d9fbdd9349b50370a3080f16e, type: 2}
   categoryDefaults:
-  - category: 0
-    defaultRarity: 1
-    defaultSortPriority: 100
-    defaultMaxQuantity: 9999
-  - category: 1
-    defaultRarity: 1
-    defaultSortPriority: 200
-    defaultMaxQuantity: 9999
-  - category: 2
-    defaultRarity: 2
-    defaultSortPriority: 300
-    defaultMaxQuantity: 200
-  - category: 3
-    defaultRarity: 3
-    defaultSortPriority: 400
-    defaultMaxQuantity: 99
-  - category: 4
-    defaultRarity: 4
-    defaultSortPriority: 500
-    defaultMaxQuantity: 1
-  - category: 5
-    defaultRarity: 5
-    defaultSortPriority: 500
-    defaultMaxQuantity: 1
-  - category: 6
-    defaultRarity: 1
-    defaultSortPriority: 600
-    defaultMaxQuantity: 9999
+  - rid: 100000000000000001
+  - rid: 100000000000000002
+  - rid: 100000000000000003
+  - rid: 100000000000000004
+  - rid: 100000000000000005
+  - rid: 100000000000000006
+  - rid: 100000000000000007
+  references:
+    version: 2
+    RefIds:
+    - rid: 100000000000000001
+      type: {class: StackableItemDefaultData, ns: RPG.ItemSystem, asm: Assembly-CSharp}
+      data:
+        defaultRarity: 1
+        defaultSortPriority: 100
+        category: 0
+        defaultMaxQuantity: 9999
+    - rid: 100000000000000002
+      type: {class: StackableItemDefaultData, ns: RPG.ItemSystem, asm: Assembly-CSharp}
+      data:
+        defaultRarity: 1
+        defaultSortPriority: 200
+        category: 1
+        defaultMaxQuantity: 9999
+    - rid: 100000000000000003
+      type: {class: StackableItemDefaultData, ns: RPG.ItemSystem, asm: Assembly-CSharp}
+      data:
+        defaultRarity: 2
+        defaultSortPriority: 300
+        category: 2
+        defaultMaxQuantity: 200
+    - rid: 100000000000000004
+      type: {class: StackableItemDefaultData, ns: RPG.ItemSystem, asm: Assembly-CSharp}
+      data:
+        defaultRarity: 3
+        defaultSortPriority: 400
+        category: 3
+        defaultMaxQuantity: 99
+    - rid: 100000000000000005
+      type: {class: WeaponItemDefaultData, ns: RPG.ItemSystem, asm: Assembly-CSharp}
+      data:
+        defaultRarity: 4
+        defaultSortPriority: 500
+        defaultMaxLevel: 90
+        defaultMaxAscensionRank: 6
+        defaultMaxRefinementRank: 5
+    - rid: 100000000000000006
+      type: {class: ArtifactItemDefaultData, ns: RPG.ItemSystem, asm: Assembly-CSharp}
+      data:
+        defaultRarity: 5
+        defaultSortPriority: 500
+        defaultMaxLevel: 20
+    - rid: 100000000000000007
+      type: {class: StackableItemDefaultData, ns: RPG.ItemSystem, asm: Assembly-CSharp}
+      data:
+        defaultRarity: 1
+        defaultSortPriority: 600
+        category: 6
+        defaultMaxQuantity: 9999

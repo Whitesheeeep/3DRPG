@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace RPG.ItemSystem
 {
-    /// <summary>背包展示和类型默认规则使用的物品分类。</summary>
+    /// <summary>背包展示和类型默认数据使用的物品分类。</summary>
     public enum ItemCategory
     {
         /// <summary>养成素材。</summary>

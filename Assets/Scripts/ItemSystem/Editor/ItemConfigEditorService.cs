@@ -364,7 +364,7 @@ namespace RPG.ItemSystem.Editor
                 definitionType == typeof(DevelopmentItemDefinition) ? "NewDevelopmentItem" : "NewItem";
             string assetPath = AssetDatabase.GenerateUniqueAssetPath($"{folder}/{fileName}.asset");
             ItemDefinition definition = null;
-            WeaponGrowthProfile growthProfile = null;
+            UnityEngine.Object growthProfile = null;
             string profilePath = string.Empty;
             bool databaseAdded = false;
             int undoGroup = Undo.GetCurrentGroup();
@@ -380,13 +380,12 @@ namespace RPG.ItemSystem.Editor
                     bool isArtifact = definition is ArtifactDefinition;
                     profilePath = AssetDatabase.GenerateUniqueAssetPath($"{folder}/{(isArtifact ? "NewArtifactGrowthProfile" : "NewWeaponGrowthProfile")}.asset");
                     growthProfile = isArtifact
-                        ? null
+                        ? ScriptableObject.CreateInstance<ArtifactGrowthProfile>()
                         : ScriptableObject.CreateInstance<WeaponGrowthProfile>();
-                    UnityEngine.Object artifactProfile = isArtifact ? ScriptableObject.CreateInstance<ArtifactGrowthProfile>() : null;
                     if (isArtifact)
                     {
-                        AssetDatabase.CreateAsset(artifactProfile, profilePath);
-                        Undo.RegisterCreatedObjectUndo(artifactProfile, "创建圣遗物成长配置");
+                        AssetDatabase.CreateAsset(growthProfile, profilePath);
+                        Undo.RegisterCreatedObjectUndo(growthProfile, "创建圣遗物成长配置");
                     }
                     else
                     {
@@ -401,21 +400,21 @@ namespace RPG.ItemSystem.Editor
                     definition is ArtifactDefinition ? "新圣遗物" :
                     definition is DevelopmentItemDefinition ? "新养成道具" : "新物品");
                 SetEnum(serialized, "category", (int)GetDefinitionCategory(definition));
-                ApplyDefaults(serialized, database, definition);
-                if (definition is WeaponDefinition weapon)
+                if (definition is WeaponDefinition)
                 {
                     serialized.FindProperty("growthProfile").objectReferenceValue = growthProfile;
                 }
-                else if (definition is ArtifactDefinition artifact)
+                else if (definition is ArtifactDefinition)
                 {
-                    UnityEngine.Object artifactProfile = AssetDatabase.LoadAssetAtPath<ArtifactGrowthProfile>(profilePath);
-                    serialized.FindProperty("growthProfile").objectReferenceValue = artifactProfile;
+                    serialized.FindProperty("growthProfile").objectReferenceValue = growthProfile;
                 }
                 else if (definition is DevelopmentItemDefinition)
                 {
                     SetEnum(serialized, "developmentType", (int)DevelopmentItemType.CharacterExperience);
                     SetInt(serialized, "experienceValue", 100);
                 }
+                // 先把新建 Profile 引用放入同一个 SerializedObject，再由 DefaultData 一次性应用全部默认字段。
+                ApplyDefaults(serialized, database, definition);
                 serialized.ApplyModifiedPropertiesWithoutUndo();
                 databaseAdded = true;
                 // 标记为可能已写入，异常时也会尝试移除部分完成的数据库引用。
@@ -545,21 +544,10 @@ namespace RPG.ItemSystem.Editor
         internal void ApplyCategoryDefaults(ItemDatabase database, ItemDefinition definition)
         {
             if (database == null || definition == null) throw new InvalidOperationException("应用默认值前必须选择数据库和物品。");
+            ItemDefaultData defaultData = database.GetRequiredCategoryDefault(definition.Category);
             Undo.RecordObject(definition, "应用物品类型默认值");
             SerializedObject serialized = new SerializedObject(definition);
-            if (database.TryGetCategoryDefault(definition.Category, out ItemCategoryDefaultRule rule))
-            {
-                ApplyDefaults(serialized, rule, definition);
-            }
-            else
-            {
-                // 新增分类在旧数据库资产尚未补充规则时采用内置安全默认值，不改变用户已配置的养成用途。
-                SetEnum(serialized, "rarity", (int)(definition is ArtifactDefinition ? ItemRarity.Five : ItemRarity.One));
-                SetInt(serialized, "sortPriority", 100);
-                if (definition is StackableItemDefinition) SetInt(serialized, "maxQuantity", 9999);
-            }
-            serialized.ApplyModifiedProperties();
-            EditorUtility.SetDirty(definition);
+            defaultData.ApplyDefault(serialized);
             AssetDatabase.SaveAssets();
         }
 
@@ -618,31 +606,15 @@ namespace RPG.ItemSystem.Editor
             EditorUtility.SetDirty(database);
         }
 
-        /// <summary>应用数据库规则到 SerializedObject。</summary>
+        /// <summary>查找并应用数据库默认数据到 SerializedObject。</summary>
         /// <param name="serialized">定义序列化对象。</param>
         /// <param name="database">数据库。</param>
         /// <param name="definition">定义。</param>
         private static void ApplyDefaults(SerializedObject serialized, ItemDatabase database, ItemDefinition definition)
         {
-            if (database.TryGetCategoryDefault(GetDefinitionCategory(definition), out ItemCategoryDefaultRule rule))
-                ApplyDefaults(serialized, rule, definition);
-            else
-            {
-                SetEnum(serialized, "rarity", (int)(definition is ArtifactDefinition ? ItemRarity.Five : ItemRarity.One));
-                SetInt(serialized, "sortPriority", 100);
-                if (definition is StackableItemDefinition) SetInt(serialized, "maxQuantity", 9999);
-            }
-        }
-
-        /// <summary>应用单条分类规则到定义。</summary>
-        /// <param name="serialized">定义序列化对象。</param>
-        /// <param name="rule">分类规则。</param>
-        /// <param name="definition">定义。</param>
-        private static void ApplyDefaults(SerializedObject serialized, ItemCategoryDefaultRule rule, ItemDefinition definition)
-        {
-            SetEnum(serialized, "rarity", (int)rule.DefaultRarity);
-            SetInt(serialized, "sortPriority", rule.DefaultSortPriority);
-            if (definition is StackableItemDefinition) SetInt(serialized, "maxQuantity", rule.DefaultMaxQuantity);
+            ItemCategory category = GetDefinitionCategory(definition);
+            ItemDefaultData defaultData = database.GetRequiredCategoryDefault(category);
+            defaultData.ApplyDefault(serialized);
         }
 
         /// <summary>根据 Definition 运行时类型获取其固定顶层分类。</summary>

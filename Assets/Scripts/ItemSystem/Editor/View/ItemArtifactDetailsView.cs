@@ -9,14 +9,13 @@ using WS_Modules.UIModule.Editor;
 
 namespace RPG.ItemSystem.Editor
 {
-    /// <summary>常驻复用的圣遗物成长配置和烘焙结果详情 View。</summary>
+    /// <summary>常驻复用的圣遗物成长配置详情 View。</summary>
     internal sealed class ItemArtifactDetailsView : IDisposable
     {
         #region 字段
 
         private readonly VisualElement pageRoot;
         private readonly VisualTreeAsset artifactTemplate;
-        private readonly VisualTreeAsset bakedRowTemplate;
         private readonly VisualElement artifactBaseFields;
         private readonly VisualElement artifactGrowthProfileContent;
         private readonly VisualElement missingGrowthProfileWarning;
@@ -24,10 +23,9 @@ namespace RPG.ItemSystem.Editor
         private readonly PropertyField levelEffectsField;
         private readonly PropertyField levelOverridesField;
         private readonly List<(PropertyField field, string label)> fixedPropertyLabels = new();
-        private readonly List<BakedArtifactLevelProgression> displayedProgressions = new();
         private readonly Label bakedSummaryLabel;
         private readonly Button bakeButton;
-        private readonly ListView bakedProgressionList;
+        private readonly Button viewBakedResultButton;
 
         private ArtifactDefinition boundArtifact;
         private SerializedObject definitionSerializedObject;
@@ -49,6 +47,9 @@ namespace RPG.ItemSystem.Editor
         /// <summary>请求 Controller 烘焙圣遗物成长表。</summary>
         internal event Action BakeGrowthRequested;
 
+        /// <summary>请求打开当前圣遗物的独立烘焙结果窗口。</summary>
+        internal event Action ViewBakedResultRequested;
+
         /// <summary>圣遗物字段发生变化。</summary>
         internal event Action<ItemDefinition> PropertiesChanged;
 
@@ -63,10 +64,7 @@ namespace RPG.ItemSystem.Editor
             pageRoot = parent ?? throw new ArgumentNullException(nameof(parent));
             artifactTemplate = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
                 UxmlUssPathConstants.Uxml.AssetsScriptsItemSystemEditorStyleItemArtifactDetails);
-            bakedRowTemplate = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
-                UxmlUssPathConstants.Uxml.AssetsScriptsItemSystemEditorStyleItemBakedArtifactProgressionRow);
             if (artifactTemplate == null) throw new InvalidOperationException("物品配置窗口缺少圣遗物详情 UXML。");
-            if (bakedRowTemplate == null) throw new InvalidOperationException("物品配置窗口缺少圣遗物烘焙结果行 UXML。");
 
             artifactTemplate.CloneTree(pageRoot);
             artifactBaseFields = Require<VisualElement>("ArtifactBaseFields");
@@ -79,15 +77,11 @@ namespace RPG.ItemSystem.Editor
             bakedSummaryLabel = Require<VisualElement>("ArtifactBakedSummary").Q<Label>("ArtifactBakedSummaryLabel");
             if (bakedSummaryLabel == null) throw new InvalidOperationException("圣遗物详情 UXML 缺少烘焙摘要标签。");
             bakeButton = Require<Button>("ArtifactBakeButton");
-            bakedProgressionList = Require<ListView>("ArtifactBakedProgressionList");
+            viewBakedResultButton = Require<Button>("ArtifactViewBakedResultButton");
             CacheFixedPropertyLabels(artifactBaseFields);
             CacheFixedPropertyLabels(artifactGrowthProfileContent);
-            bakedProgressionList.itemsSource = displayedProgressions;
-            bakedProgressionList.fixedItemHeight = 24f;
-            bakedProgressionList.selectionType = SelectionType.None;
-            bakedProgressionList.makeItem = CreateBakedRow;
-            bakedProgressionList.bindItem = BindBakedRow;
             bakeButton.clicked += OnBakeButtonClicked;
+            viewBakedResultButton.clicked += OnViewBakedResultButtonClicked;
             SetVisible(false);
             UpdateEmptyPresentation();
         }
@@ -98,11 +92,10 @@ namespace RPG.ItemSystem.Editor
             if (disposed) return;
             disposed = true;
             bakeButton.clicked -= OnBakeButtonClicked;
+            viewBakedResultButton.clicked -= OnViewBakedResultButtonClicked;
             Unbind();
-            bakedProgressionList.itemsSource = null;
-            bakedProgressionList.makeItem = null;
-            bakedProgressionList.bindItem = null;
             BakeGrowthRequested = null;
+            ViewBakedResultRequested = null;
             PropertiesChanged = null;
         }
 
@@ -224,8 +217,7 @@ namespace RPG.ItemSystem.Editor
                 artifactGrowthProfileContent.style.display = DisplayStyle.None;
                 bakedSummaryLabel.text = "烘焙结果：未配置成长配置。";
                 bakeButton.SetEnabled(false);
-                displayedProgressions.Clear();
-                bakedProgressionList.RefreshItems();
+                viewBakedResultButton.SetEnabled(false);
                 return;
             }
 
@@ -281,8 +273,7 @@ namespace RPG.ItemSystem.Editor
             artifactGrowthProfileContent.style.display = DisplayStyle.None;
             bakedSummaryLabel.text = "烘焙结果：未配置成长配置。";
             bakeButton.SetEnabled(false);
-            displayedProgressions.Clear();
-            bakedProgressionList.RefreshItems();
+            viewBakedResultButton.SetEnabled(false);
         }
 
         #endregion
@@ -320,54 +311,17 @@ namespace RPG.ItemSystem.Editor
             });
         }
 
-        /// <summary>创建圣遗物烘焙结果行。</summary>
-        /// <returns>模板宿主节点。</returns>
-        private VisualElement CreateBakedRow()
-        {
-            var host = new VisualElement { name = "ArtifactBakedRowHost" };
-            host.AddToClassList("item-editor-baked-row-host");
-            bakedRowTemplate.CloneTree(host);
-            if (host.Q<VisualElement>("BakedRow") == null) throw new InvalidOperationException("圣遗物烘焙结果行 UXML 缺少 BakedRow 根节点。");
-            return host;
-        }
-
-        /// <summary>绑定圣遗物烘焙结果行。</summary>
-        /// <param name="element">行节点。</param>
-        /// <param name="index">数据索引。</param>
-        private void BindBakedRow(VisualElement element, int index)
-        {
-            BakedArtifactLevelProgression progression = index >= 0 && index < displayedProgressions.Count ? displayedProgressions[index] : null;
-            // 动态行模板使用通用列名；表头才使用 Artifact 前缀，避免虚拟化行查询不到 Label 而保持空白。
-            SetLabel(element, "Level", progression?.Level.ToString("N0") ?? "—");
-            SetLabel(element, "CumulativeExperience", progression?.CumulativeExperience.ToString("N0") ?? "—");
-            SetLabel(element, "NextExperience", progression?.NextExperience.ToString("N0") ?? "—");
-            SetLabel(element, "CurrencyCost", progression?.CurrencyCost.ToString("N0") ?? "—");
-        }
-
         /// <summary>刷新圣遗物烘焙结果。</summary>
         /// <param name="profile">成长配置。</param>
         private void RefreshBakedProgressions(ArtifactGrowthProfile profile)
         {
-            displayedProgressions.Clear();
-            if (profile?.BakedProgressions != null)
-                for (int index = 0; index < profile.BakedProgressions.Count; index++) displayedProgressions.Add(profile.BakedProgressions[index]);
             bakedSummaryLabel.text = profile == null
                 ? "烘焙结果：未配置成长配置。"
-                : displayedProgressions.Count == 0
+                : profile.BakedProgressions.Count == 0
                     ? "烘焙结果：尚未生成，请先编辑曲线后烘焙。"
-                    : $"烘焙结果：已生成 {displayedProgressions.Count} 个等级条目，等级 0 至 {profile.MaxLevel}。";
+                    : $"烘焙结果：已生成 {profile.BakedProgressions.Count} 个等级条目，等级 0 至 {profile.MaxLevel}。";
             bakeButton.SetEnabled(profile != null);
-            bakedProgressionList.RefreshItems();
-        }
-
-        /// <summary>设置烘焙行单元格文本。</summary>
-        /// <param name="row">烘焙行。</param>
-        /// <param name="name">单元格名称。</param>
-        /// <param name="value">显示文本。</param>
-        private static void SetLabel(VisualElement row, string name, string value)
-        {
-            Label label = row.Q<Label>(name);
-            if (label != null) label.text = value;
+            viewBakedResultButton.SetEnabled(profile != null);
         }
 
         /// <summary>缓存固定字段 Label。</summary>
@@ -387,6 +341,9 @@ namespace RPG.ItemSystem.Editor
 
         /// <summary>转发烘焙请求。</summary>
         private void OnBakeButtonClicked() => BakeGrowthRequested?.Invoke();
+
+        /// <summary>将查看烘焙结果按钮点击转发给 Controller。</summary>
+        private void OnViewBakedResultButtonClicked() => ViewBakedResultRequested?.Invoke();
 
         /// <summary>查询页面内的必需控件。</summary>
         /// <typeparam name="TElement">控件类型。</typeparam>

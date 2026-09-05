@@ -1,14 +1,20 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using WS_Modules.Baking;
 using WS_Modules.GAS.GameplayEffect;
 
 namespace RPG.ItemSystem
 {
     /// <summary>保存武器静态资源、成长规则和未来装备 GE 引用的定义资产。</summary>
     [CreateAssetMenu(fileName = "WeaponDefinition", menuName = "RPG/ItemSystem/Weapon", order = 1)]
+#if UNITY_EDITOR
+    public sealed class WeaponDefinition : ItemDefinition, IBakedResultDataSource
+#else
     public sealed class WeaponDefinition : ItemDefinition
+#endif
     {
         [SerializeField, LabelText("武器类型")] private WeaponType weaponType;
         [SerializeField, MinValue(1), LabelText("最大等级")] private int maxLevel = 90;
@@ -46,6 +52,62 @@ namespace RPG.ItemSystem
 
         /// <summary>获取精炼阶段配置。</summary>
         public IReadOnlyList<WeaponRefinementStage> RefinementStages => refinementStages;
+
+#if UNITY_EDITOR
+        #region 烘焙结果数据源
+
+        /// <summary>获取武器成长结果窗口标题。</summary>
+        public string BakedResultTitle => $"{(string.IsNullOrWhiteSpace(DisplayName) ? name : DisplayName)} - 武器成长烘焙结果";
+
+        /// <summary>获取 Bake 会修改的 GrowthProfile。</summary>
+        public IReadOnlyList<UnityEngine.Object> BakeTargets => growthProfile == null
+            ? Array.Empty<UnityEngine.Object>()
+            : new UnityEngine.Object[] { growthProfile };
+
+        /// <summary>委托 GrowthProfile 生成武器等级结果。</summary>
+        /// <exception cref="InvalidOperationException">GrowthProfile 缺失时抛出。</exception>
+        public void Bake()
+        {
+            if (growthProfile == null) throw new InvalidOperationException($"武器定义 '{name}' 缺少 WeaponGrowthProfile。");
+            growthProfile.Bake();
+        }
+
+        /// <summary>将最近一次武器成长烘焙结果转换为扁平表。</summary>
+        /// <returns>武器等级、经验、货币和突破状态表。</returns>
+        public BakedResultTableData CreateBakedResultTableData()
+        {
+            if (growthProfile == null) throw new InvalidOperationException($"武器定义 '{name}' 缺少 WeaponGrowthProfile。");
+            var headers = new[] { "等级", "累计经验", "下一级经验", "货币消耗", "突破状态" };
+            var rows = new List<BakedResultRowData>(growthProfile.BakedProgressions.Count);
+            for (int index = 0; index < growthProfile.BakedProgressions.Count; index++)
+            {
+                BakedWeaponLevelProgression item = growthProfile.BakedProgressions[index];
+                rows.Add(new BakedResultRowData(new[]
+                {
+                    item.Level.ToString("N0", CultureInfo.InvariantCulture),
+                    item.CumulativeExperience.ToString("N0", CultureInfo.InvariantCulture),
+                    item.NextExperience.ToString("N0", CultureInfo.InvariantCulture),
+                    item.CurrencyCost.ToString("N0", CultureInfo.InvariantCulture),
+                    IsBreakthroughLevel(item.Level) ? "突破点" : "—"
+                }));
+            }
+
+            return new BakedResultTableData(BakedResultTitle, headers, rows);
+        }
+
+        /// <summary>判断等级是否命中武器突破阶段。</summary>
+        /// <param name="level">待检查等级。</param>
+        /// <returns>命中突破点时返回 true。</returns>
+        private bool IsBreakthroughLevel(int level)
+        {
+            for (int index = 0; index < ascensionStages.Count; index++)
+                if (ascensionStages[index] != null && ascensionStages[index].RequiredLevel == level)
+                    return true;
+            return false;
+        }
+
+        #endregion
+#endif
 
         /// <summary>验证武器成长字段和阶段序列。</summary>
         /// <exception cref="InvalidOperationException">武器配置不合法时抛出。</exception>
@@ -99,8 +161,8 @@ namespace RPG.ItemSystem
     [Serializable]
     public sealed class WeaponAscensionStage
     {
-        [SerializeField, Min(1), LabelText("所需等级")] private int requiredLevel = 20;
-        [SerializeField, Min(1), LabelText("突破后等级上限")] private int maxLevelAfter = 40;
+        [SerializeField, MinValue(1), LabelText("所需等级")] private int requiredLevel = 20;
+        [SerializeField, MinValue(1), LabelText("突破后等级上限")] private int maxLevelAfter = 40;
         [SerializeField, LabelText("突破消耗")] private WeaponGrowthCost cost = new();
 
         /// <summary>获取触发突破所需等级。</summary>

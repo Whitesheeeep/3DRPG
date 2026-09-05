@@ -5,19 +5,19 @@ using UnityEngine;
 
 namespace RPG.ItemSystem
 {
-    /// <summary>集中保存 ItemDefinition 和分类默认规则的配置数据库。</summary>
+    /// <summary>集中保存 ItemDefinition 和分类默认数据的配置数据库。</summary>
     [CreateAssetMenu(fileName = "ItemDatabase", menuName = "RPG/ItemSystem/Item Database", order = 0)]
     public sealed class ItemDatabase : ScriptableObject
     {
         [SerializeField, LabelText("物品定义列表")] private List<ItemDefinition> definitions = new();
-        [SerializeField, LabelText("分类默认规则")] private List<ItemCategoryDefaultRule> categoryDefaults = new();
+        [SerializeReference, LabelText("分类默认数据")] private List<ItemDefaultData> categoryDefaults = new();
         private Dictionary<ItemId, ItemDefinition> definitionIndex;
 
         /// <summary>获取数据库中的物品定义。</summary>
         public IReadOnlyList<ItemDefinition> Definitions => definitions;
 
-        /// <summary>获取分类默认规则。</summary>
-        public IReadOnlyList<ItemCategoryDefaultRule> CategoryDefaults => categoryDefaults;
+        /// <summary>获取分类默认数据。</summary>
+        public IReadOnlyList<ItemDefaultData> CategoryDefaults => categoryDefaults;
 
         /// <summary>尝试按 ItemId 查询定义。</summary>
         /// <param name="itemId">待查询标识。</param>
@@ -29,21 +29,35 @@ namespace RPG.ItemSystem
             return definitionIndex.TryGetValue(itemId, out definition);
         }
 
-        /// <summary>尝试读取一个分类的默认规则。</summary>
+        /// <summary>尝试读取一个分类的默认数据。</summary>
         /// <param name="category">物品分类。</param>
-        /// <param name="rule">找到的默认规则。</param>
+        /// <param name="defaultData">找到的默认数据。</param>
         /// <returns>找到时返回 true。</returns>
-        public bool TryGetCategoryDefault(ItemCategory category, out ItemCategoryDefaultRule rule)
+        public bool TryGetCategoryDefault(ItemCategory category, out ItemDefaultData defaultData)
         {
+            categoryDefaults ??= new List<ItemDefaultData>();
             for (int index = 0; index < categoryDefaults.Count; index++)
             {
-                if (categoryDefaults[index].Category != category) continue;
-                rule = categoryDefaults[index];
+                ItemDefaultData candidate = categoryDefaults[index];
+                if (candidate == null)
+                    throw new InvalidOperationException($"ItemDatabase 的分类默认数据第 {index} 项为空。");
+                if (candidate.Category != category) continue;
+                defaultData = candidate;
                 return true;
             }
 
-            rule = null;
+            defaultData = null;
             return false;
+        }
+
+        /// <summary>取得指定分类的必需默认数据。</summary>
+        /// <param name="category">物品分类。</param>
+        /// <returns>对应分类的默认数据。</returns>
+        /// <exception cref="InvalidOperationException">数据库未配置该分类时抛出。</exception>
+        public ItemDefaultData GetRequiredCategoryDefault(ItemCategory category)
+        {
+            if (TryGetCategoryDefault(category, out ItemDefaultData defaultData)) return defaultData;
+            throw new InvalidOperationException($"ItemDatabase '{name}' 未配置分类 {category} 的默认数据。");
         }
 
         /// <summary>验证全部定义并建立运行时索引。</summary>
@@ -51,15 +65,15 @@ namespace RPG.ItemSystem
         public void ValidateAndBuildIndex()
         {
             definitions ??= new List<ItemDefinition>();
-            categoryDefaults ??= new List<ItemCategoryDefaultRule>();
+            categoryDefaults ??= new List<ItemDefaultData>();
             var index = new Dictionary<ItemId, ItemDefinition>();
             var categories = new HashSet<ItemCategory>();
             for (int indexPosition = 0; indexPosition < categoryDefaults.Count; indexPosition++)
             {
-                ItemCategoryDefaultRule rule = categoryDefaults[indexPosition];
-                if (rule == null) throw new InvalidOperationException($"ItemDatabase 的分类默认规则第 {indexPosition} 项为空。");
-                rule.Validate();
-                if (!categories.Add(rule.Category)) throw new InvalidOperationException($"ItemDatabase 重复配置分类默认规则：{rule.Category}。");
+                ItemDefaultData defaultData = categoryDefaults[indexPosition];
+                if (defaultData == null) throw new InvalidOperationException($"ItemDatabase 的分类默认数据第 {indexPosition} 项为空。");
+                defaultData.Validate();
+                if (!categories.Add(defaultData.Category)) throw new InvalidOperationException($"ItemDatabase 重复配置分类默认数据：{defaultData.Category}。");
             }
 
             for (int indexPosition = 0; indexPosition < definitions.Count; indexPosition++)

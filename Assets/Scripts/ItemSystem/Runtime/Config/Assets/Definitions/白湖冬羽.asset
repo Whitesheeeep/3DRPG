@@ -19,14 +19,14 @@ MonoBehaviour:
   category: 4
   rarity: 5
   sortPriority: 500
-  iconAddress: Bag
+  iconAddress: WeaponIcons
   iconSpriteName: "\u767D\u6E56\u51AC\u7FBD_11210"
   worldPrefabAddress: 
   editorPreviewIcon: {fileID: 21300000, guid: 91df821d9dcbb3b499239864e744b8dc, type: 3}
   weaponType: 0
   maxLevel: 90
   maxAscensionRank: 6
-  maxRefinementRank: 6
+  maxRefinementRank: 5
   growthProfile: {fileID: 11400000, guid: 2d9691121d98a3a4690df892bd671a07, type: 2}
   levelEffects: []
   refinementEffects: []
@@ -37,8 +37,13 @@ MonoBehaviour:
       itemCosts: []
       currencyCosts: []
   refinementStages:
-  - rank: 1
+  - rank: 3
     requiredDuplicateCount: 1
     cost:
-      itemCosts: []
-      currencyCosts: []
+      itemCosts:
+      - itemId:
+          value: 
+        quantity: 0
+      currencyCosts:
+      - currencyId: 0
+        amount: 0

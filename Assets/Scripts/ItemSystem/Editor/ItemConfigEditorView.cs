@@ -199,6 +199,20 @@ namespace RPG.ItemSystem.Editor
             remove => definitionDetailsView.BakeArtifactGrowthRequested -= value;
         }
 
+        /// <summary>转发武器通用烘焙结果查看请求。</summary>
+        internal event Action ViewBakedResultRequested
+        {
+            add => definitionDetailsView.ViewBakedResultRequested += value;
+            remove => definitionDetailsView.ViewBakedResultRequested -= value;
+        }
+
+        /// <summary>转发圣遗物通用烘焙结果查看请求。</summary>
+        internal event Action ViewArtifactBakedResultRequested
+        {
+            add => definitionDetailsView.ViewArtifactBakedResultRequested += value;
+            remove => definitionDetailsView.ViewArtifactBakedResultRequested -= value;
+        }
+
         /// <summary>合并列表和右侧详情的统一重命名事件。</summary>
         internal event Action<ItemDefinition, string> RenameSubmitted
         {

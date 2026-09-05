@@ -25,15 +25,11 @@
             <ui:Label text="烘焙结果（只读）" class="item-editor-section-title" />
             <ui:VisualElement name="ArtifactBakedSummary" class="item-editor-baked-summary">
                 <ui:Label name="ArtifactBakedSummaryLabel" text="烘焙结果：未配置成长配置。" />
-                <ui:Button name="ArtifactBakeButton" text="烘焙成长表" />
+                <ui:VisualElement class="item-editor-baked-actions">
+                    <ui:Button name="ArtifactBakeButton" text="烘焙成长表" />
+                    <ui:Button name="ArtifactViewBakedResultButton" text="查看烘焙结果" />
+                </ui:VisualElement>
             </ui:VisualElement>
-            <ui:VisualElement name="ArtifactBakedHeader" class="item-editor-baked-header">
-                <ui:Label name="ArtifactLevel" text="等级" class="item-editor-baked-cell item-editor-baked-cell--level" />
-                <ui:Label name="ArtifactCumulativeExperience" text="累计经验" class="item-editor-baked-cell" />
-                <ui:Label name="ArtifactNextExperience" text="下一级经验" class="item-editor-baked-cell" />
-                <ui:Label name="ArtifactCurrencyCost" text="货币消耗" class="item-editor-baked-cell" />
-            </ui:VisualElement>
-            <ui:ListView name="ArtifactBakedProgressionList" fixed-item-height="24" selection-type="None" class="item-editor-baked-list" />
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

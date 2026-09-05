@@ -135,7 +135,14 @@ namespace RPG.ItemSystem.Editor
         private static ItemDefinition FindDefinition(ItemDatabase database, string value)
         {
             if (database == null || !ItemId.TryCreate(value, out ItemId itemId)) return null;
-            return database.TryGetDefinition(itemId, out ItemDefinition definition) ? definition : null;
+            // 这里仅用于编辑器下拉框的显示名称查询，不触发数据库全量校验；其他 Definition 的临时配置错误不能阻断当前字段绘制。
+            for (int index = 0; index < database.Definitions.Count; index++)
+            {
+                ItemDefinition definition = database.Definitions[index];
+                if (definition != null && definition.ItemId == itemId) return definition;
+            }
+
+            return null;
         }
 
         /// <summary>查找当前值在下拉集合中的索引。</summary>

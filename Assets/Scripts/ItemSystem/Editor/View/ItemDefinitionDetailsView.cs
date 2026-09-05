@@ -70,6 +70,12 @@ namespace RPG.ItemSystem.Editor
         /// <summary>圣遗物成长烘焙请求。</summary>
         internal event Action BakeArtifactGrowthRequested;
 
+        /// <summary>请求在通用窗口查看当前武器成长结果。</summary>
+        internal event Action ViewBakedResultRequested;
+
+        /// <summary>请求在通用窗口查看当前圣遗物成长结果。</summary>
+        internal event Action ViewArtifactBakedResultRequested;
+
         #endregion
 
         #region 生命周期
@@ -130,9 +136,11 @@ namespace RPG.ItemSystem.Editor
             displayNameField.RegisterCallback<KeyDownEvent>(OnDisplayNameKeyDown);
             weaponDetailsView = new ItemWeaponDetailsView(weaponDetailsPage);
             weaponDetailsView.BakeGrowthRequested += OnBakeGrowthRequested;
+            weaponDetailsView.ViewBakedResultRequested += OnViewBakedResultRequested;
             weaponDetailsView.PropertiesChanged += OnWeaponPropertiesChanged;
             artifactDetailsView = new ItemArtifactDetailsView(artifactDetailsPage);
             artifactDetailsView.BakeGrowthRequested += OnBakeArtifactGrowthRequested;
+            artifactDetailsView.ViewBakedResultRequested += OnViewArtifactBakedResultRequested;
             artifactDetailsView.PropertiesChanged += OnArtifactPropertiesChanged;
             SetPageVisibility(false, false, false, false, false);
             SetEmptyState(true);
@@ -144,8 +152,10 @@ namespace RPG.ItemSystem.Editor
             if (disposed) return;
             disposed = true;
             weaponDetailsView.BakeGrowthRequested -= OnBakeGrowthRequested;
+            weaponDetailsView.ViewBakedResultRequested -= OnViewBakedResultRequested;
             weaponDetailsView.PropertiesChanged -= OnWeaponPropertiesChanged;
             artifactDetailsView.BakeGrowthRequested -= OnBakeArtifactGrowthRequested;
+            artifactDetailsView.ViewBakedResultRequested -= OnViewArtifactBakedResultRequested;
             artifactDetailsView.PropertiesChanged -= OnArtifactPropertiesChanged;
             commonDetailsPage.UnregisterCallback<SerializedPropertyChangeEvent>(OnCommonPropertyChanged);
             displayNameField.UnregisterCallback<FocusInEvent>(OnDisplayNameFocusIn);
@@ -515,6 +525,12 @@ namespace RPG.ItemSystem.Editor
 
         /// <summary>转发圣遗物成长烘焙请求。</summary>
         private void OnBakeArtifactGrowthRequested() => BakeArtifactGrowthRequested?.Invoke();
+
+        /// <summary>转发武器成长结果查看请求。</summary>
+        private void OnViewBakedResultRequested() => ViewBakedResultRequested?.Invoke();
+
+        /// <summary>转发圣遗物成长结果查看请求。</summary>
+        private void OnViewArtifactBakedResultRequested() => ViewArtifactBakedResultRequested?.Invoke();
 
         /// <summary>转发武器字段变化。</summary>
         /// <param name="definition">发生变化的武器。</param>

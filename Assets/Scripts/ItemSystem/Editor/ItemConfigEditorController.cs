@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using WS_Modules.Baking;
+using WS_Modules.Baking.Editor;
 
 namespace RPG.ItemSystem.Editor
 {
@@ -14,6 +16,8 @@ namespace RPG.ItemSystem.Editor
 
         private readonly ItemConfigEditorView view;
         private readonly ItemConfigEditorService service;
+        // 通用烘焙事务服务统一负责 Undo、Dirty 和保存，Controller 只编排当前选中数据源。
+        private readonly BakedResultEditorService bakedResultService;
         private readonly List<ItemDefinition> allDefinitions = new();
         // 只记录当前窗口会话中实际执行过重命名的 Definition，Undo Group 通过 GUID 与资产路径解耦。
         private readonly Dictionary<int, string> renameUndoTargets = new();
@@ -41,6 +45,7 @@ namespace RPG.ItemSystem.Editor
         {
             this.view = view ?? throw new ArgumentNullException(nameof(view));
             service = new ItemConfigEditorService();
+            bakedResultService = new BakedResultEditorService();
             database = service.ResolveDatabase();
             search = ItemConfigEditorSession.Search;
             category = ItemConfigEditorSession.Category;
@@ -66,6 +71,8 @@ namespace RPG.ItemSystem.Editor
             view.PingRequested += OnPingRequested;
             view.BakeGrowthRequested += OnBakeGrowthRequested;
             view.BakeArtifactGrowthRequested += OnBakeArtifactGrowthRequested;
+            view.ViewBakedResultRequested += OnViewBakedResultRequested;
+            view.ViewArtifactBakedResultRequested += OnViewArtifactBakedResultRequested;
             view.RenameSubmitted += OnRenameSubmitted;
             view.PropertiesChanged += OnPropertiesChanged;
             view.PreviewIconChanged += OnPreviewIconChanged;
@@ -133,6 +140,8 @@ namespace RPG.ItemSystem.Editor
             view.PingRequested -= OnPingRequested;
             view.BakeGrowthRequested -= OnBakeGrowthRequested;
             view.BakeArtifactGrowthRequested -= OnBakeArtifactGrowthRequested;
+            view.ViewBakedResultRequested -= OnViewBakedResultRequested;
+            view.ViewArtifactBakedResultRequested -= OnViewArtifactBakedResultRequested;
             view.RenameSubmitted -= OnRenameSubmitted;
             view.PropertiesChanged -= OnPropertiesChanged;
             view.PreviewIconChanged -= OnPreviewIconChanged;
@@ -470,19 +479,15 @@ namespace RPG.ItemSystem.Editor
             Selection.activeObject = selectedDefinition;
         }
 
-        /// <summary>烘焙当前武器成长曲线并保存整数结果。</summary>
+        /// <summary>烘焙当前武器成长曲线并保存最终结果快照。</summary>
         private void OnBakeGrowthRequested()
         {
-            if (selectedDefinition is not WeaponDefinition weapon || weapon.GrowthProfile == null) return;
+            if (selectedDefinition is not WeaponDefinition weapon) return;
             try
             {
-                Undo.RecordObject(weapon.GrowthProfile, "烘焙武器成长表");
-                weapon.GrowthProfile.Bake();
-                EditorUtility.SetDirty(weapon.GrowthProfile);
-                AssetDatabase.SaveAssets();
-                // Bake 只改变 Profile 的结果集合，保留现有 PropertyField 和输入焦点。
+                bakedResultService.Bake(weapon);
                 view.RefreshDefinitionPresentation(weapon);
-                view.RefreshStatus($"已烘焙 {weapon.GrowthProfile.BakedProgressions.Count} 个等级条目。");
+                view.RefreshStatus($"已烘焙 {weapon.GrowthProfile?.BakedProgressions.Count ?? 0} 个等级条目。");
             }
             catch (Exception exception)
             {
@@ -490,23 +495,34 @@ namespace RPG.ItemSystem.Editor
             }
         }
 
-        /// <summary>烘焙当前圣遗物成长曲线并保存整数结果。</summary>
+        /// <summary>烘焙当前圣遗物成长曲线并保存最终结果快照。</summary>
         private void OnBakeArtifactGrowthRequested()
         {
-            if (selectedDefinition is not ArtifactDefinition artifact || artifact.GrowthProfile == null) return;
+            if (selectedDefinition is not ArtifactDefinition artifact) return;
             try
             {
-                Undo.RecordObject(artifact.GrowthProfile, "烘焙圣遗物成长表");
-                artifact.GrowthProfile.Bake();
-                EditorUtility.SetDirty(artifact.GrowthProfile);
-                AssetDatabase.SaveAssets();
+                bakedResultService.Bake(artifact);
                 view.RefreshDefinitionPresentation(artifact);
-                view.RefreshStatus($"已烘焙 {artifact.GrowthProfile.BakedProgressions.Count} 个圣遗物等级条目。");
+                view.RefreshStatus($"已烘焙 {artifact.GrowthProfile?.BakedProgressions.Count ?? 0} 个圣遗物等级条目。");
             }
             catch (Exception exception)
             {
                 view.ShowError(exception.Message);
             }
+        }
+
+        /// <summary>在通用结果窗口打开当前武器成长数据源。</summary>
+        private void OnViewBakedResultRequested()
+        {
+            if (selectedDefinition is IBakedResultDataSource source)
+                BakedResultViewerWindow.Open(source);
+        }
+
+        /// <summary>在通用结果窗口打开当前圣遗物成长数据源。</summary>
+        private void OnViewArtifactBakedResultRequested()
+        {
+            if (selectedDefinition is IBakedResultDataSource source)
+                BakedResultViewerWindow.Open(source);
         }
 
         /// <summary>提交双击名称后的显示名修改。</summary>

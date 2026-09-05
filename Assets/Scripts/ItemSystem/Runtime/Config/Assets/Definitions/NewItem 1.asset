@@ -9,21 +9,19 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 350c8d4365a31a34d8cddd5dc05867b7, type: 3}
-  m_Name: "\u65B0\u5723\u9057\u7269"
+  m_Script: {fileID: 11500000, guid: 5e8a1c3d7f9b42a6b0d4e2f7c1a93568, type: 3}
+  m_Name: NewItem 1
   m_EditorClassIdentifier: 
   itemId:
-    value: artifact_89a8d09213d840f6b9d34bb9d2614054
-  displayName: "\u65B0\u5723\u9057\u7269"
+    value: item_aa5d0103dcc1456ea613d129459595bf
+  displayName: "\u65B0\u7269\u54C1"
   description: 
-  category: 5
-  rarity: 5
-  sortPriority: 500
+  category: 0
+  rarity: 1
+  sortPriority: 100
   iconAddress: 
   iconSpriteName: 
   worldPrefabAddress: 
   editorPreviewIcon: {fileID: 0}
-  slot: 0
-  maxLevel: 20
-  growthProfile: {fileID: 11400000, guid: 56959202e774b474e9773210d00a1af9, type: 2}
-  levelEffects: []
+  maxQuantity: 9999
+  useEffects: []

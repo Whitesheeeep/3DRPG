@@ -19,7 +19,7 @@ MonoBehaviour:
   category: 4
   rarity: 3
   sortPriority: 500
-  iconAddress: Bag
+  iconAddress: WeaponIcons
   iconSpriteName: "\u661F\u950B\u5251_11211"
   worldPrefabAddress: 
   editorPreviewIcon: {fileID: 21300000, guid: baf0b007ba272e548a6052efd7f38000, type: 3}

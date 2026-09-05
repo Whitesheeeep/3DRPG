@@ -41,10 +41,8 @@
     color: rgb(245, 215, 165);
 }
 
-/* 圣遗物烘焙表复用武器表的列布局，确保表头和虚拟化数据行使用同一套宽度。 */
-.item-editor-baked-summary,
-.item-editor-baked-header,
-.item-editor-baked-list {
+/* 圣遗物详情只保留结果摘要和独立窗口入口。 */
+.item-editor-baked-summary {
     min-width: 0;
     max-width: 100%;
 }
@@ -56,45 +54,11 @@
     color: rgb(190, 225, 245);
 }
 
-.item-editor-baked-header {
+.item-editor-baked-actions {
     flex-direction: row;
-    min-width: 0;
-    align-items: center;
-    padding-top: 4px;
-    padding-bottom: 4px;
-    background-color: rgb(54, 54, 54);
-    color: rgb(190, 190, 190);
-    -unity-font-style: bold;
+    margin-top: 6px;
 }
 
-.item-editor-baked-header .item-editor-baked-cell {
-    color: rgb(190, 190, 190);
-}
-
-/* 表头是详情 UXML 中的固定节点，不能依赖动态烘焙行 USS 提供列宽。 */
-.item-editor-baked-header .item-editor-baked-cell {
-    flex-grow: 1;
-    flex-shrink: 1;
-    min-width: 72px;
-    padding-left: 6px;
-    padding-right: 6px;
-    font-size: 11px;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-}
-
-.item-editor-baked-header .item-editor-baked-cell--level {
-    flex-grow: 0;
-    width: 58px;
-    min-width: 58px;
-}
-
-.item-editor-baked-list {
-    min-height: 80px;
-    max-height: 320px;
-}
-
-.item-editor-baked-list .unity-scroll-view__horizontal-scroller {
-    display: none;
+.item-editor-baked-actions > Button {
+    margin-right: 6px;
 }
