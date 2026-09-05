@@ -146,7 +146,7 @@ flowchart LR
 测试组件整体由 `#if UNITY_EDITOR`包裹，不进入 Player 构建。
 ## GAS 根运动边界
 
-`SkillRuntimeHost` 与 `PlaySkillConfigGameplayAbilityTask` 只负责技能时间轴、命中、表现和完成事件，不直接决定角色运动。具体 GameplayAbility Runtime 或运动专用 Task 通过现有 `IMotionDriver` 申请 Skill 优先级控制，并在 Fixed 阶段提交代码位移；根运动技能只申请 Animator 根运动消费权，由 PlayerController 在 AnimatorMove 阶段统一结算。`SkillConfig.IsRootMotion` 可以继续作为技能作者的时间轴/表现数据，但不会自动驱动 MotionDriver。
+`PlaySkillConfigGameplayAbilityTask` 根据 `SkillConfig.IsRootMotion` 申请 Skill 优先级控制：关闭时占用水平与旋转但不提交动画运动，开启时占用 XYZ 并通过 `IMotionDriver.SubmitAnimatorMotion` 提交动画增量。PlayerController 在 AnimatorMove 阶段统一调用无参 Resolve；SkillRuntimeHost 仍负责时间轴、命中、表现和完成事件，MotionDriver 不读取 Animator 或 SkillConfig。
 
 ```mermaid
 flowchart LR

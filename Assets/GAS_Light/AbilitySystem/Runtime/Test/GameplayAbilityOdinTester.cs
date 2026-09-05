@@ -98,7 +98,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             protected override void OnLateTick(float deltaTime) => LateTickCount++;
 
             /// <summary>记录动画根运动阶段，验证其不会冒充其他更新阶段。</summary>
-            protected override void OnUpdateAnimationMove() => AnimationMoveCount++;
+            protected override void OnUpdateAnimationMove(Vector3 deltaPosition, Quaternion deltaRotation) => AnimationMoveCount++;
         }
 
         /// <summary>配置一个只接收 LateUpdate 的测试 Task，验证单阶段覆写契约。</summary>
@@ -179,7 +179,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             }
 
             /// <summary>在动画阶段立即完成当前 Task。</summary>
-            protected override void OnUpdateAnimationMove() => Complete();
+            protected override void OnUpdateAnimationMove(Vector3 deltaPosition, Quaternion deltaRotation) => Complete();
 
             /// <summary>记录任何不应发生的终态后 LateTick。</summary>
             /// <param name="deltaTime">延迟阶段秒数。</param>
@@ -603,7 +603,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             var asyncRuntime = (AsynchronousGameplayAbilityRuntime)runtime;
             var probe = (TickProbeGameplayAbilityTask)asyncRuntime.RootTask;
             source.FixedTick(0.02f);
-            source.UpdateAnimationMove();
+            source.UpdateAnimationMove(Vector3.zero, Quaternion.identity);
             source.LateTick(0.1f);
             Expect("FixedTick 只进入固定阶段", probe.FixedTickCount == 1 && probe.TickCount == 0);
             Expect("LateTick 只进入延迟阶段", probe.LateTickCount == 1 && probe.TickCount == 0);
@@ -628,7 +628,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             int finalAnimationMoveCount = probe.AnimationMoveCount;
             source.Tick(0.1f);
             source.FixedTick(0.02f);
-            source.UpdateAnimationMove();
+            source.UpdateAnimationMove(Vector3.zero, Quaternion.identity);
             source.LateTick(0.1f);
             Expect("完成后 ASC 不再发送 Tick",
                 probe.TickCount == finalTickCount &&
@@ -642,7 +642,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             GameplayAbilityHandle animationHandle = source.GiveAbility(animationData, 1);
             Expect("AnimationMove 完成 Task 激活成功",
                 source.TryActivateAbility(animationHandle, out GameplayAbilityRuntime animationRuntime));
-            source.UpdateAnimationMove();
+            source.UpdateAnimationMove(Vector3.zero, Quaternion.identity);
             source.LateTick(0.1f);
             Expect("AnimationMove 中完成后不再接收 LateTick",
                 animationRuntime.State == GameplayAbilityRuntimeState.Ended &&

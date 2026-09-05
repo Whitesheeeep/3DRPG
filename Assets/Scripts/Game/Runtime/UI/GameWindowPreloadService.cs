@@ -39,15 +39,16 @@ namespace RPG.Game.UI
             PreloadAsync().Forget();
         }
 
+        /// <summary>提供编辑器调试用 F1 显隐切换，不参与窗口预加载时序。</summary>
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.F1))
+            if (Input.GetKeyDown(KeyCode.F1) && UIManager.Instance.IsInitialized &&
+                UIManager.Instance.TryGetWindow(out HUDWindow hudWindow))
             {
-                if (UIManager.Instance.GetWindow<HUDWindow>().Visible) UIManager.Instance.PopUpWindow<HUDWindow>();
-                else
-                {
+                if (hudWindow.Visible)
                     UIManager.Instance.HideWindow<HUDWindow>();
-                }
+                else
+                    UIManager.Instance.PopUpWindow<HUDWindow>();
             }
         }
         #endregion
@@ -92,6 +93,10 @@ namespace RPG.Game.UI
                 if (!UIManager.Instance.TryGetWindow(out DialogueWindow dialogueWindow))
                     throw new InvalidOperationException("DialogueWindow 预加载后未找到窗口实例。");
                 await dialogueWindow.WaitUntilReadyAsync();
+                // 预加载只创建隐藏实例；全部依赖准备完成后显式打开 HUD，保证 IsPreloaded 与可见状态一致。
+                HUDWindow openedHud = await UIManager.Instance.PopUpWindowAsync<HUDWindow>();
+                if (openedHud == null || !openedHud.Visible)
+                    throw new InvalidOperationException("HUDWindow 预加载后打开失败或仍处于隐藏状态。");
                 preloaded = true;
                 preloadCompletionSource.TrySetResult();
             }

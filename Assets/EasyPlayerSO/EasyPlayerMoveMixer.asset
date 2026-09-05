@@ -20,7 +20,7 @@ MonoBehaviour:
     - rid: 7552782092226789377
       type: {class: MixerTransition2D, ns: Animancer, asm: Kybernetik.Animancer}
       data:
-        _FadeDuration: 0.132
+        _FadeDuration: 0
         _Speed: 1
         _Events:
           _NormalizedTimes: []
@@ -31,7 +31,7 @@ MonoBehaviour:
         - {fileID: 7400034, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
         - {fileID: 7400032, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
         - {fileID: 7400000, guid: f9051c306ffea7d46aa887f2d57ff680, type: 2}
-        - {fileID: 7400032, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+        - {fileID: 7400000, guid: 493ca03b10ece8242a8179852a544b53, type: 2}
         - {fileID: 7400000, guid: 524dba18ab235484a952e0eb684e22e5, type: 2}
         _Speeds: []
         _SynchronizeChildren: 

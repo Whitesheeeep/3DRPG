@@ -13,7 +13,15 @@ namespace RPG.PlayerInputSystem
         Crouch,
         Interact,
         InteractionPrevious,
-        InteractionNext
+        InteractionNext,
+        /// <summary>切换到队伍槽位 1。</summary>
+        CharacterSlot1,
+        /// <summary>切换到队伍槽位 2。</summary>
+        CharacterSlot2,
+        /// <summary>切换到队伍槽位 3。</summary>
+        CharacterSlot3,
+        /// <summary>切换到队伍槽位 4。</summary>
+        CharacterSlot4
     }
 
     /// <summary>表示一次输入手势当前的物理阶段。</summary>

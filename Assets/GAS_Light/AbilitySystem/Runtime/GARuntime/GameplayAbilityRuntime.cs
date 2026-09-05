@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.GameplayEffect;
 using WS_Modules.GAS.TAG;
@@ -106,7 +107,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         internal virtual void LateTick(float deltaTime) { }
 
         /// <summary>按需处理 Animator 求值后的根运动阶段。</summary>
-        internal virtual void UpdateAnimationMove() { }
+        internal virtual void UpdateAnimationMove(Vector3 deltaPosition, Quaternion deltaRotation) { }
 
         // 子类实现同步逻辑或启动 Root Task。
         protected abstract void OnStart();

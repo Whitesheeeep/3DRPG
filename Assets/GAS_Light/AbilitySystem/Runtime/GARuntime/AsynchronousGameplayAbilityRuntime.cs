@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.TAG;
 
@@ -63,7 +64,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         internal override void LateTick(float deltaTime) => RootTask.LateTick(deltaTime);
 
         /// <summary>将动画根运动阶段转发给 Root Task。</summary>
-        internal override void UpdateAnimationMove() => RootTask.UpdateAnimationMove();
+        internal override void UpdateAnimationMove(Vector3 deltaPosition, Quaternion deltaRotation) =>
+            RootTask.UpdateAnimationMove(deltaPosition, deltaRotation);
 
         // Root 正常完成后解除订阅并结束 Runtime。
         private void OnRootTaskCompleted(GameplayAbilityTask task)

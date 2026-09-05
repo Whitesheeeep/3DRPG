@@ -15,9 +15,6 @@ namespace RPG.PlayerInputSystem
         [SerializeField] private List<PlayerInputBinding> bindings = new();
         // 连续移动输入仅由本组件采样，离散 Request 的缓冲与消费不共用该状态。
         [SerializeField] private InputActionReference moveAction;
-        // 资产根引用与动作路径是 InputActionReference 子资源尚未生成时的稳定回退。
-        [SerializeField] private InputActionAsset moveActionAsset;
-        [SerializeField] private string moveActionName = "Character/Move";
         [SerializeField, Range(0f, 1f)] private float moveDeadzone = 0.1f;
         #endregion
 
@@ -31,6 +28,22 @@ namespace RPG.PlayerInputSystem
         /// <inheritdoc />
         public IReadOnlyList<IReadOnlyPlayerInputRequest> Requests => requests;
 
+        /// <summary>通过输入类型从内部索引查询请求，供 Arbiter 在不扫描列表的情况下读取输入阶段。</summary>
+        /// <param name="inputType">需要查询的输入类型。</param>
+        /// <param name="request">找到时返回当前手势的只读请求。</param>
+        /// <returns>存在该输入类型请求时返回 true。</returns>
+        public bool TryGetRequest(PlayerInputType inputType, out IReadOnlyPlayerInputRequest request)
+        {
+            if (requestsByType.TryGetValue(inputType, out PlayerInputRequest resolvedRequest))
+            {
+                request = resolvedRequest;
+                return true;
+            }
+
+            request = null;
+            return false;
+        }
+
         /// <summary>获取当前帧采样的连续移动输入；该值保留模拟摇杆幅度。</summary>
         public Vector2 MoveInput { get; private set; }
         #endregion
@@ -40,10 +53,9 @@ namespace RPG.PlayerInputSystem
         private void Awake()
         {
             BuildBindingLookup();
-            // 优先使用可直接拖拽的 InputActionReference；同时保留 Asset+ActionName 回退，避免新导入资产的子资源 fileID 尚未生成时丢失移动输入。
-            resolvedMoveAction = moveAction?.action;
-            if (resolvedMoveAction == null && moveActionAsset != null && !string.IsNullOrWhiteSpace(moveActionName))
-                resolvedMoveAction = moveActionAsset.FindAction(moveActionName, false);
+            // Move 必须由 Inspector 配置对象引用，避免重复维护 Action 名称字符串。
+            resolvedMoveAction = moveAction?.action ?? throw new InvalidOperationException(
+                $"[PlayerInputController] '{name}' 未配置有效的 Move InputActionReference。 ");
         }
 
         /// <summary>订阅并启用由当前 Controller 独占管理的全部离散动作。</summary>
@@ -217,37 +229,6 @@ namespace RPG.PlayerInputSystem
         #endregion
 
         #region 嵌套类型
-        /// <summary>直接代理内部 Request 列表的只读适配器，不复制集合或 Request 实例。</summary>
-        private sealed class ReadOnlyRequestList : IReadOnlyList<IReadOnlyPlayerInputRequest>
-        {
-            private readonly List<PlayerInputRequest> source;
-
-            /// <summary>创建绑定指定内部 Request 列表的只读适配器。</summary>
-            /// <param name="source">唯一持有 Request 顺序和生命周期的内部列表。</param>
-            public ReadOnlyRequestList(List<PlayerInputRequest> source) =>
-                this.source = source ?? throw new ArgumentNullException(nameof(source));
-
-            /// <summary>获取当前内部 Request 数量。</summary>
-            public int Count => source.Count;
-
-            /// <summary>按当前内部顺序读取指定位置的只读 Request。</summary>
-            /// <param name="index">Request 在内部列表中的位置。</param>
-            /// <returns>对应位置的 Request 只读接口。</returns>
-            public IReadOnlyPlayerInputRequest this[int index] => source[index];
-
-            /// <summary>按当前内部列表顺序枚举 Request，不创建副本。</summary>
-            /// <returns>直接读取内部列表元素的枚举器。</returns>
-            public IEnumerator<IReadOnlyPlayerInputRequest> GetEnumerator()
-            {
-                for (int i = 0; i < source.Count; i++)
-                    yield return source[i];
-            }
-
-            /// <summary>提供非泛型只读枚举入口。</summary>
-            /// <returns>当前 Request 的只读枚举器。</returns>
-            System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
-        }
-
         /// <summary>缓存一次校验后可直接用于回调的输入类型与两阶段时间。</summary>
         private readonly struct ResolvedBinding
         {

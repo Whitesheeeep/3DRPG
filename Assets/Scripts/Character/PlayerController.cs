@@ -36,9 +36,8 @@ namespace RPG.Character
         [SerializeField] private Transform cameraTransform;
         private LooseGameplayTagEventBridge looseGameplayTagEventBridge;
         private Coroutine frameIntentCleanupCoroutine;
-        private bool sceneTransitioning;
-        private bool playerInputLocked;
         private bool dialogueSwitchLocked;
+        private bool runtimeStarted;
         private int lastAnimatorMoveFrame = -1;
         #endregion
 
@@ -81,11 +80,18 @@ namespace RPG.Character
             // MotionDriver 只绑定共享 CharacterController；Tag 来源稍后随 ActiveCharacter 注入。
             motionDriver.Initialize(characterController);
 
-            // CharacterManager 只负责构建队伍和选出当前角色，不接收运动请求或推进时序。
+            // Blackboard 由稳定 Player 创建，随后以同一个引用注入全部 CharacterActor。
+            StateBlackboard = new PlayerStateBlackboard();
+
+            // CharacterManager 只负责构建队伍和选出当前角色；阶段推进仍由 PlayerController 主动调用。
             characterManager.Initialize();
-            // 每个角色获得同一个 IMotionDriver 和 PlayerController 回调入口，但保留独立 ASC、Animator 与 FSM。
+            // 每个角色获得同一个 IMotionDriver、PlayerController 回调入口和 Blackboard，保留独立 ASC、Animator 与 FSM。
             foreach (CharacterActor actor in characterManager.Characters)
-                actor.BindRuntime(characterRoot, motionDriver, this);
+            {
+                actor.BindRuntime(characterRoot, motionDriver, this, StateBlackboard);
+                // 在首次可能显示前预热 Idle；预热期间由 CharacterActor 屏蔽 AnimatorMove，避免产生移动副作用。
+                actor.PrimeIdlePose();
+            }
             characterManager.ActiveCharacterChanged += OnActiveCharacterChanged;
             CharacterActor active = characterManager.ActiveCharacter ??
                                     throw new InvalidOperationException("CharacterManager 初始化后没有可用 ActiveCharacter。");
@@ -93,16 +99,29 @@ namespace RPG.Character
             // ActiveOwner 决定本帧可获胜的请求；Tag 读取也从当前 ASC 开始。
             motionDriver.SetActiveOwner(active, active.AbilitySystemComponent);
 
-            // Blackboard 实例属于 Player，切人时只替换它代理的 ASC，不重建长期持有者。
-            StateBlackboard = new PlayerStateBlackboard(active.AbilitySystemComponent);
-            active.Locomotion.Activate();
-
-            // 输入仲裁必须在 GAS 消费前完成，LooseTag 与对话均绑定稳定 Player 身份。
-            InputIntentArbiterManager = new GameplayInputIntentArbiterManager(inputController, StateBlackboard);
-            InputIntentArbiterManager.RegisterArbiter(
-                new CharacterInputIntentArbiter(() => characterManager.ActiveCharacter));
+            // 输入仲裁必须在 GAS 消费前完成；默认策略由 Manager 统一装配。
+            InputIntentArbiterManager = new GameplayInputIntentArbiterManager(
+                inputController,
+                StateBlackboard);
+            InputIntentArbiterManager.RegisterDefaultArbiters();
             looseGameplayTagEventBridge = new LooseGameplayTagEventBridge(this);
             dialogueParticipant?.SetAnimationPlayer(active.AnimationPlayer);
+        }
+
+        /// <summary>
+        /// 在所有角色和 ASC 完成 Awake 后初始化配置，并激活当前角色 Locomotion。
+        /// </summary>
+        private void Start()
+        {
+            // PlayerController 的执行顺序早于角色 Start；这里集中完成 ASC 初始化，避免 Awake 阶段读取未建好的 Attribute 容器。
+            foreach (CharacterActor actor in characterManager.Characters)
+                actor.InitializeRuntimeConfiguration();
+
+            CharacterActor active = characterManager.ActiveCharacter ??
+                                    throw new InvalidOperationException("CharacterManager 初始化后没有可用 ActiveCharacter。 ");
+            runtimeStarted = true;
+            // 运行时配置就绪后再直接选择 Idle/CodeLocomotion，持续输入切人仍由 Activate 内部决定目标状态。
+            active.Locomotion.Activate();
         }
 
         /// <summary>恢复输入消费回传、LooseTag 桥接和帧末清理。</summary>
@@ -112,7 +131,8 @@ namespace RPG.Character
             if (StateBlackboard == null) return;
             lastAnimatorMoveFrame = -1;
             motionDriver.Resume();
-            characterManager.ActiveCharacter.Locomotion.Activate();
+            if (runtimeStarted)
+                characterManager.ActiveCharacter?.Locomotion.Activate();
             StateBlackboard.IntentSourceConsumed += OnIntentSourceConsumed;
             frameIntentCleanupCoroutine = StartCoroutine(ClearFrameIntentsAtFrameEnd());
         }
@@ -139,46 +159,36 @@ namespace RPG.Character
             looseGameplayTagEventBridge?.Dispose();
         }
 
-        /// <summary>依次推进全队 ASC、输入 Tag 仲裁与当前角色普通阶段。</summary>
+        /// <summary>依次推进全队 ASC、输入分析、角色切换和当前角色普通阶段。</summary>
         private void Update()
         {
-            // 先推进全部 ASC，后台角色的冷却、持续 GE 和普通能力时间不会因切人停止。
+            // CharacterManager 负责遍历角色，但只由此处显式推进；后台角色的冷却和持续 GE 不因切人停止。
             characterManager.TickCharacters(Time.deltaTime);
-            // AbilityTags 必须是本帧最新值；Manager 在同一入口统一发布离散 IntentTag 和连续 Move。
+            // 输入控制器已完成本帧采样；Manager 当前默认只调度需要镜头转换的 Move Arbiter。
             InputIntentArbiterManager.ArbitrateFrame(cameraTransform);
 
-            // 场景切换过程中或者对话占用时，玩家输入不再被消费到当前角色的 ASC。
-            if (!sceneTransitioning && !playerInputLocked)
-                characterManager.ActiveCharacter.ConsumeAbilityIntents(StateBlackboard);
+            // 切人 Request 的映射和消费由 CharacterManager 处理；玩家级对话锁仍在 PlayerController 门禁。
+            if (CanProcessCharacterSwitchInput())
+                characterManager.ProcessSwitchInputRequests(inputController);
 
-            // Manager 始终保留真实输入；玩家级锁定只阻止当前 Locomotion 响应，不篡改 Blackboard。
-            Vector3 locomotionInput = sceneTransitioning || playerInputLocked
-                ? Vector3.zero
-                : StateBlackboard.MoveWorldInput;
-            characterManager.ActiveCharacter.Locomotion.SetMovementInput(locomotionInput);
-            // Update 只更新动画状态和请求生命周期；CharacterController.Move 延迟到 Fixed 或 AnimatorMove 结算。
-            characterManager.ActiveCharacter.Locomotion.Tick(Time.deltaTime);
+            // 切换后由 Manager 重新读取 ActiveCharacter，确保同帧技能和 Locomotion 使用新角色。
+            characterManager.TickActiveCharacter(inputController, Time.deltaTime);
         }
 
-        /// <summary>同步收集 GAS 与 Locomotion 的物理请求，然后统一移动一次。</summary>
+        /// <summary>请求 CharacterManager 收集当前角色物理运动，然后由 MotionDriver 统一移动一次。</summary>
         private void FixedUpdate()
         {
-            if (sceneTransitioning) return;
-            CharacterActor active = characterManager.ActiveCharacter;
-            // 先让当前 GA 提交技能位移，再让 Locomotion 提交代码移动和重力。
-            active.FixedTickAbility(Time.fixedDeltaTime);
-            active.Locomotion.FixedTick(Time.fixedDeltaTime);
+            // Manager 只收集当前角色 GAS 与 Locomotion 请求，不执行最终 CharacterController.Move。
+            characterManager.FixedTickActiveCharacter(Time.fixedDeltaTime);
             // 所有候选请求在同一物理边界统一仲裁；Resolve 自己清空瞬时提交，不跨步复用。
             motionDriver.ResolveFixedMotion();
         }
 
-        /// <summary>推进全队能力与当前 Locomotion 延迟阶段，不产生额外移动。</summary>
+        /// <summary>请求 CharacterManager 推进全队能力与当前 Locomotion 延迟阶段。</summary>
         private void LateUpdate()
         {
             // Late 阶段只处理能力和 FSM 的延迟逻辑，避免同一帧出现第二次 CharacterController.Move。
             characterManager.LateTickCharacters(Time.deltaTime);
-            if (!sceneTransitioning)
-                characterManager.ActiveCharacter.Locomotion.LateTick(Time.deltaTime);
         }
 
         /// <summary>接收当前 Character Animator 的增量并在业务阶段之后统一结算。</summary>
@@ -191,15 +201,13 @@ namespace RPG.Character
         /// </remarks>
         internal void ProcessAnimatorMotion(CharacterActor source, Vector3 deltaPosition, Quaternion deltaRotation)
         {
-            if (!isActiveAndEnabled || sceneTransitioning ||
-                !ReferenceEquals(source, characterManager.ActiveCharacter)) return;
+            if (!isActiveAndEnabled) return;
             // 同一渲染帧只允许当前角色结算一次，避免重复 Animator 求值导致根运动被重复消费。
             if (lastAnimatorMoveFrame == Time.frameCount) return;
+            // CharacterManager 验证来源并推进当前角色动画阶段；MotionDriver 仍由 PlayerController 最后结算。
+            if (!characterManager.TryUpdateAnimationMove(source, deltaPosition, deltaRotation, Time.deltaTime)) return;
             lastAnimatorMoveFrame = Time.frameCount;
-            // AnimatorMove 阶段先让当前 GA 和 Locomotion 读取增量，再由 MotionDriver 按控制权决定是否消费。
-            source.UpdateAnimationMoveAbility();
-            source.Locomotion.UpdateAnimationMove(deltaPosition, Time.deltaTime);
-            motionDriver.ResolveAnimatorMotion(deltaPosition, deltaRotation);
+            motionDriver.ResolveAnimatorMotion();
         }
 
         /// <summary>在渲染帧末清理未消费 Intent。</summary>
@@ -214,57 +222,40 @@ namespace RPG.Character
         }
         #endregion
 
-        #region 切换与场景迁移
+        #region 角色切换
         /// <summary>在玩家级阻断通过后切换角色。</summary>
         /// <param name="characterId">目标角色标识。</param>
         /// <returns>明确的切换状态。</returns>
         public CharacterSwitchStatus TrySwitchCharacter(CharacterId characterId)
         {
-            if (sceneTransitioning || playerInputLocked || dialogueSwitchLocked ||
-                StateBlackboard.AbilityTags.HasTag(GameplayTags.Tag_State_Block_AbilityActivation))
+            if (!characterManager.IsInitialized) return CharacterSwitchStatus.NotInitialized;
+            if (dialogueSwitchLocked ||
+                characterManager.ActiveCharacter == null ||
+                characterManager.ActiveCharacter.AbilitySystemComponent.Tags.HasTag(
+                    GameplayTags.Tag_State_Block_AbilityActivation))
                 return CharacterSwitchStatus.CharacterBusy;
             return characterManager.TrySwitch(characterId);
         }
 
-        /// <summary>设置玩家级输入锁。</summary>
-        /// <param name="locked">是否阻止切换。</param>
-        public void SetPlayerInputLocked(bool locked) => playerInputLocked = locked;
+        /// <summary>处理一个玩家级队伍槽位切换入口，并保留角色管理器的明确结果。</summary>
+        /// <param name="slotIndex">从零开始的队伍槽位下标。</param>
+        /// <returns>玩家级检查或队伍切换的结果。</returns>
+        public CharacterSwitchStatus TrySwitchCharacterSlot(int slotIndex)
+        {
+            if (!characterManager.IsInitialized) return CharacterSwitchStatus.NotInitialized;
+            if (dialogueSwitchLocked ||
+                characterManager.ActiveCharacter == null ||
+                characterManager.ActiveCharacter.AbilitySystemComponent.Tags.HasTag(
+                    GameplayTags.Tag_State_Block_AbilityActivation))
+                return CharacterSwitchStatus.CharacterBusy;
+            return characterManager.TrySwitchSlot(slotIndex);
+        }
 
         /// <summary>设置对话是否阻止角色切换。</summary>
         /// <param name="locked">是否正在占用角色表现。</param>
         public void SetDialogueSwitchLocked(bool locked) => dialogueSwitchLocked = locked;
 
-        /// <summary>暂停运动并禁用碰撞器，准备迁移 CharacterRoot。</summary>
-        public void PrepareForSceneTransition()
-        {
-            sceneTransitioning = true;
-            motionDriver.Suspend();
-            motionDriver.ClearTransientRequests();
-            characterController.enabled = false;
-        }
-
-        /// <summary>设置新场景出生位姿并恢复控制。</summary>
-        /// <param name="spawnPose">CharacterRoot 世界位姿。</param>
-        public void CompleteSceneTransition(Pose spawnPose)
-        {
-            if (!sceneTransitioning)
-                throw new InvalidOperationException("必须先 PrepareForSceneTransition，再设置场景出生位姿。");
-            characterRoot.SetPositionAndRotation(spawnPose.position, spawnPose.rotation);
-            characterController.enabled = true;
-            motionDriver.Resume();
-            sceneTransitioning = false;
-        }
-
-        /// <summary>取消迁移并恢复运动出口。</summary>
-        public void CancelSceneTransition()
-        {
-            characterController.enabled = true;
-            motionDriver.ClearTransientRequests();
-            motionDriver.Resume();
-            sceneTransitioning = false;
-        }
-
-        /// <summary>同步切换 MotionDriver Owner、Blackboard ASC 与对话动画目标。</summary>
+        /// <summary>同步切换 MotionDriver Owner 与对话动画目标。</summary>
         /// <param name="previous">旧当前角色。</param>
         /// <param name="current">新当前角色。</param>
         private void OnActiveCharacterChanged(CharacterActor previous, CharacterActor current)
@@ -277,10 +268,21 @@ namespace RPG.Character
 
             motionDriver.SetActiveOwner(current, current.AbilitySystemComponent);
             looseGameplayTagEventBridge?.RebindActiveAbilitySystem();
-            StateBlackboard?.BindAbilitySystem(current.AbilitySystemComponent);
-            // IntentTag 和连续 Move 表示稳定 Player 的输入意图；切人只更换 ASC 来源，不清理本帧意图。
+            // IntentTag 和连续 Move 表示稳定 Player 的输入意图；切人不清理本帧输入事实。
             current.Locomotion.Activate();
             dialogueParticipant?.SetAnimationPlayer(current.AnimationPlayer);
+        }
+        #endregion
+
+        #region 切人输入门禁
+        /// <summary>判断当前玩家级条件是否允许 CharacterManager 处理切人 Request。</summary>
+        /// <returns>允许处理时返回 true。</returns>
+        private bool CanProcessCharacterSwitchInput()
+        {
+            if (!characterManager.IsInitialized || dialogueSwitchLocked) return false;
+            CharacterActor active = characterManager.ActiveCharacter;
+            return active != null && !active.AbilitySystemComponent.Tags.HasTag(
+                GameplayTags.Tag_State_Block_AbilityActivation);
         }
         #endregion
 
@@ -295,6 +297,7 @@ namespace RPG.Character
             InputRequestConsumptionForwarded?.Invoke(intentTag, handle, accepted);
 #endif
         }
+
         #endregion
     }
 }

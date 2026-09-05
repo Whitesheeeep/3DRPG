@@ -49,7 +49,8 @@ namespace WS_Modules.GAS.AttributeSystem
         /// <summary>获取固定最大值；PositiveInfinity 表示无上限。</summary>
         public float MaxValue => maxValue;
 
-        internal float BaseValue => baseValue;
+        /// <summary>获取当前未应用聚合 Modifier 前的基础值。</summary>
+        public float BaseValue => baseValue;
 
         /// <summary>获取经过当前聚合结果计算后的有效值。</summary>
         public float CurrentValue => currentValue;

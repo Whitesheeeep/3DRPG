@@ -122,7 +122,7 @@ ChoiceWindow 不再依赖 PlayerInteractor 自动消费 Blackboard Intent。上�
 
 ### 4.2 窗口行为
 
-`GameWindowPreloadService` 会在跨场景保留的 WSFrameRoot 上依次预加载 HUD、Choice 和 Dialogue 窗口，并等待 ChoiceWindow 首次创建三个 `OptionChoice` 行。预加载完成后窗口保持隐藏，不会因为预加载自动显示。
+`GameWindowPreloadService` 会在跨场景保留的 WSFrameRoot 上依次预加载 HUD、Choice 和 Dialogue 窗口，并等待 ChoiceWindow 首次创建三个 `OptionChoice` 行。全部依赖准备完成后，HUD 显式显示；Choice 和 Dialogue 保持隐藏，直到各自业务流程打开。
 
 ```mermaid
 stateDiagram-v2

@@ -19,6 +19,7 @@ namespace RPG.Character
 
         [NonSerialized] private readonly Dictionary<int, ControlEntry> controls = new();
         [NonSerialized] private readonly List<FixedSubmission> fixedSubmissions = new();
+        [NonSerialized] private readonly List<AnimatorSubmission> animatorSubmissions = new();
 
         // 依赖
         [NonSerialized] private CharacterController characterController;
@@ -57,6 +58,7 @@ namespace RPG.Character
             activeOwner = owner;
             activeAbilitySystem = abilitySystem;
             fixedSubmissions.Clear();
+            animatorSubmissions.Clear();
         }
 
         #endregion
@@ -86,12 +88,25 @@ namespace RPG.Character
             fixedSubmissions.Add(new FixedSubmission(handle, request));
         }
 
+        /// <summary>登记当前 Animator 阶段由指定控制权主动提交的根运动。</summary>
+        /// <param name="handle">已取得的持续控制权。</param>
+        /// <param name="submission">本次 Animator 阶段增量。</param>
+        public void SubmitAnimatorMotion(MotionControlHandle handle, AnimatorMotionSubmission submission)
+        {
+            if (handle == null) throw new ArgumentNullException(nameof(handle));
+            if (!handle.IsValid || !controls.TryGetValue(handle.Id, out ControlEntry entry) ||
+                !ReferenceEquals(entry.Handle, handle))
+                throw new InvalidOperationException("不能使用已经释放或不属于当前 MotionDriver 的 Handle 提交 Animator 运动。");
+            animatorSubmissions.Add(new AnimatorSubmission(handle, submission));
+        }
+
         /// <summary>释放单个 Handle 对应请求。</summary>
         /// <param name="handle">正在释放的句柄。</param>
         internal void Release(MotionControlHandle handle)
         {
             controls.Remove(handle.Id);
             fixedSubmissions.RemoveAll(submission => ReferenceEquals(submission.Handle, handle));
+            animatorSubmissions.RemoveAll(submission => ReferenceEquals(submission.Handle, handle));
         }
 
         /// <summary>释放指定 Owner 的全部持续请求并清除其瞬时提交。</summary>
@@ -111,6 +126,7 @@ namespace RPG.Character
                 entry.Handle.Invalidate();
             }
             fixedSubmissions.RemoveAll(submission => ReferenceEquals(submission.Handle.Owner, owner));
+            animatorSubmissions.RemoveAll(submission => ReferenceEquals(submission.Handle.Owner, owner));
         }
 
         #endregion
@@ -151,18 +167,33 @@ namespace RPG.Character
         /// <summary>根据当前获胜控制请求过滤并应用一次 Animator 根运动。</summary>
         /// <param name="deltaPosition">Animator 本次求值产生的位移增量。</param>
         /// <param name="deltaRotation">Animator 本次求值产生的旋转增量。</param>
-        internal void ResolveAnimatorMotion(Vector3 deltaPosition, Quaternion deltaRotation)
+        internal void ResolveAnimatorMotion()
         {
-            ControlEntry horizontal = FindWinner(MotionChannels.Horizontal);
-            ControlEntry vertical = FindWinner(MotionChannels.Vertical);
-            ControlEntry rotation = FindWinner(MotionChannels.Rotation);
-            Vector3 translation = Vector3.zero;
-            if (horizontal?.Request.ConsumeAnimatorMotion == true)
-                translation += new Vector3(deltaPosition.x, 0f, deltaPosition.z);
-            if (vertical?.Request.ConsumeAnimatorMotion == true) translation.y = deltaPosition.y;
-            Quaternion finalRotation = rotation?.Request.ConsumeAnimatorMotion == true
-                ? deltaRotation : Quaternion.identity;
-            ApplyResolvedMotion(translation, finalRotation);
+            try
+            {
+                ControlEntry horizontal = FindWinner(MotionChannels.Horizontal);
+                ControlEntry vertical = FindWinner(MotionChannels.Vertical);
+                ControlEntry rotation = FindWinner(MotionChannels.Rotation);
+                Vector3 translation = Vector3.zero;
+                Quaternion finalRotation = Quaternion.identity;
+                foreach (AnimatorSubmission submission in animatorSubmissions)
+                {
+                    if (horizontal != null && ReferenceEquals(horizontal.Handle, submission.Handle))
+                    {
+                        Vector3 value = submission.Submission.Translation;
+                        translation += new Vector3(value.x, 0f, value.z);
+                    }
+                    if (vertical != null && ReferenceEquals(vertical.Handle, submission.Handle))
+                        translation.y += submission.Submission.Translation.y;
+                    if (rotation != null && ReferenceEquals(rotation.Handle, submission.Handle))
+                        finalRotation *= submission.Submission.Rotation;
+                }
+                ApplyResolvedMotion(translation, finalRotation);
+            }
+            finally
+            {
+                animatorSubmissions.Clear();
+            }
         }
 
         /// <summary>暂停最终运动并丢弃尚未结算的瞬时提交。</summary>
@@ -176,7 +207,11 @@ namespace RPG.Character
         internal void Resume() => suspended = false;
 
         /// <summary>清除只属于当前阶段的 Fixed 运动提交。</summary>
-        internal void ClearTransientRequests() => fixedSubmissions.Clear();
+        internal void ClearTransientRequests()
+        {
+            fixedSubmissions.Clear();
+            animatorSubmissions.Clear();
+        }
 
         #endregion
 
@@ -265,6 +300,19 @@ namespace RPG.Character
             public MotionControlHandle Handle { get; }
             /// <summary>获取运动数据。</summary>
             public FixedMotionRequest Request { get; }
+        }
+
+        /// <summary>保存一个 Animator 阶段提交及其控制权来源。</summary>
+        private readonly struct AnimatorSubmission
+        {
+            public AnimatorSubmission(MotionControlHandle handle, AnimatorMotionSubmission submission)
+            {
+                Handle = handle;
+                Submission = submission;
+            }
+
+            public MotionControlHandle Handle { get; }
+            public AnimatorMotionSubmission Submission { get; }
         }
 
         #endregion

@@ -44,8 +44,11 @@ namespace RPG.Character
             driver = Runtime.SourceOwner.MotionDriver ??
                 throw new InvalidOperationException("[SkillMotionTask] 当前角色未绑定 MotionDriver。");
             // 请求成功后不再执行可能失败的初始化操作，所有终态都对称释放 Handle。
+            MotionChannels controlChannels = channels;
+            if (consumeRootMotion)
+                controlChannels |= MotionChannels.Vertical;
             handle = driver.RequestControl(new MotionControlRequest(Runtime.SourceOwner,
-                MotionPriority.Skill, channels, consumeRootMotion));
+                MotionPriority.Skill, controlChannels));
         }
 
         /// <summary>在物理阶段提交按秒数积分后的代码运动。</summary>
@@ -54,6 +57,16 @@ namespace RPG.Character
         {
             if (!consumeRootMotion)
                 driver.SubmitFixed(handle, FixedMotionRequest.TranslationOnly(worldVelocity * fixedDeltaTime));
+        }
+
+        /// <summary>在 Animator 阶段提交根运动技能产生的增量。</summary>
+        /// <param name="deltaPosition">Animator 位移增量。</param>
+        /// <param name="deltaRotation">Animator 旋转增量。</param>
+        protected override void OnUpdateAnimationMove(Vector3 deltaPosition, Quaternion deltaRotation)
+        {
+            if (consumeRootMotion)
+                driver.SubmitAnimatorMotion(handle,
+                    new AnimatorMotionSubmission(deltaPosition, deltaRotation));
         }
 
         /// <summary>在普通阶段累计生命周期并结束任务。</summary>

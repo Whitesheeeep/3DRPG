@@ -1,9 +1,11 @@
+using System;
 using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.GameplayAbilitySystem;
 using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.Generated;
 using WS_Modules.GAS.TAG;
+using RPG.Character;
 
 namespace RPG.SkillSystem
 {
@@ -19,6 +21,8 @@ namespace RPG.SkillSystem
         private GameplayTag appliedInterruptTag;
         private bool hasAppliedPhaseTag;
         private bool hasAppliedInterruptTag;
+        private IMotionDriver motionDriver;
+        private MotionControlHandle motionHandle;
 
         #endregion
 
@@ -62,11 +66,21 @@ namespace RPG.SkillSystem
                 return;
             }
 
+            if (skillConfig.IsRootMotion)
+            {
+                motionDriver = skillOwner.MotionDriver ??
+                    throw new InvalidOperationException($"Ability '{Runtime.Data.name}' 的角色未绑定 MotionDriver。");
+                motionHandle = motionDriver.RequestControl(new MotionControlRequest(
+                    skillOwner,
+                    MotionPriority.Skill,
+                    MotionChannels.Horizontal | MotionChannels.Vertical | MotionChannels.Rotation));
+            }
+
             Subscribe();
             SkillStartResult result = host.TryPlay(skillConfig);
             if (result.Succeeded) return;
 
-            Debug.LogError(
+            Debug.Log(
                 $"Ability '{Runtime.Data.name}' 无法播放 SkillConfig：{result.Message}",
                 Runtime.SourceASC);
             Unsubscribe();
@@ -78,6 +92,7 @@ namespace RPG.SkillSystem
         {
             Unsubscribe();
             ClearRuntimeTags();
+            ReleaseMotion();
             host?.Stop();
         }
 
@@ -86,6 +101,7 @@ namespace RPG.SkillSystem
         {
             Unsubscribe();
             ClearRuntimeTags();
+            ReleaseMotion();
             host?.Cancel();
         }
 
@@ -94,11 +110,22 @@ namespace RPG.SkillSystem
         {
             Unsubscribe();
             ClearRuntimeTags();
+            ReleaseMotion();
         }
 
         /// <summary>使用 ASC 普通阶段推进 Skill 时间轴整数帧。</summary>
         /// <param name="deltaTime">本帧普通更新时间。</param>
         protected override void OnTick(float deltaTime) => host.Tick(deltaTime);
+
+        /// <summary>将根运动技能本次 Animator 增量提交给 MotionDriver。</summary>
+        /// <param name="deltaPosition">Animator 根位移增量。</param>
+        /// <param name="deltaRotation">Animator 根旋转增量。</param>
+        protected override void OnUpdateAnimationMove(Vector3 deltaPosition, Quaternion deltaRotation)
+        {
+            if (motionHandle != null)
+                motionDriver.SubmitAnimatorMotion(motionHandle,
+                    new AnimatorMotionSubmission(deltaPosition, deltaRotation));
+        }
 
         /// <summary>在动画姿态稳定后处理挂点、攻击检测和自然结束。</summary>
         /// <param name="deltaTime">本帧延迟更新的时间，仅用于保持阶段接口一致。</param>
@@ -218,6 +245,14 @@ namespace RPG.SkillSystem
                 Runtime.SourceASC.UpdateRuntimeTagCount(appliedInterruptTag, -1);
             hasAppliedPhaseTag = false;
             hasAppliedInterruptTag = false;
+        }
+
+        /// <summary>对称释放技能占用的运动控制权。</summary>
+        private void ReleaseMotion()
+        {
+            motionHandle?.Dispose();
+            motionHandle = null;
+            motionDriver = null;
         }
 
         /// <summary>将 SkillSystem 阶段枚举映射到正式 GameplayTag；空白区间使用 Phase.None。</summary>

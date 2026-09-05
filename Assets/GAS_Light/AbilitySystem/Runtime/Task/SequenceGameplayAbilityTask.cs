@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace WS_Modules.GAS.GameplayAbilitySystem
 {
@@ -53,8 +54,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             GetCurrentRunningTask()?.LateTick(deltaTime);
 
         /// <summary>将动画根运动阶段转发给当前 Running 子 Task。</summary>
-        protected override void OnUpdateAnimationMove() =>
-            GetCurrentRunningTask()?.UpdateAnimationMove();
+        protected override void OnUpdateAnimationMove(Vector3 deltaPosition, Quaternion deltaRotation) =>
+            GetCurrentRunningTask()?.UpdateAnimationMove(deltaPosition, deltaRotation);
         #endregion
 
         #region 推进

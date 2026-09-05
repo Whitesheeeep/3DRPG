@@ -104,6 +104,42 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "CharacterSlot1",
+                    "type": "Button",
+                    "id": "2a71a6b8-f28d-4b0f-9e2d-7dcd85c3c101",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "CharacterSlot2",
+                    "type": "Button",
+                    "id": "2a71a6b8-f28d-4b0f-9e2d-7dcd85c3c102",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "CharacterSlot3",
+                    "type": "Button",
+                    "id": "2a71a6b8-f28d-4b0f-9e2d-7dcd85c3c103",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "CharacterSlot4",
+                    "type": "Button",
+                    "id": "2a71a6b8-f28d-4b0f-9e2d-7dcd85c3c104",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -423,6 +459,50 @@
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "Crouch",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "2a71a6b8-f28d-4b0f-9e2d-7dcd85c3c201",
+                    "path": "<Keyboard>/1",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "CharacterSlot1",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "2a71a6b8-f28d-4b0f-9e2d-7dcd85c3c202",
+                    "path": "<Keyboard>/2",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "CharacterSlot2",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "2a71a6b8-f28d-4b0f-9e2d-7dcd85c3c203",
+                    "path": "<Keyboard>/3",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "CharacterSlot3",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "2a71a6b8-f28d-4b0f-9e2d-7dcd85c3c204",
+                    "path": "<Keyboard>/4",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "CharacterSlot4",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
@@ -1114,17 +1194,6 @@
                 },
                 {
                     "name": "",
-                    "id": "5c060204-b840-4a6e-8008-07cea8c170e4",
-                    "path": "<Keyboard>/2",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "Next",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
                     "id": "92444869-7d09-4cfc-b011-3f6368f5a913",
                     "path": "<Gamepad>/dpad/right",
                     "interactions": "",
@@ -1142,17 +1211,6 @@
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "Next",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "b8d37f55-a265-44a4-95c8-e05b476d53ca",
-                    "path": "<Keyboard>/1",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "Previous",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

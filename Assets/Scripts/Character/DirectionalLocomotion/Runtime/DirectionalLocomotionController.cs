@@ -131,7 +131,7 @@ namespace RPG.Character.DirectionalLocomotion
                 return;
             }
             _gravityHandle = _motionDriver.RequestControl(new MotionControlRequest(
-                _characterActor, MotionPriority.Gravity, MotionChannels.Vertical, false));
+                _characterActor, MotionPriority.Gravity, MotionChannels.Vertical));
             _stateMachine.OnEnter();
         }
 

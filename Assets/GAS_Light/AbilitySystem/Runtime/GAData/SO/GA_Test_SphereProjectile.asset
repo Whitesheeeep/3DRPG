@@ -27,13 +27,15 @@ MonoBehaviour:
   cueTags:
   - id: 23
   spawnConfig:
-    addressableKey:
+    addressableKey: 
     fallbackPrefab: {fileID: 100000, guid: d4c8c64813424299b324410f7a9a303e, type: 3}
-    spawnMarker: {fileID: 0}
+    markerKey: {fileID: 0}
     localPosition: {x: 0, y: 0.5, z: 0.5}
     localEulerAngles: {x: 0, y: 0, z: 0}
     spreadAngle: 0
     projectileCount: 1
     speed: 5
     lifetime: 2
-    targetLayerMask: -1
+    targetLayerMask:
+      serializedVersion: 2
+      m_Bits: 4294967295

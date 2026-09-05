@@ -30,11 +30,11 @@ namespace RPG.Character
             try
             {
                 using MotionControlHandle walk = driver.RequestControl(new MotionControlRequest(owner,
-                    MotionPriority.Locomotion, MotionChannels.Horizontal, false));
+                    MotionPriority.Locomotion, MotionChannels.Horizontal));
                 using MotionControlHandle gravity = driver.RequestControl(new MotionControlRequest(owner,
-                    MotionPriority.Gravity, MotionChannels.Vertical, false));
+                    MotionPriority.Gravity, MotionChannels.Vertical));
                 MotionControlHandle skill = driver.RequestControl(new MotionControlRequest(owner,
-                    MotionPriority.Skill, MotionChannels.Horizontal, false));
+                    MotionPriority.Skill, MotionChannels.Horizontal));
                 Vector3 before = probe.transform.position;
                 driver.SubmitFixed(walk, FixedMotionRequest.TranslationOnly(Vector3.right * 10));
                 driver.SubmitFixed(skill, FixedMotionRequest.TranslationOnly(Vector3.right));
@@ -52,10 +52,10 @@ namespace RPG.Character
                 driver.ResolveFixedMotion();
                 ExpectDelta(probe, before, Vector3.zero, "瞬时提交不跨步复用");
                 using MotionControlHandle newer = driver.RequestControl(new MotionControlRequest(owner,
-                    MotionPriority.Locomotion, MotionChannels.Horizontal, false));
+                    MotionPriority.Locomotion, MotionChannels.Horizontal));
                 before = probe.transform.position;
                 driver.SubmitFixed(walk, FixedMotionRequest.TranslationOnly(Vector3.right));
-                driver.ResolveAnimatorMotion(Vector3.forward, Quaternion.identity);
+                driver.ResolveAnimatorMotion();
                 driver.ResolveFixedMotion();
                 ExpectDelta(probe, before, Vector3.zero, "同优先级后建立站桩请求阻断代码与根运动");
                 Debug.Log("[MotionDriverTester] 全部仲裁检查通过。", this);

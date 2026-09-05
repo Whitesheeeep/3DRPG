@@ -1,0 +1,145 @@
+.gas-asc-inspector {
+    padding-left: 4px;
+    padding-right: 4px;
+    padding-bottom: 8px;
+}
+
+.gas-header {
+    margin-bottom: 6px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    border-bottom-width: 1px;
+    border-bottom-color: #454545;
+}
+
+#gas-title {
+    unity-font-style: bold;
+    font-size: 14px;
+}
+
+#gas-subtitle,
+.gas-muted {
+    color: #999999;
+    font-size: 10px;
+}
+
+.gas-summary {
+    margin-bottom: 6px;
+    padding-left: 6px;
+    padding-right: 6px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    background-color: rgba(70, 70, 70, 0.25);
+    border-left-width: 3px;
+    border-left-color: #4c9aff;
+}
+
+.gas-summary-value,
+.gas-detail-line {
+    flex-direction: row;
+    min-height: 18px;
+}
+
+#gas-summary-label,
+#gas-detail-label {
+    width: 112px;
+    color: #aaaaaa;
+}
+
+#gas-summary-content,
+#gas-detail-value {
+    flex-grow: 1;
+}
+
+.gas-section {
+    margin-top: 4px;
+    margin-bottom: 4px;
+    padding-bottom: 3px;
+    border-bottom-width: 1px;
+    border-bottom-color: #383838;
+}
+
+.gas-section > .unity-foldout__content {
+    padding-left: 4px;
+    padding-right: 0;
+}
+
+#gas-subsection-title {
+    margin-top: 5px;
+    margin-bottom: 2px;
+    unity-font-style: bold;
+    color: #c9c9c9;
+}
+
+.gas-table-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    min-height: 22px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(80, 80, 80, 0.45);
+}
+
+.gas-table-header {
+    background-color: rgba(80, 80, 80, 0.35);
+    unity-font-style: bold;
+}
+
+.gas-cell {
+    flex-grow: 1;
+    flex-basis: 0;
+    min-width: 0;
+    padding-left: 3px;
+    padding-right: 3px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    justify-content: center;
+}
+
+.gas-cell > Label {
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gas-cell > .unity-object-field {
+    min-width: 0;
+}
+
+.gas-empty-row {
+    padding-top: 5px;
+    padding-bottom: 5px;
+    padding-left: 4px;
+    color: #999999;
+}
+
+.gas-detail-foldout {
+    margin-left: 4px;
+    margin-top: 2px;
+    margin-bottom: 3px;
+    flex-basis: 100%;
+    width: 100%;
+}
+
+.gas-details {
+    margin-left: 16px;
+    margin-right: 4px;
+    margin-top: 3px;
+    margin-bottom: 5px;
+    padding-left: 6px;
+    padding-right: 6px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    background-color: rgba(30, 30, 30, 0.25);
+    border-left-width: 2px;
+    border-left-color: #666666;
+}
+
+#gas-detail-title {
+    margin-top: 3px;
+    margin-bottom: 3px;
+    unity-font-style: bold;
+}
+
+#gas-warning {
+    color: #e6b85c;
+}

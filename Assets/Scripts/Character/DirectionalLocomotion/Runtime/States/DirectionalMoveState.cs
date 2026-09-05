@@ -15,7 +15,7 @@ namespace RPG.Character.DirectionalLocomotion
         {
             _handle = Owner.MotionDriver.RequestControl(new MotionControlRequest(
                 Owner.GetComponentInParent<CharacterActor>(), MotionPriority.Locomotion,
-                MotionChannels.Horizontal | MotionChannels.Rotation, false));
+                MotionChannels.Horizontal | MotionChannels.Rotation));
             Owner.Animancer.Play(Owner.Setting.walkForward);
         }
 

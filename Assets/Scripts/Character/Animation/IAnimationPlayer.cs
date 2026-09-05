@@ -27,6 +27,15 @@ namespace RPG.Character.Animation
         /// <returns>本次播放得到的 Animancer 状态。</returns>
         AnimancerState Play(AnimationLayerType layer, ITransition transition);
 
+        /// <summary>
+        /// 在指定固定层播放 Animancer Transition，并允许调用方覆盖本次播放的淡入时长。
+        /// </summary>
+        /// <param name="layer">目标固定动画层。</param>
+        /// <param name="transition">包含动画、事件和默认播放参数的 Transition。</param>
+        /// <param name="fadeDuration">本次播放使用的淡入秒数；零表示直接切换。</param>
+        /// <returns>本次播放得到的真实 Animancer 状态。</returns>
+        AnimancerState Play(AnimationLayerType layer, ITransition transition, float fadeDuration);
+
         /// <summary>设置指定 Animancer 参数的浮点值。</summary>
         /// <param name="parameter">共享的参数资产。</param>
         /// <param name="value">要写入的参数值。</param>

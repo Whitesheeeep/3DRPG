@@ -200,9 +200,8 @@ UI Navigate / Submit
 ```
 
 新增 UI 导航方向或提交方式时，优先配置 Button 的 `Navigation` 和 InputSystem UI Action；不需要增加
-`PlayerInputType`、Gameplay Tag 或 PlayerStateBlackboard 消费逻辑。旧的交互 Intent 仲裁类型仅为兼容
-非 UI 场景保留，当前不会由 `GameplayInputIntentArbiterManager` 自动注册。详细规则见技术文档中的
-ChoiceWindow 输入章节。
+`PlayerInputType`、Gameplay Tag 或 PlayerStateBlackboard 消费逻辑。交互输入仲裁类型已移除，当前
+不会由 `GameplayInputIntentArbiterManager` 注册。详细规则见技术文档中的 ChoiceWindow 输入章节。
 
 ## 6. 扩展 UI 与预加载
 

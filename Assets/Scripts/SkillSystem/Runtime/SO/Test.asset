@@ -46,10 +46,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: acdf982e445e48e3ab003a4f601bed09
   frameRate: 30
-  durationFrames: 79
-  isRootMotion: 0
+  durationFrames: 89
+  isRootMotion: 1
   tracks:
   - {fileID: 4463572712497873229}
+  - {fileID: 5568324643408157913}
   - {fileID: -352721125678115833}
 --- !u!114 &4463572712497873229
 MonoBehaviour:
@@ -68,10 +69,34 @@ MonoBehaviour:
   displayName: "\u52A8\u753B\u8F68\u9053"
   editorLocked: 0
   clips:
-  - id: 603fe7c024f848a0a0a0febd80bd6ad8
-    animationClip: {fileID: 1827226128182048838, guid: ea00480b278368243ae061e7356a61a2, type: 3}
+  - id: 00b6096b63654d9cbb7e70a6618474b3
+    animationClip: {fileID: 7400044, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
     startFrame: 0
-    durationFrames: 29
+    durationFrames: 53
     sourceStartFrame: 0
     playbackSpeed: 1
     fadeDuration: 0.1
+  - id: da3fe9983a144ebd9e9d48a5d9d447af
+    animationClip: {fileID: 7400016, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+    startFrame: 53
+    durationFrames: 36
+    sourceStartFrame: 0
+    playbackSpeed: 1
+    fadeDuration: 0
+--- !u!114 &5568324643408157913
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e7d25faf1df4c8a8d184c88fdcb89d8, type: 3}
+  m_Name: "\u52A8\u753B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: ee4faf652b854cd3a6f41afe336930df
+  muted: 0
+  displayName: "\u52A8\u753B\u8F68\u9053"
+  editorLocked: 0
+  clips: []

@@ -15,21 +15,18 @@ MonoBehaviour:
   abilityId: 8
   description: GAS SkillRuntimeHost integration fixture using the existing 35-frame
     SkillConfig.
-  abilityTags:
-  - id: 24
-  cancelTags:
-  - id: 24
+  abilityTags: []
+  cancelTags: []
   activationTagQuery:
     allTags: []
     anyTags: []
-    banedTags:
-    - id: 36
+    banedTags: []
   costEffect: {fileID: 0}
   cooldownEffect: {fileID: 0}
   effects:
   - {fileID: 11400000, guid: 6861f23c72baf27428de65bec7d0d062, type: 2}
   cueTags:
-  - id: 21
+  - id: 57
   rootTask:
     rid: 8492673064478303488
   references:
