@@ -52,7 +52,7 @@ MonoBehaviour:
   - attribute:
       id: 4
     type: 0
-    defaultValue: 2
+    defaultValue: 10
     minValue: 0
     maxValue: 100
     baseValue: 0

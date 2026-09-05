@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace WS_Modules.GAS.GameplayAbilitySystem
 {
@@ -87,9 +88,10 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         }
 
         /// <summary>在 Animator 求值后推进仍处于 Running 的 Task。</summary>
-        internal void UpdateAnimationMove()
+        internal void UpdateAnimationMove(Vector3 deltaPosition, Quaternion deltaRotation)
         {
-            if (State == GameplayAbilityTaskState.Running) OnUpdateAnimationMove();
+            if (State == GameplayAbilityTaskState.Running)
+                OnUpdateAnimationMove(deltaPosition, deltaRotation);
         }
         #endregion
 
@@ -131,7 +133,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         }
 
         /// <summary>按需处理 Animator 求值后的根运动阶段。</summary>
-        protected virtual void OnUpdateAnimationMove()
+        protected virtual void OnUpdateAnimationMove(Vector3 deltaPosition, Quaternion deltaRotation)
         {
         }
         #endregion

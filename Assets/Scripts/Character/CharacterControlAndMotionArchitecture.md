@@ -1,155 +1,324 @@
 # 角色控制与运动架构
 
-## 目标与依赖
+## 目标与稳定层级
 
-Player 是跨场景稳定存在的控制主体；CharacterManager 只管理队伍角色；CharacterActor 持有独立 ASC、动画、Marker、技能宿主与 Locomotion；PlayerController 统一安排输入仲裁、GAS、Locomotion 与 MotionDriver 的调用顺序。
+Player 是跨场景稳定存在的玩家控制主体。CharacterRoot、共享 CharacterController、CharacterManager 和队伍 CharacterActor 一起常驻；切换角色只切换当前角色的表现与能力消费目标，不重建 Player 或输入链路。
 
 ```mermaid
 flowchart TD
-    Player[Player] --> PC[PlayerController]
-    Player --> CR[CharacterRoot]
-    CR --> CC[CharacterController]
-    CR --> CM[CharacterManager]
-    CM --> CA[Active CharacterActor]
-    CA --> GAS[GAS]
-    CA --> FSM[Locomotion FSM]
-    GAS -->|IMotionDriver| MD[MotionDriver]
-    FSM -->|IMotionDriver| MD
-    PC --> MD
+    Player[稳定 Player] --> PC[PlayerController<br/>唯一 Unity 时序入口]
+    Player --> Input[PlayerInputController]
+    Player --> Root[CharacterRoot]
+    Root --> CC[共享 CharacterController]
+    Root --> CM[CharacterManager<br/>被动阶段协调器]
+    CM --> A[CharacterActor A]
+    CM --> B[CharacterActor B]
+    A --> BB[共享 PlayerStateBlackboard 引用]
+    B --> BB
+    A --> ASC_A[独立 ASC / Animator / Locomotion]
+    B --> ASC_B[独立 ASC / Animator / Locomotion]
+    PC --> MD[MotionDriver]
+    ASC_A -->|IMotionDriver| MD
+    ASC_B -->|IMotionDriver| MD
     MD --> CC
 ```
 
-- PlayerController 持有具体 MotionDriver，并把 IMotionDriver 注入 CharacterActor。
-- CharacterManager 完全不引用 MotionDriver、DialogueSystem、摄像机、交互检测或场景加载器。PlayerController 在队伍构建后注入每个角色的 IMotionDriver，并负责 FSM 启停。
-- CharacterActor 是 IGameplayAbilitySystemOwner，GAS 不依赖 PlayerController。
-- CharacterActor 自身实现同节点 Animator 的 OnAnimatorMove，只把自身身份和 Animator 增量交给稳定 PlayerController。
-- CharacterController 位于 CharacterRoot，是 MotionDriver 唯一的最终位移出口。
+- PlayerController 持有具体 MotionDriver 和唯一 PlayerStateBlackboard。
+- 所有 CharacterActor 持有同一个 Blackboard 引用；它们不各自创建输入黑板。
+- CharacterManager 不持有 MotionDriver、DialogueSystem、摄像机、交互检测或场景迁移服务。
+- CharacterManager 可以接收 PlayerController 显式传入的输入缓冲区，但不把 PlayerInputController 保存为自己的生命周期依赖。
+- CharacterManager 是 MonoBehaviour 仅为了挂在 CharacterRoot 和使用 Unity 序列化；它没有 Unity 生命周期回调。
 
-## 输入与运动时序
+Locomotion 使用 UnifiedFSM。`CharacterLocomotionStateMachine` 只负责状态树组装、角色与
+`IMotionDriver` 依赖、启停、阶段转发和全状态共用的重力；具体状态各自持有本状态的动画、速度、
+方向选择、参数平滑和状态转换数据。
+
+```mermaid
+flowchart LR
+    LSM[CharacterLocomotionStateMachine\n组装 / 生命周期 / 阶段转发 / 重力]
+    LSM --> Idle[IdleLocomotionState\n待机与起步入口]
+    LSM --> Code[CodeLocomotionState\n速度 / 转向 / 代码位移 / Move Mixer]
+    LSM --> Start[RootMotionStartState\n九方向起步选择与播放]
+    LSM --> Stop[RootMotionStopState\n停止动画与完成去向]
+    Idle -->|ChangeState| Start
+    Start -->|完成或缺失回退| Code
+    Stop -->|重新输入| Start
+```
+
+## 显式阶段推进
+
+CharacterManager 的阶段方法不会被 Unity 自动调用，全部由 PlayerController 在对应 Unity 生命周期中主动调用。方法使用 Tick/FixedTick/TryUpdate 命名，不定义 `Update`、`FixedUpdate`、`LateUpdate` 或 `OnAnimatorMove`。
 
 ```mermaid
 sequenceDiagram
-    participant Input as PlayerInputController
+    participant Unity
     participant PC as PlayerController
     participant CM as CharacterManager
-    participant Arbiter as InputIntentArbiterManager
-    participant Character as ActiveCharacter
+    participant Input as PlayerInputController
+    participant Actor as Active CharacterActor
     participant MD as MotionDriver
 
-    Input->>Input: Advance InputRequest (-900)
-    PC->>CM: TickCharacters
-    PC->>Arbiter: ArbitrateFrame(camera)
-    Arbiter->>Arbiter: 仲裁离散 Request 并转换连续 Move
-    Arbiter->>Character: 写入稳定 Blackboard 的 IntentTags 与 MoveWorldInput
-    PC->>Character: ConsumeAbilityIntents
-    PC->>PC: 按玩家业务锁定决定 Locomotion 是否响应 Move
-    PC->>Character: Locomotion.Tick
-    PC->>Character: GAS.FixedTick
-    PC->>Character: Locomotion.FixedTick
-    Character->>MD: SubmitFixed
-    PC->>MD: ResolveFixedMotion
+    Unity->>PC: Update()
+    PC->>CM: TickCharacters(deltaTime)
+    PC->>Input: ArbiterManager.ArbitrateFrame(camera)
+    PC->>CM: ProcessSwitchInputRequests(inputBuffer)
+    PC->>CM: TickActiveCharacter(inputBuffer, deltaTime)
+
+    Unity->>PC: FixedUpdate()
+    PC->>CM: FixedTickActiveCharacter(fixedDeltaTime)
+    CM->>Actor: FixedTickAbility + Locomotion.FixedTick
+    PC->>MD: ResolveFixedMotion()
+
+    Unity->>PC: LateUpdate()
+    PC->>CM: LateTickCharacters(deltaTime)
+
+    Unity->>Actor: OnAnimatorMove()
+    Actor->>PC: ProcessAnimatorMotion(source, deltaPosition, deltaRotation)
+    PC->>CM: TryUpdateAnimationMove(source)
+    PC->>Actor: GAS/FSM receives Animator delta
+    Actor->>MD: winning Handle submits AnimatorMotionSubmission
+    PC->>MD: ResolveAnimatorMotion()
 ```
 
-PlayerStateBlackboard 是 Player 级稳定对象；角色切换只替换它代理的 ASC，保留 EnvironmentTags、当前帧 IntentTags 与连续 Move。IntentTags 仍由统一的帧末清理自然结束，不增加角色 Scope、版本号或切换专用失效标记。
+CharacterManager 提供以下内部接口：
 
-## AnimatorMove
+| 阶段 | 接口 | 职责 |
+| --- | --- | --- |
+| 全队 ASC 普通帧 | `TickCharacters(float)` | 遍历所有角色并调用 `TickAbility` |
+| 当前角色普通帧 | `TickActiveCharacter(IPlayerInputRequestBuffer, float)` | 处理技能 Request，再推进当前 Locomotion |
+| 当前角色物理帧 | `FixedTickActiveCharacter(float)` | 推进当前 ASC FixedTick 和 Locomotion FixedTick |
+| 全队/当前角色延迟帧 | `LateTickCharacters(float)` | 全队 ASC LateTick，当前 Locomotion LateTick |
+| 当前 Animator 阶段 | `TryUpdateAnimationMove(CharacterActor)` | 校验来源并推进当前 GAS/FSM Animator 阶段 |
+
+所有 deltaTime 都由 PlayerController 从 Unity 生命周期传入。CharacterManager 不读取 `Time.deltaTime`，也不执行 MotionDriver Resolve 或 `CharacterController.Move`。
+
+## PlayerController 时序
+
+### Awake
+
+1. 解析 PlayerInputController、DialogueParticipant、CharacterRoot、CharacterManager 和共享 CharacterController。
+2. 初始化 MotionDriver。
+3. 创建唯一 PlayerStateBlackboard。
+4. 调用 CharacterManager.Initialize 构建并校验队伍。
+5. 为每个 CharacterActor 注入 CharacterRoot、MotionDriver、PlayerController 和同一个 Blackboard。
+6. 预热所有角色 Idle 初始姿态；预热期间不激活 Locomotion、不推进 ASC、不提交运动。
+7. 设置 MotionDriver ActiveOwner。
+8. 创建 GameplayInputIntentArbiterManager，默认只注册 MoveInputIntentArbiter。
+9. 初始化 LooseGameplayTagEventBridge 和 DialogueParticipant 动画目标。
+
+PlayerController 的 `Start` 在所有角色和 ASC 完成 `Awake` 后执行：它先调用每个 CharacterActor 的
+`InitializeRuntimeConfiguration` 导入 AttributeSet、授予配置 Ability，再激活当前角色 Locomotion。
+这样 `Activate` 在持续 Move 场景下直接读取自身 GAS Speed 时，ASC 的运行时容器已经可用；
+`CharacterActor.Start` 仍保留同一初始化方法作为独立实例启用时的幂等兜底。
+
+### Update
+
+1. `CharacterManager.TickCharacters(Time.deltaTime)` 推进全队 ASC，后台冷却和 GameplayEffect 持续时间继续。
+2. `InputIntentArbiterManager.ArbitrateFrame(cameraTransform)` 转换需要复杂空间处理的连续 Move。
+3. PlayerController 执行仍存在的对话/角色阻断门禁；通过后调用 `CharacterManager.ProcessSwitchInputRequests(inputController)`。
+4. CharacterManager 重新读取切换后的 ActiveCharacter。
+5. `CharacterManager.TickActiveCharacter(inputController, Time.deltaTime)` 让当前 CharacterActor 直接处理技能 Request，再推进 Locomotion。
+6. Locomotion 通过 CharacterActor 的 Blackboard 引用读取 `MoveWorldInput`，不再由 PlayerController 注入移动参数。
+
+### FixedUpdate
+
+1. `CharacterManager.FixedTickActiveCharacter(Time.fixedDeltaTime)` 收集当前角色 GAS 和 Locomotion 的物理请求。
+2. PlayerController 调用 `MotionDriver.ResolveFixedMotion()`。
+3. 每个物理步最多执行一次 CharacterController.Move。
+
+### LateUpdate
+
+PlayerController 调用 `CharacterManager.LateTickCharacters(Time.deltaTime)`。该方法不执行额外移动。
+
+### AnimatorMove
+
+Unity 只调用 CharacterActor 同节点的无参数 `OnAnimatorMove`。CharacterActor 将来源和 Animator 增量交给 PlayerController 的普通方法 `ProcessAnimatorMotion`。PlayerController 调用 CharacterManager 验证来源、推进当前角色 GAS/FSM 动画阶段；只有业务通过有效 Handle 提交 `AnimatorMotionSubmission` 后，PlayerController 才调用无参 `MotionDriver.ResolveAnimatorMotion()`。MotionDriver 不查找 Animator，也不自动消费原始增量。
+
+## Blackboard 与 Locomotion
+
+PlayerStateBlackboard 是 Player 创建的稳定输入结果容器，CharacterActor 只持有引用：
+
+```text
+PlayerController.StateBlackboard
+    ├── CharacterActor A.StateBlackboard
+    ├── CharacterActor B.StateBlackboard
+    └── CharacterActor C.StateBlackboard
+```
+
+Blackboard 保留：
+
+- `MoveWorldInput`；
+- 通用 Frame IntentTag；
+- Intent 来源 Handle 映射；
+- `IntentSourceConsumed` 消费回传链路。
+
+技能和切人不再写入 Frame Intent。只有未来确实需要复杂输入转换、合并或上下文分析时，才使用通用 Intent 管线。
+
+Locomotion 不保存独立的移动输入副本，也不再由 PlayerController 逐帧注入输入。各个具体状态通过
+`CharacterActor.StateBlackboard.MoveWorldInput` 读取当前输入：Idle 负责起步入口判断，
+RootMotionStart 负责九方向选择，CodeLocomotion 负责转向、位移和 Move Mixer 参数，停止与急转状态
+只处理自己的动画生命周期。状态机不再保存这些状态专属的运行时字段。
+
+## 输入职责
+
+| 输入 | 处理者 | 结果 |
+| --- | --- | --- |
+| WASD/左摇杆 Move | MoveInputIntentArbiter | 镜头相对方向写入 `MoveWorldInput` |
+| Primary/Secondary/Skill1-4 | CharacterActor | 直接查询 Request，成功激活后确认 PressHandle |
+| CharacterSlot1-4 | CharacterManager | 直接查询 Request，按切换结果确认或保留 PressHandle |
+| Choice 导航、提交、点击 | Unity EventSystem | 直接驱动交互 UI |
+| 复杂未来输入 | 可选自定义 Arbiter | 写入通用 Frame Intent |
+
+固定离散输入使用 `IPlayerInputRequestBuffer.TryGetRequest`，不遍历 `Requests` 列表。Press、Held 和 Release 保持独立生命周期，为后续蓄力技能提供 `HeldDuration`、`PhysicalState` 和 `ReleaseHandle`。
+
+角色技能输入不经过 Frame Intent。`CharacterAbilityInputBinding` 同时声明固定输入槽位和该角色的初始 Ability；PlayerController.Start（以及 CharacterActor.Start 的幂等兜底）在 ASC 完成 Awake 后初始化属性并调用 ASC `GiveAbility`，缓存 `PlayerInputType` 到 `GameplayAbilityHandle`，然后在 Update 中直接查询 Request 并尝试激活。激活失败时不确认 PressHandle，允许 Cooldown、Cost 或其他 GAS 条件在 Buffer 有效期内继续重试。
 
 ```mermaid
-sequenceDiagram
-    participant Animator
-    participant Actor as CharacterActor
-    participant PC as PlayerController
-    participant GAS as Active GAS
-    participant FSM as Locomotion FSM
-    participant MD as MotionDriver
-    participant CC as CharacterController
-
-    Animator->>Actor: OnAnimatorMove()
-    Actor->>PC: ProcessAnimatorMotion(source, deltaPosition, deltaRotation)
-    PC->>GAS: UpdateAnimationMove
-    PC->>FSM: UpdateAnimationMove
-    PC->>MD: ResolveAnimatorMotion
-    MD->>CC: Move(filteredRootMotion)
+flowchart LR
+    Start[PlayerController.Start] --> InitAttr[初始化 CharacterActor AttributeSet]
+    InitAttr --> Grant[遍历 CharacterAbilityInputBinding]
+    Grant --> Spec[ASC.GiveAbility]
+    Spec --> Cache[缓存 InputType 到 GameplayAbilityHandle]
+    Cache --> Request[Update 查询 Input Request]
+    Request --> Activate[TryActivateAbility]
+    Activate -->|成功| Consume[确认 PressHandle]
+    Activate -->|失败| Retry[保留 Press Buffer，等待后续重试]
 ```
 
-根运动是否消费由各通道当前获胜控制请求决定。Animator.applyRootMotion 保持启用以产生增量，但 CharacterActor 不直接应用增量。
+## 角色切换
 
-## 仲裁与生命周期
+CharacterManager 处理槽位输入和队伍内部结果；PlayerController 只决定当前是否允许调用该接口，并负责切换事件外的稳定 Player 协调。
 
-- 通道：Horizontal、Vertical、Rotation。
-- 优先级：Gravity、Locomotion、Skill、ForcedMotion。
-- 每通道最高优先级获胜；同优先级后建立的有效请求获胜。
-- 新请求释放后，之前仍有效的请求自动恢复。
-- 同一获胜 Handle 的 Fixed 世界空间位移求和，旋转按提交顺序组合；位移方向由 Locomotion 在提交前计算。
-- 非 ActiveOwner 请求不参与结算。
-- horizontalMovementBlockedTags 在仲裁后清除 X/Z；allMovementBlockedTags 阻止全部位移和根旋转。
-- 场景迁移由 PlayerController 暂停运动、禁用 CharacterController 并传送 CharacterRoot；后台 ASC 时间继续。
+切换成功流程：
 
-## 变更边界
+1. CharacterManager 查询槽位 Request。
+2. CharacterManager 调用 `TrySwitchSlot`。
+3. CharacterManager 对 Success、AlreadyActive、CharacterNotFound 直接确认 PressHandle；Busy 保留 Request。
+4. CharacterManager 更新 ActiveCharacter 并发送一次 `ActiveCharacterChanged`。
+5. PlayerController 释放旧角色 Locomotion 和 MotionDriver 请求。
+6. PlayerController 设置新的 MotionDriver ActiveOwner。
+7. PlayerController 激活新角色 Locomotion，并更新 DialogueParticipant 动画目标。
+8. PlayerController 随后由 `TickActiveCharacter` 重新读取新角色，处理同帧尚未消费的技能 Request。
 
-实现涉及 PlayerController、PlayerStateBlackboard、CharacterActor/Manager、MotionDriver、MarkerProvider、LooseGameplayTag 桥接、PlaySkillConfigGameplayAbilityTask、角色 Prefab/测试场景与 Odin Tester。SkillConfig 和 GameplayAbilityData 不增加通用运动字段；旧 AnimatorMoveProvider 已删除。DirectionalLocomotionController 不进入正式架构。
-
-## 失败边界与清理
-
-- `ResolveFixedMotion` 使用 `finally` 清空瞬时提交；即使最终移动异常，也不会跨物理步复用旧位移。
-- PlayerController 禁用时停用当前 Locomotion 并暂停 MotionDriver，重新启用时恢复 Idle；场景迁移主动清理瞬时提交。能力 Handle 仍由能力生命周期释放。
-- 角色切换会释放旧 Owner 全部请求；非 ActiveOwner 请求即使存在也不能赢得任一通道。
-- MarkerProvider 重建失败时 `IsValid=false`，CharacterManager 拒绝该角色进入可切换集合。
-- Animator 必须与 CharacterActor 同节点；Actor 回调不直接 Move、不修改模型 Transform。
-
-## 实际变更文件
-
-- 控制与输入：`PlayerController.cs`、`PlayerInputController.cs`、`Game/Arbiter/GameplayInputIntentArbiterManager.cs`、`PlayerStateBlackboard.cs`、`LooseGameplayTagEventBridge.cs`、`Config/CharacterMovement.inputactions`。
-- 角色：`Runtime/CharacterId.cs`、`CharacterDefinition.cs`、`CharacterActor.cs`、`CharacterManager.cs`、`CharacterSwitchStatus.cs`。
-- 运动：`MotionDriver/IMotionDriver.cs`、`MotionDriver.cs`、`MotionTypes.cs`、`MotionControlRequest.cs`、`MotionControlHandle.cs`、`FixedMotionRequest.cs`、`SkillMotionGameplayAbilityTask.cs`。
-- Locomotion：`Locomotion/Runtime` 下 UnifiedFSM 状态机、`PlayerFSMTransition.cs`、代码移动、起步、停止与急转向根运动状态。
-- 表现与配置：`AnimationController.cs`、`IAnimationPlayer.cs`、`DialogueParticipant.cs`、`IMarkerProvider.cs`、`MarkerProvider.cs`、`PlaySkillConfigGameplayAbilityTask.cs`、`Assets/GAS_Light/AttributeSystem/Runtime/SetSO/GameplayAttributeSet.asset`。
-- 资源与验证：`Prefab/OdetaCharacterActor.prefab`、`Prefab/RuskCharacterActor.prefab`、`Config/DefaultPlayerFSMTransition.asset`、`Player.prefab`、`TestInteractableScene.unity` 与三个 OdinTester。
-- 设计同步：`Assets/Scripts/SkillSystem/Runtime/SkillRuntime.md`、`Assets/GAS_Light/设计md/GameplayAbilityGameplay.md`。
-
-## 输入配置与技能消费
-
-`Runtime/CharacterAbilityInputBinding.cs` 声明每个角色的输入类型、IntentTag、Ability 和阻断 Tag；`Runtime/CharacterInputIntentArbiter.cs` 动态读取 ActiveCharacter，不缓存旧角色。能力必须先被正常授予 ASC，消费者按 Data 查找 Spec，只有 TryActivateAbility 成功才确认 Intent 消费。没有授予或激活失败会保留缓冲请求，帧末只清除本帧 Intent。
-
-连续移动由 PlayerInputController 采样 WASD/左摇杆；GameplayInputIntentArbiterManager 在 `ArbitrateFrame(cameraTransform)` 内无条件完成镜头相对世界方向转换，并把真实结果直接写入稳定 Blackboard。PlayerController 不再持有独立 Move 仲裁器，只按时序调用 Manager；随后由玩家业务锁定决定传给当前 UnifiedFSM 的是 Blackboard 原值还是零向量。Move 仲裁不读取 AbilityTags、EnvironmentTags、场景迁移或输入锁；是否最终执行由 Locomotion 请求和 MotionDriver 的控制权、Tag 限制决定。
-
-镜头 Transform 是 PlayerController 传给输入仲裁 Manager 的可选帧级上下文，由未来的常驻摄像机系统提供；鼠标视角输入不进入本次移动仲裁链，也不会随角色切换重建。后续接入鼠标时只需让常驻摄像机更新自身 Transform，Manager 会在下一帧读取新的水平前方。
-
-角色速度由当前 ASC 的 `GameplayAttributes.Attribute_Speed` 提供，单位为米/秒。角色包装 Prefab 可在 `initialAttributeSets` 配置初始数值模板，`CharacterActor.Start` 在 ASC 完成 Awake 后导入；测试包装使用包含 Speed=2 的默认 AttributeSet。`PlayerFSMTransition` 保存 Move Loop 一倍播放速度下的根运动参考速度，并可选择使用起步根运动期间测得的实际参考速度；Move 状态用当前速度除以本次选定参考速度调整 Move Loop 播放倍率，起步采样值只用于进入 Move 时的速度衔接。
-
-`MotionDriver/SkillMotionGameplayAbilityTask.cs` 由具体异步 GA 的代码构造。速度为零且不消费根运动表示站桩；非零速度表示 Fixed 阶段代码移动；根运动模式仅持有消费权。它不调用 Resolve，也不读取 SkillConfig.IsRootMotion。Stop、Cancel、Complete 共用幂等释放入口。
-
-## Locomotion 与队伍配置
+持续按住 Move 切人时，新角色 Locomotion 激活阶段直接读取共享 Blackboard 的 MoveWorldInput 并 `ChangeState(CodeLocomotion)`，不先进入 Idle，也不播放起步根运动。只有角色已经处于 Idle 后再次开始移动，才会选择起步动画。
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Disabled
-    Disabled --> Idle: Player 启用当前角色
-    Idle --> RootMotionStart: 有输入且配置起步动画
-    Idle --> CodeLocomotion: 有输入且无起步动画
-    RootMotionStart --> CodeLocomotion: 动画时长结束且仍有输入
-    CodeLocomotion --> RootMotionStop: 输入结束且配置停止动画
-    CodeLocomotion --> Idle: 输入结束且无停止动画
-    CodeLocomotion --> RootMotionSharpTurn: 输入方向跨过急转向阈值且配置急转向动画
-    RootMotionSharpTurn --> CodeLocomotion: 急转向动画结束且仍有输入
-    RootMotionSharpTurn --> RootMotionStop: 急转向结束且输入消失并配置停止动画
-    RootMotionSharpTurn --> Idle: 急转向结束且输入消失且无停止动画
-    RootMotionStop --> Idle: 动画时长结束
-    Idle --> Disabled: 切换或停用
-    CodeLocomotion --> Disabled: 切换或停用
+    [*] --> Activate
+    Activate --> Idle: MoveWorldInput 为空\nChangeState(Idle)
+    Activate --> CodeLocomotion: MoveWorldInput 非空\n由 CodeLocomotionState 准备入口速度
+    Idle --> RootMotionStart: 当前方向已配置起步动画
+    Idle --> CodeLocomotion: 当前方向未配置起步动画
+    RootMotionStart --> CodeLocomotion: 动画完成且仍有 Move
+    RootMotionStart --> RootMotionStop: 动画完成且松开 Move
+    RootMotionStart --> Idle: 松开 Move且未配置停止动画
+    CodeLocomotion --> RootMotionStop: 松开 Move且已配置停止动画
+    CodeLocomotion --> Idle: 松开 Move且未配置停止动画
+    RootMotionStop --> RootMotionStart: 重新按下 Move且方向动画存在
+    RootMotionStop --> CodeLocomotion: 重新按下 Move且方向动画缺失
+    RootMotionStop --> Idle: 动画完成且仍无 Move
 ```
 
-FSM 在启用期间另持有 Gravity/Vertical 请求，所有状态退出释放自身请求；Disabled 也释放重力请求。Gravity 最终仍受全部位移阻断 Tag 约束。`DefaultPlayerFSMTransition` 配置 Idle、Move Mixer 和起步；停止／急转向片段可在 Inspector 补齐，缺失时状态立即完成而不会产生额外代码位移。
+切人不清理：
 
-Player Prefab 直接包含 OdetaA、Rusk（逻辑 ID 为 Rusk）两个常驻实例，均有独立 ASC、动画和 Host。`Prefab/OdetaCharacterActor.prefab` 与 `Prefab/RuskCharacterActor.prefab` 为复用包装资源，`Config/TestCharacterA.asset`、`Config/TestCharacterB.asset` 可供从 Definition 构建队伍。不要同时配置同 ID 的直接子角色和 Definition，初始化会明确拒绝重复 ID。
+- `MoveWorldInput`；
+- Blackboard Frame Intent；
+- InputController 中其他尚未消费的 Request；
+- Press 或 Release 的生命周期数据。
 
-`Config/CharacterOrigin.asset` 是测试角色必需 MarkerKey，实际 TransformMarker 配置在角色根上；不会运行时补造缺失节点。后台角色保留 GameObject/ASC，仅关闭 Animator 和 Renderer 表现。SkillRuntimeHost 仍应配置该角色自己的动画播放器和 MarkerProvider。
+## MotionDriver 边界
 
-## 验证记录与尚需场景验收
+GAS 和 Locomotion 只依赖 `IMotionDriver` 提交请求。MotionDriver 由 PlayerController 持有，只有 PlayerController 调用阶段开始和最终 Resolve 方法。
 
-- Unity 批量 Gate 的退出脚本等待超时，当前未完成实时 Unity MCP/Play Mode 检查。
-- OdinTester 已提供 MotionDriver 仲裁、角色切换和 Locomotion 状态的手动入口；本轮未把未验证的 Play Mode 结果记录为通过。
-- Prepare/Complete/Cancel 场景迁移、真实 Animator 根运动增量和跨场景持久化仍需在 Unity 中手动验收。
-- 本轮唯一一次外部 Editor 构建在 Unity 尚未把新增脚本写入生成的 csproj 时执行，因缺少新类型条目失败；按项目约束未重复构建，待 Unity 完成刷新后应由 Unity 编译器重新验证。
-- 原始动画是否包含非零 delta、技能动画与 Locomotion 过渡观感、完整业务 GA 的 Cost/Cooldown/取消流程、真实跨场景加载还需要完整 Play Mode 验收，不以脚本编译或模拟增量检查替代。
-- 当前 Rusk 包装资源尚未完成实际材质、Avatar、Marker 和 Animator 的 Unity Inspector 验收；源模型资源未修改。
+- CharacterManager 不持有 MotionDriver。
+- CharacterManager 不调用 `ResolveFixedMotion` 或 `ResolveAnimatorMotion`。
+- MotionDriver 负责请求优先级、通道竞争、Tag 限制和唯一 CharacterController.Move 出口。
+- Locomotion 在提交代码移动前完成镜头方向和角色朝向的业务计算。
+- 根运动是否消费由获胜运动控制请求决定。
+
+`RootMotionStartState` 从 Idle 起步时按角色水平前向与 MoveWorldInput 的有符号夹角选择九方向起步动画：前向、左右 45°、90°、135°、180°。方向槽位缺失时直接进入 CodeLocomotion，不回退到前向或最近动画。RootReferenceSpeed 是配置的动画参考速度，GAS Speed 是业务目标速度，不再通过 Animator delta 运行时采样起步速度。
+
+急转再次触发延迟在急转动画完成并返回 CodeLocomotion 时才开始计时。该延迟用于防止急转动画结束后立即重复播放，不在进入急转状态时提前消耗。
+
+## Locomotion 状态职责
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> RootMotionStart: 有 Move
+    RootMotionStart --> CodeLocomotion: 起步完成或方向动画缺失
+    CodeLocomotion --> RootMotionStop: 松开 Move且配置停止动画
+    CodeLocomotion --> Idle: 松开 Move且未配置停止动画
+    RootMotionStop --> RootMotionStart: 停止完成且重新输入
+    RootMotionStop --> Idle: 停止完成且无输入
+```
+
+- `IdleLocomotionState` 只播放 Idle 并决定是否发起一次起步，不保存代码移动速度。
+- `RootMotionStartState` 在进入时选择并缓存九方向 Transition；播放期间不因输入变化重选动画。
+- `CodeLocomotionState` 自己保存当前速度、Move Mixer 参数和急转再次触发时间，并提交代码运动。
+- `RootMotionStopState` 拥有停止动画选择、完成检测和退出去向；急转配置暂不接入运行时 FSM。
+- `RootMotionLocomotionState` 只提供根运动控制权、动画完成检查和方向修正等真正共用能力。
+- 新的角色启用周期由状态机向所有状态发送重置通知；状态机不解释或修改状态内部字段。
+
+### Start 到 Move 的直接衔接
+
+Start 动画的末段已经按 Move Loop 的起始姿态制作，因此正常完成后不再额外插入动画淡入。
+`CodeLocomotionState` 通过 UnifiedFSM 的 `PreviousState` 判断是否刚从
+`RootMotionStartState` 进入；不增加状态间通知、一次性标记或状态机业务回调。
+
+```mermaid
+sequenceDiagram
+    participant Start as RootMotionStartState
+    participant FSM as UnifiedFSM
+    participant Code as CodeLocomotionState
+    participant Anim as AnimationController
+    Start->>FSM: OnEnd 后 ChangeState(CodeLocomotion)
+    FSM->>Code: OnEnter(PreviousState = Start)
+    Code->>Code: 立即写入 Mixer 幅度/转向目标
+    Code->>Anim: Play(MoveMixer, fadeDuration = 0)
+    Code->>Code: 设置播放速度与归一化起点 0
+    Code->>Code: 后续帧才使用参数指数平滑
+```
+
+直接衔接只覆盖本次从 Start 结束进入 Move 的播放调用；共享 Move Mixer 资源的默认
+`FadeDuration` 不被修改，其他进入路径继续使用资源配置的淡入时间。移动参数平滑只作用于
+Mixer 的幅度和转向参数，不能替代代码移动的加速度或角色实际转向。其配置值是指数平滑
+时间常数：目标固定时经过该时间约完成当前差值的 63%，并非固定完成时间。
+
+起步根运动方向修正的 `CorrectionSpeed` 是 Slerp 插值响应系数，单位为秒⁻¹（1/s），
+不是度/秒。每次 Animator 求值使用“响应系数 × 本次求值时长”作为插值比例；值越大，
+朝向目标跟随越快，值为 0 时保留动画自身根旋转但不追加代码方向修正。
+
+## 状态与资源生命周期
+
+- CharacterManager 初始化失败或 MarkerProvider 无效的角色不会进入可切换集合。
+- 后台角色的 ASC 保持推进，但 Animator、Renderer 和 Locomotion 表现停用。
+- 角色 Binding 中配置的 Ability 在 PlayerController.Start/CharacterActor.Start 初始化阶段授予各自 ASC；切换角色只切换当前 ASC 和表现，不共享 Ability Spec。
+- PlayerController 禁用时停止自身阶段驱动、清理瞬时输入和停用当前 Locomotion；CharacterManager 不会因为仍是 enabled 而自行运行。
+- 旧的场景迁移/玩家输入锁定布尔字段及 PlayerController 场景迁移事务 API 已移除。
+- 后续场景和 UI 输入锁定通过禁用对应 InputActionMap 实现；CharacterRoot 传送和 CharacterController 管理由专门场景服务负责。
+
+## 变更文件
+
+本次输入和阶段边界修改涉及：
+
+- `Character/PlayerController.cs`
+- `Character/Runtime/CharacterManager.cs`
+- `Character/Runtime/CharacterActor.cs`
+- `Character/Locomotion/Runtime/CharacterLocomotionStateMachine.cs`
+- `Input/Runtime/PlayerInputController.cs`
+- `Game/Arbiter/GameplayInputIntentArbiterManager.cs`
+- `Player.prefab`
+- GameplayTag Database 与生成常量
+- 输入与角色架构 Odin 测试器
+
+## 验收重点
+
+- CharacterManager 没有 Unity 生命周期方法，只有 PlayerController 显式调用 Tick 接口。
+- 每个 ASC 阶段每帧只执行一次。
+- CharacterManager 返回后 PlayerController 才执行 MotionDriver 最终结算。
+- 所有 Actor 共享同一个 Blackboard，Locomotion 直接通过 Owner 读取 MoveWorldInput。
+- 技能和切人不经过专用 Arbiter 或 IntentTag。
+- Move 仍然正确完成镜头相对转换。
+- `moveAction` 使用对象引用，已删除字符串回退字段。
+- 场景和输入锁不再通过 PlayerController bool 分支实现。

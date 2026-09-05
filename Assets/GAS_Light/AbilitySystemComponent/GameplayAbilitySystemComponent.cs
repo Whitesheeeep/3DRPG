@@ -175,7 +175,8 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         public void LateTick(float deltaTime) => abilityController.LateTick(deltaTime);
 
         /// <summary>在 Animator 完成当前帧求值后，将根运动处理阶段转发给 Active GA。</summary>
-        public void UpdateAnimationMove() => abilityController.UpdateAnimationMove();
+        public void UpdateAnimationMove(Vector3 deltaPosition, Quaternion deltaRotation) =>
+            abilityController.UpdateAnimationMove(deltaPosition, deltaRotation);
         #endregion
 
         #region 只读快捷查询

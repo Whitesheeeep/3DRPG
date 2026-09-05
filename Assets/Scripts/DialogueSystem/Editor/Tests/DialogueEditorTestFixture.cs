@@ -572,6 +572,14 @@ namespace RPG.DialogueSystemModule.Editor.Tests
             /// <returns>测试替身不创建状态，因此返回空。</returns>
             public AnimancerState Play(AnimationLayerType layer, ITransition transition) => null;
 
+            /// <summary>记录带本次淡入时长的 Transition 播放接口；本测试不创建真实状态。</summary>
+            /// <param name="layer">目标动画层。</param>
+            /// <param name="transition">待播放 Transition。</param>
+            /// <param name="fadeDuration">本次播放使用的淡入时长。</param>
+            /// <returns>测试替身不创建状态，因此返回空。</returns>
+            public AnimancerState Play(AnimationLayerType layer, ITransition transition,
+                float fadeDuration) => null;
+
             /// <summary>测试替身不需要处理层权重。</summary>
             /// <param name="layer">目标动画层。</param>
             /// <param name="targetWeight">目标权重。</param>

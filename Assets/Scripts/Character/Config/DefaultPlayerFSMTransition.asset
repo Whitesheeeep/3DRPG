@@ -6,25 +6,141 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: DefaultPlayerFSMTransition
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1f35a9d818d74db2b6a2ea5fa51ec8d1, type: 3}
+  m_Name: DefaultPlayerFSMTransition
   m_EditorClassIdentifier: 
   idleTransition: {fileID: 11400000, guid: fba2de96f2c9c704d9b02f1f20b43088, type: 2}
   moveMixerTransition: {fileID: 11400000, guid: ee0cb3205a1d90547980dbc7aee1615f, type: 2}
   moveParameterX: {fileID: 11400000, guid: bf95c5c8b0cc5d441b7abe5dc3e7977e, type: 2}
   moveParameterRotation: {fileID: 11400000, guid: 89cdc752c9846364e85aa698e9fe3775, type: 2}
-  moveParameterSmoothing: 0.1
-  forwardStart: {_Clip: {fileID: 7400000, guid: fc6f137c96de6ea46b57b616d2eb675a, type: 2}}
-  stopLeft: {_Clip: {fileID: 0}}
-  stopRight: {_Clip: {fileID: 0}}
-  sharpTurnLeft: {_Clip: {fileID: 0}}
-  sharpTurnRight: {_Clip: {fileID: 0}}
-  movementAcceleration: 12
-  turnSpeed: 1.4
+  moveParameterSmoothing: 0.2
+  left180Start:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400000, guid: 894fae5eda5b80d4293d6e625d01ec26, type: 2}
+    _NormalizedStartTime: NaN
+  left135Start:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400000, guid: 1e16bbbb783ec5c45acaca9e4495badb, type: 2}
+    _NormalizedStartTime: NaN
+  left90Start:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400000, guid: d7508c89b73bf1a47b7923b85ec460d1, type: 2}
+    _NormalizedStartTime: NaN
+  left45Start:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400000, guid: e3f8bab6785fea245906b5aaabf98d11, type: 2}
+    _NormalizedStartTime: NaN
+  forwardStart:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400000, guid: fc6f137c96de6ea46b57b616d2eb675a, type: 2}
+    _NormalizedStartTime: NaN
+  right45Start:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400000, guid: 5b5656904c8738a4690c7f9bd9534ace, type: 2}
+    _NormalizedStartTime: NaN
+  right90Start:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400000, guid: f6fc52e00ab01d54c9a96eea32a41a21, type: 2}
+    _NormalizedStartTime: NaN
+  right135Start:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400000, guid: b96d46a5d96474043b655b75a212915d, type: 2}
+    _NormalizedStartTime: NaN
+  right180Start:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400000, guid: 0bf78838c61bf0f48a4e1f16b464c235, type: 2}
+    _NormalizedStartTime: NaN
+  stopLeft:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400000, guid: 3afc7194ae5ecfc4f9d152d161295103, type: 2}
+    _NormalizedStartTime: NaN
+  stopRight:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400000, guid: 762e002a5f314af42b39c0238962efc1, type: 2}
+    _NormalizedStartTime: NaN
+  sharpTurnLeft:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 0}
+    _NormalizedStartTime: NaN
+  sharpTurnRight:
+    _FadeDuration: 0.25
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 0}
+    _NormalizedStartTime: NaN
+  movementAcceleration: 5
+  turnSpeed: 0.64
   correctionSpeed: 1.8
-  correctionNormalizedTime: 0.4
+  startDirectionCorrectionNormalizedTime: 0.4
   sharpTurnAngle: 120
-  sharpTurnCooldown: 0.2
-  rootReferenceSpeed: 2
-  useMeasuredRootReferenceSpeed: 0
+  sharpTurnRetriggerDelay: 0.2
+  rootReferenceSpeed: 0.914
+  references:
+    version: 2
+    RefIds: []

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.GameplayEffect;
 using WS_Modules.GAS.TAG;
@@ -163,8 +164,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         }
 
         /// <summary>推进当前 Controller 的 Active Runtime 动画根运动阶段。</summary>
-        public void UpdateAnimationMove() =>
-            AdvanceRuntimes(runtime => runtime.UpdateAnimationMove());
+        public void UpdateAnimationMove(Vector3 deltaPosition, Quaternion deltaRotation) =>
+            AdvanceRuntimes(runtime => runtime.UpdateAnimationMove(deltaPosition, deltaRotation));
         #endregion
 
         #region 激活

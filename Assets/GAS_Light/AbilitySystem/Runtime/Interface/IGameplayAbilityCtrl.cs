@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.TAG;
 
@@ -78,7 +79,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         void LateTick(float deltaTime);
 
         /// <summary>推进 Active Runtime 的动画根运动阶段，不更新 GE。</summary>
-        void UpdateAnimationMove();
+        void UpdateAnimationMove(Vector3 deltaPosition, Quaternion deltaRotation);
 
         /// <summary>正常结束属于当前 Controller 的 Active Runtime。</summary>
         /// <param name="runtime">要结束的 Runtime。</param>

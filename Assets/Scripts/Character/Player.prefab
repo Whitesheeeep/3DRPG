@@ -190,9 +190,27 @@ MonoBehaviour:
     inputType: 7
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
+  - action: {fileID: 0}
+    actionName: Player/CharacterSlot1
+    inputType: 11
+    pressBufferDuration: 0.2
+    releaseBufferDuration: 0.1
+  - action: {fileID: 0}
+    actionName: Player/CharacterSlot2
+    inputType: 12
+    pressBufferDuration: 0.2
+    releaseBufferDuration: 0.1
+  - action: {fileID: 0}
+    actionName: Player/CharacterSlot3
+    inputType: 13
+    pressBufferDuration: 0.2
+    releaseBufferDuration: 0.1
+  - action: {fileID: 0}
+    actionName: Player/CharacterSlot4
+    inputType: 14
+    pressBufferDuration: 0.2
+    releaseBufferDuration: 0.1
   moveAction: {fileID: 5930871493289717904, guid: cfc20ea7c00b94a4781015c818a9deb0, type: 3}
-  moveActionAsset: {fileID: 0}
-  moveActionName: Character/Move
   moveDeadzone: 0.1
 --- !u!114 &6089726963410338055
 MonoBehaviour:

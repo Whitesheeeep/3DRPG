@@ -11,7 +11,7 @@ namespace RPG.Character
         bool IsGrounded { get; }
 
         /// <summary>登记一个跨帧有效的运动控制权请求。</summary>
-        /// <param name="request">Owner、通道、优先级和根运动消费策略。</param>
+        /// <param name="request">Owner、通道和优先级。</param>
         /// <returns>用于提交运动并在状态结束时释放请求的句柄。</returns>
         MotionControlHandle RequestControl(MotionControlRequest request);
 
@@ -19,6 +19,11 @@ namespace RPG.Character
         /// <param name="handle">已经登记且尚未释放的控制请求。</param>
         /// <param name="request">本物理步世界空间位移和旋转。</param>
         void SubmitFixed(MotionControlHandle handle, FixedMotionRequest request);
+
+        /// <summary>向当前 Animator 阶段提交运动。</summary>
+        /// <param name="handle">已经登记且尚未释放的控制请求。</param>
+        /// <param name="submission">本阶段世界空间根运动增量。</param>
+        void SubmitAnimatorMotion(MotionControlHandle handle, AnimatorMotionSubmission submission);
 
     }
 }

@@ -45,6 +45,19 @@ namespace RPG.Character.Animation
 
         #region 播放
 
+        /// <summary>在不推进动画时间的前提下求值指定初始姿态，供角色首次显示前预热。</summary>
+        /// <param name="transition">需要作为初始姿态的动画 Transition。</param>
+        internal void PrimeInitialPose(ITransition transition)
+        {
+            if (transition == null) return;
+            InitializeIfNeeded();
+            // 以零淡入从 Transition 起点播放，避免备用角色首次启用时暴露 Bind Pose。
+            animancer.Play(transition, 0f, FadeMode.FromStart);
+            animancer.Layers[(int)AnimationLayerType.Base].Weight = 1f;
+            // Evaluate(0) 只刷新 PlayableGraph 和骨骼姿态，不推进动画时间或角色运动。
+            animancer.Evaluate(0f);
+        }
+
         /// <summary>
         /// 在指定固定层播放 AnimationClip，并同时把目标层淡入到完全权重。
         /// </summary>
@@ -80,6 +93,28 @@ namespace RPG.Character.Animation
             AnimancerLayer animancerLayer = GetLayer(layer);
             AnimancerState state = animancerLayer.Play(transition);
             ActivateLayer(animancerLayer, transition.FadeDuration);
+            return state;
+        }
+
+        /// <summary>
+        /// 在指定固定层播放 Animancer Transition，并允许调用方覆盖本次播放的淡入时长。
+        /// </summary>
+        /// <param name="layer">目标固定动画层。</param>
+        /// <param name="transition">包含动画、事件和默认播放参数的 Transition。</param>
+        /// <param name="fadeDuration">本次播放使用的淡入秒数；零表示直接切换。</param>
+        /// <returns>本次播放得到的真实 Animancer 状态。</returns>
+        /// <exception cref="ArgumentNullException">Transition 为空。</exception>
+        public AnimancerState Play(AnimationLayerType layer, ITransition transition, float fadeDuration)
+        {
+            if (transition == null) throw new ArgumentNullException(nameof(transition));
+
+            AnimancerLayer animancerLayer = GetLayer(layer);
+            float duration = Mathf.Max(0f, fadeDuration);
+            AnimancerState state = animancerLayer.Play(
+                transition,
+                duration,
+                transition.FadeMode);
+            ActivateLayer(animancerLayer, duration);
             return state;
         }
 

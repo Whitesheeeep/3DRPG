@@ -20,7 +20,7 @@ namespace RPG.Character.DirectionalLocomotion
             _active = true;
             _handle = Owner.MotionDriver.RequestControl(new MotionControlRequest(
                 Owner.GetComponentInParent<CharacterActor>(), MotionPriority.Locomotion,
-                MotionChannels.Horizontal | MotionChannels.Rotation, true));
+                MotionChannels.Horizontal | MotionChannels.Rotation));
             Owner.SelectedStartAngle = 0f;
             Owner.SelectedStartClipName = Owner.Setting.startForward.name;
             Owner.StartNormalizedTime = 0f;
