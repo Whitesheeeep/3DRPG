@@ -66,10 +66,9 @@ namespace WS_Modules.UIModule
                 }
 
                 WindowBase visibleWindow = lifecycleService.GetWindow<T>(false);
-                if (visibleWindow != null)
+                if (visibleWindow != null && visibleWindow.Visible)
                 {
                     Debug.Log($"{windowName} 弹窗已显示，single模式不处理压栈");
-                    visibleWindow.OnShow();
                     return;
                 }
             }

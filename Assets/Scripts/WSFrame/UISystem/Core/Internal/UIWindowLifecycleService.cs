@@ -121,12 +121,18 @@ namespace WS_Modules.UIModule
             string windowName = typeof(T).Name;
             if (loadingWindows.TryGetValue(windowName, out UniTaskCompletionSource<WindowBase> loadingSource))
             {
+                if (registry.TryGetRecord(windowName, out UIWindowRecord transitionRecord) &&
+                    transitionRecord.State is UIWindowState.Showing or UIWindowState.Hiding)
+                {
+                    return null;
+                }
+
                 WSLog.LogWarning("窗口正在加载中，已复用加载任务，窗口名称:" + windowName);
                 WindowBase loadingWindow = await loadingSource.Task;
                 if (loadingWindow is { Visible: false } &&
                     registry.TryGetRecord(windowName, out UIWindowRecord loadingRecord))
                 {
-                    loadingWindow = ShowExistingWindow(loadingRecord);
+                    loadingWindow = await ShowExistingWindowAsync(loadingRecord);
                 }
 
                 return loadingWindow as T;
@@ -134,14 +140,14 @@ namespace WS_Modules.UIModule
 
             if (registry.TryGetRecord(windowName, out UIWindowRecord record))
             {
-                return ShowExistingWindow(record) as T;
+                return await ShowExistingWindowAsync(record) as T;
             }
 
             WSLog.Log("弹出窗口，窗口名称:" + windowName);
             WindowBase window = await InitializeWindowWithLoading(windowName, new T(), true);
             if (window is { Visible: false } && registry.TryGetRecord(windowName, out record))
             {
-                window = ShowExistingWindow(record);
+                window = await ShowExistingWindowAsync(record);
             }
 
             return window as T;
@@ -165,11 +171,17 @@ namespace WS_Modules.UIModule
             string windowName = typeof(TWindow).Name;
             if (loadingWindows.TryGetValue(windowName, out UniTaskCompletionSource<WindowBase> loadingSource))
             {
+                if (registry.TryGetRecord(windowName, out UIWindowRecord transitionRecord) &&
+                    transitionRecord.State is UIWindowState.Showing or UIWindowState.Hiding)
+                {
+                    return null;
+                }
+
                 WSLog.LogWarning("窗口正在加载中，已复用加载任务，窗口名称:" + windowName);
                 WindowBase loadingWindow = await loadingSource.Task;
                 if (loadingWindow != null && registry.TryGetRecord(windowName, out UIWindowRecord loadingRecord))
                 {
-                    loadingWindow = ShowExistingWindow(loadingRecord, openContext);
+                    loadingWindow = await ShowExistingWindowAsync(loadingRecord, openContext);
                 }
 
                 return loadingWindow as TWindow;
@@ -177,14 +189,14 @@ namespace WS_Modules.UIModule
 
             if (registry.TryGetRecord(windowName, out UIWindowRecord record))
             {
-                return ShowExistingWindow(record, openContext) as TWindow;
+                return await ShowExistingWindowAsync(record, openContext) as TWindow;
             }
 
             WSLog.Log("弹出窗口，窗口名称:" + windowName);
             WindowBase window = await InitializeWindowWithLoading(windowName, new TWindow(), false);
             if (window != null && registry.TryGetRecord(windowName, out record))
             {
-                window = ShowExistingWindow(record, openContext);
+                window = await ShowExistingWindowAsync(record, openContext);
             }
 
             return window as TWindow;
@@ -205,12 +217,18 @@ namespace WS_Modules.UIModule
             string windowName = string.IsNullOrEmpty(window.Name) ? window.GetType().Name : window.Name;
             if (loadingWindows.TryGetValue(windowName, out UniTaskCompletionSource<WindowBase> loadingSource))
             {
+                if (registry.TryGetRecord(windowName, out UIWindowRecord transitionRecord) &&
+                    transitionRecord.State is UIWindowState.Showing or UIWindowState.Hiding)
+                {
+                    return null;
+                }
+
                 WSLog.LogWarning("窗口正在加载中，已复用加载任务，窗口名称:" + windowName);
                 WindowBase loadingWindow = await loadingSource.Task;
                 if (loadingWindow is { Visible: false } &&
                     registry.TryGetRecord(windowName, out UIWindowRecord loadingRecord))
                 {
-                    loadingWindow = ShowExistingWindow(loadingRecord);
+                    loadingWindow = await ShowExistingWindowAsync(loadingRecord);
                 }
 
                 return loadingWindow;
@@ -218,14 +236,14 @@ namespace WS_Modules.UIModule
 
             if (registry.TryGetRecord(windowName, out UIWindowRecord record))
             {
-                return ShowExistingWindow(record);
+                return await ShowExistingWindowAsync(record);
             }
 
             WSLog.Log("弹出窗口，窗口名称:" + windowName);
             WindowBase initializedWindow = await InitializeWindowWithLoading(windowName, window, true);
             if (initializedWindow is { Visible: false } && registry.TryGetRecord(windowName, out record))
             {
-                initializedWindow = ShowExistingWindow(record);
+                initializedWindow = await ShowExistingWindowAsync(record);
             }
 
             return initializedWindow;
@@ -235,16 +253,18 @@ namespace WS_Modules.UIModule
         /// 隐藏指定窗口。
         /// </summary>
         /// <param name="windowName">窗口名称。</param>
-        public void HideWindow(string windowName)
+        /// <returns>隐藏流程完成任务；窗口不存在或请求被忽略时立即完成。</returns>
+        public async UniTask HideWindowAsync(string windowName)
         {
             if (isShuttingDown)
             {
                 return;
             }
 
-            if (registry.TryGetRecord(windowName, out UIWindowRecord record))
+            if (registry.TryGetRecord(windowName, out UIWindowRecord record) &&
+                record.State == UIWindowState.Visible)
             {
-                HideWindow(record, true);
+                await HideWindowAsync(record, true);
             }
         }
 
@@ -276,9 +296,14 @@ namespace WS_Modules.UIModule
                 return;
             }
 
-            if (record.Window.Visible)
+            if (record.State == UIWindowState.Showing || record.State == UIWindowState.Hiding)
             {
-                HideWindow(record, false);
+                return;
+            }
+
+            if (record.State == UIWindowState.Visible)
+            {
+                HideWindowImmediate(record, false);
             }
 
             UIWindowSnapshot destroyedSnapshot = registry.CreateSnapshot(record);
@@ -459,7 +484,7 @@ namespace WS_Modules.UIModule
             BindWindowBase(windowBase, windowObject);
             if (isVisible)
             {
-                ShowInitializedWindow(record);
+                await ShowInitializedWindowAsync(record);
             }
             else
             {
@@ -470,86 +495,173 @@ namespace WS_Modules.UIModule
             return windowBase;
         }
 
-        private void ShowInitializedWindow(UIWindowRecord record)
+        /// <summary>
+        /// 显示刚完成实例化的窗口，并等待显示过渡结束后发布稳定事件。
+        /// </summary>
+        /// <param name="record">待显示的窗口记录。</param>
+        private async UniTask ShowInitializedWindowAsync(UIWindowRecord record)
         {
             SetRecordState(record, UIWindowState.Showing);
             registry.MarkShown(record.WindowName);
             record.Window.SetVisible(true);
             record.Window.OnShow();
-            SetRecordState(record, UIWindowState.Visible);
             layerService.OnWindowShown(record.Window, registry.GetVisibleWindows());
-            WindowOpened?.Invoke(registry.CreateSnapshot(record));
             PublishTopWindowChanged();
-        }
-
-        private WindowBase ShowExistingWindow(UIWindowRecord record)
-        {
-            WindowBase window = record.Window;
-            WSLog.Log("显示窗口，窗口名称:" + record.WindowName);
-            if (window is { GameObject: not null, Visible: false })
-            {
-                SetRecordState(record, UIWindowState.Showing);
-                registry.MarkShown(record.WindowName);
-                window.Transform.SetAsLastSibling();
-                window.SetVisible(true);
-                window.OnShow();
-                SetRecordState(record, UIWindowState.Visible);
-                layerService.OnWindowShown(window, registry.GetVisibleWindows());
-                WindowOpened?.Invoke(registry.CreateSnapshot(record));
-                PublishTopWindowChanged();
-                WSLog.Log("窗口显示成功，窗口名称:" + record.WindowName);
-            }
-            else if (window is { GameObject: not null, Visible: true })
-            {
-                window.OnShow();
-            }
-
-            return window;
-        }
-
-        private WindowBase ShowExistingWindow<TOpenContext>(UIWindowRecord record, TOpenContext openContext)
-        {
-            WindowBase window = record.Window;
-            WSLog.Log("显示窗口，窗口名称:" + record.WindowName);
-            if (window is { GameObject: not null, Visible: false })
-            {
-                SetRecordState(record, UIWindowState.Showing);
-                registry.MarkShown(record.WindowName);
-                window.Transform.SetAsLastSibling();
-                ApplyOpenContext(window, openContext);
-                window.SetVisible(true);
-                window.OnShow();
-                SetRecordState(record, UIWindowState.Visible);
-                layerService.OnWindowShown(window, registry.GetVisibleWindows());
-                WindowOpened?.Invoke(registry.CreateSnapshot(record));
-                PublishTopWindowChanged();
-                WSLog.Log("窗口显示成功，窗口名称:" + record.WindowName);
-            }
-            else if (window is { GameObject: not null, Visible: true })
-            {
-                ApplyOpenContext(window, openContext);
-                window.OnShow();
-            }
-
-            return window;
-        }
-
-        private void HideWindow(UIWindowRecord record, bool notifyClosed)
-        {
-            WindowBase window = record.Window;
-            if (window is not { GameObject: not null, Visible: true })
+            await record.Window.PlayShowAnimationAsync();
+            if (isShuttingDown || !registry.TryGetRecord(record.WindowName, out UIWindowRecord currentRecord) ||
+                !ReferenceEquals(currentRecord, record))
             {
                 return;
             }
 
+            SetRecordState(record, UIWindowState.Visible);
+            WindowOpened?.Invoke(registry.CreateSnapshot(record));
+        }
+
+        /// <summary>
+        /// 显示已注册窗口；稳定过渡期间的请求直接忽略。
+        /// </summary>
+        /// <param name="record">已注册的窗口记录。</param>
+        /// <returns>已接受的窗口；请求被忽略时返回 null。</returns>
+        private async UniTask<WindowBase> ShowExistingWindowAsync(UIWindowRecord record)
+        {
+            WindowBase window = record.Window;
+            WSLog.Log("显示窗口，窗口名称:" + record.WindowName);
+            if (record.State == UIWindowState.Showing || record.State == UIWindowState.Hiding)
+            {
+                return null;
+            }
+
+            if (window is { GameObject: not null, Visible: false } && record.State == UIWindowState.Hidden)
+            {
+                SetRecordState(record, UIWindowState.Showing);
+                registry.MarkShown(record.WindowName);
+                window.Transform.SetAsLastSibling();
+                window.SetVisible(true);
+                window.OnShow();
+                layerService.OnWindowShown(window, registry.GetVisibleWindows());
+                PublishTopWindowChanged();
+                await window.PlayShowAnimationAsync();
+                if (isShuttingDown || !registry.TryGetRecord(record.WindowName, out UIWindowRecord currentRecord) ||
+                    !ReferenceEquals(currentRecord, record))
+                {
+                    return null;
+                }
+
+                SetRecordState(record, UIWindowState.Visible);
+                WindowOpened?.Invoke(registry.CreateSnapshot(record));
+                WSLog.Log("窗口显示成功，窗口名称:" + record.WindowName);
+            }
+            else if (window is { GameObject: not null, Visible: true } && record.State == UIWindowState.Visible)
+            {
+                window.OnShow();
+            }
+
+            return window;
+        }
+
+        /// <summary>
+        /// 显示已注册窗口并应用本次打开参数；稳定过渡期间的请求直接忽略。
+        /// </summary>
+        /// <param name="record">已注册的窗口记录。</param>
+        /// <param name="openContext">本次打开参数。</param>
+        /// <typeparam name="TOpenContext">打开参数类型。</typeparam>
+        /// <returns>已接受的窗口；请求被忽略时返回 null。</returns>
+        private async UniTask<WindowBase> ShowExistingWindowAsync<TOpenContext>(UIWindowRecord record, TOpenContext openContext)
+        {
+            WindowBase window = record.Window;
+            WSLog.Log("显示窗口，窗口名称:" + record.WindowName);
+            if (record.State == UIWindowState.Showing || record.State == UIWindowState.Hiding)
+            {
+                return null;
+            }
+
+            if (window is { GameObject: not null, Visible: false } && record.State == UIWindowState.Hidden)
+            {
+                SetRecordState(record, UIWindowState.Showing);
+                registry.MarkShown(record.WindowName);
+                window.Transform.SetAsLastSibling();
+                ApplyOpenContext(window, openContext);
+                window.SetVisible(true);
+                window.OnShow();
+                layerService.OnWindowShown(window, registry.GetVisibleWindows());
+                PublishTopWindowChanged();
+                await window.PlayShowAnimationAsync();
+                if (isShuttingDown || !registry.TryGetRecord(record.WindowName, out UIWindowRecord currentRecord) ||
+                    !ReferenceEquals(currentRecord, record))
+                {
+                    return null;
+                }
+
+                SetRecordState(record, UIWindowState.Visible);
+                WindowOpened?.Invoke(registry.CreateSnapshot(record));
+                WSLog.Log("窗口显示成功，窗口名称:" + record.WindowName);
+            }
+            else if (window is { GameObject: not null, Visible: true } && record.State == UIWindowState.Visible)
+            {
+                ApplyOpenContext(window, openContext);
+                window.OnShow();
+            }
+
+            return window;
+        }
+
+        /// <summary>
+        /// 隐藏已显示窗口，等待过渡动画结束后提交隐藏状态与关闭通知。
+        /// </summary>
+        /// <param name="record">待隐藏的窗口记录。</param>
+        /// <param name="notifyClosed">是否发送窗口关闭通知。</param>
+        private async UniTask HideWindowAsync(UIWindowRecord record, bool notifyClosed)
+        {
+            WindowBase window = record.Window;
+            if (window is not { GameObject: not null, Visible: true } || record.State != UIWindowState.Visible)
+            {
+                return;
+            }
+
+            SetRecordState(record, UIWindowState.Hiding);
+            await window.PlayHideAnimationAsync();
+            if (isShuttingDown || !registry.TryGetRecord(record.WindowName, out UIWindowRecord currentRecord) ||
+                !ReferenceEquals(currentRecord, record))
+            {
+                return;
+            }
+
+            window.SetVisible(false);
+            window.OnHide();
+            SetRecordState(record, UIWindowState.Hidden);
+            registry.MarkHidden(record.WindowName);
+            layerService.OnWindowHidden(window, registry.GetVisibleWindows());
+            PublishTopWindowChanged();
+            WindowHidden?.Invoke(registry.CreateSnapshot(record));
+            if (notifyClosed)
+            {
+                WindowClosed?.Invoke(window);
+            }
+        }
+
+        /// <summary>
+        /// 立即完成窗口隐藏，用于销毁前释放可见窗口，不播放过渡动画。
+        /// </summary>
+        /// <param name="record">待隐藏的窗口记录。</param>
+        /// <param name="notifyClosed">是否发送窗口关闭通知。</param>
+        private void HideWindowImmediate(UIWindowRecord record, bool notifyClosed)
+        {
+            WindowBase window = record.Window;
+            if (window is not { GameObject: not null, Visible: true } || record.State != UIWindowState.Visible)
+            {
+                return;
+            }
+
+            window.StopTransitionAnimation();
             SetRecordState(record, UIWindowState.Hiding);
             window.SetVisible(false);
             window.OnHide();
             SetRecordState(record, UIWindowState.Hidden);
             registry.MarkHidden(record.WindowName);
             layerService.OnWindowHidden(window, registry.GetVisibleWindows());
-            WindowHidden?.Invoke(registry.CreateSnapshot(record));
             PublishTopWindowChanged();
+            WindowHidden?.Invoke(registry.CreateSnapshot(record));
             if (notifyClosed)
             {
                 WindowClosed?.Invoke(window);
@@ -570,6 +682,7 @@ namespace WS_Modules.UIModule
         private void DestroyRecordDuringShutdown(UIWindowRecord record)
         {
             GameObject windowObject = record.GameObject;
+            record.Window?.StopTransitionAnimation();
             if (record.State == UIWindowState.Loading)
             {
                 return;

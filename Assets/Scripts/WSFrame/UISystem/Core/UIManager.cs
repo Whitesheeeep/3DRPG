@@ -298,7 +298,32 @@ namespace WS_Modules.UIModule
                 return;
             }
 
-            lifecycleService.HideWindow(windowName);
+            lifecycleService.HideWindowAsync(windowName).Forget();
+        }
+
+        /// <summary>
+        /// 异步隐藏指定类型窗口，并等待隐藏动画和生命周期事件完成。
+        /// </summary>
+        /// <typeparam name="T">窗口类型。</typeparam>
+        /// <returns>隐藏流程完成任务；请求被忽略时立即完成。</returns>
+        public async UniTask HideWindowAsync<T>() where T : WindowBase
+        {
+            await HideWindowAsync(typeof(T).Name);
+        }
+
+        /// <summary>
+        /// 异步隐藏指定名称窗口，并等待隐藏动画和生命周期事件完成。
+        /// </summary>
+        /// <param name="windowName">窗口名称。</param>
+        /// <returns>隐藏流程完成任务；请求被忽略时立即完成。</returns>
+        public async UniTask HideWindowAsync(string windowName)
+        {
+            if (!EnsureServicesReady())
+            {
+                return;
+            }
+
+            await lifecycleService.HideWindowAsync(windowName);
         }
 
         /// <summary>

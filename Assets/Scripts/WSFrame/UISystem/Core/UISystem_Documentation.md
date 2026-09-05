@@ -13,8 +13,23 @@
 系统提供了一套完整的异步/同步 API 来管理窗口：
 - **PreLoad (预加载)**: 提前加载窗口资源并实例化，但不显示。适用于大型窗口避免首次打开卡顿。
 - **PopUp (弹出/显示)**: 加载（如未加载）并显示窗口。支持异步 `UniTask`。
-- **Hide (隐藏)**: 将窗口设为不可见，但保留在内存中。
+- **Hide (隐藏)**: 由生命周期服务播放隐藏过渡，完成后设为不可见并保留在内存中；`HideWindowAsync` 可等待整个流程结束。
 - **Destroy (销毁)**: 彻底销毁窗口 GameObject 并卸载相关资源。
+
+```mermaid
+stateDiagram-v2
+    [*] --> Loading: 首次加载
+    Loading --> Hidden: 预加载完成
+    Loading --> Showing: 首次打开
+    Hidden --> Showing: 接受打开请求
+    Showing --> Visible: 显示动画完成
+    Visible --> Hiding: 接受隐藏请求
+    Hiding --> Hidden: 隐藏动画完成
+    Hidden --> [*]: 销毁
+    Visible --> [*]: 立即销毁
+    Showing --> Showing: 忽略重复请求
+    Hiding --> Hiding: 忽略重复请求
+```
 
 ### 2.2 智能显隐 (Smart Show/Hide)
 **核心亮点**：为了优化 DrawCall 和渲染性能，系统实现了“伪隐藏”机制。
@@ -114,10 +129,41 @@ UISystem/
     - `_UIMaskCanvasGroup`: 控制背景遮罩。
     - `_UIContent`: 窗口内容父节点，用于动画缩放。
   - **动画系统**: 内置集成 DOTween。
-    - `ShowAnimation`: 遮罩淡入 + 内容缩放弹出 (BackEase)。
-    - `HideAnimation`: 内容缩放消失 -> 回调关闭。
+    - 显示过渡：生命周期服务进入 `Showing`，调用窗口 `OnShow` 后让根 `CanvasGroup` 在 0.2 秒内渐入，同时让 `UIContent` 从 0.8 倍放大到 1 倍（0.3 秒，`Ease.OutBack`），动画完成后进入 `Visible` 并发送 `WindowOpened`。
+    - 隐藏过渡：生命周期服务进入 `Hiding`，让根 `CanvasGroup` 在 0.2 秒内渐出，同时让 `UIContent` 缩小到 0.8 倍（`Ease.InQuad`），动画完成后调用 `OnHide`、进入 `Hidden` 并发送 `WindowHidden`；窗口的 `HideWindow()` 只提交管理器请求。
+    - 派生窗口可以重写 `ShowAnimation()` 和 `HideAnimation()` 返回自定义 Tween 或 Sequence；返回 `null` 表示该方向不播放动画。
+    - `WindowCanvasGroup` 和 `UIContent` 以只读受保护属性提供给派生窗口，具体窗口只创建动画，不负责等待、终止或改变窗口生命周期。
+    - 默认动画保留 `Canvas.sortingOrder > 90` 的显示策略；派生类重写后不受该默认层级限制，仍由 `_disableAnim` 控制是否跳过动画。
+    - `Showing` 或 `Hiding` 期间的打开、隐藏和销毁请求会被忽略，不排队也不重播动画。
+
+```mermaid
+flowchart LR
+    A["生命周期服务"] --> B["WindowBase 播放入口"]
+    B --> C["派生类 ShowAnimation / HideAnimation"]
+    C --> D["Tween 或 Sequence"]
+    D --> E["WindowBase 统一播放、等待、终止"]
+    E --> F["生命周期服务提交状态和事件"]
+```
   - `PseudoHidden()`: 用于智能显隐的接口，修改 CanvasGroup 属性而非 SetActive。
   - `FullScreenWindow`: 是否全屏的配置属性。
+
+派生窗口可以只重写需要变化的方向。例如以下窗口使用右侧滑入和滑出，同时仍由 `WindowBase` 管理完成时机：
+
+```csharp
+protected override Tween ShowAnimation()
+{
+    UIContent.localPosition = new Vector3(500f, 0f, 0f);
+    return UIContent.DOLocalMove(Vector3.zero, 0.35f).SetEase(Ease.OutCubic);
+}
+
+protected override Tween HideAnimation()
+{
+    return UIContent.DOLocalMove(new Vector3(500f, 0f, 0f), 0.25f)
+        .SetEase(Ease.InCubic);
+}
+```
+
+自定义方法只创建并返回 Tween。不要在其中调用 `UIManager.HideWindow`、等待 Tween 或杀死基类当前动画；返回的 Tween 会被基类放入外层 Sequence，并在 `Shutdown` 时统一终止。
 
 ### 3.3 资源加载
 - 使用 `ResSystem` (基于 Addressables 或 Resources 的封装) 进行异步加载。
@@ -147,6 +193,9 @@ UIManager.Instance.PopUpWindow<BagWindow>();
 ```csharp
 // 隐藏（保留状态）
 UIManager.Instance.HideWindow<BagWindow>();
+
+// 等待隐藏动画和生命周期完成
+await UIManager.Instance.HideWindowAsync<BagWindow>();
 
 // 销毁（释放内存）
 UIManager.Instance.DestroyWindow<HomeWindow>();
@@ -197,8 +246,9 @@ UIManager.Instance.PushAndPopStackWindow<RewardWindow>(
      - **400+**: 引导层 / 顶层通知 (Top)
    - 这样设计可以方便在两个大层级之间插入临时层级，避免层级冲突。
 
-5. **异步陷阱**:
-   - `PopUpWindowAsync` 是异步的。如果在 `await` 之前连续调用两次打开同一个窗口，可能会导致逻辑冲突（虽然 `PopUpWindow` 内部有字典检查，但初始化过程中的竞态条件需留意，框架内已有 `InitializeWindow` 保护）。
+5. **异步调用**:
+   - `PopUpWindowAsync` 会等待显示过渡完成；窗口处于 `Showing` 或 `Hiding` 时重复打开会立即返回 `null`。
+   - `HideWindowAsync` 会等待隐藏动画、状态提交和 `WindowHidden` 通知完成，适合在关闭一个窗口后再打开下一个窗口的流程中使用。
 
 6. **Canvas Camera**:
    - 默认所有窗口的 Canvas 会被设置为 `WorldSpace` 或 `ScreenSpace-Camera` 并绑定到系统的 `UICamera`。不要手动修改 Canvas 的 Render Mode，除非你非常清楚自己在做什么。

@@ -531,7 +531,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 080edc5c67e278f41b1f5da51a460ca9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  IsFullWindow: 0
+  IsFullWindow: 1
   DoAnimation: 0
   AdvanceButton: {fileID: 9100000000000000002}
   SpeakerNameTMP_Text: {fileID: 7326562959118068335}

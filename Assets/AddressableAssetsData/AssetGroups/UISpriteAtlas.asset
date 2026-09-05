@@ -53,6 +53,12 @@ MonoBehaviour:
     m_SerializedLabels:
     - Bag
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f080c0dd2bbafd94fb114d6376f62bc1
+    m_Address: WeaponIcons
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bag
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: cf483ba42ae65ea478a5243d9f39d4df, type: 2}
   m_SchemaSet:
