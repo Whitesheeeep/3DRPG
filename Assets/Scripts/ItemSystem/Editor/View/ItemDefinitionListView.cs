@@ -49,7 +49,7 @@ namespace RPG.ItemSystem.Editor
         /// <summary>列表选择变化事件。</summary>
         internal event Action<ItemDefinition> DefinitionSelected;
         /// <summary>从列表空白区域请求新建可堆叠物品。</summary>
-        internal event Action NewStackableRequested;
+        internal event Action<ItemCategory> NewStackableRequested;
         /// <summary>从列表空白区域请求新建武器。</summary>
         internal event Action NewWeaponRequested;
         /// <summary>从列表空白区域请求新建养成道具。</summary>
@@ -350,7 +350,9 @@ namespace RPG.ItemSystem.Editor
             }
             else
             {
-                menu.AddItem(new GUIContent("新建/普通物品"), false, () => NewStackableRequested?.Invoke());
+                menu.AddItem(new GUIContent("新建/养成素材"), false, () => NewStackableRequested?.Invoke(ItemCategory.Material));
+                menu.AddItem(new GUIContent("新建/食材"), false, () => NewStackableRequested?.Invoke(ItemCategory.Ingredient));
+                menu.AddItem(new GUIContent("新建/料理"), false, () => NewStackableRequested?.Invoke(ItemCategory.Food));
                 menu.AddItem(new GUIContent("新建/武器"), false, () => NewWeaponRequested?.Invoke());
                 menu.AddItem(new GUIContent("新建/养成道具"), false, () => NewDevelopmentItemRequested?.Invoke());
                 menu.AddItem(new GUIContent("新建/圣遗物"), false, () => NewArtifactRequested?.Invoke());
@@ -445,7 +447,7 @@ namespace RPG.ItemSystem.Editor
         /// <summary>初始化筛选和排序下拉选项。</summary>
         private void ConfigureChoices()
         {
-            categoryField.choices = new List<string> { "全部类型", "养成素材", "食材", "料理", "摆设", "武器", "圣遗物", "养成道具" };
+            categoryField.choices = new List<string> { "全部类型", "养成素材", "食材", "料理", "武器", "圣遗物" };
             kindField.choices = new List<string> { "全部定义", "可堆叠物品", "养成道具定义", "武器定义", "圣遗物定义" };
             sortField.choices = new List<string> { "默认排序优先级", "显示名称", "稀有度", "物品类型", "定义类型", "养成用途", "稳定物品标识", "最大堆叠数量", "最大等级" };
             sortDirectionField.choices = new List<string> { "升序", "降序" };

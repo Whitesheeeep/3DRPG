@@ -40,6 +40,14 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsGASLightTagSystemEditorStyleGameplayTagEditor = "Assets/GAS_Light/TagSystem/Editor/Style/GameplayTagEditor.uxml";
             /// <summary>资源路径：Assets/GAS_Light/TagSystem/Editor/Style/GameplayTagTreeRow.uxml</summary>
             public const string AssetsGASLightTagSystemEditorStyleGameplayTagTreeRow = "Assets/GAS_Light/TagSystem/Editor/Style/GameplayTagTreeRow.uxml";
+            /// <summary>资源路径：Assets/Scripts/Character/Editor/Style/CharacterConfigDetails.uxml</summary>
+            public const string AssetsScriptsCharacterEditorStyleCharacterConfigDetails = "Assets/Scripts/Character/Editor/Style/CharacterConfigDetails.uxml";
+            /// <summary>资源路径：Assets/Scripts/Character/Editor/Style/CharacterConfigEditorWindow.uxml</summary>
+            public const string AssetsScriptsCharacterEditorStyleCharacterConfigEditorWindow = "Assets/Scripts/Character/Editor/Style/CharacterConfigEditorWindow.uxml";
+            /// <summary>资源路径：Assets/Scripts/Character/Editor/Style/CharacterConfigListRow.uxml</summary>
+            public const string AssetsScriptsCharacterEditorStyleCharacterConfigListRow = "Assets/Scripts/Character/Editor/Style/CharacterConfigListRow.uxml";
+            /// <summary>资源路径：Assets/Scripts/Character/Editor/Style/CharacterConfigSummary.uxml</summary>
+            public const string AssetsScriptsCharacterEditorStyleCharacterConfigSummary = "Assets/Scripts/Character/Editor/Style/CharacterConfigSummary.uxml";
             /// <summary>资源路径：Assets/Scripts/DialogueSystem/Editor/Style/DialogueGraphEditorWindow.uxml</summary>
             public const string AssetsScriptsDialogueSystemEditorStyleDialogueGraphEditorWindow = "Assets/Scripts/DialogueSystem/Editor/Style/DialogueGraphEditorWindow.uxml";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemArtifactDetails.uxml</summary>
@@ -104,6 +112,14 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsGASLightGameplayCueSystemEditorStyleGameplayCueEditor = "Assets/GAS_Light/GameplayCueSystem/Editor/Style/GameplayCueEditor.uss";
             /// <summary>资源路径：Assets/GAS_Light/TagSystem/Editor/Style/GameplayTagEditor.uss</summary>
             public const string AssetsGASLightTagSystemEditorStyleGameplayTagEditor = "Assets/GAS_Light/TagSystem/Editor/Style/GameplayTagEditor.uss";
+            /// <summary>资源路径：Assets/Scripts/Character/Editor/Style/CharacterConfigDetails.uss</summary>
+            public const string AssetsScriptsCharacterEditorStyleCharacterConfigDetails = "Assets/Scripts/Character/Editor/Style/CharacterConfigDetails.uss";
+            /// <summary>资源路径：Assets/Scripts/Character/Editor/Style/CharacterConfigEditorWindow.uss</summary>
+            public const string AssetsScriptsCharacterEditorStyleCharacterConfigEditorWindow = "Assets/Scripts/Character/Editor/Style/CharacterConfigEditorWindow.uss";
+            /// <summary>资源路径：Assets/Scripts/Character/Editor/Style/CharacterConfigListRow.uss</summary>
+            public const string AssetsScriptsCharacterEditorStyleCharacterConfigListRow = "Assets/Scripts/Character/Editor/Style/CharacterConfigListRow.uss";
+            /// <summary>资源路径：Assets/Scripts/Character/Editor/Style/CharacterConfigSummary.uss</summary>
+            public const string AssetsScriptsCharacterEditorStyleCharacterConfigSummary = "Assets/Scripts/Character/Editor/Style/CharacterConfigSummary.uss";
             /// <summary>资源路径：Assets/Scripts/DialogueSystem/Editor/Style/DialogueGraphEditor.uss</summary>
             public const string AssetsScriptsDialogueSystemEditorStyleDialogueGraphEditor = "Assets/Scripts/DialogueSystem/Editor/Style/DialogueGraphEditor.uss";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemArtifactDetails.uss</summary>
@@ -160,6 +176,8 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsScriptsWSFrameUIToolkitExtensionsEditorGraphViewWSGraphNode = "Assets/Scripts/WSFrame/UIToolkitExtensions/Editor/GraphView/WSGraphNode.uss";
             /// <summary>资源路径：Assets/Scripts/WSFrame/Utilities/Editor/Baking/Style/BakedResultViewerWindow.uss</summary>
             public const string AssetsScriptsWSFrameUtilitiesEditorBakingStyleBakedResultViewerWindow = "Assets/Scripts/WSFrame/Utilities/Editor/Baking/Style/BakedResultViewerWindow.uss";
+            /// <summary>资源路径：Assets/Scripts/WSFrame/Utilities/Editor/ConfigEditor/Style/ConfigEditorCommon.uss</summary>
+            public const string AssetsScriptsWSFrameUtilitiesEditorConfigEditorStyleConfigEditorCommon = "Assets/Scripts/WSFrame/Utilities/Editor/ConfigEditor/Style/ConfigEditorCommon.uss";
         }
     }
 }

@@ -44,7 +44,7 @@ namespace WS_Modules.GAS.Editor
                 if (!oldByGuid.TryGetValue(node.Guid, out id)) id = nextId++;
                 activeGuids.Add(node.Guid);
                 records.Add(new GameplayAttributeIdRecord(node.Guid, id));
-                generated.Add(node.Name, new GameplayAttribute(id));
+                generated.Add(node.Name, new GameplayAttribute(id, node.Name));
             }
 
             var retired = new HashSet<int>(registry.RetiredIds);
@@ -67,6 +67,7 @@ namespace WS_Modules.GAS.Editor
             registry.ApplyBake(records, retired.OrderBy(id => id).ToList(), nextId);
             EditorUtility.SetDirty(registry);
             AssetDatabase.ImportAsset(RuntimeGameplayAttributeGenerator.GeneratedAssetPath);
+            GameplayAttributeNameSynchronizer.Synchronize(generated);
             AssetDatabase.SaveAssets();
             message = $"Bake 成功：{records.Count} 个 Attribute，NextId={nextId}。";
             return true;

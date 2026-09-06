@@ -8,10 +8,10 @@ namespace RPG.ItemSystem
     /// <summary>所有可进入 ItemDatabase 的物品定义基类。</summary>
     public abstract class ItemDefinition : ScriptableObject
     {
-        [SerializeField, LabelText("稳定物品标识")] private ItemId itemId;
+        [SerializeField, ReadOnly, LabelText("稳定物品标识")] private ItemId itemId;
         [SerializeField, LabelText("显示名称")] private string displayName;
         [SerializeField, TextArea(2, 6), LabelText("物品描述")] private string description;
-        [SerializeField, LabelText("物品类型")] private ItemCategory category;
+        [SerializeField, ReadOnly, LabelText("物品类型")] private ItemCategory category;
         [SerializeField, LabelText("稀有度")] private ItemRarity rarity = ItemRarity.One;
         [SerializeField, LabelText("默认排序优先级")] private int sortPriority;
         [SerializeField, WSAddressableKey("UISpriteAtlas"), LabelText("图标图集资源地址")] private string iconAddress;
@@ -77,9 +77,8 @@ namespace RPG.ItemSystem
         {
             if (this is WeaponDefinition) category = ItemCategory.Weapon;
             else if (this is ArtifactDefinition) category = ItemCategory.Artifact;
-            else if (this is DevelopmentItemDefinition) category = ItemCategory.DevelopmentItem;
-            else if (category == ItemCategory.Weapon || category == ItemCategory.Artifact ||
-                     category == ItemCategory.DevelopmentItem)
+            else if (this is DevelopmentItemDefinition) category = ItemCategory.Material;
+            else if (category == ItemCategory.Weapon || category == ItemCategory.Artifact)
             {
                 category = ItemCategory.Material;
             }

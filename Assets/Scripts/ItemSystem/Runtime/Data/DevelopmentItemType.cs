@@ -3,7 +3,7 @@ using UnityEngine;
 namespace RPG.ItemSystem
 {
     /// <summary>
-    /// 养成道具的具体用途；顶层背包页签仍由 ItemCategory.DevelopmentItem 决定。
+    /// 养成素材的具体用途；顶层背包页签统一使用 ItemCategory.Material。
     /// </summary>
     public enum DevelopmentItemType
     {

@@ -1,6 +1,7 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/WSFrame/Utilities/Editor/ConfigEditor/Style/ConfigEditorCommon.uss" />
     <ui:Style src="project://database/Assets/Scripts/ItemSystem/Editor/Style/ItemConfigEditorWindow.uss" />
-    <ui:VisualElement name="ItemEditorRoot" class="item-editor-root">
+    <ui:VisualElement name="ItemEditorRoot" class="config-editor-root item-editor-root">
         <ui:VisualElement class="item-editor-toolbar">
             <uie:ObjectField name="DatabaseField" label="物品数据库" class="item-editor-database-field" />
             <ui:Button name="NewStackableButton" text="新建物品" />

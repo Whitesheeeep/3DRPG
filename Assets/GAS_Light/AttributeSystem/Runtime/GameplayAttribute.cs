@@ -13,9 +13,10 @@ namespace WS_Modules.GAS.AttributeSystem
         public const int InvalidId = -1;
 
         /// <summary>获取空 Attribute。</summary>
-        public static readonly GameplayAttribute Empty = new(InvalidId);
+        public static readonly GameplayAttribute Empty = new(InvalidId, string.Empty);
 
         [SerializeField] private int id;
+        [SerializeField] private string name;
 
         #endregion
 
@@ -23,6 +24,9 @@ namespace WS_Modules.GAS.AttributeSystem
 
         /// <summary>获取全局稳定 AttributeId。</summary>
         public int Id => id;
+
+        /// <summary>获取当前 Registry 提供的运行时展示名称。</summary>
+        public string Name => name ?? string.Empty;
 
         /// <summary>获取 ID 是否位于有效数值范围；是否存在由 Container 验证。</summary>
         public bool IsValid => id >= 0;
@@ -33,7 +37,20 @@ namespace WS_Modules.GAS.AttributeSystem
 
         /// <summary>使用稳定 ID 创建 Gameplay Attribute。</summary>
         /// <param name="id">全局稳定 ID；负数表示非法值。</param>
-        public GameplayAttribute(int id) => this.id = id;
+        public GameplayAttribute(int id)
+        {
+            this.id = id;
+            name = "NONE";
+        }
+
+        /// <summary>使用稳定 ID 与展示名称创建 Gameplay Attribute。</summary>
+        /// <param name="id">全局稳定 ID；负数表示非法值。</param>
+        /// <param name="name">Registry 中的作者名称；可为空。</param>
+        public GameplayAttribute(int id, string name)
+        {
+            this.id = id;
+            this.name = name ?? string.Empty;
+        }
 
         /// <summary>判断两个 Attribute 是否具有相同 ID。</summary>
         /// <param name="other">待比较 Attribute。</param>
@@ -51,7 +68,13 @@ namespace WS_Modules.GAS.AttributeSystem
 
         /// <summary>返回用于日志和调试的 AttributeId 文本。</summary>
         /// <returns>有效 ID 或 Empty 文本。</returns>
-        public override string ToString() => IsValid ? $"GameplayAttribute({id})" : "GameplayAttribute.Empty";
+        public override string ToString()
+        {
+            if (!IsValid) return "GameplayAttribute.Empty";
+            return string.IsNullOrWhiteSpace(Name)
+                ? $"GameplayAttribute({id})"
+                : $"{Name}({id})";
+        }
 
         #endregion
 

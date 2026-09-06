@@ -42,6 +42,7 @@ MonoBehaviour:
       data:
         attribute:
           id: 0
+          name: Health
         type: 0
         priority: 0
         magnitude: -10

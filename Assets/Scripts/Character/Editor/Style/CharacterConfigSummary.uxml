@@ -1,0 +1,19 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/Character/Editor/Style/CharacterConfigSummary.uss" />
+    <ui:VisualElement name="SummaryCard" class="config-editor-summary character-config-summary">
+        <ui:VisualElement class="character-config-summary-icon-container">
+            <ui:Image name="AvatarImage" class="character-config-summary-icon" />
+            <ui:Label name="AvatarFallback" class="character-config-summary-fallback" />
+        </ui:VisualElement>
+        <ui:VisualElement class="character-config-summary-content">
+            <ui:VisualElement class="character-config-summary-name-line">
+                <ui:Label name="Name" class="character-config-summary-name" />
+                <ui:Label name="Kind" class="character-config-summary-kind" text="角色配置" />
+            </ui:VisualElement>
+            <ui:Label name="Rarity" class="character-config-summary-rarity" />
+            <ui:Label name="Id" class="character-config-summary-id" />
+            <ui:Label name="Prefab" class="character-config-summary-prefab" />
+            <ui:Label name="Hint" class="character-config-summary-hint" text="资产文件名由 CharacterId 决定；角色名称仅用于展示。" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

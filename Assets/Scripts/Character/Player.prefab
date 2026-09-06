@@ -363,7 +363,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   actorContainer: {fileID: 0}
-  initialDefinitions: []
+  initialCharacterIds:
+  - value: character_0001
+  - value: character_0002
   initialCharacterId:
     value: 
 --- !u!114 &8419130012551366636

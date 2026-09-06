@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: NewItem
   m_EditorClassIdentifier: 
   itemId:
-    value: item_0976fc02c490481e8b2e81b395cb223b
+    value: material_0002
   displayName: "\u65B0\u7269\u54C1"
   description: 
   category: 0

@@ -367,6 +367,7 @@ namespace WS_Modules.GAS.Editor
             float maxValue)
         {
             element.FindPropertyRelative("attribute").FindPropertyRelative("id").intValue = attribute.Id;
+            element.FindPropertyRelative("attribute").FindPropertyRelative("name").stringValue = attribute.Name;
             element.FindPropertyRelative("type").enumValueIndex = (int)type;
             element.FindPropertyRelative("defaultValue").floatValue = defaultValue;
             element.FindPropertyRelative("minValue").floatValue = minValue;

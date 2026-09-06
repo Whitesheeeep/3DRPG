@@ -41,6 +41,7 @@ MonoBehaviour:
       data:
         attribute:
           id: 1
+          name: MaxHealth
         type: 2
         priority: 0
         magnitude: 60

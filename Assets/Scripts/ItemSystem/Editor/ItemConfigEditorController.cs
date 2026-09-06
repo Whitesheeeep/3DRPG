@@ -390,24 +390,24 @@ namespace RPG.ItemSystem.Editor
         }
 
         /// <summary>创建普通可堆叠物品。</summary>
-        private void OnNewStackableRequested() => CreateDefinition(typeof(StackableItemDefinition));
+        private void OnNewStackableRequested(ItemCategory category) => CreateDefinition(typeof(StackableItemDefinition), category);
 
         /// <summary>创建武器定义。</summary>
-        private void OnNewWeaponRequested() => CreateDefinition(typeof(WeaponDefinition));
+        private void OnNewWeaponRequested() => CreateDefinition(typeof(WeaponDefinition), ItemCategory.Weapon);
 
         /// <summary>创建养成道具定义。</summary>
-        private void OnNewDevelopmentItemRequested() => CreateDefinition(typeof(DevelopmentItemDefinition));
+        private void OnNewDevelopmentItemRequested() => CreateDefinition(typeof(DevelopmentItemDefinition), ItemCategory.Material);
 
         /// <summary>创建圣遗物定义。</summary>
-        private void OnNewArtifactRequested() => CreateDefinition(typeof(ArtifactDefinition));
+        private void OnNewArtifactRequested() => CreateDefinition(typeof(ArtifactDefinition), ItemCategory.Artifact);
 
         /// <summary>创建定义并选中结果。</summary>
         /// <param name="type">定义类型。</param>
-        private void CreateDefinition(Type type)
+        private void CreateDefinition(Type type, ItemCategory category)
         {
             try
             {
-                selectedDefinition = service.CreateDefinition(type, database);
+                selectedDefinition = service.CreateDefinition(type, category, database);
                 RefreshDefinitions();
             }
             catch (Exception exception)

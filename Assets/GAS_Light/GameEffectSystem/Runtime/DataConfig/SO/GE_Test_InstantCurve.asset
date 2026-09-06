@@ -319,6 +319,7 @@ MonoBehaviour:
       data:
         attribute:
           id: 2
+          name: Armor
         type: 0
         priority: 0
         baseMagnitude: 10

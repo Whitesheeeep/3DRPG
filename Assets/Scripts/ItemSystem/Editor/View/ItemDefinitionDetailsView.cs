@@ -38,6 +38,7 @@ namespace RPG.ItemSystem.Editor
         private readonly Label summaryRarity;
         private readonly Label summaryId;
         private readonly PropertyField itemIdField;
+        private readonly PropertyField categoryField;
         private readonly PropertyField useEffectsField;
         private readonly List<(PropertyField field, string label)> fixedPropertyLabels = new();
 
@@ -126,6 +127,8 @@ namespace RPG.ItemSystem.Editor
             displayNameField = RequireFromPage<TextField>(commonDetailsPage, "DisplayNameField", "公共物品详情");
             itemIdField = RequireFromPage<PropertyField>(commonDetailsPage, "ItemIdField", "公共物品详情");
             itemIdField.SetEnabled(false);
+            categoryField = RequireFromPage<PropertyField>(commonDetailsPage, "CategoryField", "公共物品详情");
+            categoryField.SetEnabled(false);
             useEffectsField = RequireFromPage<PropertyField>(stackableDetailsPage, "UseEffectsField", "可堆叠物品详情");
             commonDetailsPage.RegisterCallback<SerializedPropertyChangeEvent>(OnCommonPropertyChanged);
             CacheFixedPropertyLabels(commonDetailsPage);

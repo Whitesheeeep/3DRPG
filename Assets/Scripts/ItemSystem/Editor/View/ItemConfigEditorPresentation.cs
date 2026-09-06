@@ -3,6 +3,7 @@ using System;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+using WS_Modules.EditorExtensions;
 
 namespace RPG.ItemSystem.Editor
 {
@@ -17,10 +18,8 @@ namespace RPG.ItemSystem.Editor
             ItemCategory.Material => "养成素材",
             ItemCategory.Ingredient => "食材",
             ItemCategory.Food => "料理",
-            ItemCategory.Furnishing => "摆设",
             ItemCategory.Weapon => "武器",
             ItemCategory.Artifact => "圣遗物",
-            ItemCategory.DevelopmentItem => "养成道具",
             _ => "未知"
         };
 
@@ -69,21 +68,14 @@ namespace RPG.ItemSystem.Editor
         /// <param name="rarity">稀有度。</param>
         /// <returns>填充和空心星组成的界面文本。</returns>
         internal static string GetRarityStars(ItemRarity rarity)
-        {
-            int count = Mathf.Clamp((int)rarity, 1, 5);
-            return new string('★', count) + new string('☆', 5 - count);
-        }
+            => ConfigEditorRarityPresentation.GetRarityStars((int)rarity);
 
         /// <summary>切换稀有度状态类并清理虚拟化节点的旧状态。</summary>
         /// <param name="element">需要着色的节点。</param>
         /// <param name="prefix">状态类前缀。</param>
         /// <param name="rarity">当前稀有度。</param>
         internal static void EnableRarityClass(VisualElement element, string prefix, ItemRarity? rarity)
-        {
-            string[] names = { "one", "two", "three", "four", "five" };
-            for (int index = 1; index <= 5; index++)
-                element.EnableInClassList($"{prefix}--rarity-{names[index - 1]}", rarity.HasValue && (int)rarity.Value == index);
-        }
+            => ConfigEditorRarityPresentation.EnableRarityClass(element, prefix, rarity.HasValue ? (int?)rarity.Value : null);
 
         /// <summary>将 PropertyField 生成的序列化集合配置为可展开、可增删和可重排的 GE 列表。</summary>
         /// <param name="propertyField">绑定集合的 PropertyField。</param>

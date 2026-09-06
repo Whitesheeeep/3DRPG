@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -22,7 +23,7 @@ namespace RPG.ItemSystem.Editor
         /// <summary>数据库选择事件。</summary>
         internal event Action<ItemDatabase> DatabaseChanged;
         /// <summary>新建可堆叠物品请求。</summary>
-        internal event Action NewStackableRequested;
+        internal event Action<ItemCategory> NewStackableRequested;
         /// <summary>新建武器请求。</summary>
         internal event Action NewWeaponRequested;
         /// <summary>新建养成道具请求。</summary>
@@ -101,8 +102,15 @@ namespace RPG.ItemSystem.Editor
         /// <param name="change">对象变化事件。</param>
         private void OnDatabaseChanged(ChangeEvent<UnityEngine.Object> change) => DatabaseChanged?.Invoke(change.newValue as ItemDatabase);
 
-        /// <summary>转发新建可堆叠物品请求。</summary>
-        private void OnNewStackableClicked() => NewStackableRequested?.Invoke();
+        /// <summary>显示普通物品分类菜单，创建前先确定不可变的类别前缀。</summary>
+        private void OnNewStackableClicked()
+        {
+            var menu = new GenericMenu();
+            menu.AddItem(new GUIContent("养成素材"), false, () => NewStackableRequested?.Invoke(ItemCategory.Material));
+            menu.AddItem(new GUIContent("食材"), false, () => NewStackableRequested?.Invoke(ItemCategory.Ingredient));
+            menu.AddItem(new GUIContent("料理"), false, () => NewStackableRequested?.Invoke(ItemCategory.Food));
+            menu.ShowAsContext();
+        }
 
         /// <summary>转发新建武器请求。</summary>
         private void OnNewWeaponClicked() => NewWeaponRequested?.Invoke();

@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: "\u8377\u82B1"
   m_EditorClassIdentifier: 
   itemId:
-    value: development_4a35e3c286804f91995a4d4a30a6894e
+    value: material_0004
   displayName: "\u8377\u82B1"
   description: 
-  category: 6
+  category: 0
   rarity: 1
   sortPriority: 600
   iconAddress: 

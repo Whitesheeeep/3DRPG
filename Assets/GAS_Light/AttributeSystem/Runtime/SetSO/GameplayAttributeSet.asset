@@ -15,6 +15,7 @@ MonoBehaviour:
   definitions:
   - attribute:
       id: 0
+      name: Health
     type: 1
     defaultValue: 3
     minValue: 0
@@ -24,6 +25,7 @@ MonoBehaviour:
     ownerSet: {fileID: 0}
   - attribute:
       id: 1
+      name: MaxHealth
     type: 0
     defaultValue: 65
     minValue: 0
@@ -33,6 +35,7 @@ MonoBehaviour:
     ownerSet: {fileID: 0}
   - attribute:
       id: 2
+      name: Armor
     type: 0
     defaultValue: 100
     minValue: 0
@@ -42,6 +45,7 @@ MonoBehaviour:
     ownerSet: {fileID: 0}
   - attribute:
       id: 3
+      name: MP
     type: 1
     defaultValue: 0
     minValue: 0
@@ -51,6 +55,7 @@ MonoBehaviour:
     ownerSet: {fileID: 0}
   - attribute:
       id: 4
+      name: Speed
     type: 0
     defaultValue: 10
     minValue: 0
@@ -60,6 +65,7 @@ MonoBehaviour:
     ownerSet: {fileID: 0}
   - attribute:
       id: 5
+      name: AttackPower
     type: 0
     defaultValue: 0
     minValue: -Infinity
@@ -69,6 +75,7 @@ MonoBehaviour:
     ownerSet: {fileID: 0}
   - attribute:
       id: 6
+      name: CriticalChance
     type: 0
     defaultValue: 0
     minValue: -Infinity

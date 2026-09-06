@@ -1,0 +1,31 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/WSFrame/Utilities/Editor/ConfigEditor/Style/ConfigEditorCommon.uss" />
+    <ui:Style src="project://database/Assets/Scripts/Character/Editor/Style/CharacterConfigEditorWindow.uss" />
+    <ui:VisualElement name="CharacterConfigEditorRoot" class="config-editor-root character-config-editor-root">
+        <ui:VisualElement name="Toolbar" class="config-editor-toolbar character-config-toolbar">
+            <uie:ObjectField name="DatabaseField" label="CharacterDatabase" class="character-config-database-field" />
+            <ui:Button name="CreateButton" text="新建角色" />
+            <ui:Button name="DuplicateButton" text="复制" />
+            <ui:Button name="RemoveButton" text="移出数据库" />
+            <ui:Button name="DeleteButton" text="删除资产" />
+            <ui:Button name="ValidateCurrentButton" text="验证当前" />
+            <ui:Button name="ValidateDatabaseButton" text="验证数据库" />
+            <ui:Button name="PingButton" text="定位资产" />
+        </ui:VisualElement>
+        <WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView name="CharacterConfigSplitView" class="config-editor-body character-config-body" fixed-pane-index="0" fixed-pane-initial-dimension="360" orientation="Horizontal">
+            <ui:VisualElement name="Sidebar" class="config-editor-sidebar character-config-sidebar">
+                <uie:ToolbarSearchField name="SearchField" label="搜索 CharacterId" />
+                <ui:ListView name="CharacterList" class="config-editor-list character-config-list" />
+                <ui:Label name="EmptyListLabel" text="暂无角色配置" class="config-editor-empty-list character-config-empty-list" />
+            </ui:VisualElement>
+            <ui:VisualElement name="DetailsPane" class="config-editor-details-pane character-config-details-pane">
+                <ui:VisualElement name="Summary" class="config-editor-summary-host character-config-summary-host" />
+                <ui:ScrollView name="DetailsScrollView" class="config-editor-details character-config-details-scroll" />
+                <ui:VisualElement name="EmptyDetailsState" class="config-editor-empty-details character-config-empty-details">
+                    <ui:Label text="请从左侧列表选择一个角色配置" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView>
+        <ui:Label name="StatusLabel" class="config-editor-status character-config-status" />
+    </ui:VisualElement>
+</ui:UXML>

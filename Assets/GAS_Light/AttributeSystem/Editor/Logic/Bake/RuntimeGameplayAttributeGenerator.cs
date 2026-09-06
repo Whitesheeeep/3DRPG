@@ -62,7 +62,7 @@ namespace WS_Modules.GAS.Editor
                 builder.AppendLine($"        /// <summary>{EscapeXml(pair.Key)}</summary>");
                 builder.AppendLine(
                     $"        public static readonly GameplayAttribute {CreateIdentifier(pair.Key)} = " +
-                    $"new GameplayAttribute({pair.Value.Id});");
+                    $"new GameplayAttribute({pair.Value.Id}, \"{EscapeCSharp(pair.Value.Name)}\");");
             }
 
             builder.AppendLine("    }");
@@ -86,6 +86,12 @@ namespace WS_Modules.GAS.Editor
         // 防止作者名称破坏生成的 XML 文档注释。
         private static string EscapeXml(string value) =>
             value.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
+
+        /// <summary>转义生成常量中会破坏 C# 字符串的字符。</summary>
+        /// <param name="value">待转义名称。</param>
+        /// <returns>可直接写入 C# 字符串字面量的文本。</returns>
+        private static string EscapeCSharp(string value) =>
+            (value ?? string.Empty).Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", "\\r").Replace("\n", "\\n");
 
         #endregion
     }

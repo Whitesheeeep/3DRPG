@@ -19927,21 +19927,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac71317f1bf754941a3931f9f072b399, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  characterId:
-    value: OdetaA
+  config: {fileID: 11400000, guid: c36cba51eac191947936b273c1792996, type: 2}
   abilitySystemComponent: {fileID: 0}
   animator: {fileID: 0}
   markerProvider: {fileID: 0}
   skillRuntimeHost: {fileID: 0}
   animationController: {fileID: 0}
-  initialAttributeSets:
-  - {fileID: 11400000, guid: fa050d1171257b24bbba13162066da88, type: 2}
-  locomotion:
-    transition: {fileID: 11400000, guid: 8b2e9e80cfd84d94b68a1f7f15d89b21, type: 2}
-    gravity: 9.81
-  abilityInputBindings:
-  - inputType: 0
-    ability: {fileID: 11400000, guid: 5b1b22e4d2c647a09c12aac149412fd1, type: 2}
 --- !u!1 &3811133747735640794
 GameObject:
   m_ObjectHideFlags: 0

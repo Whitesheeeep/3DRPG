@@ -64,8 +64,7 @@ namespace RPG.Character
         #endregion
 
         #region 请求与释放
-
-        /// <inheritdoc />
+       /// <inheritdoc/>
         public MotionControlHandle RequestControl(MotionControlRequest request)
         {
             if (request.Owner == null)

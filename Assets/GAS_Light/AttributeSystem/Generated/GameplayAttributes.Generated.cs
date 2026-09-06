@@ -7,18 +7,18 @@ namespace WS_Modules.GAS.Generated
     public static class GameplayAttributes
     {
         /// <summary>Armor</summary>
-        public static readonly GameplayAttribute Attribute_Armor = new GameplayAttribute(2);
+        public static readonly GameplayAttribute Attribute_Armor = new GameplayAttribute(2, "Armor");
         /// <summary>AttackPower</summary>
-        public static readonly GameplayAttribute Attribute_AttackPower = new GameplayAttribute(5);
+        public static readonly GameplayAttribute Attribute_AttackPower = new GameplayAttribute(5, "AttackPower");
         /// <summary>CriticalChance</summary>
-        public static readonly GameplayAttribute Attribute_CriticalChance = new GameplayAttribute(6);
+        public static readonly GameplayAttribute Attribute_CriticalChance = new GameplayAttribute(6, "CriticalChance");
         /// <summary>Health</summary>
-        public static readonly GameplayAttribute Attribute_Health = new GameplayAttribute(0);
+        public static readonly GameplayAttribute Attribute_Health = new GameplayAttribute(0, "Health");
         /// <summary>MP</summary>
-        public static readonly GameplayAttribute Attribute_MP = new GameplayAttribute(3);
+        public static readonly GameplayAttribute Attribute_MP = new GameplayAttribute(3, "MP");
         /// <summary>MaxHealth</summary>
-        public static readonly GameplayAttribute Attribute_MaxHealth = new GameplayAttribute(1);
+        public static readonly GameplayAttribute Attribute_MaxHealth = new GameplayAttribute(1, "MaxHealth");
         /// <summary>Speed</summary>
-        public static readonly GameplayAttribute Attribute_Speed = new GameplayAttribute(4);
+        public static readonly GameplayAttribute Attribute_Speed = new GameplayAttribute(4, "Speed");
     }
 }

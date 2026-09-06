@@ -1,0 +1,27 @@
+.character-config-list-row { position: relative; flex-direction: row; align-items: center; min-width: 0; min-height: 58px; padding-left: 8px; padding-right: 6px; padding-top: 4px; padding-bottom: 4px; border-bottom-width: 1px; border-bottom-color: rgb(60, 60, 60); border-left-width: 3px; }
+.character-config-list-row--rarity-one { background-color: rgb(42, 42, 42); border-left-color: rgb(145, 145, 145); border-color: rgb(145, 145, 145); }
+.character-config-list-row--rarity-two { background-color: rgb(36, 50, 38); border-left-color: rgb(83, 166, 91); border-color: rgb(83, 166, 91); }
+.character-config-list-row--rarity-three { background-color: rgb(34, 43, 55); border-left-color: rgb(75, 137, 205); border-color: rgb(75, 137, 205); }
+.character-config-list-row--rarity-four { background-color: rgb(46, 37, 55); border-left-color: rgb(155, 100, 210); border-color: rgb(155, 100, 210); }
+.character-config-list-row--rarity-five { background-color: rgb(55, 45, 32); border-left-color: rgb(210, 155, 70); border-color: rgb(210, 155, 70); }
+.character-config-list-row:hover { background-color: rgb(48, 48, 48); }
+.character-config-list-row--selected { border-right-width: 2px; border-right-color: rgb(230, 230, 230); }
+.character-config-list-row--selected .character-config-row-selection { display: flex; }
+.character-config-list-row--rarity-one.character-config-list-row--selected .character-config-row-selection { border-color: rgb(170, 170, 170); }
+.character-config-list-row--rarity-two.character-config-list-row--selected .character-config-row-selection { border-color: rgb(95, 190, 105); }
+.character-config-list-row--rarity-three.character-config-list-row--selected .character-config-row-selection { border-color: rgb(90, 155, 225); }
+.character-config-list-row--rarity-four.character-config-list-row--selected .character-config-row-selection { border-color: rgb(175, 115, 225); }
+.character-config-list-row--rarity-five.character-config-list-row--selected .character-config-row-selection { border-color: rgb(235, 175, 80); }
+.character-config-row-selection { position: absolute; left: 0; top: 0; right: 0; bottom: 0; display: none; border-width: 2px; border-color: rgb(230, 230, 230); background-color: rgba(95, 180, 255, 0.06); }
+.character-config-row-icon-container { width: 42px; height: 48px; min-width: 42px; margin-right: 7px; align-items: center; justify-content: center; background-color: rgb(52, 52, 52); border-width: 1px; border-color: rgb(95, 95, 95); }
+.character-config-row-icon { width: 38px; height: 44px; }
+.character-config-row-fallback { width: 38px; height: 44px; font-size: 26px; -unity-text-align: middle-center; color: rgb(94, 190, 255); }
+.character-config-row-content { flex-grow: 1; min-width: 0; }
+.character-config-row-name { min-width: 0; flex-shrink: 1; font-size: 14px; -unity-font-style: bold; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.character-config-row-id, .character-config-row-meta { min-width: 0; font-size: 10px; color: rgb(170, 170, 170); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.character-config-row-rarity { width: 62px; min-width: 62px; font-size: 12px; letter-spacing: 1px; -unity-text-align: middle-right; }
+.character-config-list-row--rarity-one .character-config-row-name, .character-config-list-row--rarity-one .character-config-row-rarity { color: rgb(180, 180, 180); }
+.character-config-list-row--rarity-two .character-config-row-name, .character-config-list-row--rarity-two .character-config-row-rarity { color: rgb(115, 205, 125); }
+.character-config-list-row--rarity-three .character-config-row-name, .character-config-list-row--rarity-three .character-config-row-rarity { color: rgb(105, 175, 240); }
+.character-config-list-row--rarity-four .character-config-row-name, .character-config-list-row--rarity-four .character-config-row-rarity { color: rgb(190, 130, 235); }
+.character-config-list-row--rarity-five .character-config-row-name, .character-config-list-row--rarity-five .character-config-row-rarity { color: rgb(245, 190, 90); }

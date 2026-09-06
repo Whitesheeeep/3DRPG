@@ -30,9 +30,9 @@ namespace RPG.Character
     {
         #region 配置与依赖字段
 
-        // 序列化配置只描述该角色的状态树参数，不保存某个具体状态的运行时运动数据。
-        [SerializeField] private PlayerFSMTransition transition;
-        [SerializeField, Min(0f)] private float gravity = 9.81f;
+        // Config 注入的运行时参数；不再在每个 Actor 上重复序列化，保证角色配置只有一个来源。
+        private PlayerFSMTransition transition;
+        private float gravity;
 
         // PlayerController 注入角色与统一运动请求出口；状态通过 Owner 访问这些依赖。
         private CharacterActor owner;
@@ -105,6 +105,17 @@ namespace RPG.Character
         #endregion
 
         #region 生命周期与阶段驱动
+
+        /// <summary>注入 CharacterConfig 提供的重力与状态过渡；必须先于 Initialize 调用。</summary>
+        /// <param name="configuredGravity">非负有限重力。</param>
+        /// <param name="configuredTransition">角色状态过渡资源。</param>
+        internal void Configure(float configuredGravity, PlayerFSMTransition configuredTransition)
+        {
+            if (float.IsNaN(configuredGravity) || float.IsInfinity(configuredGravity) || configuredGravity < 0f)
+                throw new ArgumentOutOfRangeException(nameof(configuredGravity));
+            transition = configuredTransition ?? throw new ArgumentNullException(nameof(configuredTransition));
+            gravity = configuredGravity;
+        }
 
         /// <summary>绑定角色、MotionDriver 并组装正式 UnifiedFSM 状态树。</summary>
         /// <param name="sourceOwner">角色包装对象。</param>

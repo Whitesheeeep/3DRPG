@@ -347,9 +347,10 @@ namespace RPG.ItemSystem.Editor
 
         /// <summary>创建一个新的物品定义资产并加入数据库。</summary>
         /// <param name="definitionType">定义类型。</param>
+        /// <param name="requestedCategory">创建前确定且创建后不可变的物品分类。</param>
         /// <param name="database">目标数据库。</param>
         /// <returns>新建的定义。</returns>
-        internal ItemDefinition CreateDefinition(Type definitionType, ItemDatabase database)
+        internal ItemDefinition CreateDefinition(Type definitionType, ItemCategory requestedCategory, ItemDatabase database)
         {
             if (definitionType != typeof(StackableItemDefinition) &&
                 definitionType != typeof(DevelopmentItemDefinition) &&
@@ -357,6 +358,7 @@ namespace RPG.ItemSystem.Editor
                 definitionType != typeof(ArtifactDefinition))
                 throw new ArgumentException("只能创建普通物品、养成道具、武器或圣遗物定义。", nameof(definitionType));
             if (database == null) throw new InvalidOperationException("创建物品前必须选择 ItemDatabase。");
+            ItemCategory category = ResolveCreationCategory(definitionType, requestedCategory);
 
             string folder = EnsureDefinitionsFolder(database);
             string fileName = definitionType == typeof(WeaponDefinition) ? "NewWeapon" :
@@ -367,10 +369,14 @@ namespace RPG.ItemSystem.Editor
             UnityEngine.Object growthProfile = null;
             string profilePath = string.Empty;
             bool databaseAdded = false;
+            Undo.IncrementCurrentGroup();
             int undoGroup = Undo.GetCurrentGroup();
             Undo.SetCurrentGroupName("创建物品定义");
+            string itemId = string.Empty;
             try
             {
+                // 先在同一 Undo 组推进数据库计数器，再创建定义，保证一次撤销能同时恢复编号分配。
+                itemId = AllocateItemId(database, category);
                 // 先创建资产文件，再注册 Undo，避免 Undo 在资产尚未落盘时销毁临时对象。
                 definition = ScriptableObject.CreateInstance(definitionType) as ItemDefinition;
                 AssetDatabase.CreateAsset(definition, assetPath);
@@ -395,11 +401,11 @@ namespace RPG.ItemSystem.Editor
                 }
 
                 SerializedObject serialized = new SerializedObject(definition);
-                SetSerializedItemId(serialized, $"{GetDefinitionPrefix(definition)}_{Guid.NewGuid():N}");
+                SetSerializedItemId(serialized, itemId);
                 SetString(serialized, "displayName", definition is WeaponDefinition ? "新武器" :
                     definition is ArtifactDefinition ? "新圣遗物" :
                     definition is DevelopmentItemDefinition ? "新养成道具" : "新物品");
-                SetEnum(serialized, "category", (int)GetDefinitionCategory(definition));
+                SetEnum(serialized, "category", (int)category);
                 if (definition is WeaponDefinition)
                 {
                     serialized.FindProperty("growthProfile").objectReferenceValue = growthProfile;
@@ -414,7 +420,7 @@ namespace RPG.ItemSystem.Editor
                     SetInt(serialized, "experienceValue", 100);
                 }
                 // 先把新建 Profile 引用放入同一个 SerializedObject，再由 DefaultData 一次性应用全部默认字段。
-                ApplyDefaults(serialized, database, definition);
+                ApplyDefaults(serialized, database, category);
                 serialized.ApplyModifiedPropertiesWithoutUndo();
                 databaseAdded = true;
                 // 标记为可能已写入，异常时也会尝试移除部分完成的数据库引用。
@@ -431,6 +437,7 @@ namespace RPG.ItemSystem.Editor
                 if (databaseAdded) RemoveDefinition(database, definition);
                 if (!string.IsNullOrEmpty(profilePath)) AssetDatabase.DeleteAsset(profilePath);
                 AssetDatabase.DeleteAsset(assetPath);
+                RestoreIdCounter(database, category, itemId);
                 AssetDatabase.SaveAssets();
                 throw;
             }
@@ -450,6 +457,8 @@ namespace RPG.ItemSystem.Editor
             ItemDefinition copy = null;
             WeaponGrowthProfile profileCopy = null;
             bool databaseAdded = false;
+            string itemId = string.Empty;
+            Undo.IncrementCurrentGroup();
             int undoGroup = Undo.GetCurrentGroup();
             Undo.SetCurrentGroupName("复制物品定义");
             try
@@ -459,8 +468,10 @@ namespace RPG.ItemSystem.Editor
                 copy = AssetDatabase.LoadAssetAtPath<ItemDefinition>(copyPath);
                 if (copy == null) throw new InvalidOperationException($"复制后的物品资产无法加载：{copyPath}。");
                 Undo.RegisterCreatedObjectUndo(copy, "复制物品定义");
+                ItemCategory category = source.Category;
+                itemId = AllocateItemId(database, category);
                 SerializedObject serialized = new SerializedObject(copy);
-                SetSerializedItemId(serialized, $"{GetDefinitionPrefix(copy)}_{Guid.NewGuid():N}");
+                SetSerializedItemId(serialized, itemId);
                 SetString(serialized, "displayName", $"{source.DisplayName} 副本");
                 if (source is WeaponDefinition sourceWeapon && copy is WeaponDefinition)
                 {
@@ -501,6 +512,7 @@ namespace RPG.ItemSystem.Editor
                 if (databaseAdded) RemoveDefinition(database, copy);
                 if (!string.IsNullOrEmpty(profileCopyPath)) AssetDatabase.DeleteAsset(profileCopyPath);
                 AssetDatabase.DeleteAsset(copyPath);
+                RestoreIdCounter(database, source.Category, itemId);
                 AssetDatabase.SaveAssets();
                 throw;
             }
@@ -609,39 +621,106 @@ namespace RPG.ItemSystem.Editor
         /// <summary>查找并应用数据库默认数据到 SerializedObject。</summary>
         /// <param name="serialized">定义序列化对象。</param>
         /// <param name="database">数据库。</param>
-        /// <param name="definition">定义。</param>
-        private static void ApplyDefaults(SerializedObject serialized, ItemDatabase database, ItemDefinition definition)
+        /// <param name="category">最终物品分类。</param>
+        private static void ApplyDefaults(SerializedObject serialized, ItemDatabase database, ItemCategory category)
         {
-            ItemCategory category = GetDefinitionCategory(definition);
             ItemDefaultData defaultData = database.GetRequiredCategoryDefault(category);
             defaultData.ApplyDefault(serialized);
         }
 
-        /// <summary>根据 Definition 运行时类型获取其固定顶层分类。</summary>
-        /// <param name="definition">物品定义。</param>
-        /// <returns>对应分类。</returns>
-        private static ItemCategory GetDefinitionCategory(ItemDefinition definition)
+        /// <summary>校验创建类型与用户选择的最终物品分类。</summary>
+        /// <param name="definitionType">待创建 Definition 类型。</param>
+        /// <param name="requestedCategory">用户选择的分类。</param>
+        /// <returns>创建时应写入的分类。</returns>
+        private static ItemCategory ResolveCreationCategory(Type definitionType, ItemCategory requestedCategory)
         {
-            return definition switch
+            if (definitionType == typeof(WeaponDefinition))
             {
-                WeaponDefinition => ItemCategory.Weapon,
-                ArtifactDefinition => ItemCategory.Artifact,
-                DevelopmentItemDefinition => ItemCategory.DevelopmentItem,
-                _ => ItemCategory.Material
+                if (requestedCategory != ItemCategory.Weapon) throw new InvalidOperationException("武器定义必须使用武器分类。");
+                return ItemCategory.Weapon;
+            }
+            if (definitionType == typeof(ArtifactDefinition))
+            {
+                if (requestedCategory != ItemCategory.Artifact) throw new InvalidOperationException("圣遗物定义必须使用圣遗物分类。");
+                return ItemCategory.Artifact;
+            }
+            if (definitionType == typeof(DevelopmentItemDefinition))
+            {
+                if (requestedCategory != ItemCategory.Material) throw new InvalidOperationException("养成道具定义必须归入养成素材分类。");
+                return ItemCategory.Material;
+            }
+            if (requestedCategory != ItemCategory.Material && requestedCategory != ItemCategory.Ingredient && requestedCategory != ItemCategory.Food)
+                throw new InvalidOperationException("普通可堆叠物品只能使用养成素材、食材或料理分类。");
+            return requestedCategory;
+        }
+
+        /// <summary>为指定分类分配下一个持久化 ItemId。</summary>
+        /// <param name="database">目标数据库。</param>
+        /// <param name="category">最终物品分类。</param>
+        /// <returns>新建的稳定 ItemId。</returns>
+        private static string AllocateItemId(ItemDatabase database, ItemCategory category)
+        {
+            string prefix = GetCategoryPrefix(category);
+            string counterPath = GetCounterPropertyPath(category);
+            var existingIds = new List<string>(database.Definitions.Count);
+            for (int index = 0; index < database.Definitions.Count; index++)
+            {
+                ItemDefinition definition = database.Definitions[index];
+                if (definition != null) existingIds.Add(definition.ItemId.Value);
+            }
+
+            SerializedObject databaseSerialized = new SerializedObject(database);
+            Undo.RecordObject(database, "分配物品编号");
+            return ConfigEditorStableIdUtility.AllocateNextId(prefix, databaseSerialized, counterPath, existingIds);
+        }
+
+        /// <summary>异常回滚时恢复本次已推进的物品编号计数器。</summary>
+        /// <param name="database">目标数据库。</param>
+        /// <param name="category">编号所属分类。</param>
+        /// <param name="allocatedId">本次分配的 ID。</param>
+        private static void RestoreIdCounter(ItemDatabase database, ItemCategory category, string allocatedId)
+        {
+            if (database == null || string.IsNullOrEmpty(allocatedId)) return;
+            SerializedObject serialized = new SerializedObject(database);
+            SerializedProperty counter = serialized.FindProperty(GetCounterPropertyPath(category));
+            if (counter == null) return;
+            if (ConfigEditorStableIdUtility.TryParseNumber(allocatedId, GetCategoryPrefix(category), out int number) && counter.intValue == number + 1)
+            {
+                counter.intValue = number;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(database);
+            }
+        }
+
+        /// <summary>获取最终物品分类对应的 ID 前缀。</summary>
+        /// <param name="category">物品分类。</param>
+        /// <returns>小写类别前缀。</returns>
+        private static string GetCategoryPrefix(ItemCategory category)
+        {
+            return category switch
+            {
+                ItemCategory.Material => "material",
+                ItemCategory.Ingredient => "ingredient",
+                ItemCategory.Food => "food",
+                ItemCategory.Weapon => "weapon",
+                ItemCategory.Artifact => "artifact",
+                _ => throw new ArgumentOutOfRangeException(nameof(category), category, "未知物品分类。")
             };
         }
 
-        /// <summary>获取创建或复制定义使用的稳定 ItemId 前缀。</summary>
-        /// <param name="definition">物品定义。</param>
-        /// <returns>定义类型前缀。</returns>
-        private static string GetDefinitionPrefix(ItemDefinition definition)
+        /// <summary>获取最终物品分类对应的数据库计数器属性路径。</summary>
+        /// <param name="category">物品分类。</param>
+        /// <returns>隐藏计数器的序列化字段名。</returns>
+        private static string GetCounterPropertyPath(ItemCategory category)
         {
-            return definition switch
+            return category switch
             {
-                WeaponDefinition => "weapon",
-                ArtifactDefinition => "artifact",
-                DevelopmentItemDefinition => "development",
-                _ => "item"
+                ItemCategory.Material => "nextMaterialIdNumber",
+                ItemCategory.Ingredient => "nextIngredientIdNumber",
+                ItemCategory.Food => "nextFoodIdNumber",
+                ItemCategory.Weapon => "nextWeaponIdNumber",
+                ItemCategory.Artifact => "nextArtifactIdNumber",
+                _ => throw new ArgumentOutOfRangeException(nameof(category), category, "未知物品分类。")
             };
         }
 

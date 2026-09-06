@@ -44,6 +44,7 @@ MonoBehaviour:
       data:
         attribute:
           id: 2
+          name: Armor
         type: 0
         priority: 0
         magnitude: 10
@@ -52,6 +53,7 @@ MonoBehaviour:
       data:
         attribute:
           id: 2
+          name: Armor
         type: 1
         priority: 0
         magnitude: 2

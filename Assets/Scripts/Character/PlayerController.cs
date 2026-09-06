@@ -1,5 +1,7 @@
 using System;
 using System.Collections;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using RPG.Character.State;
 using RPG.DialogueSystemModule;
 using RPG.PlayerInputSystem;
@@ -9,6 +11,7 @@ using WS_Modules.GAS.Generated;
 using WS_Modules;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.TAG;
+using WS_Modules.LogModule;
 
 namespace RPG.Character
 {
@@ -39,6 +42,7 @@ namespace RPG.Character
         private bool dialogueSwitchLocked;
         private bool runtimeStarted;
         private int lastAnimatorMoveFrame = -1;
+        private CancellationTokenSource initializationCancellationSource;
         #endregion
 
         #region 事件与属性
@@ -46,6 +50,10 @@ namespace RPG.Character
         /// <summary>报告输入请求消费转交结果。</summary>
         internal event Action<GameplayTag, InputRequestHandle, bool> InputRequestConsumptionForwarded;
 #endif
+        /// <summary>角色队伍完成异步初始化后发送一次。</summary>
+        public event Action Initialized;
+        /// <summary>角色队伍初始化失败后发送一次。</summary>
+        public event Action<Exception> InitializationFailed;
         /// <summary>获取稳定 Player 持有的状态黑板。</summary>
         public PlayerStateBlackboard StateBlackboard { get; private set; }
         /// <summary>获取玩家输入 Intent Tag 仲裁器。</summary>
@@ -62,7 +70,7 @@ namespace RPG.Character
         #endregion
 
         #region Unity 生命周期与阶段编排
-        /// <summary>解析稳定依赖并初始化队伍与唯一运动出口。</summary>
+        /// <summary>解析稳定玩家依赖并建立输入、Blackboard 与唯一运动出口。</summary>
         private void Awake()
         {
             // 依赖解析只发生在稳定 Player 上；角色切换或普通场景切换不会重新寻找这些对象。
@@ -76,28 +84,15 @@ namespace RPG.Character
                 throw new InvalidOperationException(
                     $"PlayerController '{name}' 缺少输入、CharacterRoot、CharacterManager 或 CharacterController。");
             DontDestroyOnLoad(gameObject);
+            characterManager.InitializationFailed += OnCharacterInitializationFailed;
 
             // MotionDriver 只绑定共享 CharacterController；Tag 来源稍后随 ActiveCharacter 注入。
             motionDriver.Initialize(characterController);
+            // 角色配置尚未完成时保持 Suspended，避免外部误提交的请求在加载期结算。
+            motionDriver.Suspend();
 
             // Blackboard 由稳定 Player 创建，随后以同一个引用注入全部 CharacterActor。
             StateBlackboard = new PlayerStateBlackboard();
-
-            // CharacterManager 只负责构建队伍和选出当前角色；阶段推进仍由 PlayerController 主动调用。
-            characterManager.Initialize();
-            // 每个角色获得同一个 IMotionDriver、PlayerController 回调入口和 Blackboard，保留独立 ASC、Animator 与 FSM。
-            foreach (CharacterActor actor in characterManager.Characters)
-            {
-                actor.BindRuntime(characterRoot, motionDriver, this, StateBlackboard);
-                // 在首次可能显示前预热 Idle；预热期间由 CharacterActor 屏蔽 AnimatorMove，避免产生移动副作用。
-                actor.PrimeIdlePose();
-            }
-            characterManager.ActiveCharacterChanged += OnActiveCharacterChanged;
-            CharacterActor active = characterManager.ActiveCharacter ??
-                                    throw new InvalidOperationException("CharacterManager 初始化后没有可用 ActiveCharacter。");
-
-            // ActiveOwner 决定本帧可获胜的请求；Tag 读取也从当前 ASC 开始。
-            motionDriver.SetActiveOwner(active, active.AbilitySystemComponent);
 
             // 输入仲裁必须在 GAS 消费前完成；默认策略由 Manager 统一装配。
             InputIntentArbiterManager = new GameplayInputIntentArbiterManager(
@@ -105,23 +100,64 @@ namespace RPG.Character
                 StateBlackboard);
             InputIntentArbiterManager.RegisterDefaultArbiters();
             looseGameplayTagEventBridge = new LooseGameplayTagEventBridge(this);
-            dialogueParticipant?.SetAnimationPlayer(active.AnimationPlayer);
         }
 
-        /// <summary>
-        /// 在所有角色和 ASC 完成 Awake 后初始化配置，并激活当前角色 Locomotion。
-        /// </summary>
-        private void Start()
-        {
-            // PlayerController 的执行顺序早于角色 Start；这里集中完成 ASC 初始化，避免 Awake 阶段读取未建好的 Attribute 容器。
-            foreach (CharacterActor actor in characterManager.Characters)
-                actor.InitializeRuntimeConfiguration();
+        /// <summary>启动角色配置的异步加载；输入和 Blackboard 不等待该任务。</summary>
+        private void Start() => InitializePlayerAsync().Forget(HandleInitializationException);
 
-            CharacterActor active = characterManager.ActiveCharacter ??
-                                    throw new InvalidOperationException("CharacterManager 初始化后没有可用 ActiveCharacter。 ");
-            runtimeStarted = true;
-            // 运行时配置就绪后再直接选择 Idle/CodeLocomotion，持续输入切人仍由 Activate 内部决定目标状态。
-            active.Locomotion.Activate();
+        /// <summary>异步等待角色队伍完成原子提交，并在 Ready 后恢复 MotionDriver。</summary>
+        private async UniTask InitializePlayerAsync()
+        {
+            initializationCancellationSource ??= new CancellationTokenSource();
+            try
+            {
+                await characterManager.InitializeAsync(
+                    characterRoot,
+                    motionDriver,
+                    this,
+                    StateBlackboard,
+                    initializationCancellationSource.Token);
+                if (!characterManager.IsReady) return;
+                characterManager.ActiveCharacterChanged += OnActiveCharacterChanged;
+                CharacterActor active = characterManager.ActiveCharacter ??
+                                        throw new InvalidOperationException("CharacterManager Ready 后没有 ActiveCharacter。");
+                motionDriver.SetActiveOwner(active, active.AbilitySystemComponent);
+                motionDriver.Resume();
+                runtimeStarted = true;
+                active.Locomotion.Activate();
+                dialogueParticipant?.SetAnimationPlayer(active.AnimationPlayer);
+                Initialized?.Invoke();
+            }
+            catch (Exception exception)
+            {
+                InitializationFailed?.Invoke(exception);
+                throw;
+            }
+        }
+
+        /// <summary>集中接收 Forget 的异常，避免无观察者的 async void 继续传播。</summary>
+        /// <param name="exception">异步初始化异常。</param>
+        private void HandleInitializationException(Exception exception)
+        {
+            if (exception != null) Debug.LogException(exception, this);
+        }
+
+        /// <summary>转发 CharacterManager 的整批加载失败，不影响玩家级输入生命周期。</summary>
+        /// <param name="exception">角色加载异常。</param>
+        private void OnCharacterInitializationFailed(Exception exception)
+        {
+            WSLog.LogError("[PlayerController] 角色队伍初始化失败：" + exception.Message);
+            InitializationFailed?.Invoke(exception);
+        }
+
+        /// <summary>等待角色队伍进入 Ready 或 Failed。</summary>
+        /// <param name="cancellationToken">调用方取消令牌。</param>
+        public async UniTask WaitUntilInitializedAsync(CancellationToken cancellationToken)
+        {
+            while (!characterManager.IsInitialized && characterManager.InitializationState != CharacterInitializationState.Failed)
+                await UniTask.Yield(PlayerLoopTiming.Update, cancellationToken);
+            if (characterManager.InitializationState == CharacterInitializationState.Failed)
+                throw new InvalidOperationException("[PlayerController] 角色队伍初始化失败。");
         }
 
         /// <summary>恢复输入消费回传、LooseTag 桥接和帧末清理。</summary>
@@ -130,8 +166,9 @@ namespace RPG.Character
             looseGameplayTagEventBridge?.Enable();
             if (StateBlackboard == null) return;
             lastAnimatorMoveFrame = -1;
-            motionDriver.Resume();
-            if (runtimeStarted)
+            if (characterManager.IsReady)
+                motionDriver.Resume();
+            if (runtimeStarted && characterManager.IsReady)
                 characterManager.ActiveCharacter?.Locomotion.Activate();
             StateBlackboard.IntentSourceConsumed += OnIntentSourceConsumed;
             frameIntentCleanupCoroutine = StartCoroutine(ClearFrameIntentsAtFrameEnd());
@@ -156,6 +193,10 @@ namespace RPG.Character
         private void OnDestroy()
         {
             if (characterManager != null) characterManager.ActiveCharacterChanged -= OnActiveCharacterChanged;
+            if (characterManager != null) characterManager.InitializationFailed -= OnCharacterInitializationFailed;
+            initializationCancellationSource?.Cancel();
+            initializationCancellationSource?.Dispose();
+            characterManager?.CancelInitialization();
             looseGameplayTagEventBridge?.Dispose();
         }
 
@@ -179,7 +220,7 @@ namespace RPG.Character
         private void FixedUpdate()
         {
             // Manager 只收集当前角色 GAS 与 Locomotion 请求，不执行最终 CharacterController.Move。
-            characterManager.FixedTickActiveCharacter(Time.fixedDeltaTime);
+            if (!characterManager.FixedTickActiveCharacter(Time.fixedDeltaTime)) return;
             // 所有候选请求在同一物理边界统一仲裁；Resolve 自己清空瞬时提交，不跨步复用。
             motionDriver.ResolveFixedMotion();
         }
@@ -228,7 +269,7 @@ namespace RPG.Character
         /// <returns>明确的切换状态。</returns>
         public CharacterSwitchStatus TrySwitchCharacter(CharacterId characterId)
         {
-            if (!characterManager.IsInitialized) return CharacterSwitchStatus.NotInitialized;
+            if (!characterManager.IsReady) return CharacterSwitchStatus.NotInitialized;
             if (dialogueSwitchLocked ||
                 characterManager.ActiveCharacter == null ||
                 characterManager.ActiveCharacter.AbilitySystemComponent.Tags.HasTag(
@@ -242,7 +283,7 @@ namespace RPG.Character
         /// <returns>玩家级检查或队伍切换的结果。</returns>
         public CharacterSwitchStatus TrySwitchCharacterSlot(int slotIndex)
         {
-            if (!characterManager.IsInitialized) return CharacterSwitchStatus.NotInitialized;
+            if (!characterManager.IsReady) return CharacterSwitchStatus.NotInitialized;
             if (dialogueSwitchLocked ||
                 characterManager.ActiveCharacter == null ||
                 characterManager.ActiveCharacter.AbilitySystemComponent.Tags.HasTag(
@@ -279,7 +320,7 @@ namespace RPG.Character
         /// <returns>允许处理时返回 true。</returns>
         private bool CanProcessCharacterSwitchInput()
         {
-            if (!characterManager.IsInitialized || dialogueSwitchLocked) return false;
+            if (!characterManager.IsReady || dialogueSwitchLocked) return false;
             CharacterActor active = characterManager.ActiveCharacter;
             return active != null && !active.AbilitySystemComponent.Tags.HasTag(
                 GameplayTags.Tag_State_Block_AbilityActivation);

@@ -9,9 +9,8 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 49fe0e8189e47034da72a8e17cfc04cc, type: 3}
-  m_Name: TestCharacterB
+  m_Script: {fileID: 11500000, guid: 845f4b5ce0ed24f4b9357e0e9ccae9a3, type: 3}
+  m_Name: CharacterPrefabs_ContentUpdateGroupSchema
   m_EditorClassIdentifier: 
-  characterId:
-    value: Rusk
-  actorPrefab: {fileID: 8898925330486799583, guid: df5d50f64fbf83f46b7dc6b47f169095, type: 3}
+  m_Group: {fileID: 11400000, guid: a2c2eafe6f1e4d4ba3a8dc14b3f0c2e1, type: 2}
+  m_StaticContent: 0

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using WS_Modules.EditorExtensions;
 
 namespace RPG.ItemSystem.Editor
 {
@@ -24,7 +25,7 @@ namespace RPG.ItemSystem.Editor
                 "物品标识",
                 labels,
                 Math.Max(0, selected));
-            dropdown.tooltip = database == null ? "请先在物品配置窗口选择唯一的 ItemDatabase。" : "选择物品引用（名称 + ItemId）。";
+            dropdown.tooltip = database == null ? "请先在物品配置窗口选择唯一的 ItemDatabase。" : "选择物品引用（ID（Name））；序列化只保存 ID。";
             dropdown.SetEnabled(database != null);
             dropdown.RegisterValueChangedCallback(change =>
             {
@@ -103,8 +104,8 @@ namespace RPG.ItemSystem.Editor
 
                 ItemDefinition definition = FindDefinition(database, value);
                 labels.Add(definition == null
-                    ? $"无效引用（{value}）"
-                    : $"{definition.DisplayName}（{value}）");
+                    ? ConfigEditorStableIdUtility.FormatInvalidReferenceLabel(value)
+                    : ConfigEditorStableIdUtility.FormatReferenceLabel(value, definition.DisplayName));
             }
 
             if (database == null && labels.Count == 1) labels[0] = string.IsNullOrEmpty(current) ? "未找到唯一 ItemDatabase" : $"无效引用（{current}）";

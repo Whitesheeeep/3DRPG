@@ -9,7 +9,7 @@ namespace RPG.Character
     public sealed class CharacterManagerOdinTester : MonoBehaviour
     {
         [SerializeField, Required] private PlayerController playerController;
-        [SerializeField] private CharacterId targetCharacterId;
+        [SerializeField, CharacterIdDropdown] private CharacterId targetCharacterId;
         [SerializeField, Range(0, 3)] private int targetSlotIndex;
 
         /// <summary>输出当前队伍与 ActiveCharacter 快照。</summary>

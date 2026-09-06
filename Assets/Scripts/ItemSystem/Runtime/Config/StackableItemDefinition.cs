@@ -23,10 +23,9 @@ namespace RPG.ItemSystem
         /// <exception cref="InvalidOperationException">堆叠配置不合法时抛出。</exception>
         protected override void ValidateSpecific()
         {
-            if (Category == ItemCategory.Weapon || Category == ItemCategory.Artifact ||
-                Category == ItemCategory.DevelopmentItem)
+            if (Category == ItemCategory.Weapon || Category == ItemCategory.Artifact)
             {
-                throw new InvalidOperationException($"普通可堆叠物品 '{name}' 不能使用装备或养成道具分类。");
+                throw new InvalidOperationException($"普通可堆叠物品 '{name}' 不能使用装备分类。");
             }
             if (MaxQuantity < 1) throw new InvalidOperationException($"可堆叠物品 '{name}' 的 MaxQuantity 必须大于零。");
             ValidateEffectList(useEffects, "useEffects");

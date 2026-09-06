@@ -99,7 +99,17 @@ namespace WS_Modules.GAS.Editor
                 GameplayAttributeIdRecord record = idRecords[i];
                 if (record != null && record.Guid == guid)
                 {
-                    attribute = new GameplayAttribute(record.Id);
+                    string attributeName = string.Empty;
+                    for (int nodeIndex = 0; nodeIndex < nodes.Count; nodeIndex++)
+                    {
+                        if (nodes[nodeIndex] != null && nodes[nodeIndex].Guid == record.Guid)
+                        {
+                            attributeName = nodes[nodeIndex].Name;
+                            break;
+                        }
+                    }
+
+                    attribute = new GameplayAttribute(record.Id, attributeName);
                     return true;
                 }
             }

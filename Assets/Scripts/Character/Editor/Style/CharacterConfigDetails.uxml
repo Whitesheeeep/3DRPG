@@ -1,0 +1,40 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/Character/Editor/Style/CharacterConfigDetails.uss" />
+    <ui:VisualElement name="IdentityPage" class="character-config-details-page">
+        <ui:Label text="基础配置" class="config-editor-section-title character-config-section-title" />
+        <ui:TextField name="NameField" binding-path="characterName" label="角色名称" is-delayed="false" class="config-editor-property-field character-config-property-field" />
+        <uie:PropertyField name="RarityField" binding-path="rarity" label="稀有度" class="config-editor-property-field character-config-property-field" />
+        <uie:PropertyField name="CharacterIdField" binding-path="characterId" label="角色标识" class="config-editor-property-field character-config-property-field" />
+        <uie:PropertyField name="PrefabAddressField" binding-path="prefabAddress" label="角色 Prefab 地址" class="config-editor-property-field character-config-property-field" />
+        <ui:Label text="角色图片" class="config-editor-section-title character-config-section-title" />
+        <ui:VisualElement name="SideIconRow" class="character-config-preview-row">
+            <ui:VisualElement class="character-config-preview-frame">
+                <ui:Image name="SideIconPreviewImage" class="character-config-preview-image" picking-mode="Ignore" />
+                <ui:Label name="SideIconPreviewFallback" text="未选择" class="character-config-preview-fallback" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:VisualElement class="character-config-preview-fields">
+                <uie:ObjectField name="SideIconField" label="编辑器预览 Sprite" class="config-editor-property-field character-config-preview-field" />
+                <uie:PropertyField name="SideIconAddressField" binding-path="sideIconAddress" label="图集 Address" class="config-editor-property-field character-config-property-field" />
+                <uie:PropertyField name="SideIconSpriteNameField" binding-path="sideIconSpriteName" label="SpriteName" class="config-editor-property-field character-config-property-field" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="AvatarRow" class="character-config-preview-row">
+            <ui:VisualElement class="character-config-preview-frame">
+                <ui:Image name="AvatarPreviewImage" class="character-config-preview-image" picking-mode="Ignore" />
+                <ui:Label name="AvatarPreviewFallback" text="未选择" class="character-config-preview-fallback" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:VisualElement class="character-config-preview-fields">
+                <uie:ObjectField name="AvatarField" label="编辑器预览 Sprite" class="config-editor-property-field character-config-preview-field" />
+                <uie:PropertyField name="AvatarAddressField" binding-path="avatarAddress" label="图集 Address" class="config-editor-property-field character-config-property-field" />
+                <uie:PropertyField name="AvatarSpriteNameField" binding-path="avatarSpriteName" label="SpriteName" class="config-editor-property-field character-config-property-field" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:Label text="初始属性" class="config-editor-section-title character-config-section-title" />
+        <uie:PropertyField name="InitialAttributeSetsField" binding-path="initialAttributeSets" label="初始属性集" class="config-editor-property-field character-config-property-field" />
+        <ui:Label text="能力输入" class="config-editor-section-title character-config-section-title" />
+        <uie:PropertyField name="AbilityInputBindingsField" binding-path="abilityInputBindings" label="能力输入绑定" class="config-editor-property-field character-config-property-field" />
+        <ui:Label text="移动配置" class="config-editor-section-title character-config-section-title" />
+        <uie:PropertyField name="GravityField" binding-path="gravity" label="重力" class="config-editor-property-field character-config-property-field" />
+        <uie:PropertyField name="TransitionField" binding-path="locomotionTransition" label="Locomotion 状态过渡" class="config-editor-property-field character-config-property-field" />
+    </ui:VisualElement>
+</ui:UXML>

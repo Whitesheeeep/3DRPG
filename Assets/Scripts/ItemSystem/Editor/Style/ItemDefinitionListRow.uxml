@@ -1,4 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/WSFrame/Utilities/Editor/ConfigEditor/Style/ConfigEditorCommon.uss" />
     <ui:Style src="project://database/Assets/Scripts/ItemSystem/Editor/Style/ItemDefinitionListRow.uss" />
     <ui:VisualElement name="DefinitionRow" class="item-editor-definition-row">
         <ui:VisualElement class="item-editor-row-icon-container">

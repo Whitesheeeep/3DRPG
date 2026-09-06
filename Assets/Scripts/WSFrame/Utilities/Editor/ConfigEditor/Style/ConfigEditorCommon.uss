@@ -1,0 +1,80 @@
+/* Item 与 Character 配置窗口共用的布局、字段和星级视觉基础。 */
+.config-editor-root,
+.item-editor-root,
+.character-config-editor-root {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    min-height: 0;
+    background-color: rgb(30, 30, 30);
+    color: rgb(225, 225, 225);
+}
+.config-editor-toolbar,
+.item-editor-toolbar,
+.character-config-toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    min-width: 0;
+    padding: 6px 8px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(72, 72, 72);
+}
+.config-editor-toolbar Button,
+.item-editor-toolbar Button,
+.character-config-toolbar Button { flex-shrink: 0; margin-left: 4px; margin-top: 2px; margin-bottom: 2px; }
+.config-editor-body,
+.item-editor-body,
+.character-config-body { flex-grow: 1; flex-shrink: 1; min-width: 0; min-height: 0; }
+.config-editor-sidebar,
+.item-editor-sidebar,
+.character-config-sidebar { width: 360px; min-width: 320px; max-width: 360px; min-height: 0; padding: 8px; border-right-width: 1px; border-right-color: rgb(70, 70, 70); }
+.config-editor-list,
+.item-editor-definition-list,
+.character-config-list { flex-grow: 1; min-height: 100px; min-width: 0; margin-top: 6px; }
+.config-editor-empty-list,
+.item-editor-empty-list,
+.character-config-empty-list { flex-grow: 1; min-height: 120px; align-items: center; justify-content: center; color: rgb(150, 150, 150); }
+.config-editor-details-pane,
+.item-editor-details-pane,
+.character-config-details-pane { flex-grow: 1; min-width: 0; min-height: 0; padding: 12px 16px 8px 16px; }
+.config-editor-summary-host,
+.item-editor-definition-summary-host,
+.character-config-summary-host { flex-grow: 0; flex-shrink: 0; min-width: 0; margin-bottom: 10px; }
+.config-editor-empty-details,
+.item-editor-empty-details,
+.character-config-empty-details { flex-grow: 1; align-items: center; justify-content: center; color: rgb(150, 150, 150); }
+.config-editor-details,
+.item-editor-details,
+.character-config-details-scroll { flex-grow: 1; min-width: 0; min-height: 0; }
+.config-editor-details .unity-scroll-view__content-container,
+.item-editor-details .unity-scroll-view__content-container,
+.character-config-details-scroll .unity-scroll-view__content-container { min-width: 0; max-width: 100%; }
+.config-editor-details .unity-scroll-view__horizontal-scroller,
+.item-editor-details .unity-scroll-view__horizontal-scroller,
+.character-config-details-scroll .unity-scroll-view__horizontal-scroller { display: none; }
+.config-editor-property-field,
+.item-editor-property-field,
+.character-config-property-field { min-width: 0; max-width: 100%; flex-shrink: 1; margin-bottom: 4px; }
+.config-editor-property-field .unity-base-field__label,
+.item-editor-property-field .unity-base-field__label,
+.character-config-property-field .unity-base-field__label { width: 160px; min-width: 160px; max-width: 160px; flex-grow: 0; flex-shrink: 0; }
+.config-editor-property-field .unity-base-field__input,
+.item-editor-property-field .unity-base-field__input,
+.character-config-property-field .unity-base-field__input { min-width: 0; max-width: 100%; flex-grow: 1; flex-shrink: 1; }
+.config-editor-section-title,
+.item-editor-section-title,
+.character-config-section-title { margin-top: 12px; margin-bottom: 4px; padding-bottom: 3px; border-bottom-width: 1px; border-bottom-color: rgb(83, 83, 83); -unity-font-style: bold; color: rgb(125, 195, 255); }
+.config-editor-status,
+.item-editor-status,
+.character-config-status { min-height: 22px; padding-left: 10px; padding-top: 4px; color: rgb(160, 190, 160); border-top-width: 1px; border-top-color: rgb(70, 70, 70); }
+.config-editor-status--error,
+.item-editor-status--error,
+.character-config-status--error { color: rgb(255, 130, 130); }
+
+/* 共用 Item/Character 的五档星级背景和边框色。 */
+.config-editor-list-row--rarity-one, .item-editor-definition-row--rarity-one, .character-config-list-row--rarity-one, .config-editor-summary--rarity-one, .item-editor-definition-summary--rarity-one, .character-config-summary--rarity-one { background-color: rgb(42, 42, 42); border-left-color: rgb(145, 145, 145); border-color: rgb(145, 145, 145); }
+.config-editor-list-row--rarity-two, .item-editor-definition-row--rarity-two, .character-config-list-row--rarity-two, .config-editor-summary--rarity-two, .item-editor-definition-summary--rarity-two, .character-config-summary--rarity-two { background-color: rgb(36, 50, 38); border-left-color: rgb(83, 166, 91); border-color: rgb(83, 166, 91); }
+.config-editor-list-row--rarity-three, .item-editor-definition-row--rarity-three, .character-config-list-row--rarity-three, .config-editor-summary--rarity-three, .item-editor-definition-summary--rarity-three, .character-config-summary--rarity-three { background-color: rgb(34, 43, 55); border-left-color: rgb(75, 137, 205); border-color: rgb(75, 137, 205); }
+.config-editor-list-row--rarity-four, .item-editor-definition-row--rarity-four, .character-config-list-row--rarity-four, .config-editor-summary--rarity-four, .item-editor-definition-summary--rarity-four, .character-config-summary--rarity-four { background-color: rgb(46, 37, 55); border-left-color: rgb(155, 100, 210); border-color: rgb(155, 100, 210); }
+.config-editor-list-row--rarity-five, .item-editor-definition-row--rarity-five, .character-config-list-row--rarity-five, .config-editor-summary--rarity-five, .item-editor-definition-summary--rarity-five, .character-config-summary--rarity-five { background-color: rgb(55, 45, 32); border-left-color: rgb(210, 155, 70); border-color: rgb(210, 155, 70); }

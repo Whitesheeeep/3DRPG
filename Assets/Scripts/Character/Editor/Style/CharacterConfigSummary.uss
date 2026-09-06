@@ -1,0 +1,21 @@
+.character-config-summary { flex-direction: row; min-width: 0; min-height: 116px; padding: 10px; border-width: 1px; background-color: rgb(40, 40, 40); }
+.character-config-summary--rarity-one { background-color: rgb(42, 42, 42); border-color: rgb(145, 145, 145); }
+.character-config-summary--rarity-two { background-color: rgb(36, 50, 38); border-color: rgb(83, 166, 91); }
+.character-config-summary--rarity-three { background-color: rgb(34, 43, 55); border-color: rgb(75, 137, 205); }
+.character-config-summary--rarity-four { background-color: rgb(46, 37, 55); border-color: rgb(155, 100, 210); }
+.character-config-summary--rarity-five { background-color: rgb(55, 45, 32); border-color: rgb(210, 155, 70); }
+.character-config-summary-icon-container { width: 92px; height: 96px; min-width: 92px; margin-right: 12px; align-items: center; justify-content: center; background-color: rgb(52, 52, 52); border-width: 1px; border-color: rgb(95, 95, 95); }
+.character-config-summary-icon { width: 86px; height: 90px; }
+.character-config-summary-fallback { width: 86px; height: 90px; font-size: 44px; -unity-text-align: middle-center; color: rgb(94, 190, 255); }
+.character-config-summary-content { flex-grow: 1; min-width: 0; justify-content: center; }
+.character-config-summary-name-line { flex-direction: row; min-width: 0; align-items: center; }
+.character-config-summary-name { min-width: 0; flex-shrink: 1; font-size: 19px; -unity-font-style: bold; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.character-config-summary-kind { flex-shrink: 0; margin-left: 8px; padding-left: 5px; padding-right: 5px; padding-top: 2px; padding-bottom: 2px; font-size: 10px; color: rgb(215, 230, 245); background-color: rgb(47, 77, 108); }
+.character-config-summary-rarity { margin-top: 3px; font-size: 14px; letter-spacing: 1px; }
+.character-config-summary-id, .character-config-summary-prefab { margin-top: 3px; font-size: 11px; color: rgb(180, 180, 180); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.character-config-summary-hint { margin-top: 5px; font-size: 10px; color: rgb(145, 145, 145); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.character-config-summary--rarity-one .character-config-summary-name, .character-config-summary--rarity-one .character-config-summary-rarity { color: rgb(180, 180, 180); }
+.character-config-summary--rarity-two .character-config-summary-name, .character-config-summary--rarity-two .character-config-summary-rarity { color: rgb(115, 205, 125); }
+.character-config-summary--rarity-three .character-config-summary-name, .character-config-summary--rarity-three .character-config-summary-rarity { color: rgb(105, 175, 240); }
+.character-config-summary--rarity-four .character-config-summary-name, .character-config-summary--rarity-four .character-config-summary-rarity { color: rgb(190, 130, 235); }
+.character-config-summary--rarity-five .character-config-summary-name, .character-config-summary--rarity-five .character-config-summary-rarity { color: rgb(245, 190, 90); }

@@ -8,7 +8,7 @@ using WS_Modules.GAS.AttributeSystem;
 
 namespace WS_Modules.GAS.Editor
 {
-    /// <summary>在 Inspector 中选择已烘焙 Gameplay Attribute，并且只序列化稳定 AttributeId。</summary>
+    /// <summary>在 Inspector 中选择已烘焙 Gameplay Attribute，并同步序列化稳定 ID 与展示名称。</summary>
     [CustomPropertyDrawer(typeof(GameplayAttribute))]
     public sealed class GameplayAttributePropertyDrawer : PropertyDrawer
     {
@@ -21,6 +21,7 @@ namespace WS_Modules.GAS.Editor
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             SerializedProperty idProperty = property.FindPropertyRelative("id");
+            SerializedProperty nameProperty = property.FindPropertyRelative("name");
             if (idProperty == null)
             {
                 EditorGUI.HelpBox(position, "GameplayAttribute.id 无法序列化。", MessageType.Error);
@@ -47,6 +48,10 @@ namespace WS_Modules.GAS.Editor
                 selectedId =>
                 {
                     idProperty.intValue = selectedId;
+                    if (nameProperty != null)
+                        nameProperty.stringValue = selectedId >= 0 && registry.TryGetNodeById(selectedId, out GameplayAttributeEditorNode selectedNode)
+                            ? selectedNode.Name
+                            : string.Empty;
                     idProperty.serializedObject.ApplyModifiedProperties();
                 });
             dropdown.Show(valueRect);

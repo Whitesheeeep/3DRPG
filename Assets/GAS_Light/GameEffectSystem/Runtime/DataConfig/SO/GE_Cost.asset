@@ -39,6 +39,7 @@ MonoBehaviour:
       data:
         attribute:
           id: 3
+          name: MP
         type: 0
         priority: 0
         magnitude: -10

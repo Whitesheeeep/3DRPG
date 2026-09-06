@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: "\u767D\u6E56\u51AC\u7FBD"
   m_EditorClassIdentifier: 
   itemId:
-    value: weapon_90e37aa1419e460b93e5afebbae0ae18
+    value: weapon_0001
   displayName: "\u767D\u6E56\u51AC\u7FBD"
   description: "\u8FD9\u662F\u4E00\u4E2A\u5200"
   category: 4

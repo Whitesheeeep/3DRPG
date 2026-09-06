@@ -21,9 +21,9 @@ namespace RPG.ItemSystem
         /// <exception cref="InvalidOperationException">分类、用途或经验值不合法时抛出。</exception>
         protected override void ValidateSpecific()
         {
-            if (Category != ItemCategory.DevelopmentItem)
+            if (Category != ItemCategory.Material)
             {
-                throw new InvalidOperationException($"养成道具 '{name}' 必须使用 DevelopmentItem 分类。");
+                throw new InvalidOperationException($"养成道具 '{name}' 必须使用 Material 分类。");
             }
 
             // 养成道具复用可堆叠数量校验，但不走普通 Stackable 对专属分类的限制。

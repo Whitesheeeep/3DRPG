@@ -1681,19 +1681,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac71317f1bf754941a3931f9f072b399, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  characterId:
-    value: Rusk
+  config: {fileID: 11400000, guid: b25abd678e4be2b489491d72056e6411, type: 2}
   abilitySystemComponent: {fileID: 0}
   animator: {fileID: 0}
   markerProvider: {fileID: 0}
   skillRuntimeHost: {fileID: 0}
   animationController: {fileID: 0}
-  initialAttributeSets:
-  - {fileID: 11400000, guid: fa050d1171257b24bbba13162066da88, type: 2}
-  locomotion:
-    transition: {fileID: 11400000, guid: 8b2e9e80cfd84d94b68a1f7f15d89b21, type: 2}
-    gravity: 9.81
-  abilityInputBindings: []
 --- !u!114 &8279487316754353969
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -1,0 +1,16 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/Character/Editor/Style/CharacterConfigListRow.uss" />
+    <ui:VisualElement name="CharacterRow" class="config-editor-list-row character-config-list-row">
+        <ui:VisualElement class="character-config-row-icon-container">
+            <ui:Image name="SideIcon" class="character-config-row-icon" />
+            <ui:Label name="IconFallback" class="character-config-row-fallback" />
+        </ui:VisualElement>
+        <ui:VisualElement class="character-config-row-content">
+            <ui:Label name="Name" class="character-config-row-name" />
+            <ui:Label name="Id" class="character-config-row-id" />
+            <ui:Label name="Meta" class="character-config-row-meta" />
+        </ui:VisualElement>
+        <ui:Label name="Rarity" class="character-config-row-rarity" />
+        <ui:VisualElement name="SelectionFrame" class="character-config-row-selection" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

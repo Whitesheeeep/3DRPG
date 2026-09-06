@@ -16,13 +16,13 @@ namespace RPG.Character
     /// <summary>封装一个角色独立的能力、动画、挂点和 Locomotion 状态。</summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Animator))]
-    [InfoBox("依赖同节点 Humanoid Animator、AnimationController，以及同节点或子节点中的 ASC、MarkerProvider 与 SkillRuntimeHost；Humanoid Avatar 用于缓存左右脚；可选 initialAttributeSets 在 Start 导入角色初始数值；子树 Renderer 用于隐藏后台角色。")]
+    [InfoBox("依赖 CharacterConfig、同节点 Humanoid Animator、AnimationController，以及同节点或子节点中的 ASC、MarkerProvider 与 SkillRuntimeHost；Config 提供初始属性、输入绑定和 Locomotion 参数；子树 Renderer 用于隐藏后台角色。")]
     public sealed class CharacterActor : MonoBehaviour, IGameplayAbilitySystemOwner
     {
         #region 配置与运行时状态
 
         // 角色能力与表现依赖：ASC 保持启用供后台 Tick，Animator 仅由当前表现状态启用。
-        [SerializeField] private CharacterId characterId;
+        [SerializeField, Required] private CharacterConfig config;
         [SerializeField] private GameplayAbilitySystemComponent abilitySystemComponent;
         [SerializeField] private Animator animator;
         [NonSerialized] private Transform leftFoot;
@@ -31,10 +31,7 @@ namespace RPG.Character
         [SerializeField] private MarkerProvider markerProvider;
         [SerializeField] private SkillRuntimeHost skillRuntimeHost;
         [SerializeField] private AnimationController animationController;
-        // 角色专属数值模板；PlayerController.Start/本组件 Start 在 ASC 完成 Awake 后导入，避免初始化竞态。
-        [SerializeField] private GameplayAttributeSet[] initialAttributeSets = Array.Empty<GameplayAttributeSet>();
         [SerializeField] private CharacterLocomotionStateMachine locomotion = new();
-        [SerializeField] private CharacterAbilityInputBinding[] abilityInputBindings = Array.Empty<CharacterAbilityInputBinding>();
 
         // Player 注入的稳定运行时依赖，不随角色切换重新创建。
         private Transform characterRoot;
@@ -47,7 +44,8 @@ namespace RPG.Character
         // 角色表现 Renderer 缓存，SetActivePresentation 时用于隐藏后台角色。
         private Renderer[] presentationRenderers;
         // 角色技能槽位到 ASC Spec 的稳定索引；初始化时授予一次，输入阶段只查询该索引。
-        private readonly Dictionary<PlayerInputType, GameplayAbilityHandle> abilityHandlesByInput = new();
+        // key：战斗输入槽位；value：Config 中对应 Ability 授予后的 ASC Handle。
+        private readonly Dictionary<PlayerInputType, GameplayAbilityHandle> abilityHandleByInputMap = new();
         // PlayerController 在 Start 阶段统一初始化队伍；CharacterActor.Start 作为独立实例启用时的幂等兜底。
         private bool runtimeConfigurationInitialized;
 
@@ -56,7 +54,9 @@ namespace RPG.Character
         #region 属性
 
         /// <summary>获取角色稳定标识。</summary>
-        public CharacterId CharacterId => characterId;
+        public CharacterId CharacterId => config != null ? config.CharacterId : default;
+        /// <summary>获取角色配置；Manager 在加载阶段校验该引用。</summary>
+        public CharacterConfig Config => config;
         /// <summary>获取角色独立 ASC。</summary>
         public GameplayAbilitySystemComponent AbilitySystemComponent
         {
@@ -133,7 +133,7 @@ namespace RPG.Character
         private void Awake() => EnsureDependencies();
 
         /// <summary>在所有 ASC Awake 完成后导入属性并授予角色配置的初始技能。</summary>
-        private void Start() => InitializeRuntimeConfiguration();
+        private void Start() => InitializeFromConfig();
 
         /// <summary>在父级 PlayerController 先于子角色 Awake 时也能同步解析依赖。</summary>
         private void EnsureDependencies()
@@ -156,6 +156,8 @@ namespace RPG.Character
             if (abilitySystemComponent == null || animator == null || markerProvider == null || skillRuntimeHost == null ||
                 animationController == null)
                 throw new InvalidOperationException($"CharacterActor '{name}' 缺少同节点 Animator、AnimationController 或角色能力组件。 ");
+            if (config == null)
+                throw new InvalidOperationException($"CharacterActor '{name}' 未配置 CharacterConfig。");
             ValidateAbilityInputBindings();
             animator.applyRootMotion = true;
         }
@@ -163,10 +165,11 @@ namespace RPG.Character
         /// <summary>校验角色能力装配只使用固定六个战斗输入且不重复。</summary>
         private void ValidateAbilityInputBindings()
         {
-            if (abilityInputBindings == null) return;
+            IReadOnlyList<CharacterAbilityInputBinding> bindings = config.AbilityInputBindings;
+            if (bindings == null) return;
             var inputTypes = new HashSet<PlayerInputType>();
             var abilities = new HashSet<GameplayAbilityData>();
-            foreach (CharacterAbilityInputBinding binding in abilityInputBindings)
+            foreach (CharacterAbilityInputBinding binding in bindings)
             {
                 if (binding == null)
                     throw new InvalidOperationException($"CharacterActor '{name}' 的能力绑定列表包含空元素。 ");
@@ -199,28 +202,30 @@ namespace RPG.Character
         private void InitializeConfiguredAttributes()
         {
             EnsureDependencies();
-            if (abilitySystemComponent.IsInitialized || initialAttributeSets == null || initialAttributeSets.Length == 0)
+            IReadOnlyList<GameplayAttributeSet> attributeSets = config.InitialAttributeSets;
+            if (abilitySystemComponent.IsInitialized || attributeSets == null || attributeSets.Count == 0)
                 return;
-            abilitySystemComponent.Initialize(initialAttributeSets);
+            abilitySystemComponent.Initialize(attributeSets);
         }
 
         /// <summary>把角色能力绑定中的 Ability 授予自身 ASC，并建立输入到 Spec Handle 的索引。</summary>
         private void GrantConfiguredAbilities()
         {
-            if (abilityInputBindings == null || abilityInputBindings.Length == 0)
+            IReadOnlyList<CharacterAbilityInputBinding> bindings = config.AbilityInputBindings;
+            if (bindings == null || bindings.Count == 0)
                 return;
             if (!abilitySystemComponent.IsInitialized)
                 throw new InvalidOperationException(
                     $"CharacterActor '{name}' 的 ASC 尚未完成属性初始化，无法授予能力绑定。 ");
 
-            abilityHandlesByInput.Clear();
-            foreach (CharacterAbilityInputBinding binding in abilityInputBindings)
+            abilityHandleByInputMap.Clear();
+            foreach (CharacterAbilityInputBinding binding in bindings)
             {
                 GameplayAbilityHandle handle = abilitySystemComponent.GiveAbility(binding.Ability, 1);
                 if (!handle.IsValid)
                     throw new InvalidOperationException(
                         $"CharacterActor '{name}' 无法授予 {binding.InputType} 的 Ability '{binding.Ability.name}'。 ");
-                abilityHandlesByInput.Add(binding.InputType, handle);
+                abilityHandleByInputMap.Add(binding.InputType, handle);
             }
         }
 
@@ -235,9 +240,11 @@ namespace RPG.Character
         /// PlayerController 在自己的 Start 中显式调用该方法，保证所有 ASC 已完成 Awake，
         /// 再激活可能读取 GAS Speed 的 Locomotion；CharacterActor.Start 会再次调用但不会重复授予。
         /// </remarks>
-        internal void InitializeRuntimeConfiguration()
+        internal void InitializeFromConfig()
         {
             if (runtimeConfigurationInitialized) return;
+            if (config == null) throw new InvalidOperationException($"CharacterActor '{name}' 未配置 CharacterConfig。");
+            config.Validate();
             InitializeConfiguredAttributes();
             GrantConfiguredAbilities();
             runtimeConfigurationInitialized = true;
@@ -258,6 +265,8 @@ namespace RPG.Character
             motionDriver = driver;
             playerController = controller ?? throw new ArgumentNullException(nameof(controller));
             stateBlackboard = blackboard ?? throw new ArgumentNullException(nameof(blackboard));
+            if (config == null) throw new InvalidOperationException($"CharacterActor '{name}' 未配置 CharacterConfig。");
+            locomotion.Configure(config.Gravity, config.LocomotionTransition);
             locomotion.Initialize(this, driver);
         }
 
@@ -297,10 +306,6 @@ namespace RPG.Character
             playerController.ProcessAnimatorMotion(this, animator.deltaPosition, animator.deltaRotation);
         }
 
-        /// <summary>应用队伍 Definition 的实例身份，允许同一包装 Prefab 用于多个配置。</summary>
-        /// <param name="identity">经过队伍初始化校验的稳定角色键。</param>
-        internal void AssignIdentity(CharacterId identity) => characterId = identity;
-
         /// <summary>只切换角色表现，不停用承载 ASC 的节点，也不驱动 Locomotion。</summary>
         /// <param name="active">该角色是否成为玩家当前操控对象。</param>
         internal void SetActivePresentation(bool active)
@@ -321,14 +326,15 @@ namespace RPG.Character
         internal void ProcessAbilityInputRequests(IPlayerInputRequestBuffer inputRequests)
         {
             if (inputRequests == null) throw new ArgumentNullException(nameof(inputRequests));
-            if (abilityInputBindings == null) return;
-            foreach (CharacterAbilityInputBinding binding in abilityInputBindings)
+            IReadOnlyList<CharacterAbilityInputBinding> bindings = config.AbilityInputBindings;
+            if (bindings == null) return;
+            foreach (CharacterAbilityInputBinding binding in bindings)
             {
                 if (binding == null || binding.Ability == null ||
                     !inputRequests.TryGetRequest(binding.InputType,
                         out IReadOnlyPlayerInputRequest request) ||
                     !request.HasBufferedPress) continue;
-                if (!abilityHandlesByInput.TryGetValue(binding.InputType,
+                if (!abilityHandleByInputMap.TryGetValue(binding.InputType,
                         out GameplayAbilityHandle handle))
                     throw new InvalidOperationException(
                         $"CharacterActor '{name}' 的 {binding.InputType} 未建立 Ability Handle。 ");

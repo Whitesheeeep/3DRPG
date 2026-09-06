@@ -34,4 +34,9 @@ namespace RPG.Character
         /// <summary>比较两个角色标识是否不同。</summary>
         public static bool operator !=(CharacterId left, CharacterId right) => !left.Equals(right);
     }
+
+    /// <summary>标记需要从 CharacterDatabase 选择角色引用的 CharacterId 字段。</summary>
+    public sealed class CharacterIdDropdownAttribute : PropertyAttribute
+    {
+    }
 }

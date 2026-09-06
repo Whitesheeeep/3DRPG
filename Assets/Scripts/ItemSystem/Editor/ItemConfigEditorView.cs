@@ -77,7 +77,7 @@ namespace RPG.ItemSystem.Editor
         }
 
         /// <summary>转发新建可堆叠物品请求。</summary>
-        internal event Action NewStackableRequested
+        internal event Action<ItemCategory> NewStackableRequested
         {
             add
             {

@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 49fe0e8189e47034da72a8e17cfc04cc, type: 3}
+  m_Name: character_0001
+  m_EditorClassIdentifier: 
+  characterId:
+    value: character_0001
+  characterName: "\u5965\u9EDB\u5854"
+  rarity: 5
+  prefabAddress: Character/OdetaA
+  sideIconAddress: CharacterSideIcons
+  sideIconSpriteName: Odetta_Side
+  avatarAddress: Characters
+  avatarSpriteName: "\u5965\u9EDB\u5854_11162"
+  initialAttributeSets:
+  - {fileID: 11400000, guid: fa050d1171257b24bbba13162066da88, type: 2}
+  abilityInputBindings:
+  - inputType: 0
+    ability: {fileID: 11400000, guid: 5b1b22e4d2c647a09c12aac149412fd1, type: 2}
+  gravity: 9.81
+  locomotionTransition: {fileID: 11400000, guid: 8b2e9e80cfd84d94b68a1f7f15d89b21, type: 2}
+  editorSideIcon: {fileID: 21300000, guid: 35d34b6790c7b1944b281565194eb412, type: 3}
+  editorAvatar: {fileID: 21300000, guid: 930cbc898dabb46418a42cc152d8b397, type: 3}
