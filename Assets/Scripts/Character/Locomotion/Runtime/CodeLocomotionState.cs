@@ -11,8 +11,8 @@ namespace RPG.Character
 
         private AnimancerState animationState;
         private float currentSpeed;
+        // Move Loop 的参考速度，通常为 Transition.RootReferenceSpeed，但首次启用时可能使用角色自身 GAS Speed。
         private float moveReferenceSpeed;
-        private float moveParameterXValue;
         private float moveParameterRotationValue;
 
         #endregion
@@ -40,21 +40,13 @@ namespace RPG.Character
                 ? TargetSpeed
                 : Mathf.Min(TargetSpeed, moveReferenceSpeed);
 
-            if (enteredFromStart)
-            {
-                // Start 末段已经与 Move Loop 对齐；直接以当前输入初始化参数，避免第一帧从默认值追赶。
-                moveParameterXValue = MovementInput.magnitude;
-                moveParameterRotationValue = CalculateMoveRotationParameter();
-                ApplyMoveParameters();
-            }
-
             if (Transition.MoveMixerTransition != null)
             {
                 animationState = Character.AnimationPlayer.Play(
                     AnimationLayerType.Base,
                     Transition.MoveMixerTransition,
                     enteredFromStart ? 0f : Transition.MoveMixerTransition.FadeDuration);
-                animationState.Speed = 1;
+                animationState.Speed = CalculateAnimationSpeed();
 
                 if (enteredFromStart)
                 {
@@ -62,6 +54,10 @@ namespace RPG.Character
                     animationState.NormalizedTime = 0f;
                 }
             }
+
+            // X 是 Walk/Run 档位而不是输入幅度；当前正式 Locomotion 只有 Walk 档位，因此直接写入 1。
+            moveParameterRotationValue = CalculateMoveRotationParameter();
+            ApplyMoveParameters();
         }
 
         /// <inheritdoc />
@@ -75,32 +71,30 @@ namespace RPG.Character
                 return;
             }
 
-            UpdateMoveAnimation();
-        }
-
-        /// <inheritdoc />
-        public override void OnFixedUpdate()
-        {
-            // 速度加速和本物理步位移必须使用同一次 FixedTick 传入的步长，支持手动步进测试。
+            // CharacterController 的普通行走与输入和渲染帧同频，避免 FixedUpdate 50Hz 阶梯式移动。
             currentSpeed = Mathf.MoveTowards(
                 currentSpeed,
                 TargetSpeed,
-                Transition.MovementAcceleration * FixedDeltaTime);
+                Transition.MovementAcceleration * DeltaTime);
 
-            Vector3 target = MovementInput.normalized;
-            float angle = Vector3.SignedAngle(Character.RootTransform.forward, target, Vector3.up);
+            Vector3 targetDir = MovementInput.normalized;
+            // 计算角色当前朝向与目标移动方向的夹角，并限制每帧旋转角度，避免瞬间转向。
+            float angle = Vector3.SignedAngle(Character.RootTransform.forward, targetDir, Vector3.up);
             float step = Mathf.Clamp(
                 angle,
-                -Transition.TurnSpeed * 180f * FixedDeltaTime,
-                Transition.TurnSpeed * 180f * FixedDeltaTime);
+                -Transition.TurnSpeed * 180f * DeltaTime,
+                Transition.TurnSpeed * 180f * DeltaTime);
             Quaternion nextRotation = Quaternion.AngleAxis(
                 step,
                 Vector3.up) * Character.RootTransform.rotation;
+            // 计算角色相对于世界的旋转增量和位移增量，并提交给 GAS 驱动器。
+            // Queternion.Inverse 将世界坐标系下的旋转转换为相对于角色的旋转。
             Quaternion rotation = Quaternion.Inverse(Character.RootTransform.rotation) * nextRotation;
             Vector3 displacement = nextRotation * Vector3.forward *
-                                   (currentSpeed * MovementInput.magnitude * FixedDeltaTime);
+                                   (currentSpeed * MovementInput.magnitude * DeltaTime);
 
-            Driver.SubmitFixed(ControlHandle, new FixedMotionRequest(displacement, rotation));
+            Driver.SubmitUpdate(ControlHandle, new UpdateMotionSubmission(displacement, rotation));
+            UpdateMoveAnimation();
         }
 
         /// <inheritdoc />
@@ -112,7 +106,6 @@ namespace RPG.Character
             animationState = null;
             currentSpeed = 0f;
             moveReferenceSpeed = 0f;
-            moveParameterXValue = 0f;
             moveParameterRotationValue = 0f;
         }
 
@@ -133,35 +126,31 @@ namespace RPG.Character
         private void UpdateMoveAnimation()
         {
             if (animationState != null && moveReferenceSpeed > 0f)
-                animationState.Speed = 1;
+                animationState.Speed = CalculateAnimationSpeed();
 
             float parameterSmoothing = Transition.MoveParameterSmoothing;
-            if (Transition.MoveParameterX != null)
-            {
-                moveParameterXValue = 1;
-                /*moveParameterXValue = SmoothParameter(
-                    MovementInput.magnitude,
-                    parameterSmoothing,
-                    DeltaTime,
-                    ref moveParameterXValue);
-                Character.AnimationPlayer.SetFloatParameter(
-                    Transition.MoveParameterX,
-                    moveParameterXValue);*/
-            }
 
             if (Transition.MoveParameterRotation != null)
             {
-                float target = CalculateMoveRotationParameter();
-                moveParameterRotationValue = SmoothParameter(
+                float target = Mathf.Clamp(CalculateMoveRotationParameter(), -2f, 2f);
+                moveParameterRotationValue = SmoothAngleParameter(
                     target,
                     parameterSmoothing,
                     DeltaTime,
                     ref moveParameterRotationValue);
+                moveParameterRotationValue = Mathf.Clamp(moveParameterRotationValue, -2f, 2f);
                 Character.AnimationPlayer.SetFloatParameter(
                     Transition.MoveParameterRotation,
                     moveParameterRotationValue);
             }
         }
+
+        /// <summary>根据当前代码移动速度和动画参考速度计算 Move Loop 播放倍率。</summary>
+        /// <returns>用于 Animancer Move Mixer 的播放倍率。</returns>
+        private float CalculateAnimationSpeed() =>
+            moveReferenceSpeed > 0f
+                ? Mathf.Max(0f, currentSpeed / moveReferenceSpeed)
+                : 1f;
 
         /// <summary>计算 Move Mixer 使用的角色相对移动方向参数，结果单位为弧度。</summary>
         /// <returns>角色水平前向与当前世界移动方向的有符号夹角。</returns>
@@ -173,14 +162,14 @@ namespace RPG.Character
                 Vector3.up) * Mathf.Deg2Rad;
         }
 
-        /// <summary>将当前缓存的 Move Mixer 参数立即写入 Animancer。</summary>
-        /// <remarks>用于 Start 直接衔接时的首次求值，后续帧仍由指数平滑更新。</remarks>
+        /// <summary>将当前 Move Mixer 的 Walk 档位和转向参数立即写入 Animancer。</summary>
+        /// <remarks>状态进入时先写入稳定档位，后续普通帧只平滑更新转向参数。</remarks>
         private void ApplyMoveParameters()
         {
             if (Transition.MoveParameterX != null)
                 Character.AnimationPlayer.SetFloatParameter(
                     Transition.MoveParameterX,
-                    1);
+                    1f);
 
             if (Transition.MoveParameterRotation != null)
                 Character.AnimationPlayer.SetFloatParameter(
@@ -188,13 +177,13 @@ namespace RPG.Character
                     moveParameterRotationValue);
         }
 
-        /// <summary>按配置的秒数平滑一个 Move Mixer 参数，避免方向或幅度突变。</summary>
+        /// <summary>按配置的秒数平滑 Move Mixer 的转向参数，避免方向参数突变。</summary>
         /// <param name="target">目标参数值。</param>
         /// <param name="smoothing">指数平滑时间常数；零表示立即跟随，并非完全到达目标的固定耗时。</param>
         /// <param name="deltaTime">当前普通 Tick 的帧时长。</param>
         /// <param name="current">当前缓存值。</param>
         /// <returns>平滑后的参数值。</returns>
-        private static float SmoothParameter(
+        private static float SmoothAngleParameter(
             float target,
             float smoothing,
             float deltaTime,
@@ -207,7 +196,10 @@ namespace RPG.Character
             }
 
             float factor = 1f - Mathf.Exp(-Mathf.Max(0f, deltaTime) / smoothing);
-            current = Mathf.Lerp(current, target, factor);
+            float currentDegrees = current * Mathf.Rad2Deg;
+            float targetDegrees = target * Mathf.Rad2Deg;
+            currentDegrees += Mathf.DeltaAngle(currentDegrees, targetDegrees) * factor;
+            current = currentDegrees * Mathf.Deg2Rad;
             return current;
         }
 

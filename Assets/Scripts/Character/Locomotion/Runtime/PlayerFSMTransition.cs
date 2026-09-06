@@ -15,12 +15,13 @@ namespace RPG.Character
         private TransitionAsset idleTransition;
         [BoxGroup("基础循环动画"), SerializeField, LabelText("移动混合动画")]
         private TransitionAsset moveMixerTransition;
-        [BoxGroup("基础循环动画"), SerializeField, LabelText("移动幅度参数")]
+        [BoxGroup("基础循环动画"), SerializeField, LabelText("移动档位参数"),
+         Tooltip("Move Mixer 的 X 参数。当前 CodeLocomotion 固定写入 Walk 档位 1；未来启用明确的 Run 状态后可使用档位 2，不表示输入幅度。")]
         private StringAsset moveParameterX;
         [BoxGroup("基础循环动画"), SerializeField, LabelText("移动旋转参数")]
         private StringAsset moveParameterRotation;
-        [BoxGroup("基础循环动画"), SerializeField, MinValue(0f), LabelText("移动参数平滑时间（秒）"),
-         Tooltip("平滑写入 Move Mixer 的移动幅度参数和转向参数。幅度来自输入强度，转向参数来自角色前向与目标移动方向的夹角；只影响动画混合参数，不控制实际位移加速度或角色转向速度。数值越大响应越慢，0 表示立即跟随。使用指数平滑，经过该时间常数约完成当前差值的 63%，不是到时完全达到目标。Start 直接衔接 Move 时会先写入当前目标值。")]
+        [BoxGroup("基础循环动画"), SerializeField, MinValue(0f), LabelText("移动转向参数平滑时间（秒）"),
+         Tooltip("只平滑写入 Move Mixer 的 Y 转向参数。目标值来自角色前向与世界 Move 方向的夹角；不平滑输入本身、实际 CharacterController 位移、GAS Speed、代码转向速度或 X 移动档位。数值越大响应越慢，0 表示立即跟随；使用指数平滑，经过该时间常数约完成当前差值的 63%。")]
         private float moveParameterSmoothing = 0.1f;
 
         // 起步根运动：按角色朝向和世界空间 Move 输入的夹角选择一次。
@@ -58,7 +59,7 @@ namespace RPG.Character
         #endregion
 
         #region 运动配置
-        // 代码移动参数：只影响 CodeLocomotion 的 FixedTick 位移与转向。
+        // 代码移动参数：只影响 CodeLocomotion 的 Update 位移与转向。
         [BoxGroup("代码移动"), SerializeField, MinValue(0f), LabelText("移动加速度（米/秒²）")]
         private float movementAcceleration = 12f;
         [BoxGroup("代码移动"), SerializeField, MinValue(0f), LabelText("常态转向速度")]
@@ -90,11 +91,11 @@ namespace RPG.Character
         public ITransition IdleTransition => idleTransition;
         /// <summary>获取普通 Move Mixer Transition。</summary>
         public ITransition MoveMixerTransition => moveMixerTransition;
-        /// <summary>获取 Move Mixer 横向参数键。</summary>
+        /// <summary>获取 Move Mixer 的移动档位参数键；当前 Walk 档位为 1。</summary>
         public StringAsset MoveParameterX => moveParameterX;
         /// <summary>获取 Move Mixer 旋转参数键。</summary>
         public StringAsset MoveParameterRotation => moveParameterRotation;
-        /// <summary>获取 Move Mixer 参数的指数平滑时间常数；只影响动画幅度和转向参数。</summary>
+        /// <summary>获取 Move Mixer Y 转向参数的指数平滑时间常数。</summary>
         public float MoveParameterSmoothing => moveParameterSmoothing;
         /// <summary>获取前向起步 Transition。</summary>
         public ClipTransition ForwardStart => forwardStart;

@@ -20,6 +20,11 @@ namespace RPG.Character
         /// <param name="request">本物理步世界空间位移和旋转。</param>
         void SubmitFixed(MotionControlHandle handle, FixedMotionRequest request);
 
+        /// <summary>向当前 Update 阶段提交运动。</summary>
+        /// <param name="handle">已经登记且尚未释放的控制请求。</param>
+        /// <param name="submission">当前 Update 的世界空间位移和旋转。</param>
+        void SubmitUpdate(MotionControlHandle handle, UpdateMotionSubmission submission);
+
         /// <summary>向当前 Animator 阶段提交运动。</summary>
         /// <param name="handle">已经登记且尚未释放的控制请求。</param>
         /// <param name="submission">本阶段世界空间根运动增量。</param>
