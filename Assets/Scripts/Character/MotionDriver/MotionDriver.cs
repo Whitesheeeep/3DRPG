@@ -18,8 +18,10 @@ namespace RPG.Character
         private GameplayTag[] allMovementBlockedTags = Array.Empty<GameplayTag>();
 
         [NonSerialized] private readonly Dictionary<int, ControlEntry> controls = new();
+        // 各 Unity 阶段的瞬时提交必须分开保存，避免 Update、FixedUpdate 和 AnimatorMove 互相消费数据。
         [NonSerialized] private readonly List<FixedSubmission> fixedSubmissions = new();
         [NonSerialized] private readonly List<AnimatorSubmission> animatorSubmissions = new();
+        [NonSerialized] private readonly List<UpdateSubmission> updateSubmissions = new();
 
         // 依赖
         [NonSerialized] private CharacterController characterController;
@@ -30,6 +32,7 @@ namespace RPG.Character
         [NonSerialized] private int nextControlId;
         [NonSerialized] private long nextSequence;
         [NonSerialized] private bool suspended;
+
 
         #endregion
 
@@ -57,6 +60,7 @@ namespace RPG.Character
         {
             activeOwner = owner;
             activeAbilitySystem = abilitySystem;
+            updateSubmissions.Clear();
             fixedSubmissions.Clear();
             animatorSubmissions.Clear();
         }
@@ -88,6 +92,20 @@ namespace RPG.Character
             fixedSubmissions.Add(new FixedSubmission(handle, request));
         }
 
+        /// <summary>
+        /// 向当前 Update 阶段登记一次运动提交。
+        /// </summary>
+        /// <param name="handle">已经登记且尚未释放的控制请求。</param>
+        /// <param name="submission">当前 Update 的世界空间位移和旋转。</param>
+        public void SubmitUpdate(MotionControlHandle handle, UpdateMotionSubmission submission)
+        {
+            if (handle == null) throw new ArgumentNullException(nameof(handle));
+            if (!handle.IsValid || !controls.TryGetValue(handle.Id, out ControlEntry entry) ||
+                !ReferenceEquals(entry.Handle, handle))
+                throw new InvalidOperationException("不能使用已经释放或不属于当前 MotionDriver 的 Handle 提交 Update 运动。");
+            updateSubmissions.Add(new UpdateSubmission(handle, submission));
+        }
+
         /// <summary>登记当前 Animator 阶段由指定控制权主动提交的根运动。</summary>
         /// <param name="handle">已取得的持续控制权。</param>
         /// <param name="submission">本次 Animator 阶段增量。</param>
@@ -105,6 +123,7 @@ namespace RPG.Character
         internal void Release(MotionControlHandle handle)
         {
             controls.Remove(handle.Id);
+            updateSubmissions.RemoveAll(submission => ReferenceEquals(submission.Handle, handle));
             fixedSubmissions.RemoveAll(submission => ReferenceEquals(submission.Handle, handle));
             animatorSubmissions.RemoveAll(submission => ReferenceEquals(submission.Handle, handle));
         }
@@ -125,6 +144,7 @@ namespace RPG.Character
                 controls.Remove(id);
                 entry.Handle.Invalidate();
             }
+            updateSubmissions.RemoveAll(submission => ReferenceEquals(submission.Handle.Owner, owner));
             fixedSubmissions.RemoveAll(submission => ReferenceEquals(submission.Handle.Owner, owner));
             animatorSubmissions.RemoveAll(submission => ReferenceEquals(submission.Handle.Owner, owner));
         }
@@ -132,6 +152,39 @@ namespace RPG.Character
         #endregion
 
         #region 阶段结算
+
+        /// <summary>
+        /// 仲裁当前 Update 阶段提交并最多执行一次 CharacterController.Move。
+        /// </summary>
+        internal void ResolveUpdateMotion()
+        {
+            try
+            {
+                ControlEntry horizontal = FindWinner(MotionChannels.Horizontal);
+                ControlEntry vertical = FindWinner(MotionChannels.Vertical);
+                ControlEntry rotation = FindWinner(MotionChannels.Rotation);
+                Vector3 translation = Vector3.zero;
+                Quaternion finalRotation = Quaternion.identity;
+                foreach (UpdateSubmission submission in updateSubmissions)
+                {
+                    if (horizontal != null && ReferenceEquals(horizontal.Handle, submission.Handle))
+                    {
+                        Vector3 value = submission.Submission.Translation;
+                        translation += new Vector3(value.x, 0f, value.z);
+                    }
+                    if (vertical != null && ReferenceEquals(vertical.Handle, submission.Handle))
+                        translation.y += submission.Submission.Translation.y;
+                    if (rotation != null && ReferenceEquals(rotation.Handle, submission.Handle))
+                        finalRotation *= submission.Submission.Rotation;
+                }
+                ApplyResolvedMotion(translation, finalRotation);
+            }
+            finally
+            {
+                // Update 阶段结束后立即丢弃提交，防止渲染帧位移泄漏到下一次 FixedUpdate。
+                updateSubmissions.Clear();
+            }
+        }
 
         /// <summary>仲裁当前物理步提交并最多执行一次代码位移。</summary>
         internal void ResolveFixedMotion()
@@ -206,9 +259,10 @@ namespace RPG.Character
         /// <summary>恢复接受和结算运动请求。</summary>
         internal void Resume() => suspended = false;
 
-        /// <summary>清除只属于当前阶段的 Fixed 运动提交。</summary>
+        /// <summary>清除 Update、Fixed 和 AnimatorMove 各阶段尚未结算的瞬时提交。</summary>
         internal void ClearTransientRequests()
         {
+            updateSubmissions.Clear();
             fixedSubmissions.Clear();
             animatorSubmissions.Clear();
         }
@@ -300,6 +354,25 @@ namespace RPG.Character
             public MotionControlHandle Handle { get; }
             /// <summary>获取运动数据。</summary>
             public FixedMotionRequest Request { get; }
+        }
+
+        /// <summary>保存一个 Update 阶段提交及其控制权来源。</summary>
+        private readonly struct UpdateSubmission
+        {
+            /// <summary>创建一个 Update 阶段提交。</summary>
+            /// <param name="handle">提交控制句柄。</param>
+            /// <param name="submission">Update 阶段运动数据。</param>
+            public UpdateSubmission(MotionControlHandle handle, UpdateMotionSubmission submission)
+            {
+                Handle = handle;
+                Submission = submission;
+            }
+
+            /// <summary>获取控制句柄。</summary>
+            public MotionControlHandle Handle { get; }
+
+            /// <summary>获取 Update 阶段运动数据。</summary>
+            public UpdateMotionSubmission Submission { get; }
         }
 
         /// <summary>保存一个 Animator 阶段提交及其控制权来源。</summary>

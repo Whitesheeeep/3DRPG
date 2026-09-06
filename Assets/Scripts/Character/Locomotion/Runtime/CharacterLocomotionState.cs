@@ -25,9 +25,6 @@ namespace RPG.Character
         /// <summary>获取当前状态使用的统一运动请求出口。</summary>
         protected IMotionDriver Driver => Owner.Driver;
 
-        /// <summary>获取本次固定阶段由外部传入的物理步长。</summary>
-        protected float FixedDeltaTime => Owner.FixedDeltaTime;
-
         /// <summary>获取本次普通 Tick 由外部传入的帧时长。</summary>
         protected float DeltaTime => Owner.DeltaTime;
         /// <summary>获取本次 Animator 阶段的世界空间位移增量。</summary>

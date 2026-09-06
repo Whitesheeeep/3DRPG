@@ -31,7 +31,8 @@ flowchart TD
 
 Locomotion 使用 UnifiedFSM。`CharacterLocomotionStateMachine` 只负责状态树组装、角色与
 `IMotionDriver` 依赖、启停、阶段转发和全状态共用的重力；具体状态各自持有本状态的动画、速度、
-方向选择、参数平滑和状态转换数据。
+方向选择、参数平滑和状态转换数据。状态实例只注册在 UnifiedFSM 的 `StateMachine.States` 中，
+Locomotion 外层不再维护第二份状态列表；重新激活时直接遍历这份唯一注册表发送状态重置通知。
 
 ```mermaid
 flowchart LR
@@ -63,6 +64,7 @@ sequenceDiagram
     PC->>Input: ArbiterManager.ArbitrateFrame(camera)
     PC->>CM: ProcessSwitchInputRequests(inputBuffer)
     PC->>CM: TickActiveCharacter(inputBuffer, deltaTime)
+    PC->>MD: ResolveUpdateMotion()
 
     Unity->>PC: FixedUpdate()
     PC->>CM: FixedTickActiveCharacter(fixedDeltaTime)
@@ -88,7 +90,7 @@ CharacterManager 提供以下内部接口：
 | 当前角色普通帧 | `TickActiveCharacter(IPlayerInputRequestBuffer, float)` | 处理技能 Request，再推进当前 Locomotion |
 | 当前角色物理帧 | `FixedTickActiveCharacter(float)` | 推进当前 ASC FixedTick 和 Locomotion FixedTick |
 | 全队/当前角色延迟帧 | `LateTickCharacters(float)` | 全队 ASC LateTick，当前 Locomotion LateTick |
-| 当前 Animator 阶段 | `TryUpdateAnimationMove(CharacterActor)` | 校验来源并推进当前 GAS/FSM Animator 阶段 |
+| 当前 Animator 阶段 | `TryUpdateAnimationMove(CharacterActor, deltaPosition, deltaRotation, evaluationDeltaTime)` | 校验来源并推进当前 GAS/FSM Animator 阶段 |
 
 所有 deltaTime 都由 PlayerController 从 Unity 生命周期传入。CharacterManager 不读取 `Time.deltaTime`，也不执行 MotionDriver Resolve 或 `CharacterController.Move`。
 
@@ -118,11 +120,12 @@ PlayerController 的 `Start` 在所有角色和 ASC 完成 `Awake` 后执行：�
 3. PlayerController 执行仍存在的对话/角色阻断门禁；通过后调用 `CharacterManager.ProcessSwitchInputRequests(inputController)`。
 4. CharacterManager 重新读取切换后的 ActiveCharacter。
 5. `CharacterManager.TickActiveCharacter(inputController, Time.deltaTime)` 让当前 CharacterActor 直接处理技能 Request，再推进 Locomotion。
-6. Locomotion 通过 CharacterActor 的 Blackboard 引用读取 `MoveWorldInput`，不再由 PlayerController 注入移动参数。
+6. Locomotion 通过 CharacterActor 的 Blackboard 引用读取 `MoveWorldInput`，CodeLocomotion 在 Update 阶段向 MotionDriver 提交普通移动。
+7. PlayerController 调用 `MotionDriver.ResolveUpdateMotion()`，完成本次 Update 的控制权仲裁和唯一移动出口。
 
 ### FixedUpdate
 
-1. `CharacterManager.FixedTickActiveCharacter(Time.fixedDeltaTime)` 收集当前角色 GAS 和 Locomotion 的物理请求。
+1. `CharacterManager.FixedTickActiveCharacter(Time.fixedDeltaTime)` 收集当前角色 GAS、重力和其他固定步运动请求。
 2. PlayerController 调用 `MotionDriver.ResolveFixedMotion()`。
 3. 每个物理步最多执行一次 CharacterController.Move。
 
@@ -231,10 +234,36 @@ stateDiagram-v2
 GAS 和 Locomotion 只依赖 `IMotionDriver` 提交请求。MotionDriver 由 PlayerController 持有，只有 PlayerController 调用阶段开始和最终 Resolve 方法。
 
 - CharacterManager 不持有 MotionDriver。
-- CharacterManager 不调用 `ResolveFixedMotion` 或 `ResolveAnimatorMotion`。
+- CharacterManager 不调用 `ResolveUpdateMotion`、`ResolveFixedMotion` 或 `ResolveAnimatorMotion`。
 - MotionDriver 负责请求优先级、通道竞争、Tag 限制和唯一 CharacterController.Move 出口。
 - Locomotion 在提交代码移动前完成镜头方向和角色朝向的业务计算。
 - 根运动是否消费由获胜运动控制请求决定。
+
+MotionDriver 的持续控制权只有一套，但 Update、Fixed 和 AnimatorMove 的瞬时提交缓冲彼此独立：
+
+```mermaid
+flowchart LR
+    Control[持续 MotionControlHandle<br/>Owner / Priority / Channels]
+    Control --> Update[Update<br/>SubmitUpdate]
+    Control --> Fixed[FixedUpdate<br/>SubmitFixed]
+    Control --> Animator[AnimatorMove<br/>SubmitAnimatorMotion]
+    Update --> ResolveUpdate[ResolveUpdateMotion]
+    Fixed --> ResolveFixed[ResolveFixedMotion]
+    Animator --> ResolveAnimator[ResolveAnimatorMotion]
+    ResolveUpdate --> CC[CharacterController.Move]
+    ResolveFixed --> CC
+    ResolveAnimator --> CC
+```
+
+每个阶段先按同一套 Owner、优先级、通道和建立顺序选择获胜 Handle，再只累计该 Handle
+在当前阶段的提交。高优先级 Handle 如果占据通道但没有在当前阶段提交，结果就是零，
+不会回退到低优先级 Locomotion。GAS 可以自行选择 `SubmitUpdate`、`SubmitFixed` 或
+`SubmitAnimatorMotion`；MotionDriver 不理解技能类型和业务阶段。
+
+`SubmitUpdate` 适合与输入和渲染帧同步的普通代码移动，`SubmitFixed` 适合固定时间步的
+技能、重力或其他物理运动，`SubmitAnimatorMotion` 适合由 Animator 求值产生的根运动。
+三类提交在对应 Resolve 完成后清空，不跨阶段复用；释放 Owner、停用或 Suspend 时也会
+清理尚未结算的提交。
 
 `RootMotionStartState` 从 Idle 起步时按角色水平前向与 MoveWorldInput 的有符号夹角选择九方向起步动画：前向、左右 45°、90°、135°、180°。方向槽位缺失时直接进入 CodeLocomotion，不回退到前向或最近动画。RootReferenceSpeed 是配置的动画参考速度，GAS Speed 是业务目标速度，不再通过 Animator delta 运行时采样起步速度。
 
@@ -258,7 +287,11 @@ stateDiagram-v2
 - `CodeLocomotionState` 自己保存当前速度、Move Mixer 参数和急转再次触发时间，并提交代码运动。
 - `RootMotionStopState` 拥有停止动画选择、完成检测和退出去向；急转配置暂不接入运行时 FSM。
 - `RootMotionLocomotionState` 只提供根运动控制权、动画完成检查和方向修正等真正共用能力。
-- 新的角色启用周期由状态机向所有状态发送重置通知；状态机不解释或修改状态内部字段。
+- 新的角色启用周期由状态机遍历 UnifiedFSM 的唯一 `States` 注册表向所有状态发送重置通知；状态机不解释或修改状态内部字段。
+
+状态机只缓存外部阶段回调所必需的上下文：普通 `Tick` 的 `deltaTime`、AnimatorMove
+的位移/旋转增量与求值时间。Fixed 阶段的步长直接使用 `FixedTick(float deltaTime)` 参数，
+不在状态机内保存第二份 `FixedDeltaTime`；急转功能暂不接入运行时，因此不保存启用累计时间。
 
 ### Start 到 Move 的直接衔接
 
@@ -274,15 +307,15 @@ sequenceDiagram
     participant Anim as AnimationController
     Start->>FSM: OnEnd 后 ChangeState(CodeLocomotion)
     FSM->>Code: OnEnter(PreviousState = Start)
-    Code->>Code: 立即写入 Mixer 幅度/转向目标
+    Code->>Code: 立即写入 Mixer 档位/转向目标
     Code->>Anim: Play(MoveMixer, fadeDuration = 0)
     Code->>Code: 设置播放速度与归一化起点 0
     Code->>Code: 后续帧才使用参数指数平滑
 ```
 
 直接衔接只覆盖本次从 Start 结束进入 Move 的播放调用；共享 Move Mixer 资源的默认
-`FadeDuration` 不被修改，其他进入路径继续使用资源配置的淡入时间。移动参数平滑只作用于
-Mixer 的幅度和转向参数，不能替代代码移动的加速度或角色实际转向。其配置值是指数平滑
+`FadeDuration` 不被修改，其他进入路径继续使用资源配置的淡入时间。当前 Mixer X 是固定的
+Walk 档位 1，移动参数平滑只作用于 Y 转向参数，不能替代代码移动的加速度或角色实际转向。其配置值是指数平滑
 时间常数：目标固定时经过该时间约完成当前差值的 63%，并非固定完成时间。
 
 起步根运动方向修正的 `CorrectionSpeed` 是 Slerp 插值响应系数，单位为秒⁻¹（1/s），

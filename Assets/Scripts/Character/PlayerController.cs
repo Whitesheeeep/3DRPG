@@ -173,6 +173,9 @@ namespace RPG.Character
 
             // 切换后由 Manager 重新读取 ActiveCharacter，确保同帧技能和 Locomotion 使用新角色。
             characterManager.TickActiveCharacter(inputController, Time.deltaTime);
+
+            // 普通 Locomotion 与需要渲染帧同步的 GAS 运动在此统一仲裁并结算一次。
+            motionDriver.ResolveUpdateMotion();
         }
 
         /// <summary>请求 CharacterManager 收集当前角色物理运动，然后由 MotionDriver 统一移动一次。</summary>

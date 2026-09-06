@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Animancer;
 using UnityEngine;
 using WS_Modules.FSM;
@@ -43,16 +42,16 @@ namespace RPG.Character
         #region FSM 与运行时状态
 
         private StateMachine<CharacterLocomotionStateId, CharacterLocomotionStateMachine> stateMachine;
-        // 用于在启用周期内通知全部状态清理运行时数据，避免状态机持有业务数据。
-        private readonly List<CharacterLocomotionState> registeredStates = new();
 
+        // 垂直速度由状态机统一计算，避免状态间重复计算和冲突；状态在 OnFixedUpdate 中读取该值并提交给 MotionDriver。
         private float verticalSpeed;
-        private float fixedDeltaTime;
+        // 用于向无参数的 UnifiedFSM OnUpdate 转发外部传入的帧时长，避免状态直接读取 Unity 的静态时间源。
         private float deltaTime;
-        private float activationElapsedTime;
+        // 用于转发 AnimatorMove 阶段的根运动增量，避免状态直接读取 Unity 的静态时间源。
         private Vector3 currentAnimatorDeltaPosition;
         private Quaternion currentAnimatorDeltaRotation = Quaternion.identity;
         private float animatorEvaluationDeltaTime;
+        // 用于标记当前 FSM 是否处于启用状态，避免在停用时继续推进阶段。
         private bool active;
         private bool activationEntryPending;
         private MotionControlHandle gravityHandle;
@@ -81,23 +80,10 @@ namespace RPG.Character
         /// <remarks>该标记区分重新启用与普通状态切换，避免复用 UnifiedFSM 上次退出时的 PreviousState。</remarks>
         internal bool IsActivationEntry => activationEntryPending;
 
-        /// <summary>获取当前是否存在共享 Blackboard 中的世界空间移动输入。</summary>
-        internal bool HasMovementInput => owner.StateBlackboard.MoveWorldInput.sqrMagnitude > 0.0001f;
-
-        /// <summary>获取当前 FixedTick 同步调用区间内缓存的物理步长。</summary>
-        /// <remarks>
-        /// PlayerController 传入物理步长后由 CharacterManager 转发给本状态机，只有 UnifiedFSM 的
-        /// OnFixedUpdate 调用区间允许状态读取该值；普通帧和 AnimatorMove 使用各自的阶段时序。
-        /// </remarks>
-        internal float FixedDeltaTime => fixedDeltaTime;
-
         /// <summary>获取当前 Tick 同步调用区间内缓存的普通帧时长。</summary>
         /// <remarks>状态使用该值平滑表现参数，不直接读取 Unity 的静态时间源。</remarks>
         internal float DeltaTime => deltaTime;
 
-        /// <summary>获取本次启用周期已经推进的普通帧时间。</summary>
-        /// <remarks>该时间由外部 Tick 的 deltaTime 累计，供状态保存跨状态仍有效的时间边界。</remarks>
-        internal float ActivationElapsedTime => activationElapsedTime;
         internal Vector3 AnimatorDeltaPosition => currentAnimatorDeltaPosition;
         internal Quaternion AnimatorDeltaRotation => currentAnimatorDeltaRotation;
         internal float AnimatorEvaluationDeltaTime => animatorEvaluationDeltaTime;
@@ -120,18 +106,12 @@ namespace RPG.Character
 
             stateMachine = new StateMachine<CharacterLocomotionStateId, CharacterLocomotionStateMachine>(
                 CharacterLocomotionStateId.Disable);
-            registeredStates.Clear();
 
-            // 状态实例在这里统一组装；状态之间的必要协作通过明确引用注入，不由状态机承载业务判断。
-            var idleState = new IdleLocomotionState();
-            var startState = new RootMotionStartState();
-            var codeState = new CodeLocomotionState();
-            var stopState = new RootMotionStopState();
-
-            RegisterState(idleState);
-            RegisterState(startState);
-            RegisterState(codeState);
-            RegisterState(stopState);
+            // UnifiedFSM 的 States 是唯一状态注册表；不再额外维护一份相同状态实例的列表。
+            stateMachine.AddState(new IdleLocomotionState());
+            stateMachine.AddState(new RootMotionStartState());
+            stateMachine.AddState(new CodeLocomotionState());
+            stateMachine.AddState(new RootMotionStopState());
             stateMachine.SetDefaultState(CharacterLocomotionStateId.Idle);
             stateMachine.Init(this, null);
         }
@@ -143,9 +123,7 @@ namespace RPG.Character
 
             active = true;
             verticalSpeed = 0f;
-            fixedDeltaTime = 0f;
             deltaTime = 0f;
-            activationElapsedTime = 0f;
             ResetStatesForActivation();
             gravityHandle = driver.RequestControl(new MotionControlRequest(
                 owner,
@@ -156,7 +134,8 @@ namespace RPG.Character
             activationEntryPending = true;
             try
             {
-                stateMachine.ChangeState(HasMovementInput
+                bool hasMovementInput = owner.StateBlackboard.MoveWorldInput.sqrMagnitude > 0.0001f;
+                stateMachine.ChangeState(hasMovementInput
                     ? CharacterLocomotionStateId.CodeLocomotion
                     : CharacterLocomotionStateId.Idle);
             }
@@ -177,9 +156,7 @@ namespace RPG.Character
             gravityHandle?.Dispose();
             gravityHandle = null;
             verticalSpeed = 0f;
-            fixedDeltaTime = 0f;
             deltaTime = 0f;
-            activationElapsedTime = 0f;
         }
 
         /// <summary>主动切换正式 UnifiedFSM 状态。</summary>
@@ -204,7 +181,6 @@ namespace RPG.Character
         {
             if (!active) return;
 
-            activationElapsedTime += Mathf.Max(0f, deltaTime);
             this.deltaTime = Mathf.Max(0f, deltaTime);
             stateMachine.OnUpdate();
         }
@@ -215,7 +191,6 @@ namespace RPG.Character
         {
             if (!active) return;
 
-            fixedDeltaTime = deltaTime;
             verticalSpeed = driver.IsGrounded && verticalSpeed < 0f
                 ? -2f
                 : verticalSpeed - gravity * deltaTime;
@@ -254,19 +229,12 @@ namespace RPG.Character
 
         #region 内部组装
 
-        /// <summary>注册一个需要接收 Owner 和阶段回调的 Locomotion 状态。</summary>
-        /// <param name="state">待注册的具体状态。</param>
-        private void RegisterState(CharacterLocomotionState state)
-        {
-            registeredStates.Add(state);
-            stateMachine.AddState(state);
-        }
-
         /// <summary>通知全部状态清理属于上一次启用周期的运行时数据。</summary>
         private void ResetStatesForActivation()
         {
-            for (int index = 0; index < registeredStates.Count; index++)
-                registeredStates[index].ResetForActivation();
+            // 状态树由本类固定组装为 CharacterLocomotionState；直接遍历 UnifiedFSM 的唯一集合，避免状态实例分叉。
+            foreach (var state in stateMachine.States.Values)
+                ((CharacterLocomotionState)state).ResetForActivation();
         }
 
         #endregion
