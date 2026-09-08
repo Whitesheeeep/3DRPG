@@ -49,6 +49,7 @@ namespace WS_Modules.GAS.Editor
             var node = new GameplayAttributeEditorNode(
                 Guid.NewGuid().ToString("N"),
                 name,
+                name,
                 string.Empty);
             nodes.Add(node);
             bakeDirty = true;
@@ -72,6 +73,16 @@ namespace WS_Modules.GAS.Editor
         {
             if (node == null || node.Name == name) return;
             node.SetName(name);
+            bakeDirty = true;
+        }
+
+        /// <summary>修改 Attribute 展示名称并标记 Bake Dirty。</summary>
+        /// <param name="node">待修改节点。</param>
+        /// <param name="displayName">新的玩家展示名称。</param>
+        public void SetDisplayName(GameplayAttributeEditorNode node, string displayName)
+        {
+            if (node == null || node.DisplayName == displayName) return;
+            node.SetDisplayName(displayName);
             bakeDirty = true;
         }
 
@@ -109,7 +120,17 @@ namespace WS_Modules.GAS.Editor
                         }
                     }
 
-                    attribute = new GameplayAttribute(record.Id, attributeName);
+                    string attributeDisplayName = string.Empty;
+                    for (int nodeIndex = 0; nodeIndex < nodes.Count; nodeIndex++)
+                    {
+                        if (nodes[nodeIndex] != null && nodes[nodeIndex].Guid == record.Guid)
+                        {
+                            attributeDisplayName = nodes[nodeIndex].DisplayName;
+                            break;
+                        }
+                    }
+
+                    attribute = new GameplayAttribute(record.Id, attributeName, attributeDisplayName);
                     return true;
                 }
             }

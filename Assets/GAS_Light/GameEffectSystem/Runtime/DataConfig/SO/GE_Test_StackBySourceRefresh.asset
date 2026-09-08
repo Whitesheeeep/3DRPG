@@ -40,6 +40,7 @@ MonoBehaviour:
         attribute:
           id: 2
           name: Armor
+          displayName: 防御力
         type: 0
         priority: 0
         magnitude: 5

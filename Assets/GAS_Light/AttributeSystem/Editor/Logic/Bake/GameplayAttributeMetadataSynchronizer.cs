@@ -7,11 +7,11 @@ using WS_Modules.GAS.AttributeSystem;
 
 namespace WS_Modules.GAS.Editor
 {
-    /// <summary>将 Attribute Registry 的作者名称同步到项目内已序列化的 Attribute 副本。</summary>
-    public static class GameplayAttributeNameSynchronizer
+    /// <summary>将 Attribute Registry 的名称元数据同步到项目内已序列化的 Attribute 副本。</summary>
+    public static class GameplayAttributeMetadataSynchronizer
     {
         /// <summary>扫描 AttributeSet 与 GameplayEffectData 并原子更新名称副本。</summary>
-        /// <param name="attributeByNameMap">按作者名称提供 ID 与 Name 的最新映射。</param>
+        /// <param name="attributeByNameMap">按作者名称提供完整 Attribute 元数据的映射。</param>
         public static void Synchronize(IReadOnlyDictionary<string, GameplayAttribute> attributeByNameMap)
         {
             var attributeByIdMap = new Dictionary<int, GameplayAttribute>();
@@ -43,7 +43,7 @@ namespace WS_Modules.GAS.Editor
             }
         }
 
-        /// <summary>递归查找 GameplayAttribute 字段并只改写其 Name。</summary>
+        /// <summary>递归查找 GameplayAttribute 字段并改写其名称元数据。</summary>
         /// <param name="serializedObject">待同步对象。</param>
         /// <param name="attributeByIdMap">按稳定 ID 查询名称的映射。</param>
         /// <returns>至少改写一项时返回 true。</returns>
@@ -58,10 +58,15 @@ namespace WS_Modules.GAS.Editor
                 if (!string.Equals(iterator.name, "attribute", StringComparison.Ordinal)) continue;
                 SerializedProperty idProperty = iterator.FindPropertyRelative("id");
                 SerializedProperty nameProperty = iterator.FindPropertyRelative("name");
-                if (idProperty == null || nameProperty == null || !attributeByIdMap.TryGetValue(idProperty.intValue, out GameplayAttribute attribute))
+                SerializedProperty displayNameProperty = iterator.FindPropertyRelative("displayName");
+                if (idProperty == null || nameProperty == null || displayNameProperty == null ||
+                    !attributeByIdMap.TryGetValue(idProperty.intValue, out GameplayAttribute attribute))
                     continue;
-                if (nameProperty.stringValue == attribute.Name) continue;
+                if (nameProperty.stringValue == attribute.Name &&
+                    displayNameProperty.stringValue == attribute.DisplayName)
+                    continue;
                 nameProperty.stringValue = attribute.Name;
+                displayNameProperty.stringValue = attribute.DisplayName;
                 changed = true;
             }
 

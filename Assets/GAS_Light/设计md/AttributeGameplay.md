@@ -2,11 +2,11 @@
 
 ## 目标
 
-Attribute 系统分成“全局身份”“Set 配置模板”和“Container 运行时实例”三层。Editor 只 Bake `GameplayAttribute` 的稳定 ID 与生成代码；`GameplayAttributeSet` 不参与 Bake，运行时直接从 Set 的 `List<GameplayAttributeDefinition>` 克隆数据。
+Attribute 系统分成“全局身份”“Set 配置模板”和“Container 运行时实例”三层。Editor Bake `GameplayAttribute` 的稳定 ID、代码名称和展示名称，并生成运行时代码；`GameplayAttributeSet` 不参与 Bake，运行时直接从 Set 的 `List<GameplayAttributeDefinition>` 克隆数据。
 
 ```mermaid
 flowchart TD
-    Registry["GameplayAttributeRegistry\nEditor only"] -->|Bake| Identity["GameplayAttribute\n稳定 Id"]
+    Registry["GameplayAttributeRegistry\nEditor only"] -->|Bake| Identity["GameplayAttribute\n稳定 Id + Name + DisplayName"]
     Registry --> Generated["GameplayAttributes.Generated.cs"]
     Set["GameplayAttributeSet\nScriptableObject 模板"] --> Definitions["List<GameplayAttributeDefinition>\nAttribute / Type / Default / Min / Max"]
     Identity --> Definitions
@@ -18,10 +18,10 @@ flowchart TD
 
 ## GameplayAttribute 与 Bake
 
-- `GameplayAttribute` 只保存全局稳定整数 ID，相等性与哈希只依据 ID。
+- `GameplayAttribute` 保存全局稳定整数 ID、代码名称 `Name` 和玩家展示名称 `DisplayName`；相等性与哈希只依据 ID。
 - Registry 的作者节点使用持久 Guid。重复 Bake、重命名不会改变已有 ID；删除后的 ID 永久废弃。
 - Spec 名称全局唯一且采用平铺结构。生成常量格式为 `GameplayAttributes.Attribute_<Name>`。
-- Inspector 的 PropertyDrawer 只写 ID，不把名称、路径或 Registry 引用写入业务资产。
+- Inspector 的 PropertyDrawer 将 ID、Name 与 DisplayName 一起写入业务资产，不写入 Registry 引用；名称副本由 Bake 后按 ID 同步。
 - Set 新增 Definition 时只能选择已经 Bake 的 Attribute。
 
 ## GameplayAttributeSet

@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace WS_Modules.GAS.AttributeSystem
 {
-    /// <summary>表示一个由全局稳定整数 ID 唯一标识的 Gameplay Attribute。</summary>
+    /// <summary>表示一个由全局稳定整数 ID 唯一标识并携带名称元数据的 Gameplay Attribute。</summary>
     [Serializable]
     public struct GameplayAttribute : IEquatable<GameplayAttribute>
     {
@@ -17,6 +17,7 @@ namespace WS_Modules.GAS.AttributeSystem
 
         [SerializeField] private int id;
         [SerializeField] private string name;
+        [SerializeField] private string displayName;
 
         #endregion
 
@@ -25,8 +26,11 @@ namespace WS_Modules.GAS.AttributeSystem
         /// <summary>获取全局稳定 AttributeId。</summary>
         public int Id => id;
 
-        /// <summary>获取当前 Registry 提供的运行时展示名称。</summary>
+        /// <summary>获取当前 Registry 提供的代码与作者名称。</summary>
         public string Name => name ?? string.Empty;
+
+        /// <summary>获取面向玩家界面的展示名称。</summary>
+        public string DisplayName => displayName ?? string.Empty;
 
         /// <summary>获取 ID 是否位于有效数值范围；是否存在由 Container 验证。</summary>
         public bool IsValid => id >= 0;
@@ -35,21 +39,25 @@ namespace WS_Modules.GAS.AttributeSystem
 
         #region 构造与比较
 
-        /// <summary>使用稳定 ID 创建 Gameplay Attribute。</summary>
-        /// <param name="id">全局稳定 ID；负数表示非法值。</param>
-        public GameplayAttribute(int id)
-        {
-            this.id = id;
-            name = "NONE";
-        }
-
-        /// <summary>使用稳定 ID 与展示名称创建 Gameplay Attribute。</summary>
+        /// <summary>使用稳定 ID 与代码名称创建 Gameplay Attribute，并以代码名称作为兼容展示名称。</summary>
         /// <param name="id">全局稳定 ID；负数表示非法值。</param>
         /// <param name="name">Registry 中的作者名称；可为空。</param>
         public GameplayAttribute(int id, string name)
         {
             this.id = id;
             this.name = name ?? string.Empty;
+            displayName = this.name;
+        }
+
+        /// <summary>使用稳定 ID、代码名称和玩家展示名称创建 Gameplay Attribute。</summary>
+        /// <param name="id">全局稳定 ID；负数表示非法值。</param>
+        /// <param name="name">Registry 中的作者名称；可为空。</param>
+        /// <param name="displayName">面向玩家界面的展示名称；可为空。</param>
+        public GameplayAttribute(int id, string name, string displayName)
+        {
+            this.id = id;
+            this.name = name ?? string.Empty;
+            this.displayName = displayName ?? string.Empty;
         }
 
         /// <summary>判断两个 Attribute 是否具有相同 ID。</summary>

@@ -44,7 +44,7 @@ namespace WS_Modules.GAS.Editor
                 if (!oldByGuid.TryGetValue(node.Guid, out id)) id = nextId++;
                 activeGuids.Add(node.Guid);
                 records.Add(new GameplayAttributeIdRecord(node.Guid, id));
-                generated.Add(node.Name, new GameplayAttribute(id, node.Name));
+                generated.Add(node.Name, new GameplayAttribute(id, node.Name, node.DisplayName));
             }
 
             var retired = new HashSet<int>(registry.RetiredIds);
@@ -67,7 +67,7 @@ namespace WS_Modules.GAS.Editor
             registry.ApplyBake(records, retired.OrderBy(id => id).ToList(), nextId);
             EditorUtility.SetDirty(registry);
             AssetDatabase.ImportAsset(RuntimeGameplayAttributeGenerator.GeneratedAssetPath);
-            GameplayAttributeNameSynchronizer.Synchronize(generated);
+            GameplayAttributeMetadataSynchronizer.Synchronize(generated);
             AssetDatabase.SaveAssets();
             message = $"Bake 成功：{records.Count} 个 Attribute，NextId={nextId}。";
             return true;
@@ -110,6 +110,9 @@ namespace WS_Modules.GAS.Editor
                     errors.Add($"Guid {node.Guid} 的名称为空。");
                     continue;
                 }
+
+                if (string.IsNullOrWhiteSpace(node.DisplayName))
+                    errors.Add($"Attribute '{name}' 的展示名称为空。");
 
                 if (!names.Add(name)) errors.Add($"Attribute 名称重复：{name}。");
                 string identifier = RuntimeGameplayAttributeGenerator.CreateIdentifier(name);

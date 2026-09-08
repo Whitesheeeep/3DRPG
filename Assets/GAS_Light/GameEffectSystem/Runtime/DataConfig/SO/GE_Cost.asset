@@ -40,6 +40,7 @@ MonoBehaviour:
         attribute:
           id: 3
           name: MP
+          displayName: 能量
         type: 0
         priority: 0
         magnitude: -10

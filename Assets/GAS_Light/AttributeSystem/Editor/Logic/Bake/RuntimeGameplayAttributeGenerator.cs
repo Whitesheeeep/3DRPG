@@ -62,7 +62,7 @@ namespace WS_Modules.GAS.Editor
                 builder.AppendLine($"        /// <summary>{EscapeXml(pair.Key)}</summary>");
                 builder.AppendLine(
                     $"        public static readonly GameplayAttribute {CreateIdentifier(pair.Key)} = " +
-                    $"new GameplayAttribute({pair.Value.Id}, \"{EscapeCSharp(pair.Value.Name)}\");");
+                    $"new GameplayAttribute({pair.Value.Id}, \"{EscapeCSharp(pair.Value.Name)}\", \"{EscapeCSharp(pair.Value.DisplayName)}\");");
             }
 
             builder.AppendLine("    }");

@@ -95,6 +95,38 @@ namespace WS_Modules.GAS.Editor
             EditorUtility.SetDirty(registry);
         }
 
+        /// <summary>校验并修改 Attribute Spec 展示名称。</summary>
+        /// <param name="registry">目标 Registry。</param>
+        /// <param name="node">目标 Spec。</param>
+        /// <param name="displayName">新的玩家展示名称。</param>
+        /// <param name="error">失败原因。</param>
+        /// <returns>名称合法并已提交时返回 true。</returns>
+        public bool TrySetSpecDisplayName(
+            GameplayAttributeRegistry registry,
+            GameplayAttributeEditorNode node,
+            string displayName,
+            out string error)
+        {
+            string normalized = displayName?.Trim() ?? string.Empty;
+            if (registry == null || node == null)
+            {
+                error = "未选择 Attribute Spec。";
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(normalized))
+            {
+                error = "Attribute 展示名称不能为空。";
+                return false;
+            }
+
+            Undo.RecordObject(registry, "Edit Gameplay Attribute Display Name");
+            registry.SetDisplayName(node, normalized);
+            EditorUtility.SetDirty(registry);
+            error = string.Empty;
+            return true;
+        }
+
         /// <summary>删除 Attribute Spec；已烘焙 ID 在下次 Bake 时进入废弃列表。</summary>
         /// <param name="registry">目标 Registry。</param>
         /// <param name="node">待删除 Spec。</param>
@@ -368,6 +400,7 @@ namespace WS_Modules.GAS.Editor
         {
             element.FindPropertyRelative("attribute").FindPropertyRelative("id").intValue = attribute.Id;
             element.FindPropertyRelative("attribute").FindPropertyRelative("name").stringValue = attribute.Name;
+            element.FindPropertyRelative("attribute").FindPropertyRelative("displayName").stringValue = attribute.DisplayName;
             element.FindPropertyRelative("type").enumValueIndex = (int)type;
             element.FindPropertyRelative("defaultValue").floatValue = defaultValue;
             element.FindPropertyRelative("minValue").floatValue = minValue;

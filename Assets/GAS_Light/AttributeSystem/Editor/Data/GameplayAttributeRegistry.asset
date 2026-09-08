@@ -15,24 +15,31 @@ MonoBehaviour:
   nodes:
   - guid: e3508c9a368a4a41a3bac0bb9153ef23
     name: Health
+    displayName: 当前生命值
     description: 
   - guid: 3d7a2a71fc664644b0d0449b432145bf
     name: MaxHealth
+    displayName: 生命值上限
     description: 
   - guid: 6e6dab5bd4ec45cca70d20c6e003fc53
     name: Armor
+    displayName: 防御力
     description: 
   - guid: 262c03ccb17c4ba080d6765cd9ad7bee
     name: MP
+    displayName: 能量
     description: 
   - guid: 8e27c9af125d439a8cac3a81a490838b
     name: Speed
+    displayName: 移动速度
     description: 
   - guid: 7861af57721c4f48b433cabfbb03dda9
     name: AttackPower
+    displayName: 攻击力
     description: "\u653B\u51FB\u529B"
   - guid: a8cbe7f8445244a7b34ae972e95acbb6
     name: CriticalChance
+    displayName: 暴击率
     description: "\u66B4\u51FB\u7387"
   idRecords:
   - guid: e3508c9a368a4a41a3bac0bb9153ef23

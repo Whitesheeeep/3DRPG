@@ -40,6 +40,7 @@ MonoBehaviour:
         attribute:
           id: 0
           name: Health
+          displayName: 当前生命值
         type: 0
         priority: 0
         magnitude: 30
