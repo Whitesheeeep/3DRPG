@@ -9,7 +9,9 @@ namespace WS_Modules.FSM
 
         bool CanEnter();
         void Init(TOwner owner, IStateMachine<TStateId, TOwner> machine);
-        void OnEnter();
+        /// <summary>进入状态；状态机节点可选择跳过默认子状态。</summary>
+        /// <param name="suppressDefaultState">是否只激活状态机节点而不进入默认子状态。</param>
+        void OnEnter(bool suppressDefaultState = false);
         void OnUpdate();
         void OnFixedUpdate();
         void OnLateUpdate();

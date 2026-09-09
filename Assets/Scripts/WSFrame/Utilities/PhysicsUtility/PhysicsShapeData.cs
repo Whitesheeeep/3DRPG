@@ -79,7 +79,7 @@ namespace WS_Modules.Utilities
         private float outerRadius = 2f;
         [SerializeField, Range(0.01f, 360f)]
         private float angle = 90f;
-        [SerializeField, Min(0.001f)]
+        [SerializeField, Min(0.001f), Tooltip("Ray 或方向性 ShapeCast 使用的局部投射长度。")]
         private float length = 5f;
 
         /// <summary>获取 Box 的完整局部尺寸。</summary>
@@ -103,7 +103,7 @@ namespace WS_Modules.Utilities
         /// <summary>获取 Sector 的水平夹角，单位为度。</summary>
         public float Angle => angle;
 
-        /// <summary>获取 Ray 的局部长度。</summary>
+        /// <summary>获取 Ray 或方向性 ShapeCast 的局部投射长度。</summary>
         public float Length => length;
         #endregion
 

@@ -444,7 +444,7 @@ ASC 默认在 `Update` 中先推进 GE、再推进 GA 普通阶段；`FixedUpdat
 
 SkillConfig 类型的异步 Task 从 `Runtime.SourceOwner` 获取 `ISkillRuntimeHost`。Host 为每个角色长期持有唯一
 
-SkillConfig 当前动作阶段通过 Task 写入 Source ASC：阶段使用 `State.Action.Skill.Phase.*`，打断状态使用 `State.Action.Skill.Interruptible/Uninterruptible`。所有 SkillConfig GA 的 ActivationTagQuery 禁止 `Uninterruptible`，使不可打断阶段在 Runtime 创建及 Cost/Cooldown 提交前拒绝新技能；可打断阶段仍由公共 `Ability.Action.Skill` CancelTag 替换旧 Runtime。Task 的全部终态都必须对称撤销其 Tag 计数。
+SkillConfig 当前动作阶段通过 Task 写入 Source ASC：阶段使用 `State.Skill.Phase.*`，打断状态使用 `State.Skill.Interruptible/Uninterruptible`。所有 SkillConfig GA 的 ActivationTagQuery 禁止 `Uninterruptible`，使不可打断阶段在 Runtime 创建及 Cost/Cooldown 提交前拒绝新技能；可打断阶段仍由公共 `Ability.Action.Skill` CancelTag 替换旧 Runtime。Task 的全部终态都必须对称撤销其 Tag 计数。
 `SkillRuntimeModule`，自身不实现 Unity 更新；当前 Running Task 在普通阶段调用 `Tick`，在延迟阶段
 调用 `LateTick`。GAS 通过 AbilityTags、CancelTags 与 Runtime 生命周期决定替换和打断，Module 只负责
 时间轴、轨道命中和资源清理。

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace WS_Modules.FSM
 {
     /// <summary>
@@ -15,6 +17,12 @@ namespace WS_Modules.FSM
         /// 上一个激活的子状态。
         /// </summary>
         IState<TStateId, TOwner> PreviousState { get; }
+
+        /// <summary>获取当前活动路径中最深的叶状态。</summary>
+        IState<TStateId, TOwner> CurrentLeafState { get; }
+
+        /// <summary>获取从当前状态机节点到活动叶状态的完整路径快照。</summary>
+        IReadOnlyList<IState<TStateId, TOwner>> CurrentStatePath { get; }
 
         /// <summary>
         /// 添加子状态。子状态可以是普通状态，也可以是另一个 StateMachine。

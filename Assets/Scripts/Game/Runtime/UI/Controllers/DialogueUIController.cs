@@ -175,8 +175,8 @@ namespace RPG.Game.UI
         /// <param name="speech">当前对白节点。</param>
         private void RefreshSpeech(DialogueSpeechNode speech)
         {
-            string speakerName = speech.Speaker != null ? speech.Speaker.SpeakerName : "<empty>";
-            speechView.RefreshSpeech(speakerName, speech.Text);
+            // SpeechNode 负责解析每句名称覆盖和 Speaker 默认名称，Controller 只转发最终展示数据。
+            speechView.RefreshSpeech(speech.Name, speech.Text);
         }
 
         /// <summary>缓存当前 DialogueSystem 的 Choice 展示快照，等待正文完成。</summary>

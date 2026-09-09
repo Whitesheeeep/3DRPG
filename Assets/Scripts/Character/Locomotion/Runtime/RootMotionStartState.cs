@@ -4,37 +4,53 @@ using UnityEngine;
 
 namespace RPG.Character
 {
-    /// <summary>使用九方向根运动完成从 Idle 到 Move 的起步状态。</summary>
-    public sealed class RootMotionStartState : RootMotionLocomotionState
+    /// <summary>Walk/Run 共用的根运动起步基类，具体状态提供动画选择和固定完成去向。</summary>
+    public abstract class RootMotionStartState : RootMotionLocomotionState
     {
         #region 运行时状态
 
-        // 起步方向只在进入本状态时选择一次，播放过程中改变输入不会重播另一段动画。
+        // 起步动画只在进入时选择一次；播放期间输入变化只影响方向修正和完成后的目标状态。
         private ITransition selectedTransition;
         private bool isForwardStart;
 
         #endregion
 
-        #region 生命周期
+        #region 构造与状态入口
 
-        /// <summary>创建起步状态。</summary>
-        public RootMotionStartState() : base(CharacterLocomotionStateId.RootMotionStart) { }
+        /// <summary>创建指定起步状态。</summary>
+        /// <param name="stateId">状态标识。</param>
+        protected RootMotionStartState(CharacterLocomotionStateId stateId) : base(stateId)
+        {
+        }
+
+        /// <summary>根据当前角色前向和移动输入选择本状态的起步动画。</summary>
+        protected abstract ClipTransition SelectStartTransition(Vector3 forward, Vector3 moveDirection);
+
+        /// <summary>获取该起步动画自然结束后的固定代码移动状态。</summary>
+        protected abstract CharacterLocomotionStateId CompletionMoveState { get; }
+
+        /// <summary>在自然结束切换到代码移动前执行状态专属的表现交接。</summary>
+        protected virtual void PrepareMoveEntry()
+        {
+        }
+
+        /// <summary>判断选中的起步 Transition 是否为本状态的前向槽位。</summary>
+        protected virtual bool IsForwardTransition(ITransition selected) =>
+            ReferenceEquals(selected, Transition.ForwardStart);
 
         /// <inheritdoc />
-        public override void OnEnter()
+        public override void OnEnter(bool suppressDefaultState = false)
         {
-            selectedTransition = Transition.SelectStartTransition(
-                Character.RootTransform.forward,
-                MovementInput);
+            selectedTransition = SelectStartTransition(Character.RootTransform.forward, MovementInput);
             if (selectedTransition == null || !selectedTransition.IsValid)
             {
-                // 当前方向没有配置起步动画时直接交给代码移动，不申请无效的根运动控制权。
-                Owner.ChangeState(CharacterLocomotionStateId.CodeLocomotion);
-                return;
+                throw new System.InvalidOperationException(
+                    $"角色 '{Character.name}' 的 {StateId} 未找到有效起步动画。" +
+                    $"当前 MoveWorldInput={MovementInput}，请检查 PlayerFSMTransition 的对应方向槽位配置。 ");
             }
-            isForwardStart = ReferenceEquals(selectedTransition, Transition.ForwardStart);
 
-            base.OnEnter();
+            isForwardStart = IsForwardTransition(selectedTransition);
+            base.OnEnter(suppressDefaultState);
         }
 
         /// <inheritdoc />
@@ -42,46 +58,18 @@ namespace RPG.Character
         {
             if (!HasMovement)
             {
-                selectedTransition = null;
-                Owner.ChangeState(HasStopAnimation
-                    ? CharacterLocomotionStateId.RootMotionStop
-                    : CharacterLocomotionStateId.Idle);
+                Owner.ChangeState(CharacterLocomotionStateId.RootMotionStop);
                 return;
             }
-
-            base.OnUpdate();
-        }
-
-        /// <inheritdoc />
-        public override void OnFixedUpdate()
-        {
         }
 
         /// <inheritdoc />
         public override void OnAnimationMove()
         {
-            if (ControlHandle == null) return;
-            Quaternion rotation = AnimatorDeltaRotation;
-            // 只有在起步动画播放到一定时间后才进行方向修正，否则会导致动画还没播放到一半就被强行旋转。
             bool shouldCorrect = isForwardStart ||
                 AnimationState != null &&
                 AnimationState.NormalizedTime >= Transition.StartDirectionCorrectionNormalizedTime;
-            if (shouldCorrect && HasMovement)
-            {
-                Vector3 target = MovementInput.normalized;
-                Vector3 planarForward = Vector3.ProjectOnPlane(Character.RootTransform.forward, Vector3.up);
-                float angle = Vector3.SignedAngle(planarForward, target, Vector3.up);
-                Quaternion targetRotation = Quaternion.AngleAxis(angle, Vector3.up) *
-                    Character.RootTransform.rotation;
-                Quaternion animatedRotation = Character.RootTransform.rotation * rotation;
-                Quaternion correctedRotation = Quaternion.Slerp(
-                    animatedRotation,
-                    targetRotation,
-                    Mathf.Clamp01(Transition.CorrectionSpeed * AnimatorEvaluationDeltaTime));
-                rotation = Quaternion.Inverse(Character.RootTransform.rotation) * correctedRotation;
-            }
-            Driver.SubmitAnimatorMotion(ControlHandle,
-                new AnimatorMotionSubmission(AnimatorDeltaPosition, rotation));
+            SubmitAnimatorMotionWithDirectionCorrection(shouldCorrect && HasMovement);
         }
 
         /// <inheritdoc />
@@ -91,13 +79,13 @@ namespace RPG.Character
         /// <inheritdoc />
         protected override void OnAnimationFinished()
         {
+            if (HasMovement)
+                PrepareMoveEntry();
             selectedTransition = null;
             isForwardStart = false;
             Owner.ChangeState(HasMovement
-                ? CharacterLocomotionStateId.CodeLocomotion
-                : HasStopAnimation
-                    ? CharacterLocomotionStateId.RootMotionStop
-                    : CharacterLocomotionStateId.Idle);
+                ? CompletionMoveState
+                : CharacterLocomotionStateId.RootMotionStop);
         }
 
         /// <inheritdoc />
@@ -115,15 +103,6 @@ namespace RPG.Character
             isForwardStart = false;
             base.ResetForActivation();
         }
-
-        #endregion
-
-        #region 状态判断
-
-        /// <summary>获取当前是否配置了停止根运动。</summary>
-        private bool HasStopAnimation =>
-            Transition.StopLeft != null && Transition.StopLeft.IsValid ||
-            Transition.StopRight != null && Transition.StopRight.IsValid;
 
         #endregion
     }

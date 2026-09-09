@@ -90,6 +90,48 @@ namespace WS_Modules.Utilities
                 layerMask, queryTriggerInteraction);
         }
 
+        /// <summary>
+        /// 根据 Sphere 数据执行局部姿态转换后的 NonAlloc 球体投射查询。
+        /// </summary>
+        /// <param name="origin">形状局部坐标所属的宿主 Transform。</param>
+        /// <param name="data">类型必须为 Sphere 的局部形状数据。</param>
+        /// <param name="results">接收命中 RaycastHit 的调用方缓冲区。</param>
+        /// <param name="layerMask">参与查询的层掩码。</param>
+        /// <param name="queryTriggerInteraction">触发器参与查询的策略。</param>
+        /// <returns>写入 results 的命中数量；缓冲区不足时遵循 Unity NonAlloc 的截断语义。</returns>
+        /// <exception cref="ArgumentNullException">origin、data 或 results 为空。</exception>
+        /// <exception cref="ArgumentException">data 类型不是 Sphere 或尺寸不合法。</exception>
+        public static int SphereCastNonAlloc(Transform origin, PhysicsShapeData data,
+            RaycastHit[] results, int layerMask = Physics.DefaultRaycastLayers,
+            QueryTriggerInteraction queryTriggerInteraction = QueryTriggerInteraction.UseGlobal)
+        {
+            if (origin == null) throw new ArgumentNullException(nameof(origin));
+            if (data == null) throw new ArgumentNullException(nameof(data));
+            if (results == null) throw new ArgumentNullException(nameof(results));
+            if (results.Length == 0) throw new ArgumentException("SphereCast 缓冲区不能为空。", nameof(results));
+            if (data.Type != PhysicsShapeType.Sphere)
+                throw new ArgumentException("SphereCastNonAlloc 只接受 Sphere 形状。", nameof(data));
+            if (!IsFinitePositive(data.Radius))
+                throw new ArgumentException("Sphere 半径必须为有限正数。", nameof(data));
+            if (!IsFinitePositive(data.Length))
+                throw new ArgumentException("SphereCast 长度必须为有限正数。", nameof(data));
+
+            ResolvePose(origin, data, out Vector3 start, out _);
+            Vector3 scale = Abs(origin.lossyScale);
+            Vector3 scaledDirection = origin.TransformVector(
+                Quaternion.Euler(data.LocalEulerAngles) * Vector3.forward);
+            float directionScale = scaledDirection.magnitude;
+            if (directionScale <= Mathf.Epsilon)
+                throw new ArgumentException("SphereCast 的宿主 Transform 不能在方向上缩放为零。", nameof(origin));
+
+            // 球半径使用最大缩放分量，保证非均匀缩放下的查询不会缩小采样范围。
+            float worldRadius = data.Radius * MaxComponent(scale);
+            Vector3 worldDirection = scaledDirection / directionScale;
+            float worldLength = data.Length * directionScale;
+            return Physics.SphereCastNonAlloc(start, worldRadius, worldDirection, results,
+                worldLength, layerMask, queryTriggerInteraction);
+        }
+
         #endregion
 
         #region 形状实现

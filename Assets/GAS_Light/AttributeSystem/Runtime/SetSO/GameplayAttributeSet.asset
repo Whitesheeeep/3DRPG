@@ -57,9 +57,9 @@ MonoBehaviour:
       id: 4
       name: Speed
     type: 0
-    defaultValue: 10
+    defaultValue: 3
     minValue: 0
-    maxValue: 100
+    maxValue: 10
     baseValue: 0
     currentValue: 0
     ownerSet: {fileID: 0}

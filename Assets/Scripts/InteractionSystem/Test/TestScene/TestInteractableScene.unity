@@ -446,7 +446,7 @@ MonoBehaviour:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
-  m_CustomBlends: {fileID: 0}
+  m_CustomBlends: {fileID: 11400000, guid: 939d51fea971c64469032eabd23c934a, type: 2}
   m_CameraCutEvent:
     m_PersistentCalls:
       m_Calls: []
@@ -836,6 +836,37 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f357673d5e17f384fa3c49ff17c7e384, type: 3}
+--- !u!1 &891464527
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 891464528}
+  m_Layer: 0
+  m_Name: GameObject
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &891464528
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 891464527}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.9, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1052568508
 GameObject:
   m_ObjectHideFlags: 0
@@ -1872,9 +1903,49 @@ PrefabInstance:
       value: Player
       objectReference: {fileID: 0}
     - target: {fileID: 6089726963410338055, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: characterRoot
+      value: 
+      objectReference: {fileID: 4486123589776491530}
+    - target: {fileID: 6089726963410338055, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
       propertyPath: cameraTransform
       value: 
       objectReference: {fileID: 344798905}
+    - target: {fileID: 6089726963410338055, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: environmentDetector.locomotionDetector.groundDetectionShape.type
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 6089726963410338055, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: environmentDetector.locomotionDetector.ceilingDetectionShape.type
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 6089726963410338055, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: environmentDetector.locomotionDetector.environmentLayerMask.m_Bits
+      value: 51
+      objectReference: {fileID: 0}
+    - target: {fileID: 6089726963410338055, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: environmentDetector.locomotionDetector.groundDetectionShape.radius
+      value: 0.26
+      objectReference: {fileID: 0}
+    - target: {fileID: 6089726963410338055, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: environmentDetector.locomotionDetector.ceilingDetectionShape.radius
+      value: 0.22
+      objectReference: {fileID: 0}
+    - target: {fileID: 6089726963410338055, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: environmentDetector.locomotionDetector.groundDetectionShape.canDrawGizmos
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6089726963410338055, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: environmentDetector.locomotionDetector.ceilingDetectionShape.canDrawGizmos
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6089726963410338055, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: environmentDetector.locomotionDetector.ceilingDetectionShape.localPosition.y
+      value: 1.5782391
+      objectReference: {fileID: 0}
+    - target: {fileID: 6089726963410338055, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: environmentDetector.locomotionDetector.ceilingDetectionShape.localPosition.z
+      value: -0.000000013217977
+      objectReference: {fileID: 0}
     - target: {fileID: 6495212430660579562, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
       propertyPath: initialDefinitions.Array.size
       value: 2
@@ -1909,3 +1980,4 @@ SceneRoots:
   - {fileID: 823125915}
   - {fileID: 8182176526734921145}
   - {fileID: 330977784}
+  - {fileID: 891464528}

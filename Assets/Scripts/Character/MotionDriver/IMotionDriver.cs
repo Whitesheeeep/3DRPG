@@ -7,9 +7,6 @@ namespace RPG.Character
     {
         /// <summary>获取当前 Active ASC Tag 是否允许角色进行水平移动。</summary>
         bool CanMoveHorizontally { get; }
-        /// <summary>获取共享 CharacterController 上次移动后的接地状态。</summary>
-        bool IsGrounded { get; }
-
         /// <summary>登记一个跨帧有效的运动控制权请求。</summary>
         /// <param name="request">Owner、通道和优先级。</param>
         /// <returns>用于提交运动并在状态结束时释放请求的句柄。</returns>

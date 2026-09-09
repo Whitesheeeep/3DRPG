@@ -14,8 +14,9 @@ namespace RPG.Character.DirectionalLocomotion
         /// <summary>创建带起步动画根运动的方向移动状态。</summary>
         public DirectionalMoveStartState() : base(DirectionalLocomotionStateId.MoveStart) { }
 
-        /// <summary>进入状态时启动前行起步动画并注册自然结束回调。</summary>
-        public override void OnEnter()
+        /// <summary>进入临时起步状态，播放前行起步根运动并注册自然结束回调。</summary>
+        /// <param name="suppressDefaultState">该叶状态忽略父状态机默认子状态参数。</param>
+        public override void OnEnter(bool suppressDefaultState = false)
         {
             _active = true;
             _handle = Owner.MotionDriver.RequestControl(new MotionControlRequest(

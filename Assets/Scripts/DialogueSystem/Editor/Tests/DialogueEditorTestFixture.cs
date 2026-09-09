@@ -78,12 +78,14 @@ namespace RPG.DialogueSystemModule.Editor.Tests
         /// <param name="speaker">首句 Speaker。</param>
         /// <param name="text">首句文本。</param>
         /// <param name="secondText">后续文本；为空时首句直接结束。</param>
+        /// <param name="displayName">首句显示名称覆盖值；为空时使用 SpeakerName。</param>
         /// <returns>未写入 AssetDatabase 的临时 DialogueAsset。</returns>
-        public DialogueAsset CreateLinear(DialogueSpeaker speaker, string text, string secondText = null)
+        public DialogueAsset CreateLinear(DialogueSpeaker speaker, string text, string secondText = null,
+            string displayName = null)
         {
             DialogueAsset asset = Track(ScriptableObject.CreateInstance<DialogueAsset>());
             DialogueEntryNode entry = Track(ScriptableObject.CreateInstance<DialogueEntryNode>());
-            DialogueSpeechNode first = CreateSpeech(speaker, text);
+            DialogueSpeechNode first = CreateSpeech(speaker, text, displayName);
             DialogueNode target = null;
             if (!string.IsNullOrEmpty(secondText)) target = CreateSpeech(speaker, secondText);
             else target = CreateEnd();
@@ -124,11 +126,12 @@ namespace RPG.DialogueSystemModule.Editor.Tests
         /// <summary>创建并登记一条对白节点。</summary>
         /// <param name="speaker">Speaker 资产。</param>
         /// <param name="text">对白正文。</param>
+        /// <param name="displayName">对白显示名称覆盖值；为空时使用 SpeakerName。</param>
         /// <returns>新对白节点。</returns>
-        private DialogueSpeechNode CreateSpeech(DialogueSpeaker speaker, string text)
+        private DialogueSpeechNode CreateSpeech(DialogueSpeaker speaker, string text, string displayName = null)
         {
             DialogueSpeechNode speech = Track(ScriptableObject.CreateInstance<DialogueSpeechNode>());
-            speech.Configure(speaker, text, null, 0f);
+            speech.Configure(speaker, text, null, 0f, null, displayName);
             return speech;
         }
 

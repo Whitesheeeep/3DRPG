@@ -210,6 +210,11 @@ MonoBehaviour:
     inputType: 14
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
+  - action: {fileID: 0}
+    actionName: Player/Sprint
+    inputType: 15
+    pressBufferDuration: 0.2
+    releaseBufferDuration: 0.1
   moveAction: {fileID: 5930871493289717904, guid: cfc20ea7c00b94a4781015c818a9deb0, type: 3}
   moveDeadzone: 0.1
 --- !u!114 &6089726963410338055
@@ -232,6 +237,36 @@ MonoBehaviour:
   motionDriver:
     horizontalMovementBlockedTags: []
     allMovementBlockedTags: []
+  environmentDetector:
+    locomotionDetector:
+      groundDetectionShape:
+        type: 2
+        canDrawGizmos: 1
+        localPosition: {x: 0, y: 0.26, z: 0}
+        localEulerAngles: {x: 90, y: 0, z: 0}
+        size: {x: 1, y: 1, z: 1}
+        radius: 0.24
+        height: 2
+        capsuleAxis: 1
+        innerRadius: 0
+        outerRadius: 2
+        angle: 90
+        length: 0.12
+      ceilingDetectionShape:
+        type: 2
+        canDrawGizmos: 1
+        localPosition: {x: 0, y: 1.54, z: 0}
+        localEulerAngles: {x: -90, y: 0, z: 0}
+        size: {x: 1, y: 1, z: 1}
+        radius: 0.24
+        height: 2
+        capsuleAxis: 1
+        innerRadius: 0
+        outerRadius: 2
+        angle: 90
+        length: 0.12
+      environmentLayerMask: -5
+      queryTriggerInteraction: 1
   cameraTransform: {fileID: 0}
 --- !u!114 &5783138430455601769
 MonoBehaviour:

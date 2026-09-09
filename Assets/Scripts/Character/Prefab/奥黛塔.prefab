@@ -19840,7 +19840,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _Animator: {fileID: 6670003055308091609}
-  _Transitions: {fileID: 0}
+  _Transitions: {fileID: 11400000, guid: ccc34ca454132424f9c2f42ec373b30d, type: 2}
   _ActionOnDisable: 0
 --- !u!114 &8655042630240369833
 MonoBehaviour:

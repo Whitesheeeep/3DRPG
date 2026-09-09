@@ -40,7 +40,7 @@ ModelImporter:
       takeName: Jump_1h
       internalID: 0
       firstFrame: 0
-      lastFrame: 33
+      lastFrame: 11.7
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -769,8 +769,7 @@ ModelImporter:
     - name: lowerarm_twist_01_r
       parentName: lowerarm_r
       position: {x: -0.119404025, y: 0, z: -0.00000015258789}
-      rotation: {x: -0.00095770514, y: -0.000000044685613, z: -0.000000018669251,
-        w: 0.9999996}
+      rotation: {x: -0.00095770514, y: -0.000000044685613, z: -0.000000018669251, w: 0.9999996}
       scale: {x: 1, y: 1, z: 1}
     - name: upperarm_twist_01_r
       parentName: upperarm_r
@@ -845,8 +844,7 @@ ModelImporter:
     - name: thigh_twist_01_r
       parentName: thigh_r
       position: {x: -0.22478591, y: 0, z: -0.000000042915342}
-      rotation: {x: -0.0000000033178367, y: 0.000000039115545, z: 0.000000032596287,
-        w: 1}
+      rotation: {x: -0.0000000033178367, y: 0.000000039115545, z: 0.000000032596287, w: 1}
       scale: {x: 1, y: 1, z: 1}
     armTwist: 0.5
     foreArmTwist: 0.5
@@ -860,8 +858,7 @@ ModelImporter:
     hasTranslationDoF: 0
     hasExtraRoot: 1
     skeletonHasParents: 1
-  lastHumanDescriptionAvatarSource: {fileID: 9000000, guid: f5b9e4759016d1c4e9c470e0f1d48847,
-    type: 3}
+  lastHumanDescriptionAvatarSource: {fileID: 9000000, guid: f5b9e4759016d1c4e9c470e0f1d48847, type: 3}
   autoGenerateAvatarMappingIfUnspecified: 1
   animationType: 3
   humanoidOversampling: 1

@@ -29,7 +29,7 @@ using WS_Modules.FSM;
 ```csharp
 bool CanEnter();
 void Init(TOwner owner, IStateMachine<TStateId, TOwner> machine);
-void OnEnter();
+void OnEnter(bool suppressDefaultState = false);
 void OnUpdate();
 void OnFixedUpdate();
 void OnLateUpdate();
@@ -40,7 +40,7 @@ void OnExit();
 说明：
 
 - `CanEnter()` 是目标状态进入条件。
-- `OnEnter()` 在进入状态时调用一次。
+- `OnEnter(bool suppressDefaultState)` 在进入状态时调用一次；普通叶状态忽略参数，嵌套状态机可用 `true` 只激活节点而跳过默认子状态。
 - `OnUpdate()` 需要外部显式驱动，一般从 MonoBehaviour 的 `Update()` 调用根状态机。
 - `OnFixedUpdate()` 一般从 MonoBehaviour 的 `FixedUpdate()` 调用根状态机。
 - `OnLateUpdate()` 一般从 MonoBehaviour 的 `LateUpdate()` 调用根状态机。
@@ -57,7 +57,7 @@ public class IdleState : StateBase<PlayerState, PlayerController>
     {
     }
 
-    public override void OnEnter()
+    public override void OnEnter(bool suppressDefaultState = false)
     {
         Owner.PlayIdleAnimation();
     }
@@ -205,7 +205,7 @@ public class AttackState : StateBase<PlayerState, PlayerController>
     {
     }
 
-    public override void OnEnter()
+    public override void OnEnter(bool suppressDefaultState = false)
     {
         Debug.Log("Enter Attack");
     }
@@ -335,8 +335,8 @@ private StateMachine<PlayerState, PlayerController> BuildGroundedFSM()
 
 运行行为：
 
-- 根状态机切到 `Grounded` 时，会调用 `Grounded.OnEnter()`。
-- `Grounded` 是一个子状态机，因此它会自动进入自己的默认子状态 `Walk`。
+- 根状态机直接切到 `Grounded` 时，会调用 `Grounded.OnEnter(false)` 并进入默认子状态。
+- `ChangeStatePath(Grounded, Run)` 会调用 `Grounded.OnEnter(true)`，只激活中间节点，再进入目标 `Run`，不会先短暂进入默认状态。
 - 根状态机从 `Grounded` 切走时，会先退出 `Grounded` 当前子状态，再退出 `Grounded` 本身。
 - 每帧更新时，先检查根状态机自己的跳转逻辑；根状态机没有切换时，才会执行当前子状态 `Grounded.OnUpdate()`，然后由 `Grounded` 检查 `Walk/Run` 之间的跳转。
 - 因此父状态机的跳转优先级天然高于当前子状态机的内部跳转，适合处理死亡、受击、打断、锁定等全局高优先级状态。
@@ -357,6 +357,8 @@ Machine.RequestStateChange(PlayerState.Attack);
 root.ChangeStatePath(PlayerState.Grounded, PlayerState.Run);
 ```
 
+`ChangeStatePath` 会先收集目标路径、计算最长公共前缀并预检所有分歧节点的 `CanEnter()`；预检失败时不会退出当前状态。完整路径相同返回 `false`。状态机可通过 `CurrentLeafState` 与 `CurrentStatePath` 读取当前活动叶节点和路径快照。
+
 推荐让状态只发起语义化的状态请求，不直接访问 `Machine.Machine`。父状态机仍然可以通过 `Transition` 或 `AnyTransition` 处理死亡、受击等全局打断。
 
 ## 自定义 CanEnter 示例
@@ -375,7 +377,7 @@ public class AttackState : StateBase<PlayerState, PlayerController>
         return Owner.HasWeapon && Owner.Stamina > 0;
     }
 
-    public override void OnEnter()
+    public override void OnEnter(bool suppressDefaultState = false)
     {
         Owner.PlayAttackAnimation();
     }

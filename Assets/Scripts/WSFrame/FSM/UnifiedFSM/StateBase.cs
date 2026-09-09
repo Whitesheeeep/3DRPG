@@ -20,7 +20,9 @@ namespace WS_Modules.FSM
             Machine = machine;
         }
 
-        public virtual void OnEnter() { }
+        /// <summary>进入状态；普通叶状态不使用默认子状态参数。</summary>
+        /// <param name="suppressDefaultState">是否跳过子状态机默认状态。</param>
+        public virtual void OnEnter(bool suppressDefaultState = false) { }
         public virtual void OnUpdate() { }
         public virtual void OnFixedUpdate() { }
         public virtual void OnLateUpdate() { }

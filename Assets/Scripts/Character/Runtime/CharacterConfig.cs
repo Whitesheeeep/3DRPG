@@ -105,6 +105,16 @@ namespace RPG.Character
                 throw new InvalidOperationException($"CharacterConfig '{name}' 的 Gravity 必须是非负有限值。");
             if (locomotionTransition == null)
                 throw new InvalidOperationException($"CharacterConfig '{name}' 未配置 LocomotionTransition。");
+            try
+            {
+                locomotionTransition.Validate();
+            }
+            catch (InvalidOperationException exception)
+            {
+                throw new InvalidOperationException(
+                    $"CharacterConfig '{name}' 的 LocomotionTransition 配置无效：{exception.Message}",
+                    exception);
+            }
             ValidateList(initialAttributeSets, "InitialAttributeSets");
             ValidateList(abilityInputBindings, "AbilityInputBindings");
         }

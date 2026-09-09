@@ -31,14 +31,16 @@ namespace RPG.DialogueSystemModule.Editor.Tests
             string[] ids =
             {
                 "PrefabBindings", "UIEventSystemBindings", "DialogueChoiceNavigation", "InteractableInitiator", "EventOrder", "TypingNaturalComplete",
-                "NoSkipAndSkip", "ChoiceDelayedAndDisabled", "ChoiceActionAndContext", "DirectModeChoice",
+                "NoSkipAndSkip", "ChoiceDelayedAndDisabled", "ChoiceActionAndContext", "SpeechDisplayName",
+                "DirectModeChoice",
                 "FadeModeChoice", "VoiceLifecycle", "AnimationLifecycle", "StaleRevealInvalidation",
                 "GameUILockEvents", "WindowDestroyAndReload"
             };
             Func<DialogueEditorTestFixture, IEnumerator>[] tests =
             {
                 TestPrefabBindings, TestUIEventSystemBindings, TestDialogueChoiceNavigation, TestInteractableInitiator, TestEventOrder, TestTypingNaturalComplete,
-                TestNoSkipAndSkip, TestChoiceDelayedAndDisabled, TestChoiceActionAndContext, TestDirectModeChoice,
+                TestNoSkipAndSkip, TestChoiceDelayedAndDisabled, TestChoiceActionAndContext, TestSpeechDisplayName,
+                TestDirectModeChoice,
                 TestFadeModeChoice, TestVoiceLifecycle, TestAnimationLifecycle, TestStaleRevealInvalidation,
                 TestGameUILockEvents, TestWindowDestroyAndReload
             };
@@ -432,6 +434,40 @@ namespace RPG.DialogueSystemModule.Editor.Tests
             Assert(contextSeen.Count == 1 && contextSeen[0], "Action 没有按顺序收到真实 Architecture Context。");
         }
 
+        /// <summary>验证 SpeechNode 名称覆盖、Speaker 默认回退和身份匹配彼此独立。</summary>
+        private static IEnumerator TestSpeechDisplayName(DialogueEditorTestFixture fixture)
+        {
+            fixture.TypeWriter.revealMode = TMProTypeWriter.RevealMode.Direct;
+            DialogueSpeaker speaker = fixture.CreateSpeaker("EditorTestDefaultName");
+            DialogueAsset defaultAsset = fixture.CreateLinear(speaker, "默认名称测试。");
+            DialogueSession defaultSession = fixture.StartDirect(defaultAsset, speaker);
+            Assert(defaultSession != null, "默认名称测试无法启动会话。");
+            Assert(fixture.Data.SpeakerNameTMP_Text.text == speaker.SpeakerName,
+                "名称为空时没有回退到 DialogueSpeaker.SpeakerName。");
+            Assert(defaultSession.Request.FindParticipant(speaker) != null,
+                "默认名称测试破坏了 Speaker SO 身份匹配。");
+            fixture.EndSessionForCleanup();
+            yield return null;
+
+            DialogueAsset overrideAsset = fixture.CreateLinear(speaker, "覆盖名称测试。", null, "？？？");
+            DialogueSession overrideSession = fixture.StartDirect(overrideAsset, speaker);
+            Assert(overrideSession != null, "覆盖名称测试无法启动会话。");
+            Assert(fixture.Data.SpeakerNameTMP_Text.text == "？？？",
+                "SpeechNode 配置的每句显示名称没有传递到 DialogueWindow。");
+            Assert(overrideSession.Request.FindParticipant(speaker) != null,
+                "每句显示名称覆盖不应改变 Speaker SO 身份匹配。");
+            fixture.EndSessionForCleanup();
+            yield return null;
+
+            speaker.name = "EditorTestRenamed";
+            DialogueSpeechNode defaultSpeech = FindFirstSpeech(defaultAsset);
+            DialogueSpeechNode overrideSpeech = FindFirstSpeech(overrideAsset);
+            Assert(defaultSpeech.Name == "EditorTestRenamed",
+                "Speaker 重命名后，未覆盖名称的对白没有动态跟随新名称。");
+            Assert(overrideSpeech.Name == "？？？",
+                "Speaker 重命名后，已配置的每句名称覆盖被错误修改。");
+        }
+
         /// <summary>验证 Direct 模式会立即完成正文并显示 Choice。</summary>
         private static IEnumerator TestDirectModeChoice(DialogueEditorTestFixture fixture)
         {
@@ -613,6 +649,16 @@ namespace RPG.DialogueSystemModule.Editor.Tests
             for (int index = 0; index < asset.Nodes.Count; index++)
                 if (asset.Nodes[index] is DialogueChoiceNode choice) return choice;
             throw new InvalidOperationException("测试图没有 ChoiceNode。");
+        }
+
+        /// <summary>按节点列表查找临时图第一个 Speech。</summary>
+        /// <param name="asset">临时对话图。</param>
+        /// <returns>第一个 SpeechNode。</returns>
+        private static DialogueSpeechNode FindFirstSpeech(DialogueAsset asset)
+        {
+            for (int index = 0; index < asset.Nodes.Count; index++)
+                if (asset.Nodes[index] is DialogueSpeechNode speech) return speech;
+            throw new InvalidOperationException("测试图没有 SpeechNode。");
         }
 
         /// <summary>找到夹具创建的语音 AudioSource。</summary>

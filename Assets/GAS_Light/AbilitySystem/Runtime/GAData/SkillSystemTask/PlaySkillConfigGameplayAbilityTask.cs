@@ -66,15 +66,17 @@ namespace RPG.SkillSystem
                 return;
             }
 
+            // 技能是否根运动只决定是否放行 Animator/Vertical 提交；技能一旦占据水平和旋转通道，
+            // Locomotion 即使继续运行也不会在技能站桩期间偷偷移动角色。
+            motionDriver = skillOwner.MotionDriver ??
+                throw new InvalidOperationException($"Ability '{Runtime.Data.name}' 的角色未绑定 MotionDriver。");
+            MotionChannels motionChannels = MotionChannels.Horizontal | MotionChannels.Rotation;
             if (skillConfig.IsRootMotion)
-            {
-                motionDriver = skillOwner.MotionDriver ??
-                    throw new InvalidOperationException($"Ability '{Runtime.Data.name}' 的角色未绑定 MotionDriver。");
-                motionHandle = motionDriver.RequestControl(new MotionControlRequest(
-                    skillOwner,
-                    MotionPriority.Skill,
-                    MotionChannels.Horizontal | MotionChannels.Vertical | MotionChannels.Rotation));
-            }
+                motionChannels |= MotionChannels.Vertical;
+            motionHandle = motionDriver.RequestControl(new MotionControlRequest(
+                skillOwner,
+                MotionPriority.Skill,
+                motionChannels));
 
             Subscribe();
             SkillStartResult result = host.TryPlay(skillConfig);
@@ -221,8 +223,8 @@ namespace RPG.SkillSystem
         {
             GameplayTag nextPhaseTag = GetPhaseTag(phase);
             GameplayTag nextInterruptTag = canBeInterrupted
-                ? GameplayTags.Tag_State_Action_Skill_Interruptible
-                : GameplayTags.Tag_State_Action_Skill_Uninterruptible;
+                ? GameplayTags.Tag_State_Skill_Interruptible
+                : GameplayTags.Tag_State_Skill_Uninterruptible;
             if (hasAppliedPhaseTag && appliedPhaseTag == nextPhaseTag &&
                 hasAppliedInterruptTag && appliedInterruptTag == nextInterruptTag)
                 return;
@@ -260,10 +262,10 @@ namespace RPG.SkillSystem
         /// <returns>对应的正式阶段 Tag。</returns>
         private static GameplayTag GetPhaseTag(ActionPhaseType phase) => phase switch
         {
-            ActionPhaseType.Startup => GameplayTags.Tag_State_Action_Skill_Phase_StartUp,
-            ActionPhaseType.Active => GameplayTags.Tag_State_Action_Skill_Phase_Active,
-            ActionPhaseType.Recovery => GameplayTags.Tag_State_Action_Skill_Phase_Recovery,
-            _ => GameplayTags.Tag_State_Action_Skill_Phase_None
+            ActionPhaseType.Startup => GameplayTags.Tag_State_Skill_Phase_StartUp,
+            ActionPhaseType.Active => GameplayTags.Tag_State_Skill_Phase_Active,
+            ActionPhaseType.Recovery => GameplayTags.Tag_State_Skill_Phase_Recovery,
+            _ => GameplayTags.Tag_State_Skill_Phase_None
         };
 
         #endregion

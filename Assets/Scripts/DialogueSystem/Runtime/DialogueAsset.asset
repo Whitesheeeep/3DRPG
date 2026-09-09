@@ -16,6 +16,7 @@ MonoBehaviour:
   editorPosition: {x: -12.000123, y: 175.47765}
   nodeName: Speech 003
   speaker: {fileID: 11400000, guid: 4663cf08600c8fb4682d10fa508a0b57, type: 2}
+  dialogueName: 
   text: "\u4E0D\u591F"
   animationClip: {fileID: 0}
   voiceClip: {fileID: 0}
@@ -38,6 +39,7 @@ MonoBehaviour:
   editorPosition: {x: -12.226208, y: -21.029408}
   nodeName: Speech 002
   speaker: {fileID: 11400000, guid: 032bd966221ad854ab394fca1df0980c, type: 2}
+  dialogueName: "\u535A\u58EB"
   text: "\u6211\u662F\u4F60\u7239"
   animationClip: {fileID: 8993902097722301239, guid: 7efcb696b98b838468b814de0e3de013, type: 3}
   voiceClip: {fileID: 8300000, guid: dfeaf9743d41cc3438117d38b90c0372, type: 3}
@@ -133,6 +135,7 @@ MonoBehaviour:
   editorPosition: {x: -732.3346, y: -233.53607}
   nodeName: Speech 001
   speaker: {fileID: 11400000, guid: 4663cf08600c8fb4682d10fa508a0b57, type: 2}
+  dialogueName: "\u65AF\u5361\u54C8"
   text: "\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F"
   animationClip: {fileID: 0}
   voiceClip: {fileID: 0}

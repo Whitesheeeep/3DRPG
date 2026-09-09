@@ -263,6 +263,7 @@ namespace RPG.DialogueSystemModule.Editor
             {
                 AddBoundProperty("nodeName", "节点名称", false);
                 AddBoundProperty("speaker", "Speaker", false);
+                AddBoundProperty("dialogueName", "对话显示名称", false);
                 AddBoundProperty("text", "Text", true);
                 AddBoundProperty("animationClip", "AnimationClip", false);
                 AddBoundProperty("voiceClip", "VoiceClip", false);

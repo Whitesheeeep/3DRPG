@@ -64,30 +64,50 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_NewTag_NewTag1_NewTag6 = new GameplayTag(47);
         /// <summary>State</summary>
         public static readonly GameplayTag Tag_State = new GameplayTag(70);
-        /// <summary>State.Action</summary>
-        public static readonly GameplayTag Tag_State_Action = new GameplayTag(71);
-        /// <summary>State.Action.Skill</summary>
-        public static readonly GameplayTag Tag_State_Action_Skill = new GameplayTag(72);
-        /// <summary>State.Action.Skill.Interruptible</summary>
-        public static readonly GameplayTag Tag_State_Action_Skill_Interruptible = new GameplayTag(78);
-        /// <summary>State.Action.Skill.Phase</summary>
-        public static readonly GameplayTag Tag_State_Action_Skill_Phase = new GameplayTag(73);
-        /// <summary>State.Action.Skill.Phase.Active</summary>
-        public static readonly GameplayTag Tag_State_Action_Skill_Phase_Active = new GameplayTag(76);
-        /// <summary>State.Action.Skill.Phase.None</summary>
-        public static readonly GameplayTag Tag_State_Action_Skill_Phase_None = new GameplayTag(74);
-        /// <summary>State.Action.Skill.Phase.Recovery</summary>
-        public static readonly GameplayTag Tag_State_Action_Skill_Phase_Recovery = new GameplayTag(77);
-        /// <summary>State.Action.Skill.Phase.StartUp</summary>
-        public static readonly GameplayTag Tag_State_Action_Skill_Phase_StartUp = new GameplayTag(75);
-        /// <summary>State.Action.Skill.Uninterruptible</summary>
-        public static readonly GameplayTag Tag_State_Action_Skill_Uninterruptible = new GameplayTag(79);
         /// <summary>State.Block</summary>
         public static readonly GameplayTag Tag_State_Block = new GameplayTag(87);
         /// <summary>State.Block.AbilityActivation</summary>
         public static readonly GameplayTag Tag_State_Block_AbilityActivation = new GameplayTag(89);
         /// <summary>State.Block.Movement</summary>
         public static readonly GameplayTag Tag_State_Block_Movement = new GameplayTag(88);
+        /// <summary>State.Locomotion</summary>
+        public static readonly GameplayTag Tag_State_Locomotion = new GameplayTag(90);
+        /// <summary>State.Locomotion.ExternalLaunch</summary>
+        public static readonly GameplayTag Tag_State_Locomotion_ExternalLaunch = new GameplayTag(99);
+        /// <summary>State.Locomotion.Fall</summary>
+        public static readonly GameplayTag Tag_State_Locomotion_Fall = new GameplayTag(100);
+        /// <summary>State.Locomotion.FallLand</summary>
+        public static readonly GameplayTag Tag_State_Locomotion_FallLand = new GameplayTag(101);
+        /// <summary>State.Locomotion.Idle</summary>
+        public static readonly GameplayTag Tag_State_Locomotion_Idle = new GameplayTag(91);
+        /// <summary>State.Locomotion.Jump</summary>
+        public static readonly GameplayTag Tag_State_Locomotion_Jump = new GameplayTag(98);
+        /// <summary>State.Locomotion.Run</summary>
+        public static readonly GameplayTag Tag_State_Locomotion_Run = new GameplayTag(95);
+        /// <summary>State.Locomotion.Stop</summary>
+        public static readonly GameplayTag Tag_State_Locomotion_Stop = new GameplayTag(97);
+        /// <summary>State.Locomotion.Walk</summary>
+        public static readonly GameplayTag Tag_State_Locomotion_Walk = new GameplayTag(94);
+        /// <summary>State.Locomotion.WalkStart</summary>
+        public static readonly GameplayTag Tag_State_Locomotion_WalkStart = new GameplayTag(92);
+        /// <summary>State.Locomotion.RunStart</summary>
+        public static readonly GameplayTag Tag_State_Locomotion_RunStart = new GameplayTag(93);
+        /// <summary>State.Skill</summary>
+        public static readonly GameplayTag Tag_State_Skill = new GameplayTag(72);
+        /// <summary>State.Skill.Interruptible</summary>
+        public static readonly GameplayTag Tag_State_Skill_Interruptible = new GameplayTag(78);
+        /// <summary>State.Skill.Phase</summary>
+        public static readonly GameplayTag Tag_State_Skill_Phase = new GameplayTag(73);
+        /// <summary>State.Skill.Phase.Active</summary>
+        public static readonly GameplayTag Tag_State_Skill_Phase_Active = new GameplayTag(76);
+        /// <summary>State.Skill.Phase.None</summary>
+        public static readonly GameplayTag Tag_State_Skill_Phase_None = new GameplayTag(74);
+        /// <summary>State.Skill.Phase.Recovery</summary>
+        public static readonly GameplayTag Tag_State_Skill_Phase_Recovery = new GameplayTag(77);
+        /// <summary>State.Skill.Phase.StartUp</summary>
+        public static readonly GameplayTag Tag_State_Skill_Phase_StartUp = new GameplayTag(75);
+        /// <summary>State.Skill.Uninterruptible</summary>
+        public static readonly GameplayTag Tag_State_Skill_Uninterruptible = new GameplayTag(79);
         /// <summary>Test</summary>
         public static readonly GameplayTag Tag_Test = new GameplayTag(48);
         /// <summary>Test.GE</summary>

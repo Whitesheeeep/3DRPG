@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace RPG.DialogueSystemModule
@@ -13,10 +14,13 @@ namespace RPG.DialogueSystemModule
 
         [SerializeField] private string nodeName = string.Empty;
         [SerializeField] private DialogueSpeaker speaker;
+        // 留空表示跟随 Speaker 资产名称，避免把默认名称复制到每个节点中。
+        [SerializeField, Tooltip("留空时使用 DialogueSpeaker 的 SpeakerName。")]
+        private string dialogueName = string.Empty;
         [SerializeField, TextArea(3, 8)] private string text = string.Empty;
         [SerializeField] private AnimationClip animationClip;
         [SerializeField] private AudioClip voiceClip;
-        [SerializeField, Min(0f)] private float animationFadeDuration;
+        [SerializeField, MinValue(0f)] private float animationFadeDuration;
         [SerializeField] private DialogueNode nextNode;
         [SerializeField] private List<DialogueChoiceNode> choices = new List<DialogueChoiceNode>();
 
@@ -29,6 +33,13 @@ namespace RPG.DialogueSystemModule
 
         /// <summary>获取当前对白使用的 Speaker 资产身份。</summary>
         public DialogueSpeaker Speaker => speaker;
+
+        /// <summary>
+        /// 获取当前对白最终展示给玩家的说话人名称；空覆盖值会动态回退到 Speaker 资产名称。
+        /// </summary>
+        public string Name => string.IsNullOrWhiteSpace(dialogueName)
+            ? speaker?.SpeakerName ?? string.Empty
+            : dialogueName.Trim();
 
         /// <summary>获取直接保存的对白文本。</summary>
         public string Text => text;
@@ -61,14 +72,17 @@ namespace RPG.DialogueSystemModule
         /// <param name="clip">全身说话动画，可为空。</param>
         /// <param name="fadeDuration">动画淡入秒数。</param>
         /// <param name="voice">对白语音，可为空。</param>
+        /// <param name="displayName">当前对白的显示名称覆盖值；为空时使用 SpeakerName。</param>
         public void Configure(
             DialogueSpeaker value,
             string speechText,
             AnimationClip clip,
             float fadeDuration,
-            AudioClip voice = null)
+            AudioClip voice = null,
+            string displayName = null)
         {
             speaker = value;
+            dialogueName = displayName ?? string.Empty;
             text = speechText ?? string.Empty;
             animationClip = clip;
             voiceClip = voice;

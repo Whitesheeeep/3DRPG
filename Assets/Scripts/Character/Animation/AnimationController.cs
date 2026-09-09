@@ -1,5 +1,6 @@
 using System;
 using Animancer;
+using Animancer.TransitionLibraries;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
@@ -91,8 +92,8 @@ namespace RPG.Character.Animation
             if (transition == null) throw new ArgumentNullException(nameof(transition));
 
             AnimancerLayer animancerLayer = GetLayer(layer);
-            AnimancerState state = animancerLayer.Play(transition);
-            ActivateLayer(animancerLayer, transition.FadeDuration);
+            AnimancerState state = PlayUsingTransitionLibrary(animancerLayer, transition);
+            ActivateLayer(animancerLayer, animancer.Graph.Transitions?.GetFadeDuration(animancerLayer, transition) ?? transition.FadeDuration);
             return state;
         }
 
@@ -164,6 +165,23 @@ namespace RPG.Character.Animation
         #endregion
 
         #region 初始化与查询
+
+        /// <summary>
+        /// 使用 Animancer TransitionLibrary 播放已注册的组合过渡；未注册的内嵌 Transition
+        /// 直接使用自身参数，避免部分 Library 配置导致递归或丢失动画。
+        /// </summary>
+        /// <param name="layer">目标动画层。</param>
+        /// <param name="transition">待播放的 Transition。</param>
+        /// <returns>本次播放得到的真实状态。</returns>
+        private AnimancerState PlayUsingTransitionLibrary(AnimancerLayer layer, ITransition transition)
+        {
+            TransitionLibrary library = animancer.Graph.Transitions;
+            if (library != null && library.TryGetTransition(transition.Key, out TransitionModifierGroup modifier))
+                return library.Play(layer, modifier);
+
+            // 直接调用显式淡入重载，绕过 AnimancerLayer.Play(ITransition) 对全局 Library 的再次分派。
+            return layer.Play(transition, transition.FadeDuration, transition.FadeMode);
+        }
 
         /// <summary>
         /// 初始化 Animancer 引用和固定四层；公开操作也调用该方法以消除 MonoBehaviour Awake 顺序差异。
