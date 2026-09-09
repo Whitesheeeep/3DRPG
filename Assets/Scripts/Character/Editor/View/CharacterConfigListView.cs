@@ -151,7 +151,7 @@ namespace RPG.Character.Editor
             id.text = config == null ? string.Empty : config.CharacterId.ToString();
             meta.text = config == null
                 ? string.Empty
-                : $"Prefab · 属性集 {config.InitialAttributeSets.Count} · 输入 {config.AbilityInputBindings.Count}";
+                : $"等级上限 {config.MaxLevel} · 突破 {config.MaxAscensionRank} · 曲线 {config.GrowthProfile?.AttributeGrowthCurves.Count ?? 0}";
             rarity.text = config == null ? string.Empty : ConfigEditorRarityPresentation.GetRarityStars((int)config.Rarity);
             ConfigEditorRarityPresentation.EnableRarityClass(row, "character-config-list-row", config == null ? null : (int?)config.Rarity);
             row.EnableInClassList("character-config-list-row--selected", config != null && config == selectedConfig);
@@ -237,6 +237,7 @@ namespace RPG.Character.Editor
         private void PopulateCharacterContextMenu(GenericMenu menu, CharacterConfig config)
         {
             menu.AddItem(new GUIContent("复制"), false, () => CharacterCommandRequested?.Invoke(config, CharacterConfigCommand.Duplicate));
+            menu.AddItem(new GUIContent("回归默认"), false, () => CharacterCommandRequested?.Invoke(config, CharacterConfigCommand.ApplyDefaults));
             menu.AddItem(new GUIContent("验证当前"), false, () => CharacterCommandRequested?.Invoke(config, CharacterConfigCommand.Validate));
             menu.AddItem(new GUIContent("定位资产"), false, () => CharacterCommandRequested?.Invoke(config, CharacterConfigCommand.PingAsset));
             menu.AddSeparator(string.Empty);

@@ -59,6 +59,42 @@ MonoBehaviour:
     m_SerializedLabels:
     - Bag
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b5eff0303a994f628c9da6fb73246abb
+    m_Address: ItemIcons_Common
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bag
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8fe1b44418a347339a2b9cca0532cbe6
+    m_Address: ItemIcons_BuffItem
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bag
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3d5befd53007469db4b7bf516a47ea1a
+    m_Address: ItemIcons_CharacterCard
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bag
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e40cd2a47a6640d0a7ee386cf59cc880
+    m_Address: ItemIcons_DevelopmentMaterial
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bag
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d48c6a8d71924c859709e05f234a64de
+    m_Address: ItemIcons_Food
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bag
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 223d112080ec461685eca72fd0857dd7
+    m_Address: ItemIcons_FoodMaterial
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bag
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: cf483ba42ae65ea478a5243d9f39d4df, type: 2}
   m_SchemaSet:

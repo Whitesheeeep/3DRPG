@@ -20,6 +20,7 @@ namespace RPG.Character.Editor
         private readonly VisualElement emptyState;
         private readonly VisualTreeAsset summaryTemplate;
         private readonly VisualTreeAsset detailsTemplate;
+        private CharacterGrowthDetailsView growthDetailsView;
         private VisualElement serializedObjectTracker;
         private CharacterConfig selectedConfig;
         private SerializedObject serializedObject;
@@ -49,6 +50,10 @@ namespace RPG.Character.Editor
         internal event Action<CharacterConfig, Sprite> AvatarChanged;
         /// <summary>角色配置序列化字段变化事件。</summary>
         internal event Action<CharacterConfig, string> PropertiesChanged;
+        /// <summary>请求烘焙角色成长表。</summary>
+        internal event Action BakeGrowthRequested;
+        /// <summary>请求查看角色成长烘焙结果。</summary>
+        internal event Action ViewBakedResultRequested;
 
         #endregion
 
@@ -78,6 +83,8 @@ namespace RPG.Character.Editor
             if (sideIconField != null) sideIconField.UnregisterValueChangedCallback(OnSideIconFieldChanged);
             if (avatarField != null) avatarField.UnregisterValueChangedCallback(OnAvatarFieldChanged);
             detailsScrollView.UnregisterCallback<SerializedPropertyChangeEvent>(OnSerializedPropertyChanged);
+            growthDetailsView?.Dispose();
+            growthDetailsView = null;
             detailsScrollView.Unbind();
             serializedObjectTracker?.RemoveFromHierarchy();
             serializedObjectTracker = null;
@@ -98,6 +105,8 @@ namespace RPG.Character.Editor
             try
             {
                 detailsScrollView.Unbind();
+                growthDetailsView?.Dispose();
+                growthDetailsView = null;
                 serializedObjectTracker?.RemoveFromHierarchy();
                 serializedObjectTracker = null;
                 serializedObject?.Dispose();
@@ -112,6 +121,9 @@ namespace RPG.Character.Editor
                 serializedObject.UpdateIfRequiredOrScript();
                 summaryTemplate.CloneTree(summaryHost);
                 detailsTemplate.CloneTree(detailsScrollView.contentContainer);
+                growthDetailsView = new CharacterGrowthDetailsView(Require<VisualElement>(detailsScrollView, "CharacterGrowthDetailsHost"));
+                growthDetailsView.BakeGrowthRequested += OnBakeGrowthRequested;
+                growthDetailsView.ViewBakedResultRequested += OnViewBakedResultRequested;
                 sideIconField = Require<ObjectField>(detailsScrollView, "SideIconField");
                 avatarField = Require<ObjectField>(detailsScrollView, "AvatarField");
                 sideIconPreviewImage = Require<Image>(detailsScrollView, "SideIconPreviewImage");
@@ -126,6 +138,7 @@ namespace RPG.Character.Editor
                 TextField nameField = detailsScrollView.Q<TextField>("NameField");
                 if (nameField != null) nameField.isDelayed = false;
                 detailsScrollView.Bind(serializedObject);
+                growthDetailsView.Bind(config, serializedObject);
                 CreateSerializedObjectTracker();
                 ConfigureCollection(detailsScrollView.Q<PropertyField>("InitialAttributeSetsField"), "暂无初始属性集");
                 ConfigureCollection(detailsScrollView.Q<PropertyField>("AbilityInputBindingsField"), "暂无能力输入绑定");
@@ -150,6 +163,7 @@ namespace RPG.Character.Editor
                 avatarField?.SetValueWithoutNotify(selectedConfig.EditorAvatar);
                 RefreshPreviewImages();
                 RefreshSummary();
+                growthDetailsView?.Refresh();
             }
             finally
             {
@@ -187,6 +201,9 @@ namespace RPG.Character.Editor
             card.Q<Label>("Rarity").text = ConfigEditorRarityPresentation.GetRarityStars((int)selectedConfig.Rarity);
             card.Q<Label>("Id").text = $"角色标识：{selectedConfig.CharacterId}";
             card.Q<Label>("Prefab").text = $"Prefab 地址：{selectedConfig.PrefabAddress}";
+            card.Q<Label>("Growth").text = selectedConfig.GrowthProfile == null
+                ? "成长配置：未配置"
+                : $"成长：Lv.{selectedConfig.MaxLevel} · 突破 {selectedConfig.MaxAscensionRank} · 曲线 {selectedConfig.GrowthProfile.AttributeGrowthCurves.Count}";
             ConfigEditorRarityPresentation.EnableRarityClass(card, "character-config-summary", (int)selectedConfig.Rarity);
         }
 
@@ -272,11 +289,18 @@ namespace RPG.Character.Editor
             if (!suppressCallbacks) AvatarChanged?.Invoke(selectedConfig, eventData.newValue as Sprite);
         }
 
+        /// <summary>转发角色成长烘焙请求。</summary>
+        private void OnBakeGrowthRequested() => BakeGrowthRequested?.Invoke();
+
+        /// <summary>转发角色成长烘焙结果查看请求。</summary>
+        private void OnViewBakedResultRequested() => ViewBakedResultRequested?.Invoke();
+
         /// <summary>接收原生绑定字段的变化并立即刷新摘要和列表投影。</summary>
         /// <param name="eventData">序列化属性变化事件。</param>
         private void OnSerializedPropertyChanged(SerializedPropertyChangeEvent eventData)
         {
             if (suppressCallbacks || selectedConfig == null || serializedObject == null) return;
+            if (eventData?.changedProperty != null && eventData.changedProperty.serializedObject != serializedObject) return;
             serializedObject.UpdateIfRequiredOrScript();
             RefreshSummary();
             PropertiesChanged?.Invoke(selectedConfig, eventData?.changedProperty?.propertyPath ?? string.Empty);

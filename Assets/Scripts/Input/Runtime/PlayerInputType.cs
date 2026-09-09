@@ -21,7 +21,11 @@ namespace RPG.PlayerInputSystem
         /// <summary>切换到队伍槽位 3。</summary>
         CharacterSlot3,
         /// <summary>切换到队伍槽位 4。</summary>
-        CharacterSlot4
+        CharacterSlot4,
+        /// <summary>请求打开或关闭背包窗口。</summary>
+        BagWindow,
+        /// <summary>请求关闭当前可取消的游戏窗口。</summary>
+        CancelWindow
     }
 
     /// <summary>表示一次输入手势当前的物理阶段。</summary>

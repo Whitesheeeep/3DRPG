@@ -19,3 +19,5 @@ MonoBehaviour:
     windowPrefabPath: DialogueWindow
   - windowName: HUDWindow
     windowPrefabPath: HUDWindow
+  - windowName: BagWindow
+    windowPrefabPath: BagWindow

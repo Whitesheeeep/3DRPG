@@ -11,6 +11,7 @@ namespace RPG.Character
         #region 字段与属性
 
         [SerializeField] private List<CharacterConfig> characters = new();
+        [SerializeField] private CharacterDefaultData defaultData = new();
         // 角色编号只增不减，避免删除配置后重新占用已经发布或存档使用过的 ID。
         [SerializeField, HideInInspector] private int nextCharacterIdNumber = 1;
         // key：稳定 CharacterId；value：该角色对应的唯一 CharacterConfig。
@@ -18,6 +19,9 @@ namespace RPG.Character
 
         /// <summary>获取数据库中的角色配置，保持作者顺序。</summary>
         public IReadOnlyList<CharacterConfig> Characters => characters;
+
+        /// <summary>获取角色配置编辑器使用的通用默认数据。</summary>
+        public CharacterDefaultData DefaultData => defaultData ??= new CharacterDefaultData();
 
         #endregion
 
@@ -28,6 +32,8 @@ namespace RPG.Character
         public void ValidateAndBuildIndex()
         {
             characters ??= new List<CharacterConfig>();
+            defaultData ??= new CharacterDefaultData();
+            defaultData.Validate();
             var index = new Dictionary<CharacterId, CharacterConfig>();
             var configSet = new HashSet<CharacterConfig>();
             for (int position = 0; position < characters.Count; position++)

@@ -16,6 +16,7 @@ GameObject:
   - component: {fileID: 6236332136201973222}
   - component: {fileID: 1232515278871343685}
   - component: {fileID: 4099463995280340719}
+  - component: {fileID: 7782364519912345678}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -208,6 +209,16 @@ MonoBehaviour:
   - action: {fileID: 0}
     actionName: Player/CharacterSlot4
     inputType: 14
+    pressBufferDuration: 0.2
+    releaseBufferDuration: 0.1
+  - action: {fileID: 0}
+    actionName: Player/BagWindow
+    inputType: 15
+    pressBufferDuration: 0.2
+    releaseBufferDuration: 0.1
+  - action: {fileID: 0}
+    actionName: Player/CancelWindow
+    inputType: 16
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
   moveAction: {fileID: 5930871493289717904, guid: cfc20ea7c00b94a4781015c818a9deb0, type: 3}
@@ -417,3 +428,16 @@ MonoBehaviour:
     m_Bits: 55
   detector: {fileID: 0}
   startDetectOnEnable: 1
+--- !u!114 &7782364519912345678
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5482557129118236183}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe6f29de2f174726b82de06d19265c7b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  inputController: {fileID: 3408626327944978715}

@@ -14,6 +14,9 @@ namespace RPG.ItemSystem
         private static WeaponInventorySettings settings;
         private static bool configured;
 
+        /// <summary>获取武器库存容量配置是否已经注入。</summary>
+        public static bool IsConfigured => configured && settings != null;
+
         /// <summary>创建武器实例 Manager。</summary>
         private WeaponInventoryManager() : base(GetConfiguredCapacity())
         {

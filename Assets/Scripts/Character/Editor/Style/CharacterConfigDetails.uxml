@@ -36,5 +36,6 @@
         <ui:Label text="移动配置" class="config-editor-section-title character-config-section-title" />
         <uie:PropertyField name="GravityField" binding-path="gravity" label="重力" class="config-editor-property-field character-config-property-field" />
         <uie:PropertyField name="TransitionField" binding-path="locomotionTransition" label="Locomotion 状态过渡" class="config-editor-property-field character-config-property-field" />
+        <ui:VisualElement name="CharacterGrowthDetailsHost" />
     </ui:VisualElement>
 </ui:UXML>

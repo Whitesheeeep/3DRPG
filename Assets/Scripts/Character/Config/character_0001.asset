@@ -21,6 +21,40 @@ MonoBehaviour:
   sideIconSpriteName: Odetta_Side
   avatarAddress: Characters
   avatarSpriteName: "\u5965\u9EDB\u5854_11162"
+  maxLevel: 90
+  maxAscensionRank: 6
+  growthProfile: {fileID: 11400000, guid: c77a8b9c0d1e2f3a4b5c6d7e8f901234, type: 2}
+  ascensionStages:
+  - requiredLevel: 20
+    maxLevelAfter: 40
+    cost:
+      itemCosts: []
+      currencyCosts: []
+  - requiredLevel: 40
+    maxLevelAfter: 50
+    cost:
+      itemCosts: []
+      currencyCosts: []
+  - requiredLevel: 50
+    maxLevelAfter: 60
+    cost:
+      itemCosts: []
+      currencyCosts: []
+  - requiredLevel: 60
+    maxLevelAfter: 70
+    cost:
+      itemCosts: []
+      currencyCosts: []
+  - requiredLevel: 70
+    maxLevelAfter: 80
+    cost:
+      itemCosts: []
+      currencyCosts: []
+  - requiredLevel: 80
+    maxLevelAfter: 90
+    cost:
+      itemCosts: []
+      currencyCosts: []
   initialAttributeSets:
   - {fileID: 11400000, guid: fa050d1171257b24bbba13162066da88, type: 2}
   abilityInputBindings:

@@ -1,0 +1,54 @@
+.character-growth-details-page {
+    padding-top: 8px;
+    padding-bottom: 16px;
+}
+
+.character-growth-section-title {
+    margin-top: 10px;
+    margin-bottom: 5px;
+    -unity-font-style: bold;
+}
+
+.character-growth-subsection-title {
+    margin-top: 8px;
+    margin-bottom: 4px;
+    -unity-font-style: bold;
+}
+
+.character-growth-field-group {
+    margin-bottom: 6px;
+}
+
+.character-growth-property-field {
+    margin-bottom: 2px;
+}
+
+.character-growth-warning {
+    background-color: rgba(190, 130, 40, 0.18);
+    border-left-width: 3px;
+    border-left-color: rgb(218, 158, 55);
+    padding-left: 8px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    margin-bottom: 6px;
+}
+
+.character-growth-warning-text,
+.character-growth-help-text,
+.character-growth-baked-summary {
+    white-space: normal;
+}
+
+.character-growth-help-text {
+    margin-top: 4px;
+    color: rgba(190, 190, 190, 0.85);
+}
+
+.character-growth-baked-actions {
+    flex-direction: row;
+    margin-top: 6px;
+}
+
+.character-growth-baked-actions > Button {
+    margin-right: 6px;
+}

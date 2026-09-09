@@ -13,6 +13,7 @@
             <ui:Label name="Rarity" class="character-config-summary-rarity" />
             <ui:Label name="Id" class="character-config-summary-id" />
             <ui:Label name="Prefab" class="character-config-summary-prefab" />
+            <ui:Label name="Growth" class="character-config-summary-prefab" />
             <ui:Label name="Hint" class="character-config-summary-hint" text="资产文件名由 CharacterId 决定；角色名称仅用于展示。" />
         </ui:VisualElement>
     </ui:VisualElement>

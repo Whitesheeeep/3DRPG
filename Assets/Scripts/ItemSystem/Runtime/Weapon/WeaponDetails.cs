@@ -33,18 +33,15 @@ namespace RPG.ItemSystem
         /// <param name="effectIndex">效果列表索引。</param>
         /// <param name="status">静态查询状态。</param>
         /// <param name="contributions">已计算的贡献列表。</param>
-        public WeaponEffectEvaluation(int effectIndex, GameplayEffectStaticEvaluationStatus status,
+        public WeaponEffectEvaluation(int effectIndex,
             IReadOnlyList<WeaponEffectContribution> contributions)
         {
             EffectIndex = effectIndex;
-            Status = status;
             Contributions = contributions;
         }
 
         /// <summary>效果列表索引。</summary>
         public int EffectIndex { get; }
-        /// <summary>静态查询状态。</summary>
-        public GameplayEffectStaticEvaluationStatus Status { get; }
         /// <summary>已成功计算的有序贡献；动态项不会伪造数值。</summary>
         public IReadOnlyList<WeaponEffectContribution> Contributions { get; }
     }

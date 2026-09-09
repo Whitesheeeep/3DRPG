@@ -8,6 +8,7 @@
             <ui:Button name="DuplicateButton" text="复制" />
             <ui:Button name="RemoveButton" text="移出数据库" />
             <ui:Button name="DeleteButton" text="删除资产" />
+            <ui:Button name="ApplyDefaultsButton" text="回归默认" />
             <ui:Button name="ValidateCurrentButton" text="验证当前" />
             <ui:Button name="ValidateDatabaseButton" text="验证数据库" />
             <ui:Button name="PingButton" text="定位资产" />
