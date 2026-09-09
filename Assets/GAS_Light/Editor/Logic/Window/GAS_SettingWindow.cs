@@ -80,7 +80,7 @@ namespace WS_Modules.GAS.Editor
             GAS_SettingWindow window = GetConfiguredWindow();
             GameplayTagDatabase target = database != null
                 ? database
-                : GameplayTagEditorSession.GetDatabase();
+                : GameplayTagEditorSession.ResolveSingleDatabase(out _);
             window.requestedTagDatabase = target;
             window.SelectModule(GASEditorModule.GameplayTags);
             if (window.gameplayTagWindow != null)
@@ -168,7 +168,7 @@ namespace WS_Modules.GAS.Editor
             GAS_SettingWindow window = GetConfiguredWindow();
             GameplayCueDatabase target = database != null
                 ? database
-                : GameplayCueEditorSession.GetDatabase();
+                : GameplayCueEditorSession.ResolveSingleDatabase();
             window.requestedGameplayCueDatabase = target;
             window.SelectModule(GASEditorModule.GameplayCues);
             if (window.gameplayCueWindow != null)
@@ -188,7 +188,7 @@ namespace WS_Modules.GAS.Editor
         /// <param name="cue">要定位的 CueData。</param>
         public static void ShowGameplayCue(GameplayCueData cue)
         {
-            GameplayCueDatabase database = GameplayCueEditorSession.GetDatabase();
+            GameplayCueDatabase database = GameplayCueEditorSession.ResolveSingleDatabase();
             if (cue != null)
             {
                 GameplayCueEditorService service = new GameplayCueEditorService();
@@ -238,7 +238,7 @@ namespace WS_Modules.GAS.Editor
                 case GASEditorModule.GameplayTags:
                     GameplayTagDatabase database = requestedTagDatabase != null
                         ? requestedTagDatabase
-                        : GameplayTagEditorSession.GetDatabase();
+                        : GameplayTagEditorSession.ResolveSingleDatabase(out _);
                     gameplayTagWindow = new GameplayTagWindow(contentHost, database, true);
                     requestedTagDatabase = null;
                     break;
@@ -267,7 +267,7 @@ namespace WS_Modules.GAS.Editor
                 case GASEditorModule.GameplayCues:
                     GameplayCueDatabase cueDatabase = requestedGameplayCueDatabase != null
                         ? requestedGameplayCueDatabase
-                        : GameplayCueEditorSession.GetDatabase();
+                        : GameplayCueEditorSession.ResolveSingleDatabase();
                     gameplayCueWindow = new GameplayCueWindow(contentHost, cueDatabase);
                     requestedGameplayCueDatabase = null;
                     break;

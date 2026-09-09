@@ -270,15 +270,22 @@ namespace WS_Modules.GAS.Editor
         // 搜索框直接转发用户输入。
         private void OnSearchChanged(ChangeEvent<string> evt) => SearchChanged?.Invoke(evt.newValue);
 
-        // 创建路径对话属于 View 交互，取消时不发送意图。
+        /// <summary>打开 GE 创建路径面板并记录用户确认后的最近目录。</summary>
         private void OnCreateEffectClicked()
         {
             string path = EditorUtility.SaveFilePanelInProject(
                 "Create Gameplay Effect",
                 "GameplayEffectData",
                 "asset",
-                "Choose a project path for the GameplayEffectData asset.");
-            if (!string.IsNullOrEmpty(path)) CreateEffectRequested?.Invoke(path);
+                "Choose a project path for the GameplayEffectData asset.",
+                GASEditorPreferences.GetLastCreateFolder(
+                    GASEditorAssetFolderKind.GameplayEffect));
+            if (string.IsNullOrEmpty(path)) return;
+
+            GASEditorPreferences.RecordCreateAssetPath(
+                GASEditorAssetFolderKind.GameplayEffect,
+                path);
+            CreateEffectRequested?.Invoke(path);
         }
 
         // 复制意图不携带 UI 状态。

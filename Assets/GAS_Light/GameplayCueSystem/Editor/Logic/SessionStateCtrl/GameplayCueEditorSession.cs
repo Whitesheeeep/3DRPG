@@ -22,6 +22,22 @@ namespace WS_Modules.GAS.Editor
                 : AssetDatabase.LoadAssetAtPath<GameplayCueDatabase>(path);
         }
 
+        /// <summary>恢复会话数据库，或在项目内仅有一个 Cue Database 时自动选中它。</summary>
+        /// <returns>可明确确定的 Cue Database；没有或存在多个数据库时返回 null。</returns>
+        public static GameplayCueDatabase ResolveSingleDatabase()
+        {
+            GameplayCueDatabase sessionDatabase = GetDatabase();
+            if (sessionDatabase != null) return sessionDatabase;
+
+            string[] guids = AssetDatabase.FindAssets("t:GameplayCueDatabase");
+            if (guids.Length != 1) return null;
+
+            GameplayCueDatabase database = AssetDatabase.LoadAssetAtPath<GameplayCueDatabase>(
+                AssetDatabase.GUIDToAssetPath(guids[0]));
+            if (database != null) SetDatabase(database);
+            return database;
+        }
+
         /// <summary>保存当前 Cue Database。</summary>
         /// <param name="database">要保存的数据库。</param>
         public static void SetDatabase(GameplayCueDatabase database)
