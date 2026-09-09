@@ -41,9 +41,6 @@ namespace RPG.Character
         /// <inheritdoc />
         public bool CanMoveHorizontally => !HasAnyTag(allMovementBlockedTags) &&
                                            !HasAnyTag(horizontalMovementBlockedTags);
-        /// <inheritdoc />
-        public bool IsGrounded => characterController.isGrounded;
-
         /// <summary>注入 CharacterRoot 上唯一负责最终移动的 CharacterController。</summary>
         /// <param name="sourceCharacterController">共享 CharacterController。</param>
         public void Initialize(CharacterController sourceCharacterController)
@@ -377,13 +374,18 @@ namespace RPG.Character
         /// <summary>保存一个 Animator 阶段提交及其控制权来源。</summary>
         private readonly struct AnimatorSubmission
         {
+            /// <summary>创建一个 Animator 阶段运动提交。</summary>
+            /// <param name="handle">提交控制句柄。</param>
+            /// <param name="submission">Animator 阶段运动数据。</param>
             public AnimatorSubmission(MotionControlHandle handle, AnimatorMotionSubmission submission)
             {
                 Handle = handle;
                 Submission = submission;
             }
 
+            /// <summary>获取控制句柄。</summary>
             public MotionControlHandle Handle { get; }
+            /// <summary>获取 Animator 阶段运动数据。</summary>
             public AnimatorMotionSubmission Submission { get; }
         }
 

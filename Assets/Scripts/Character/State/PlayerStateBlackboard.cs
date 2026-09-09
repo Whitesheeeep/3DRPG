@@ -13,6 +13,7 @@ namespace RPG.Character.State
         private readonly GameplayTagContainer intentTags = new();
         private readonly Dictionary<GameplayTag, HashSet<InputRequestHandle>> intentSources = new();
         private readonly Dictionary<InputRequestHandle, GameplayTag> intentTagsBySource = new();
+        private readonly IPlayerInputRequestBuffer inputRequests;
         /// <summary>通知 PlayerController 将某个 Intent 来源句柄提交给输入 Controller。</summary>
         internal event Action<GameplayTag, InputRequestHandle> IntentSourceConsumed;
         #endregion
@@ -22,12 +23,47 @@ namespace RPG.Character.State
         public IReadOnlyGameplayTagContainer IntentTags => intentTags;
         /// <summary>获取当前帧镜头转换后的世界水平移动意图。</summary>
         public Vector3 MoveWorldInput { get; internal set; }
+        /// <summary>判断共享移动意图是否超过输入死区。</summary>
+        public bool HasMovement => MoveWorldInput.sqrMagnitude > 0.0001f;
+        /// <summary>获取稳定 Player 持有的输入请求缓冲区。</summary>
+        public IPlayerInputRequestBuffer InputRequests => inputRequests;
+        /// <summary>获取 Sprint 是否处于 Pressed 或 Held 阶段。</summary>
+        public bool IsSprintHeld => inputRequests.TryGetRequest(
+            PlayerInputType.Sprint,
+            out IReadOnlyPlayerInputRequest request) &&
+            request.PhysicalState != PlayerInputPhysicalState.Released;
+        /// <summary>获取环境检测到的接地事实。</summary>
+        public bool IsGrounded { get; internal set; }
+        /// <summary>获取环境检测到的地面法线。</summary>
+        public Vector3 GroundNormal { get; internal set; }
+        /// <summary>获取环境检测到的地面距离。</summary>
+        public float GroundDistance { get; internal set; }
+        /// <summary>获取最近一次接地后经过的时间。</summary>
+        public float TimeSinceGrounded { get; internal set; }
+        /// <summary>获取环境观测到的世界垂直速度。</summary>
+        public float ObservedVerticalSpeed { get; internal set; }
+        /// <summary>获取环境观测到的世界水平速度；由 CharacterRoot 相邻采样位移计算。</summary>
+        public Vector3 ObservedPlanarVelocity { get; internal set; }
+        /// <summary>获取头顶检测是否阻挡角色继续向上运动。</summary>
+        public bool IsCeilingBlocked { get; internal set; }
+        /// <summary>获取头顶碰撞面的世界法线。</summary>
+        public Vector3 CeilingNormal { get; internal set; }
+        /// <summary>获取 CharacterRoot 到头顶阻挡物的检测距离。</summary>
+        public float CeilingDistance { get; internal set; }
+        /// <summary>获取本次离地过程累计的最大下降高度，供落地动画分级使用。</summary>
+        public float CurrentFallHeight { get; internal set; }
         #endregion
 
         #region 构造
         /// <summary>为稳定 Player 创建只保存输入仲裁结果的状态黑板。</summary>
-        internal PlayerStateBlackboard()
+        internal PlayerStateBlackboard(IPlayerInputRequestBuffer sourceInputRequests)
         {
+            inputRequests = sourceInputRequests ?? throw new ArgumentNullException(nameof(sourceInputRequests));
+            GroundNormal = Vector3.up;
+            GroundDistance = float.PositiveInfinity;
+            TimeSinceGrounded = float.PositiveInfinity;
+            CeilingNormal = Vector3.down;
+            CeilingDistance = float.PositiveInfinity;
         }
         #endregion
 

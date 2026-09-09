@@ -46,7 +46,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: acdf982e445e48e3ab003a4f601bed09
   frameRate: 30
-  durationFrames: 89
+  durationFrames: 104
   isRootMotion: 1
   tracks:
   - {fileID: 4463572712497873229}
@@ -69,20 +69,27 @@ MonoBehaviour:
   displayName: "\u52A8\u753B\u8F68\u9053"
   editorLocked: 0
   clips:
-  - id: 00b6096b63654d9cbb7e70a6618474b3
-    animationClip: {fileID: 7400044, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
+  - id: 52eebac9ca1949b8859e9ef6db1b58ce
+    animationClip: {fileID: -7836378658146244128, guid: efc8154d1f1ded3448c4702a57e3c0fe, type: 3}
     startFrame: 0
-    durationFrames: 53
+    durationFrames: 42
     sourceStartFrame: 0
     playbackSpeed: 1
     fadeDuration: 0.1
-  - id: da3fe9983a144ebd9e9d48a5d9d447af
-    animationClip: {fileID: 7400016, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
-    startFrame: 53
-    durationFrames: 36
+  - id: 81f4cc70c7df45deb870b67e1689754d
+    animationClip: {fileID: 1827226128182048838, guid: ea9956f046d63b146b793cac83c4d2a7, type: 3}
+    startFrame: 42
+    durationFrames: 20
     sourceStartFrame: 0
     playbackSpeed: 1
-    fadeDuration: 0
+    fadeDuration: 0.1
+  - id: aed8c29f99e24905b02d1401481e2825
+    animationClip: {fileID: -6229253991352491819, guid: 4a9d1fe4bbd63ff46aa5df9914d5c824, type: 3}
+    startFrame: 84
+    durationFrames: 20
+    sourceStartFrame: 0
+    playbackSpeed: 1
+    fadeDuration: 0.1
 --- !u!114 &5568324643408157913
 MonoBehaviour:
   m_ObjectHideFlags: 1

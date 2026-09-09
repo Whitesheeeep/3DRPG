@@ -229,6 +229,8 @@ DialogueAsset
 - `NodeId`：稳定字符串 GUID。
 - `NodeName`：编辑器显示用名称，不参与运行时寻址且不要求唯一。
 - `Speaker`：由 Unity ObjectField 选择的 DialogueSpeaker 资产；`SpeakerName` 来自该 SO 的 `name`。
+- `Name`：当前对白最终显示给玩家的说话人名称；由可选的每句名称覆盖解析，留空时动态使用 `SpeakerName`。
+- `dialogueName`（序列化字段）：每句对白的名称覆盖值，允许使用“？？？”、“神秘商人”等临时称呼；空白值不保存默认名称副本。
 - `Text`：第一版直接保存字符串。
 - `AnimationClip`：可选的全身说话动作。
 - `VoiceClip`：可选的对白语音；由对应 Context 的 `VoiceAudioSource` 播放。
@@ -616,6 +618,8 @@ public sealed class DialogueSpeaker : ScriptableObject
 
 - Speaker SO 是唯一身份数据，不保存额外字符串身份字段。
 - SpeakerName 直接来自 SO.name，重命名资产不会改变引用身份。
+- SpeechNode 的 `Name` 只表示 UI 显示名称，不是身份；其序列化覆盖值为空时动态回退到 SpeakerName，因此 Speaker 重命名会自动反映到未覆盖的对白。
+- 每句 Name 覆盖允许重复，不参与 NodeId、参与者匹配、语音 AudioSource 查找或动画播放器查找。
 - SpeechNode 和 DialogueParticipant 使用普通 ObjectField 选择 DialogueSpeaker。
 - DialogueRuntime 按同一 SO 引用匹配 SpeechNode 和参与者。
 - Graph 编辑器左侧列出项目中的 DialogueSpeaker 资产，可选择、定位和重命名。
@@ -701,7 +705,7 @@ public sealed class DialogueSpeaker : ScriptableObject
 - 顶部标题栏和工具栏：选择 `DialogueAsset`，执行保存、Undo/Redo、自动布局和校验。
 - 左侧导航：节点树以及项目中的 `DialogueSpeaker` 资产列表。
 - 中央 `GraphView`：展示 `EntryNode -> SpeechNode -> ChoiceNode/EndNode`，`Condition` 和 `Action` 只在 `ChoiceNode` 内容中显示。
-- 右侧 Inspector：通过 `SerializedObject` 编辑 `NodeId`、`NodeName`、`Speaker`、文本、全身 `AnimationClip`、`VoiceClip`、`NextNode` 和 Choices。
+- 右侧 Inspector：通过 `SerializedObject` 编辑 `NodeId`、`NodeName`、`Speaker`、每句显示 `Name`、文本、全身 `AnimationClip`、`VoiceClip`、`NextNode` 和 Choices。
 - 右侧 Inspector：上方为可滚动 Node Details，下方为独立可滚动 Validation；底部只显示当前选中节点、Dirty 状态和 Undo 可用状态。
 
 该文件是静态视觉参考，不代表 UXML/USS 的最终实现代码；当前 Unity `EditorWindow` 使用两个嵌套的 `CustomTwoPanelSplitView` 实现左导航、中央 GraphView 和右 Inspector 的可调宽度布局，并使用 MTWY 对话编辑器的深色主题。`DialogueGraphEditorWindow` 只负责加载 UXML、创建 `DialogueGraphEditorView`、`DialogueGraphView` 和 `DialogueGraphEditorController`；Controller 负责资产、Graph 变更、选择、Inspector、DialogueSpeaker、Validation 和状态协调。GraphView 将纯 UI 创建 API 与用户变更通知 API 分开，重建只调用 `ClearGraphView`、`AddGraphNodeView` 和 `AddGraphEdgeView`，不再使用通知抑制作用域，也不会反向修改 Model。普通节点编辑、移动、接线、断线、创建和删除使用局部刷新，不重建整个画布。GraphNode 根节点的四方向边框宽度在普通、Hover、原生选中和业务选中状态保持固定，只切换颜色，不改变节点尺寸或外层 margin。
@@ -785,6 +789,7 @@ Condition 展示计算采用 AND 短路；Condition 异常直接结束会话。�
 - GraphView 可以创建、移动、连接、删除节点并执行 Undo/Redo。
 - GraphView Details 使用 SerializedObject 绑定节点字段。
 - SpeechNode 与 DialogueParticipant 使用同一 DialogueSpeaker ObjectField。
+- SpeechNode 的 Name 为空时跟随 SpeakerName，填写后只覆盖当前句的 UI 显示名称。
 - DialogueSpeaker 重命名后所有引用自动显示新的 SpeakerName。
 - SpeechNode VoiceClip 在对应 Participant AudioSource 播放；推进、选择、结束和失败立即停止当前语音。
 - 失效 Speaker、NodeId 和节点引用能在 ValidationView 中报告。
@@ -819,11 +824,12 @@ sequenceDiagram
 失败并报告类型、成员和堆栈。测试不伪造领域事件，不直接调用 Controller 的完成回调，
 以免绕过打字机、按钮交互和事件顺序。
 
-覆盖内容包括：单窗口 Prefab 绑定、Initiator 与 Speaker 匹配、首句事件顺序、Typing
-自然完成、`NoSkipDuration`、Skip 与二次推进、Choice 延迟展示和禁用状态、Condition
-短路、Action Context、Direct/Fade 模式、语音生命周期、旧打字任务失效以及窗口销毁
-后重新预加载。声音听感、动画美术效果和实体硬件输入不宣称由自动测试覆盖；动画使用
-接口替身记录调用，报告会区分真实组件和替身观测。
+覆盖内容包括：单窗口 Prefab 绑定、Initiator 与 Speaker 匹配、SpeechNode 默认 Name
+回退、每句 Name 覆盖、Speaker 重命名后的默认名称跟随、首句事件顺序、Typing 自然
+完成、`NoSkipDuration`、Skip 与二次推进、Choice 延迟展示和禁用状态、Condition 短路、
+Action Context、Direct/Fade 模式、语音生命周期、旧打字任务失效以及窗口销毁后重新
+预加载。声音听感、动画美术效果和实体硬件输入不宣称由自动测试覆盖；动画使用接口
+替身记录调用，报告会区分真实组件和替身观测。
 
 每次运行以 `runId` 标识，状态通过 `GetStatusJson(runId)` 查询。最终报告写入：
 

@@ -11516,7 +11516,7 @@ ModelImporter:
       name: JumpPlace1_Start
       takeName: JumpPlace1_Start
       internalID: 0
-      firstFrame: 0
+      firstFrame: 112
       lastFrame: 300
       wrapMode: 0
       orientationOffsetY: 0
@@ -12060,7 +12060,7 @@ ModelImporter:
       takeName: JumpFwd1_Start
       internalID: 0
       firstFrame: 0
-      lastFrame: 300
+      lastFrame: 27
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -17595,14 +17595,12 @@ ModelImporter:
     - name: Root
       parentName: 
       position: {x: 0.0000000027444185, y: 0.00000082776444, z: 0.00000002605877}
-      rotation: {x: -0.000000025883754, y: -0.000000041055785, z: -0.000000039835914,
-        w: 1}
+      rotation: {x: -0.000000025883754, y: -0.000000041055785, z: -0.000000039835914, w: 1}
       scale: {x: 1, y: 1, z: 1}
     - name: Hips
       parentName: 
       position: {x: -0.000000087917215, y: 0.9287715, z: 0.00000003692258}
-      rotation: {x: -0.00000002068236, y: -0.00000001715188, z: 0.00000008640204,
-        w: 1}
+      rotation: {x: -0.00000002068236, y: -0.00000001715188, z: 0.00000008640204, w: 1}
       scale: {x: 1, y: 1, z: 1.0000001}
     - name: Spine
       parentName: 
@@ -17647,8 +17645,7 @@ ModelImporter:
     - name: LeftHandProp
       parentName: 
       position: {x: -0.072499074, y: -0.020221442, z: 0.0038006555}
-      rotation: {x: 0.0000000057337757, y: -0.000000027460134, z: -0.0000000051572577,
-        w: 1}
+      rotation: {x: 0.0000000057337757, y: -0.000000027460134, z: -0.0000000051572577, w: 1}
       scale: {x: 1, y: 1.0000002, z: 1}
     - name: LeftHandIndex1
       parentName: 
@@ -17793,8 +17790,7 @@ ModelImporter:
     - name: RightHandProp
       parentName: 
       position: {x: 0.07249849, y: 0.020220926, z: -0.003799857}
-      rotation: {x: 0.00000006603492, y: 0.0000000026674822, z: -0.0000000030172727,
-        w: 1}
+      rotation: {x: 0.00000006603492, y: 0.0000000026674822, z: -0.0000000030172727, w: 1}
       scale: {x: 1, y: 1.0000002, z: 1}
     - name: RightHandIndex1
       parentName: 
@@ -17894,8 +17890,7 @@ ModelImporter:
     - name: RightHandThumb4
       parentName: 
       position: {x: 0.025043922, y: 0.0000051662946, z: -0.0000018386571}
-      rotation: {x: -0.00000009552334, y: 0.000000112622836, z: -0.00000014608719,
-        w: 1}
+      rotation: {x: -0.00000009552334, y: 0.000000112622836, z: -0.00000014608719, w: 1}
       scale: {x: 0.99999994, y: 1.0000001, z: 1.0000001}
     - name: LeftUpLeg
       parentName: 

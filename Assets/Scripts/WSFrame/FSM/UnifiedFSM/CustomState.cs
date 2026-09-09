@@ -58,7 +58,9 @@ namespace WS_Modules.FSM
         }
 
         public override bool CanEnter() => mCanEnter == null || mCanEnter(Owner);
-        public override void OnEnter() => mOnEnter?.Invoke(this);
+        /// <summary>进入自定义状态并触发配置回调。</summary>
+        /// <param name="suppressDefaultState">自定义叶状态忽略该参数。</param>
+        public override void OnEnter(bool suppressDefaultState = false) => mOnEnter?.Invoke(this);
         public override void OnUpdate() => mOnUpdate?.Invoke(this);
         public override void OnFixedUpdate() => mOnFixedUpdate?.Invoke(this);
         public override void OnLateUpdate() => mOnLateUpdate?.Invoke(this);

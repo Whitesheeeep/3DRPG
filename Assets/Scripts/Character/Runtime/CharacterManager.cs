@@ -266,7 +266,7 @@ namespace RPG.Character
 
         /// <summary>推进全部角色 ASC；未 Ready 时静默不推进。</summary>
         /// <param name="deltaTime">本帧缩放时间。</param>
-        internal void TickCharacters(float deltaTime)
+        internal void AdvanceAbilityFrame(float deltaTime)
         {
             if (!IsReady) return;
             for (int index = 0; index < characters.Count; index++) characters[index].TickAbility(deltaTime);
@@ -275,7 +275,7 @@ namespace RPG.Character
         /// <summary>推进当前角色输入与 Locomotion；未 Ready 时不消费输入。</summary>
         /// <param name="inputRequests">输入请求缓冲区。</param>
         /// <param name="deltaTime">本帧缩放时间。</param>
-        internal void TickActiveCharacter(IPlayerInputRequestBuffer inputRequests, float deltaTime)
+        internal void AdvanceActiveFrame(IPlayerInputRequestBuffer inputRequests, float deltaTime)
         {
             if (!IsReady) return;
             if (inputRequests == null) throw new ArgumentNullException(nameof(inputRequests));
@@ -287,7 +287,7 @@ namespace RPG.Character
         /// <summary>推进当前角色物理阶段；未 Ready 时返回 false，阻止 MotionDriver 结算。</summary>
         /// <param name="fixedDeltaTime">本物理步时长。</param>
         /// <returns>实际推进角色阶段时返回 true。</returns>
-        internal bool FixedTickActiveCharacter(float fixedDeltaTime)
+        internal bool AdvanceFixedStep(float fixedDeltaTime)
         {
             if (!IsReady) return false;
             CharacterActor active = ActiveCharacter ?? throw new InvalidOperationException("[CharacterManager] Ready 状态缺少 ActiveCharacter。");
@@ -298,7 +298,7 @@ namespace RPG.Character
 
         /// <summary>推进全队 ASC 和当前 Locomotion 延迟阶段；未 Ready 时静默返回。</summary>
         /// <param name="deltaTime">本帧缩放时间。</param>
-        internal void LateTickCharacters(float deltaTime)
+        internal void AdvanceLateFrame(float deltaTime)
         {
             if (!IsReady) return;
             for (int index = 0; index < characters.Count; index++) characters[index].LateTickAbility(deltaTime);
@@ -329,7 +329,7 @@ namespace RPG.Character
         /// <param name="deltaRotation">根旋转增量。</param>
         /// <param name="evaluationDeltaTime">Animator 求值时长。</param>
         /// <returns>角色阶段实际推进时返回 true。</returns>
-        internal bool TryUpdateAnimationMove(CharacterActor source, Vector3 deltaPosition, Quaternion deltaRotation, float evaluationDeltaTime)
+        internal bool TryAdvanceAnimatorStep(CharacterActor source, Vector3 deltaPosition, Quaternion deltaRotation, float evaluationDeltaTime)
         {
             if (!IsReady || !ReferenceEquals(source, ActiveCharacter)) return false;
             source.UpdateAnimationMoveAbility(deltaPosition, deltaRotation);

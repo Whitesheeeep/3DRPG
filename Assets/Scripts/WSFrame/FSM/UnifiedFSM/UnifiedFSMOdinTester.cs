@@ -161,7 +161,7 @@ namespace WS_Modules.FSM.Tests
             bool changed = root.ChangeStatePath(TestStateId.Grounded, TestStateId.Run);
             bool correctRoot = IsState(root.CurrentState, TestStateId.Grounded);
             bool correctChild = IsState(grounded.CurrentState, TestStateId.Run);
-            LogStep($"ChangeStatePath(Grounded, Run)：changed={changed}, root={Describe(root.CurrentState)}, grounded={Describe(grounded.CurrentState)}");
+            LogStep($"ChangeStatePath(Grounded, Run)：changed={changed}, root={Describe(root.CurrentState)}, grounded={Describe(grounded.CurrentState)}, leaf={Describe(root.CurrentLeafState)}, path={DescribePath(root.CurrentStatePath)}");
             return changed && correctRoot && correctChild;
         }
 
@@ -242,6 +242,20 @@ namespace WS_Modules.FSM.Tests
         private static string Describe(IState<TestStateId, TestOwner> state)
         {
             return state == null ? "<none>" : state.StateId.ToString();
+        }
+
+        /// <summary>把 UnifiedFSM 当前活动路径转换为手动测试可读的层级文本。</summary>
+        /// <param name="path">状态机返回的路径快照。</param>
+        /// <returns>使用箭头连接的状态标识。</returns>
+        private static string DescribePath(IReadOnlyList<IState<TestStateId, TestOwner>> path)
+        {
+            if (path == null || path.Count == 0)
+                return "<none>";
+
+            var names = new string[path.Count];
+            for (int index = 0; index < path.Count; index++)
+                names[index] = path[index].StateId.ToString();
+            return string.Join(" -> ", names);
         }
 
         #endregion

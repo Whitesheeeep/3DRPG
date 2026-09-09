@@ -62,9 +62,9 @@ MonoBehaviour:
       name: Speed
       displayName: 移动速度
     type: 0
-    defaultValue: 10
+    defaultValue: 3
     minValue: 0
-    maxValue: 100
+    maxValue: 10
     baseValue: 0
     currentValue: 0
     ownerSet: {fileID: 0}

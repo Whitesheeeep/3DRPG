@@ -10,8 +10,9 @@ namespace RPG.Character.DirectionalLocomotion
         /// <summary>创建持续方向移动状态。</summary>
         public DirectionalMoveState() : base(DirectionalLocomotionStateId.Move) { }
 
-        /// <summary>进入状态时播放前行循环动画。</summary>
-        public override void OnEnter()
+        /// <summary>进入临时方向移动状态，播放前行循环动画并申请水平与旋转控制权。</summary>
+        /// <param name="suppressDefaultState">该叶状态忽略父状态机默认子状态参数。</param>
+        public override void OnEnter(bool suppressDefaultState = false)
         {
             _handle = Owner.MotionDriver.RequestControl(new MotionControlRequest(
                 Owner.GetComponentInParent<CharacterActor>(), MotionPriority.Locomotion,

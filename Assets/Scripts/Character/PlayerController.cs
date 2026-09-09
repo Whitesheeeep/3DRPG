@@ -35,6 +35,8 @@ namespace RPG.Character
         private CharacterController characterController;
         [SerializeField]
         private MotionDriver motionDriver = new();
+        [SerializeField]
+        private CharacterEnvironmentDetector environmentDetector = new();
         // 可选常驻摄像机基准；为空时输入仲裁 Manager 使用世界 X/Z 作为回退。
         [SerializeField] private Transform cameraTransform;
         private LooseGameplayTagEventBridge looseGameplayTagEventBridge;
@@ -92,7 +94,9 @@ namespace RPG.Character
             motionDriver.Suspend();
 
             // Blackboard 由稳定 Player 创建，随后以同一个引用注入全部 CharacterActor。
-            StateBlackboard = new PlayerStateBlackboard();
+            StateBlackboard = new PlayerStateBlackboard(inputController);
+            // 环境检测由一个总协调器统一推进；PlayerController 不直接依赖具体的 Locomotion 子检测器。
+            environmentDetector.Initialize(characterRoot, StateBlackboard);
 
             // 输入仲裁必须在 GAS 消费前完成；默认策略由 Manager 统一装配。
             InputIntentArbiterManager = new GameplayInputIntentArbiterManager(
@@ -200,39 +204,64 @@ namespace RPG.Character
             looseGameplayTagEventBridge?.Dispose();
         }
 
+        private void OnDrawGizmos()
+        {
+            environmentDetector.OnGizmosDraw();
+        }
+
         /// <summary>依次推进全队 ASC、输入分析、角色切换和当前角色普通阶段。</summary>
         private void Update()
         {
-            // CharacterManager 负责遍历角色，但只由此处显式推进；后台角色的冷却和持续 GE 不因切人停止。
-            characterManager.TickCharacters(Time.deltaTime);
-            // 输入控制器已完成本帧采样；Manager 当前默认只调度需要镜头转换的 Move Arbiter。
-            InputIntentArbiterManager.ArbitrateFrame(cameraTransform);
+            try
+            {
+                // 环境事实在本帧最前面采样；Locomotion、技能与运动结算随后读取同一份完整快照。
+                environmentDetector.TickUpdate(Time.deltaTime, StateBlackboard);
+                // CharacterManager 负责遍历角色，但只由此处显式推进；后台角色的冷却和持续 GE 不因切人停止。
+                characterManager.AdvanceAbilityFrame(Time.deltaTime);
+                // 输入控制器已完成本帧采样；Manager 当前默认只调度需要镜头转换的 Move Arbiter。
+                InputIntentArbiterManager.ArbitrateFrame(cameraTransform);
 
-            // 切人 Request 的映射和消费由 CharacterManager 处理；玩家级对话锁仍在 PlayerController 门禁。
-            if (CanProcessCharacterSwitchInput())
-                characterManager.ProcessSwitchInputRequests(inputController);
+                // 切人 Request 的映射和消费由 CharacterManager 处理；玩家级对话锁仍在 PlayerController 门禁。
+                if (CanProcessCharacterSwitchInput())
+                    characterManager.ProcessSwitchInputRequests(inputController);
 
-            // 切换后由 Manager 重新读取 ActiveCharacter，确保同帧技能和 Locomotion 使用新角色。
-            characterManager.TickActiveCharacter(inputController, Time.deltaTime);
+                // 切换后由 Manager 重新读取 ActiveCharacter，确保同帧技能和 Locomotion 使用新角色。
+                characterManager.AdvanceActiveFrame(inputController, Time.deltaTime);
 
-            // 普通 Locomotion 与需要渲染帧同步的 GAS 运动在此统一仲裁并结算一次。
-            motionDriver.ResolveUpdateMotion();
+                // 普通 Locomotion 与需要渲染帧同步的 GAS 运动在此统一仲裁并结算一次。
+                motionDriver.ResolveUpdateMotion();
+            }
+            catch
+            {
+                // 业务阶段异常时不能把已提交但未结算的 Update 数据带到下一帧。
+                motionDriver.ClearTransientRequests();
+                throw;
+            }
         }
 
         /// <summary>请求 CharacterManager 收集当前角色物理运动，然后由 MotionDriver 统一移动一次。</summary>
         private void FixedUpdate()
         {
-            // Manager 只收集当前角色 GAS 与 Locomotion 请求，不执行最终 CharacterController.Move。
-            if (!characterManager.FixedTickActiveCharacter(Time.fixedDeltaTime)) return;
-            // 所有候选请求在同一物理边界统一仲裁；Resolve 自己清空瞬时提交，不跨步复用。
-            motionDriver.ResolveFixedMotion();
+            try
+            {
+                // Manager 只收集当前角色 GAS 与 Locomotion 请求，不执行最终 CharacterController.Move。
+                if (!characterManager.AdvanceFixedStep(Time.fixedDeltaTime)) return;
+                // 所有候选请求在同一物理边界统一仲裁；Resolve 自己清空瞬时提交，不跨步复用。
+                motionDriver.ResolveFixedMotion();
+            }
+            catch
+            {
+                // 预检或提交阶段失败时清理 Fixed/Animator/Update 瞬时数据，避免下一阶段复用半成品。
+                motionDriver.ClearTransientRequests();
+                throw;
+            }
         }
 
         /// <summary>请求 CharacterManager 推进全队能力与当前 Locomotion 延迟阶段。</summary>
         private void LateUpdate()
         {
             // Late 阶段只处理能力和 FSM 的延迟逻辑，避免同一帧出现第二次 CharacterController.Move。
-            characterManager.LateTickCharacters(Time.deltaTime);
+            characterManager.AdvanceLateFrame(Time.deltaTime);
         }
 
         /// <summary>接收当前 Character Animator 的增量并在业务阶段之后统一结算。</summary>
@@ -249,9 +278,18 @@ namespace RPG.Character
             // 同一渲染帧只允许当前角色结算一次，避免重复 Animator 求值导致根运动被重复消费。
             if (lastAnimatorMoveFrame == Time.frameCount) return;
             // CharacterManager 验证来源并推进当前角色动画阶段；MotionDriver 仍由 PlayerController 最后结算。
-            if (!characterManager.TryUpdateAnimationMove(source, deltaPosition, deltaRotation, Time.deltaTime)) return;
-            lastAnimatorMoveFrame = Time.frameCount;
-            motionDriver.ResolveAnimatorMotion();
+            try
+            {
+                if (!characterManager.TryAdvanceAnimatorStep(source, deltaPosition, deltaRotation, Time.deltaTime)) return;
+                lastAnimatorMoveFrame = Time.frameCount;
+                motionDriver.ResolveAnimatorMotion();
+            }
+            catch
+            {
+                // Animator 阶段异常时不得保留当前根运动提交。
+                motionDriver.ClearTransientRequests();
+                throw;
+            }
         }
 
         /// <summary>在渲染帧末清理未消费 Intent。</summary>

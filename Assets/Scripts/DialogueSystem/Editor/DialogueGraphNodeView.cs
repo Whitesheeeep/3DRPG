@@ -52,6 +52,9 @@ namespace RPG.DialogueSystemModule.Editor
                 contentContainer.Add(new Label(speech.Speaker == null
                     ? "Speaker: <empty>"
                     : $"Speaker: {speech.Speaker.SpeakerName}"));
+                contentContainer.Add(new Label(string.IsNullOrEmpty(speech.Name)
+                    ? "Name: <empty>"
+                    : $"Name: {speech.Name}"));
                 contentContainer.Add(new Label(TrimText(speech.Text)));
                 contentContainer.Add(new Label($"Choices: {speech.Choices.Count}"));
             }

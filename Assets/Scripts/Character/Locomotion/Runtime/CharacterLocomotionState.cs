@@ -1,5 +1,7 @@
 using UnityEngine;
 using WS_Modules.FSM;
+using WS_Modules.GAS.TAG;
+using RPG.PlayerInputSystem;
 
 namespace RPG.Character
 {
@@ -34,6 +36,12 @@ namespace RPG.Character
         /// <summary>获取本次 Animator 阶段的求值时间。</summary>
         protected float AnimatorEvaluationDeltaTime => Owner.AnimatorEvaluationDeltaTime;
 
+        /// <summary>获取该叶状态维护的精确 Locomotion Tag。</summary>
+        protected virtual GameplayTag StateTag => GameplayTag.Empty;
+
+        /// <summary>获取该状态的 ASC Tag 门禁查询；空查询表示不增加门禁。</summary>
+        protected virtual GameplayTagQuery StateCanEnterQuery => new();
+
         /// <summary>获取当前角色 GAS Speed；属性未初始化时立即暴露配置契约错误。</summary>
         protected float TargetSpeed
         {
@@ -50,6 +58,35 @@ namespace RPG.Character
 
         /// <summary>获取当前状态的控制请求句柄。</summary>
         protected MotionControlHandle ControlHandle { get; private set; }
+
+        /// <summary>读取共享 Blackboard 中的输入请求。</summary>
+        protected IPlayerInputRequestBuffer InputRequests => Character.StateBlackboard.InputRequests;
+
+        /// <summary>读取当前 Sprint 是否仍处于按住状态。</summary>
+        protected bool IsSprintHeld => Character.StateBlackboard.IsSprintHeld;
+
+        /// <summary>判断当前状态是否应允许进入。</summary>
+        public override bool CanEnter()
+        {
+            return StateCanEnterQuery.IsEmpty ||
+                StateCanEnterQuery.Matches(Character.AbilitySystemComponent.Tags);
+        }
+
+        /// <summary>进入叶状态并添加精确状态 Tag。</summary>
+        /// <param name="suppressDefaultState">叶状态忽略该参数。</param>
+        public override void OnEnter(bool suppressDefaultState = false)
+        {
+            if (StateTag.IsValid)
+                Character.AbilitySystemComponent.AddLooseGameplayTag(StateTag);
+        }
+
+        /// <summary>退出叶状态并移除精确状态 Tag。</summary>
+        public override void OnExit()
+        {
+            if (StateTag.IsValid)
+                Character.AbilitySystemComponent.RemoveLooseGameplayTag(StateTag);
+            ReleaseControl();
+        }
 
         /// <summary>为当前状态建立指定通道的持续控制请求。</summary>
         /// <param name="channels">需要竞争的运动通道。</param>

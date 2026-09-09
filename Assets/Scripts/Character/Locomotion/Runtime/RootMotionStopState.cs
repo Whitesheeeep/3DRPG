@@ -3,12 +3,11 @@ using RPG.Character.Animation;
 
 namespace RPG.Character
 {
-    /// <summary>使用根运动完成松开输入后的停止状态。</summary>
+    /// <summary>使用左右脚停止根运动结束接地移动。</summary>
     public sealed class RootMotionStopState : RootMotionLocomotionState
     {
         #region 运行时状态
 
-        // 当前项目停止配置没有左右脚判定，沿用已有优先级选择右脚再左脚。
         private ITransition selectedTransition;
 
         #endregion
@@ -19,30 +18,33 @@ namespace RPG.Character
         public RootMotionStopState() : base(CharacterLocomotionStateId.RootMotionStop) { }
 
         /// <inheritdoc />
-        public override void OnEnter()
+        protected override WS_Modules.GAS.TAG.GameplayTag StateTag => Transition.StopStateTag;
+        /// <inheritdoc />
+        protected override WS_Modules.GAS.TAG.GameplayTagQuery StateCanEnterQuery => Transition.StopCanEnterQuery;
+
+        /// <inheritdoc />
+        public override void OnEnter(bool suppressDefaultState = false)
         {
             selectedTransition = Character.IsLeftFootAhead ? Transition.StopLeft : Transition.StopRight;
             if (selectedTransition == null || !selectedTransition.IsValid)
                 selectedTransition = Character.IsLeftFootAhead ? Transition.StopRight : Transition.StopLeft;
-            if (selectedTransition != null && !selectedTransition.IsValid)
-                selectedTransition = null;
-            if (selectedTransition == null)
+
+            if (selectedTransition == null || !selectedTransition.IsValid)
             {
                 Owner.ChangeState(CharacterLocomotionStateId.Idle);
                 return;
             }
-
-            base.OnEnter();
+            base.OnEnter(suppressDefaultState);
         }
 
         /// <inheritdoc />
         public override void OnUpdate()
         {
+            // Stop 可被移动输入立即打断；根据当前 Sprint 选择对应的起步状态，起步期间不再改投另一种动画。
             if (HasMovement)
-            {
-                Owner.ChangeState(CharacterLocomotionStateId.RootMotionStart);
-                return;
-            }
+                Owner.ChangeState(IsSprintHeld
+                    ? CharacterLocomotionStateId.RootMotionRunStart
+                    : CharacterLocomotionStateId.RootMotionWalkStart);
         }
 
         /// <inheritdoc />
@@ -53,9 +55,10 @@ namespace RPG.Character
         protected override void OnAnimationFinished()
         {
             selectedTransition = null;
-            // 停止动画期间重新按下 Move 时，交给起步状态重新选择九方向动画。
             Owner.ChangeState(HasMovement
-                ? CharacterLocomotionStateId.RootMotionStart
+                ? IsSprintHeld
+                    ? CharacterLocomotionStateId.RootMotionRunStart
+                    : CharacterLocomotionStateId.RootMotionWalkStart
                 : CharacterLocomotionStateId.Idle);
         }
 

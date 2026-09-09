@@ -126,7 +126,7 @@ GAS 集成基准使用现有 30 FPS、35 帧 `SkillConfig.asset`。ASC Tester �
 立即重播、命中 Effect 与命中点 Execute Cue。占用共享 Host 的主动技能统一配置
 `Ability.Action.Skill` 到 `AbilityTags` 与 `CancelTags`；配置第二个 SkillConfig GA 后可执行互相打断测试。
 
-阶段 Handler 会在普通逻辑帧中先发布动作阶段变化，`PlaySkillConfigGameplayAbilityTask` 再将它投影为 Source ASC 的 `State.Action.Skill.Phase.*` 与 `Interruptible/Uninterruptible` 引用计数 Tag。SkillConfig GA 禁止在 `Uninterruptible` 存在时激活，因此拒绝发生在 Cost/Cooldown 提交前；Natural、End、Cancel 和 Clear 都会对称撤销阶段 Tag。
+阶段 Handler 会在普通逻辑帧中先发布动作阶段变化，`PlaySkillConfigGameplayAbilityTask` 再将它投影为 Source ASC 的 `State.Skill.Phase.*` 与 `Interruptible/Uninterruptible` 引用计数 Tag。SkillConfig GA 禁止在 `Uninterruptible` 存在时激活，因此拒绝发生在 Cost/Cooldown 提交前；Natural、End、Cancel 和 Clear 都会对称撤销阶段 Tag。
 
 ```mermaid
 flowchart LR

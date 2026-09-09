@@ -1594,7 +1594,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _Animator: {fileID: 6227145297061794045}
-  _Transitions: {fileID: 0}
+  _Transitions: {fileID: 11400000, guid: ccc34ca454132424f9c2f42ec373b30d, type: 2}
   _ActionOnDisable: 0
 --- !u!114 &970769239237553936
 MonoBehaviour:

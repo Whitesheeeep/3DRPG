@@ -25,7 +25,9 @@ namespace RPG.PlayerInputSystem
         /// <summary>请求打开或关闭背包窗口。</summary>
         BagWindow,
         /// <summary>请求关闭当前可取消的游戏窗口。</summary>
-        CancelWindow
+        CancelWindow,
+        /// <summary>持续奔跑输入；追加到枚举末尾避免改变已有序列化值。</summary>
+        Sprint
     }
 
     /// <summary>表示一次输入手势当前的物理阶段。</summary>

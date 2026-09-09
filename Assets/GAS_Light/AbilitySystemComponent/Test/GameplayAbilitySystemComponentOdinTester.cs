@@ -342,10 +342,10 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         /// <returns>当前阶段 Tag 名称；无匹配时返回 Missing。</returns>
         private string FormatRealCharacterPhaseTag()
         {
-            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Action_Skill_Phase_None)) return "None";
-            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Action_Skill_Phase_StartUp)) return "StartUp";
-            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Action_Skill_Phase_Active)) return "Active";
-            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Action_Skill_Phase_Recovery)) return "Recovery";
+            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Skill_Phase_None)) return "None";
+            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Skill_Phase_StartUp)) return "StartUp";
+            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Skill_Phase_Active)) return "Active";
+            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Skill_Phase_Recovery)) return "Recovery";
             return "Missing";
         }
 
@@ -353,9 +353,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         /// <returns>Interruptible、Uninterruptible 或 Missing。</returns>
         private string FormatRealCharacterInterruptTag()
         {
-            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Action_Skill_Interruptible))
+            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Skill_Interruptible))
                 return "Interruptible";
-            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Action_Skill_Uninterruptible))
+            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Skill_Uninterruptible))
                 return "Uninterruptible";
             return "Missing";
         }
@@ -853,7 +853,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             source.TryActivateAbility(firstHandle, out GameplayAbilityRuntime firstRuntime);
             Expect("旧 SkillConfig 已占用 Module", firstRuntime != null && skillRuntimeHost.IsPlaying);
             Expect("可打断阶段写入 Interruptible Tag",
-                source.HasTagExact(GameplayTags.Tag_State_Action_Skill_Interruptible));
+                source.HasTagExact(GameplayTags.Tag_State_Skill_Interruptible));
 
             bool activated = source.TryActivateAbility(secondHandle, out GameplayAbilityRuntime secondRuntime);
             Expect("新 SkillConfig 激活成功", activated);
@@ -862,7 +862,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             Expect("新 Runtime 在 Module 释放后保持 Active",
                 secondRuntime.State == GameplayAbilityRuntimeState.Active && skillRuntimeHost.IsPlaying);
             Expect("第二技能不可打断阶段写入 Uninterruptible Tag",
-                source.HasTagExact(GameplayTags.Tag_State_Action_Skill_Uninterruptible));
+                source.HasTagExact(GameplayTags.Tag_State_Skill_Uninterruptible));
 
             bool rejected = !source.TryActivateAbility(firstHandle, out GameplayAbilityRuntime rejectedRuntime);
             Expect("不可打断阶段在提交前拒绝其他 SkillConfig GA",
@@ -870,9 +870,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             yield return null;
             source.TryCancelAbility(secondRuntime);
             Expect("取消后清除阶段与打断状态 Tag",
-                !source.HasTag(GameplayTags.Tag_State_Action_Skill_Phase) &&
-                !source.HasTag(GameplayTags.Tag_State_Action_Skill_Interruptible) &&
-                !source.HasTag(GameplayTags.Tag_State_Action_Skill_Uninterruptible));
+                !source.HasTag(GameplayTags.Tag_State_Skill_Phase) &&
+                !source.HasTag(GameplayTags.Tag_State_Skill_Interruptible) &&
+                !source.HasTag(GameplayTags.Tag_State_Skill_Uninterruptible));
         }
 
         /// <summary>执行一次 Linear Projectile 发射，并记录池化 Rigidbody 的生成 Pose 与飞行轨迹。</summary>

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -10,12 +11,12 @@ namespace RPG.PlayerInputSystem
     public sealed class PlayerInputController : MonoBehaviour, IPlayerInputRequestBuffer
     {
         #region 序列化配置
-        [SerializeField, Min(0f)] private float defaultPressBufferDuration = 0.2f;
-        [SerializeField, Min(0f)] private float defaultReleaseBufferDuration = 0.1f;
+        [SerializeField, MinValue(0f)] private float defaultPressBufferDuration = 0.2f;
+        [SerializeField, MinValue(0f)] private float defaultReleaseBufferDuration = 0.1f;
         [SerializeField] private List<PlayerInputBinding> bindings = new();
         // 连续移动输入仅由本组件采样，离散 Request 的缓冲与消费不共用该状态。
         [SerializeField] private InputActionReference moveAction;
-        [SerializeField, Range(0f, 1f)] private float moveDeadzone = 0.1f;
+        [SerializeField, MinValue(0f), MaxValue(1f)] private float moveDeadzone = 0.1f;
         #endregion
 
         #region 请求状态
