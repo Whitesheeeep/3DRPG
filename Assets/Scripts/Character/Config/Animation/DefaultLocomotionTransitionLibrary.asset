@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6f08fdd50e79d0c4bb235a5c2696516d, type: 3}
+  m_Name: DefaultLocomotionTransitionLibrary
+  m_EditorClassIdentifier: 
+  _Definition:
+    _Transitions:
+    - {fileID: 11400000, guid: e129d9586d4d59d45a6284853fc55f67, type: 2}
+    - {fileID: 11400000, guid: dd26aef1440d14e43bb64cf6a46cd0aa, type: 2}
+    - {fileID: 11400000, guid: 1f51440ae37018e44b79eb9a22042b69, type: 2}
+    - {fileID: 11400000, guid: ee0cb3205a1d90547980dbc7aee1615f, type: 2}
+    _Modifiers:
+    - _From: 0
+      _To: 3
+      _Fade: 0.1
+      _NormalizedStartTime: NaN
+    - _From: 1
+      _To: 3
+      _Fade: 0.18
+      _NormalizedStartTime: NaN
+    - _From: 2
+      _To: 3
+      _Fade: 0.28
+      _NormalizedStartTime: NaN
+    _Aliases: []
+    _AliasAllTransitions: 0
+--- !u!114 &2855640457264964512
+MonoBehaviour:
+  m_ObjectHideFlags: 17
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f04d4a67566152e40aaa01b8b745ff6b, type: 3}
+  m_Name: Editor Data
+  m_EditorClassIdentifier: 
+  _Library: {fileID: 11400000}
+  _Data:
+    _TransitionGroups: []
+    _TransitionSortMode: 0
