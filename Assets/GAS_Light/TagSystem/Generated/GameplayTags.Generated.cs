@@ -7,116 +7,116 @@ namespace WS_Modules.GAS.Generated
     public static class GameplayTags
     {
         /// <summary>Ability</summary>
-        public static readonly GameplayTag Tag_Ability = new GameplayTag(68);
+        public static readonly GameplayTag Tag_Ability = new GameplayTag(127);
         /// <summary>Ability.Action</summary>
-        public static readonly GameplayTag Tag_Ability_Action = new GameplayTag(69);
+        public static readonly GameplayTag Tag_Ability_Action = new GameplayTag(128);
         /// <summary>Ability.Action.Skill</summary>
-        public static readonly GameplayTag Tag_Ability_Action_Skill = new GameplayTag(67);
+        public static readonly GameplayTag Tag_Ability_Action_Skill = new GameplayTag(126);
         /// <summary>CueTest</summary>
-        public static readonly GameplayTag Tag_CueTest = new GameplayTag(53);
+        public static readonly GameplayTag Tag_CueTest = new GameplayTag(112);
         /// <summary>CueTest.Cue_Follow</summary>
-        public static readonly GameplayTag Tag_CueTest_Cue_Follow = new GameplayTag(57);
+        public static readonly GameplayTag Tag_CueTest_Cue_Follow = new GameplayTag(116);
         /// <summary>CueTest.Cue_Source</summary>
-        public static readonly GameplayTag Tag_CueTest_Cue_Source = new GameplayTag(55);
+        public static readonly GameplayTag Tag_CueTest_Cue_Source = new GameplayTag(114);
         /// <summary>CueTest.Cue_Target</summary>
-        public static readonly GameplayTag Tag_CueTest_Cue_Target = new GameplayTag(56);
+        public static readonly GameplayTag Tag_CueTest_Cue_Target = new GameplayTag(115);
         /// <summary>CueTest.Cue_world</summary>
-        public static readonly GameplayTag Tag_CueTest_Cue_world = new GameplayTag(54);
+        public static readonly GameplayTag Tag_CueTest_Cue_world = new GameplayTag(113);
         /// <summary>CueTest.GA</summary>
-        public static readonly GameplayTag Tag_CueTest_GA = new GameplayTag(63);
+        public static readonly GameplayTag Tag_CueTest_GA = new GameplayTag(122);
         /// <summary>CueTest.GA.Instant</summary>
-        public static readonly GameplayTag Tag_CueTest_GA_Instant = new GameplayTag(64);
+        public static readonly GameplayTag Tag_CueTest_GA_Instant = new GameplayTag(123);
         /// <summary>CueTest.GA.Passive</summary>
-        public static readonly GameplayTag Tag_CueTest_GA_Passive = new GameplayTag(65);
+        public static readonly GameplayTag Tag_CueTest_GA_Passive = new GameplayTag(124);
         /// <summary>CueTest.GA.Projectile</summary>
-        public static readonly GameplayTag Tag_CueTest_GA_Projectile = new GameplayTag(66);
+        public static readonly GameplayTag Tag_CueTest_GA_Projectile = new GameplayTag(125);
         /// <summary>CueTest.GE</summary>
-        public static readonly GameplayTag Tag_CueTest_GE = new GameplayTag(58);
+        public static readonly GameplayTag Tag_CueTest_GE = new GameplayTag(117);
         /// <summary>CueTest.GE.Duration</summary>
-        public static readonly GameplayTag Tag_CueTest_GE_Duration = new GameplayTag(60);
+        public static readonly GameplayTag Tag_CueTest_GE_Duration = new GameplayTag(119);
         /// <summary>CueTest.GE.Infinite</summary>
-        public static readonly GameplayTag Tag_CueTest_GE_Infinite = new GameplayTag(61);
+        public static readonly GameplayTag Tag_CueTest_GE_Infinite = new GameplayTag(120);
         /// <summary>CueTest.GE.Instant</summary>
-        public static readonly GameplayTag Tag_CueTest_GE_Instant = new GameplayTag(59);
+        public static readonly GameplayTag Tag_CueTest_GE_Instant = new GameplayTag(118);
         /// <summary>CueTest.GE.Periodic</summary>
-        public static readonly GameplayTag Tag_CueTest_GE_Periodic = new GameplayTag(62);
+        public static readonly GameplayTag Tag_CueTest_GE_Periodic = new GameplayTag(121);
         /// <summary>Intent</summary>
-        public static readonly GameplayTag Tag_Intent = new GameplayTag(80);
+        public static readonly GameplayTag Tag_Intent = new GameplayTag(138);
         /// <summary>Intent.Interaction</summary>
-        public static readonly GameplayTag Tag_Intent_Interaction = new GameplayTag(82);
+        public static readonly GameplayTag Tag_Intent_Interaction = new GameplayTag(140);
         /// <summary>Intent.Interaction.Execute</summary>
-        public static readonly GameplayTag Tag_Intent_Interaction_Execute = new GameplayTag(83);
+        public static readonly GameplayTag Tag_Intent_Interaction_Execute = new GameplayTag(141);
         /// <summary>Intent.Interaction.Next</summary>
-        public static readonly GameplayTag Tag_Intent_Interaction_Next = new GameplayTag(84);
+        public static readonly GameplayTag Tag_Intent_Interaction_Next = new GameplayTag(142);
         /// <summary>Intent.Interaction.Previous</summary>
-        public static readonly GameplayTag Tag_Intent_Interaction_Previous = new GameplayTag(85);
+        public static readonly GameplayTag Tag_Intent_Interaction_Previous = new GameplayTag(143);
         /// <summary>Intent.WantInteract</summary>
-        public static readonly GameplayTag Tag_Intent_WantInteract = new GameplayTag(81);
+        public static readonly GameplayTag Tag_Intent_WantInteract = new GameplayTag(139);
         /// <summary>MyTag</summary>
-        public static readonly GameplayTag Tag_MyTag = new GameplayTag(43);
+        public static readonly GameplayTag Tag_MyTag = new GameplayTag(102);
         /// <summary>MyTag.的</summary>
-        public static readonly GameplayTag Tag_MyTag_的 = new GameplayTag(44);
+        public static readonly GameplayTag Tag_MyTag_的 = new GameplayTag(103);
         /// <summary>NewTag</summary>
-        public static readonly GameplayTag Tag_NewTag = new GameplayTag(45);
+        public static readonly GameplayTag Tag_NewTag = new GameplayTag(104);
         /// <summary>NewTag.NewTag1</summary>
-        public static readonly GameplayTag Tag_NewTag_NewTag1 = new GameplayTag(46);
+        public static readonly GameplayTag Tag_NewTag_NewTag1 = new GameplayTag(105);
         /// <summary>NewTag.NewTag1.NewTag6</summary>
-        public static readonly GameplayTag Tag_NewTag_NewTag1_NewTag6 = new GameplayTag(47);
+        public static readonly GameplayTag Tag_NewTag_NewTag1_NewTag6 = new GameplayTag(106);
         /// <summary>State</summary>
-        public static readonly GameplayTag Tag_State = new GameplayTag(70);
+        public static readonly GameplayTag Tag_State = new GameplayTag(129);
         /// <summary>State.Block</summary>
-        public static readonly GameplayTag Tag_State_Block = new GameplayTag(87);
+        public static readonly GameplayTag Tag_State_Block = new GameplayTag(144);
         /// <summary>State.Block.AbilityActivation</summary>
-        public static readonly GameplayTag Tag_State_Block_AbilityActivation = new GameplayTag(89);
+        public static readonly GameplayTag Tag_State_Block_AbilityActivation = new GameplayTag(146);
         /// <summary>State.Block.Movement</summary>
-        public static readonly GameplayTag Tag_State_Block_Movement = new GameplayTag(88);
+        public static readonly GameplayTag Tag_State_Block_Movement = new GameplayTag(145);
         /// <summary>State.Locomotion</summary>
-        public static readonly GameplayTag Tag_State_Locomotion = new GameplayTag(90);
+        public static readonly GameplayTag Tag_State_Locomotion = new GameplayTag(147);
         /// <summary>State.Locomotion.ExternalLaunch</summary>
-        public static readonly GameplayTag Tag_State_Locomotion_ExternalLaunch = new GameplayTag(99);
+        public static readonly GameplayTag Tag_State_Locomotion_ExternalLaunch = new GameplayTag(155);
         /// <summary>State.Locomotion.Fall</summary>
-        public static readonly GameplayTag Tag_State_Locomotion_Fall = new GameplayTag(100);
+        public static readonly GameplayTag Tag_State_Locomotion_Fall = new GameplayTag(156);
         /// <summary>State.Locomotion.FallLand</summary>
-        public static readonly GameplayTag Tag_State_Locomotion_FallLand = new GameplayTag(101);
+        public static readonly GameplayTag Tag_State_Locomotion_FallLand = new GameplayTag(157);
         /// <summary>State.Locomotion.Idle</summary>
-        public static readonly GameplayTag Tag_State_Locomotion_Idle = new GameplayTag(91);
+        public static readonly GameplayTag Tag_State_Locomotion_Idle = new GameplayTag(148);
         /// <summary>State.Locomotion.Jump</summary>
-        public static readonly GameplayTag Tag_State_Locomotion_Jump = new GameplayTag(98);
+        public static readonly GameplayTag Tag_State_Locomotion_Jump = new GameplayTag(154);
         /// <summary>State.Locomotion.Run</summary>
-        public static readonly GameplayTag Tag_State_Locomotion_Run = new GameplayTag(95);
-        /// <summary>State.Locomotion.Stop</summary>
-        public static readonly GameplayTag Tag_State_Locomotion_Stop = new GameplayTag(97);
-        /// <summary>State.Locomotion.Walk</summary>
-        public static readonly GameplayTag Tag_State_Locomotion_Walk = new GameplayTag(94);
-        /// <summary>State.Locomotion.WalkStart</summary>
-        public static readonly GameplayTag Tag_State_Locomotion_WalkStart = new GameplayTag(92);
+        public static readonly GameplayTag Tag_State_Locomotion_Run = new GameplayTag(152);
         /// <summary>State.Locomotion.RunStart</summary>
-        public static readonly GameplayTag Tag_State_Locomotion_RunStart = new GameplayTag(93);
+        public static readonly GameplayTag Tag_State_Locomotion_RunStart = new GameplayTag(150);
+        /// <summary>State.Locomotion.Stop</summary>
+        public static readonly GameplayTag Tag_State_Locomotion_Stop = new GameplayTag(153);
+        /// <summary>State.Locomotion.Walk</summary>
+        public static readonly GameplayTag Tag_State_Locomotion_Walk = new GameplayTag(151);
+        /// <summary>State.Locomotion.WalkStart</summary>
+        public static readonly GameplayTag Tag_State_Locomotion_WalkStart = new GameplayTag(149);
         /// <summary>State.Skill</summary>
-        public static readonly GameplayTag Tag_State_Skill = new GameplayTag(72);
+        public static readonly GameplayTag Tag_State_Skill = new GameplayTag(130);
         /// <summary>State.Skill.Interruptible</summary>
-        public static readonly GameplayTag Tag_State_Skill_Interruptible = new GameplayTag(78);
+        public static readonly GameplayTag Tag_State_Skill_Interruptible = new GameplayTag(136);
         /// <summary>State.Skill.Phase</summary>
-        public static readonly GameplayTag Tag_State_Skill_Phase = new GameplayTag(73);
+        public static readonly GameplayTag Tag_State_Skill_Phase = new GameplayTag(131);
         /// <summary>State.Skill.Phase.Active</summary>
-        public static readonly GameplayTag Tag_State_Skill_Phase_Active = new GameplayTag(76);
+        public static readonly GameplayTag Tag_State_Skill_Phase_Active = new GameplayTag(134);
         /// <summary>State.Skill.Phase.None</summary>
-        public static readonly GameplayTag Tag_State_Skill_Phase_None = new GameplayTag(74);
+        public static readonly GameplayTag Tag_State_Skill_Phase_None = new GameplayTag(132);
         /// <summary>State.Skill.Phase.Recovery</summary>
-        public static readonly GameplayTag Tag_State_Skill_Phase_Recovery = new GameplayTag(77);
+        public static readonly GameplayTag Tag_State_Skill_Phase_Recovery = new GameplayTag(135);
         /// <summary>State.Skill.Phase.StartUp</summary>
-        public static readonly GameplayTag Tag_State_Skill_Phase_StartUp = new GameplayTag(75);
+        public static readonly GameplayTag Tag_State_Skill_Phase_StartUp = new GameplayTag(133);
         /// <summary>State.Skill.Uninterruptible</summary>
-        public static readonly GameplayTag Tag_State_Skill_Uninterruptible = new GameplayTag(79);
+        public static readonly GameplayTag Tag_State_Skill_Uninterruptible = new GameplayTag(137);
         /// <summary>Test</summary>
-        public static readonly GameplayTag Tag_Test = new GameplayTag(48);
+        public static readonly GameplayTag Tag_Test = new GameplayTag(107);
         /// <summary>Test.GE</summary>
-        public static readonly GameplayTag Tag_Test_GE = new GameplayTag(50);
+        public static readonly GameplayTag Tag_Test_GE = new GameplayTag(109);
         /// <summary>Test.GE.Granted</summary>
-        public static readonly GameplayTag Tag_Test_GE_Granted = new GameplayTag(51);
+        public static readonly GameplayTag Tag_Test_GE_Granted = new GameplayTag(110);
         /// <summary>Test.GE.Required</summary>
-        public static readonly GameplayTag Tag_Test_GE_Required = new GameplayTag(52);
+        public static readonly GameplayTag Tag_Test_GE_Required = new GameplayTag(111);
         /// <summary>Test.Test_SetByCaller</summary>
-        public static readonly GameplayTag Tag_Test_Test_SetByCaller = new GameplayTag(49);
+        public static readonly GameplayTag Tag_Test_Test_SetByCaller = new GameplayTag(108);
     }
 }

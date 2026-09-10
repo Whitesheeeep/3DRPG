@@ -229,6 +229,8 @@ namespace RPG.SkillSystem
 
         /// <summary>
         /// 按 LayerMask 查询后的固定规则解析目标、排除自身、执行业务过滤并完成 Clip 内去重。
+        /// 去重时按照一个 Clip 内首次命中优先原则，避免同一目标在同一 Clip 内多次命中。
+        /// 因此如果想要多次命中同一目标，可以在不同的 Clip 内配置多次检测。
         /// </summary>
         /// <param name="clip">产生检测的攻击片段。</param>
         /// <param name="frame">当前逻辑帧。</param>
