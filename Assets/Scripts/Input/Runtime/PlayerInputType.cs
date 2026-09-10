@@ -22,6 +22,10 @@ namespace RPG.PlayerInputSystem
         CharacterSlot3,
         /// <summary>切换到队伍槽位 4。</summary>
         CharacterSlot4,
+        /// <summary>请求打开或关闭背包窗口。</summary>
+        BagWindow,
+        /// <summary>请求关闭当前可取消的游戏窗口。</summary>
+        CancelWindow,
         /// <summary>持续奔跑输入；追加到枚举末尾避免改变已有序列化值。</summary>
         Sprint
     }

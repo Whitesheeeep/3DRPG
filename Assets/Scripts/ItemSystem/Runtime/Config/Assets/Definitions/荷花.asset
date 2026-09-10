@@ -19,8 +19,8 @@ MonoBehaviour:
   category: 0
   rarity: 1
   sortPriority: 600
-  iconAddress: 
-  iconSpriteName: 
+  iconAddress: ItemIcons_DevelopmentMaterial
+  iconSpriteName: UI_ItemIcon_100023
   worldPrefabAddress: 
   editorPreviewIcon: {fileID: 21300000, guid: cc0e3e60ea6f5b2469f53c9d6cafa6d3, type: 3}
   maxQuantity: 9999

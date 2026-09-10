@@ -290,7 +290,7 @@ namespace RPG.ItemSystem.Editor
                 if (stages == null) return hash;
                 for (int index = 0; index < stages.Count; index++)
                 {
-                    WeaponGrowthCost cost = stages[index]?.Cost;
+                    GrowthCost cost = stages[index]?.Cost;
                     hash = MixStructureHash(hash, cost?.ItemCosts?.Count ?? 0);
                     hash = MixStructureHash(hash, cost?.CurrencyCosts?.Count ?? 0);
                 }
@@ -311,7 +311,7 @@ namespace RPG.ItemSystem.Editor
                 if (stages == null) return hash;
                 for (int index = 0; index < stages.Count; index++)
                 {
-                    WeaponGrowthCost cost = stages[index]?.Cost;
+                    GrowthCost cost = stages[index]?.Cost;
                     hash = MixStructureHash(hash, cost?.ItemCosts?.Count ?? 0);
                     hash = MixStructureHash(hash, cost?.CurrencyCosts?.Count ?? 0);
                 }

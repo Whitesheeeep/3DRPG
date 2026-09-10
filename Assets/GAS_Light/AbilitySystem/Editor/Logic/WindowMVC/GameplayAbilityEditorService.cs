@@ -175,8 +175,14 @@ namespace WS_Modules.GAS.Editor
                 "Create Gameplay Ability",
                 abilityType.Name,
                 "asset",
-                "Choose where to create the Gameplay Ability asset.");
+                "Choose where to create the Gameplay Ability asset.",
+                GASEditorPreferences.GetLastCreateFolder(
+                    GASEditorAssetFolderKind.GameplayAbility));
             if (string.IsNullOrEmpty(path)) return null;
+
+            GASEditorPreferences.RecordCreateAssetPath(
+                GASEditorAssetFolderKind.GameplayAbility,
+                path);
 
             var ability = (GameplayAbilityData)ScriptableObject.CreateInstance(abilityType);
             AssetDatabase.CreateAsset(ability, path);

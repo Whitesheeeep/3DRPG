@@ -21,6 +21,7 @@
                 <ui:ScrollView class="attribute-details">
                     <ui:Label text="Attribute Spec" class="attribute-section-title" />
                     <ui:TextField name="SpecNameField" label="Name" is-delayed="true" />
+                    <ui:TextField name="SpecDisplayNameField" label="Display Name" is-delayed="true" />
                     <ui:TextField name="SpecGuidField" label="Guid" is-read-only="true" />
                     <ui:IntegerField name="SpecIdField" label="AttributeId" is-read-only="true" />
                     <ui:TextField name="SpecDescriptionField" label="Description" multiline="true" is-delayed="true" />

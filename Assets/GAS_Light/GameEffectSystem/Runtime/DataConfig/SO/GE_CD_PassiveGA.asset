@@ -42,6 +42,7 @@ MonoBehaviour:
         attribute:
           id: 1
           name: MaxHealth
+          displayName: 生命值上限
         type: 0
         priority: 0
         magnitude: 1

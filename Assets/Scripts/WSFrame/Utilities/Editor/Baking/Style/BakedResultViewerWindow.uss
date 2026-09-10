@@ -29,6 +29,7 @@
 .baked-result-status {
     margin-top: 4px;
     font-size: 11px;
+    white-space: normal;
     color: rgb(177, 187, 200);
 }
 

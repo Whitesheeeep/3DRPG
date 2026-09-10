@@ -18,6 +18,7 @@ namespace RPG.Character.Editor
         private readonly Button duplicateButton;
         private readonly Button removeButton;
         private readonly Button deleteButton;
+        private readonly Button applyDefaultsButton;
         private readonly Button validateCurrentButton;
         private readonly Button validateDatabaseButton;
         private readonly Button pingButton;
@@ -53,12 +54,18 @@ namespace RPG.Character.Editor
         public event Action RemoveRequested;
         /// <summary>删除资产按钮事件。</summary>
         public event Action DeleteRequested;
+        /// <summary>回归角色通用默认值按钮事件。</summary>
+        public event Action ApplyDefaultsRequested;
         /// <summary>验证当前按钮事件。</summary>
         public event Action ValidateCurrentRequested;
         /// <summary>验证数据库按钮事件。</summary>
         public event Action ValidateDatabaseRequested;
         /// <summary>定位资产按钮事件。</summary>
         public event Action PingRequested;
+        /// <summary>烘焙角色成长按钮事件。</summary>
+        public event Action BakeGrowthRequested;
+        /// <summary>查看角色成长烘焙结果按钮事件。</summary>
+        public event Action ViewBakedResultRequested;
         #endregion
 
         #region 生命周期
@@ -77,6 +84,7 @@ namespace RPG.Character.Editor
             duplicateButton = Require<Button>(root, "DuplicateButton");
             removeButton = Require<Button>(root, "RemoveButton");
             deleteButton = Require<Button>(root, "DeleteButton");
+            applyDefaultsButton = Require<Button>(root, "ApplyDefaultsButton");
             validateCurrentButton = Require<Button>(root, "ValidateCurrentButton");
             validateDatabaseButton = Require<Button>(root, "ValidateDatabaseButton");
             pingButton = Require<Button>(root, "PingButton");
@@ -91,10 +99,13 @@ namespace RPG.Character.Editor
             detailsView.SideIconChanged += OnSideIconChanged;
             detailsView.AvatarChanged += OnAvatarChanged;
             detailsView.PropertiesChanged += OnPropertiesChanged;
+            detailsView.BakeGrowthRequested += OnBakeGrowthRequested;
+            detailsView.ViewBakedResultRequested += OnViewBakedResultRequested;
             createButton.clicked += OnCreateClicked;
             duplicateButton.clicked += OnDuplicateClicked;
             removeButton.clicked += OnRemoveClicked;
             deleteButton.clicked += OnDeleteClicked;
+            applyDefaultsButton.clicked += OnApplyDefaultsClicked;
             validateCurrentButton.clicked += OnValidateCurrentClicked;
             validateDatabaseButton.clicked += OnValidateDatabaseClicked;
             pingButton.clicked += OnPingClicked;
@@ -114,10 +125,13 @@ namespace RPG.Character.Editor
             detailsView.SideIconChanged -= OnSideIconChanged;
             detailsView.AvatarChanged -= OnAvatarChanged;
             detailsView.PropertiesChanged -= OnPropertiesChanged;
+            detailsView.BakeGrowthRequested -= OnBakeGrowthRequested;
+            detailsView.ViewBakedResultRequested -= OnViewBakedResultRequested;
             createButton.clicked -= OnCreateClicked;
             duplicateButton.clicked -= OnDuplicateClicked;
             removeButton.clicked -= OnRemoveClicked;
             deleteButton.clicked -= OnDeleteClicked;
+            applyDefaultsButton.clicked -= OnApplyDefaultsClicked;
             validateCurrentButton.clicked -= OnValidateCurrentClicked;
             validateDatabaseButton.clicked -= OnValidateDatabaseClicked;
             pingButton.clicked -= OnPingClicked;
@@ -208,12 +222,18 @@ namespace RPG.Character.Editor
         private void OnRemoveClicked() => RemoveRequested?.Invoke();
         /// <summary>转发删除按钮。</summary>
         private void OnDeleteClicked() => DeleteRequested?.Invoke();
+        /// <summary>转发回归默认值按钮。</summary>
+        private void OnApplyDefaultsClicked() => ApplyDefaultsRequested?.Invoke();
         /// <summary>转发当前验证按钮。</summary>
         private void OnValidateCurrentClicked() => ValidateCurrentRequested?.Invoke();
         /// <summary>转发数据库验证按钮。</summary>
         private void OnValidateDatabaseClicked() => ValidateDatabaseRequested?.Invoke();
         /// <summary>转发定位按钮。</summary>
         private void OnPingClicked() => PingRequested?.Invoke();
+        /// <summary>转发烘焙成长按钮。</summary>
+        private void OnBakeGrowthRequested() => BakeGrowthRequested?.Invoke();
+        /// <summary>转发查看烘焙结果按钮。</summary>
+        private void OnViewBakedResultRequested() => ViewBakedResultRequested?.Invoke();
         #endregion
 
         #region 内部辅助
@@ -225,6 +245,7 @@ namespace RPG.Character.Editor
             duplicateButton.SetEnabled(hasSelection);
             removeButton.SetEnabled(hasSelection);
             deleteButton.SetEnabled(hasSelection);
+            applyDefaultsButton.SetEnabled(hasSelection);
             validateCurrentButton.SetEnabled(hasSelection);
             validateDatabaseButton.SetEnabled(hasDatabase);
             pingButton.SetEnabled(hasSelection);

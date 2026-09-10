@@ -7,18 +7,18 @@ namespace WS_Modules.GAS.Generated
     public static class GameplayAttributes
     {
         /// <summary>Armor</summary>
-        public static readonly GameplayAttribute Attribute_Armor = new GameplayAttribute(2, "Armor");
+        public static readonly GameplayAttribute Attribute_Armor = new GameplayAttribute(2, "Armor", "防御力");
         /// <summary>AttackPower</summary>
-        public static readonly GameplayAttribute Attribute_AttackPower = new GameplayAttribute(5, "AttackPower");
+        public static readonly GameplayAttribute Attribute_AttackPower = new GameplayAttribute(5, "AttackPower", "攻击力");
         /// <summary>CriticalChance</summary>
-        public static readonly GameplayAttribute Attribute_CriticalChance = new GameplayAttribute(6, "CriticalChance");
+        public static readonly GameplayAttribute Attribute_CriticalChance = new GameplayAttribute(6, "CriticalChance", "暴击率");
         /// <summary>Health</summary>
-        public static readonly GameplayAttribute Attribute_Health = new GameplayAttribute(0, "Health");
+        public static readonly GameplayAttribute Attribute_Health = new GameplayAttribute(0, "Health", "当前生命值");
         /// <summary>MP</summary>
-        public static readonly GameplayAttribute Attribute_MP = new GameplayAttribute(3, "MP");
+        public static readonly GameplayAttribute Attribute_MP = new GameplayAttribute(3, "MP", "能量");
         /// <summary>MaxHealth</summary>
-        public static readonly GameplayAttribute Attribute_MaxHealth = new GameplayAttribute(1, "MaxHealth");
+        public static readonly GameplayAttribute Attribute_MaxHealth = new GameplayAttribute(1, "MaxHealth", "生命值上限");
         /// <summary>Speed</summary>
-        public static readonly GameplayAttribute Attribute_Speed = new GameplayAttribute(4, "Speed");
+        public static readonly GameplayAttribute Attribute_Speed = new GameplayAttribute(4, "Speed", "移动速度");
     }
 }

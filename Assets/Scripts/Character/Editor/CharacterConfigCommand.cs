@@ -10,6 +10,8 @@ namespace RPG.Character.Editor
         PingAsset,
         /// <summary>验证当前角色配置。</summary>
         Validate,
+        /// <summary>应用角色数据库中的稳定通用默认值。</summary>
+        ApplyDefaults,
         /// <summary>仅从角色数据库移除配置。</summary>
         RemoveFromDatabase,
         /// <summary>将角色配置资产移入 Unity 回收站。</summary>

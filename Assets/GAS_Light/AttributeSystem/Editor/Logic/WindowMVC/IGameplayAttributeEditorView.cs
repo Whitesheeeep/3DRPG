@@ -28,6 +28,8 @@ namespace WS_Modules.GAS.Editor
         event Action DeleteSpecRequested;
         /// <summary>提交 Spec 名称时触发。</summary>
         event Action<string> SpecNameSubmitted;
+        /// <summary>提交 Spec 展示名称时触发。</summary>
+        event Action<string> SpecDisplayNameSubmitted;
         /// <summary>提交 Spec 说明时触发。</summary>
         event Action<string> SpecDescriptionSubmitted;
         /// <summary>请求 Bake Specs 时触发。</summary>

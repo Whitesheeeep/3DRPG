@@ -15,4 +15,11 @@ MonoBehaviour:
   characters:
   - {fileID: 11400000, guid: c36cba51eac191947936b273c1792996, type: 2}
   - {fileID: 11400000, guid: b25abd678e4be2b489491d72056e6411, type: 2}
+  defaultData:
+    defaultRarity: 5
+    defaultSideIconAddress: CharacterSideIcons
+    defaultAvatarAddress: Characters
+    defaultGravity: 9.81
+    defaultMaxLevel: 90
+    defaultMaxAscensionRank: 6
   nextCharacterIdNumber: 4

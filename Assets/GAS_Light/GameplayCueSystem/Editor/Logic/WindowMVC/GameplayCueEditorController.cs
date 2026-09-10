@@ -180,15 +180,21 @@ namespace WS_Modules.GAS.Editor
             ScheduleValidation();
         }
 
-        // 创建数据库使用 Unity 标准项目路径对话框。
+        /// <summary>打开 Cue Database 创建路径面板并创建数据库资产。</summary>
         private void OnCreateDatabaseRequested()
         {
             string path = EditorUtility.SaveFilePanelInProject(
                 "创建 Gameplay Cue Database",
                 "GameplayCueDatabase",
                 "asset",
-                "选择 Cue Database 保存路径。");
+                "选择 Cue Database 保存路径。",
+                GASEditorPreferences.GetLastCreateFolder(
+                    GASEditorAssetFolderKind.GameplayCueDatabase));
             if (string.IsNullOrEmpty(path)) return;
+
+            GASEditorPreferences.RecordCreateAssetPath(
+                GASEditorAssetFolderKind.GameplayCueDatabase,
+                path);
 
             GameplayCueDatabase database = service.CreateDatabase(path, out string error);
             if (database == null)
@@ -200,7 +206,7 @@ namespace WS_Modules.GAS.Editor
             SetDatabase(database, false);
         }
 
-        // 创建 CueData 并由 Service 自动加入当前 Database。
+        /// <summary>打开 CueData 创建路径面板并由 Service 注册新资产。</summary>
         private void OnCreateCueRequested()
         {
             if (currentDatabase == null)
@@ -213,8 +219,14 @@ namespace WS_Modules.GAS.Editor
                 "创建 Gameplay Cue",
                 "GameplayCueData",
                 "asset",
-                "选择 CueData 保存路径。");
+                "选择 CueData 保存路径。",
+                GASEditorPreferences.GetLastCreateFolder(
+                    GASEditorAssetFolderKind.GameplayCue));
             if (string.IsNullOrEmpty(path)) return;
+
+            GASEditorPreferences.RecordCreateAssetPath(
+                GASEditorAssetFolderKind.GameplayCue,
+                path);
 
             if (!service.TryCreateCue(currentDatabase, path, out GameplayCueData cue, out string error))
             {

@@ -34,6 +34,7 @@ namespace WS_Modules.GAS.Editor
         private readonly ListView specList;
         private readonly TreeView definitionTree;
         private readonly TextField specNameField;
+        private readonly TextField specDisplayNameField;
         private readonly TextField specGuidField;
         private readonly IntegerField specIdField;
         private readonly TextField specDescriptionField;
@@ -76,6 +77,8 @@ namespace WS_Modules.GAS.Editor
         /// <inheritdoc />
         public event Action<string> SpecNameSubmitted;
         /// <inheritdoc />
+        public event Action<string> SpecDisplayNameSubmitted;
+        /// <inheritdoc />
         public event Action<string> SpecDescriptionSubmitted;
         /// <inheritdoc />
         public event Action BakeRequested;
@@ -113,6 +116,7 @@ namespace WS_Modules.GAS.Editor
             specList = Require<ListView>("SpecList");
             definitionTree = Require<TreeView>("DefinitionTree");
             specNameField = Require<TextField>("SpecNameField");
+            specDisplayNameField = Require<TextField>("SpecDisplayNameField");
             specGuidField = Require<TextField>("SpecGuidField");
             specIdField = Require<IntegerField>("SpecIdField");
             specDescriptionField = Require<TextField>("SpecDescriptionField");
@@ -204,6 +208,7 @@ namespace WS_Modules.GAS.Editor
                 bool hasSelection = node != null;
                 SetSpecDetailsEnabled(hasSelection);
                 specNameField.SetValueWithoutNotify(hasSelection ? node.Name : string.Empty);
+                specDisplayNameField.SetValueWithoutNotify(hasSelection ? node.DisplayName : string.Empty);
                 specGuidField.SetValueWithoutNotify(hasSelection ? node.Guid : string.Empty);
                 int id = hasSelection &&
                          currentRegistry != null &&
@@ -268,7 +273,7 @@ namespace WS_Modules.GAS.Editor
                 renderedSelectableNodes.Clear();
                 if (selectableNodes != null) renderedSelectableNodes.AddRange(selectableNodes);
                 definitionAttributeField.choices =
-                    renderedSelectableNodes.Select(node => node.Name).ToList();
+                    renderedSelectableNodes.Select(FormatAttributeChoice).ToList();
 
                 bool hasSelection = definition != null;
                 GameplayAttribute selectedAttribute = hasSelection
@@ -281,7 +286,7 @@ namespace WS_Modules.GAS.Editor
                     currentRegistry.TryGetBakedAttribute(node.Guid, out GameplayAttribute candidate) &&
                     candidate == selectedAttribute);
                 definitionAttributeField.SetValueWithoutNotify(
-                    choiceIndex >= 0 ? renderedSelectableNodes[choiceIndex].Name : string.Empty);
+                    choiceIndex >= 0 ? FormatAttributeChoice(renderedSelectableNodes[choiceIndex]) : string.Empty);
                 definitionTypeField.SetValueWithoutNotify(
                     hasSelection ? definition.Type : GameplayAttributeType.Stat);
                 definitionDefaultField.SetValueWithoutNotify(
@@ -350,7 +355,7 @@ namespace WS_Modules.GAS.Editor
         {
             if (index < 0 || index >= renderedSpecs.Count) return;
             GameplayAttributeEditorNode node = renderedSpecs[index];
-            element.Q<Label>("NameLabel").text = node.Name;
+            element.Q<Label>("NameLabel").text = $"{node.DisplayName} ({node.Name})";
             GameplayAttribute attribute = GameplayAttribute.Empty;
             bool baked = currentRegistry != null &&
                          currentRegistry.TryGetBakedAttribute(node.Guid, out attribute);
@@ -367,7 +372,7 @@ namespace WS_Modules.GAS.Editor
             if (item is GameplayAttributeDefinition definition)
             {
                 element.Q<Label>("NameLabel").text =
-                    ResolveAttributeName(definition.Attribute.Id);
+                    ResolveAttributeDisplayName(definition.Attribute.Id);
                 element.Q<Label>("TypeLabel").text = definition.Type.ToString();
                 return;
             }
@@ -396,6 +401,7 @@ namespace WS_Modules.GAS.Editor
             Require<Button>("DeleteSpecButton").clicked += OnDeleteSpecClicked;
             Require<Button>("BakeButton").clicked += OnBakeClicked;
             specNameField.RegisterValueChangedCallback(OnSpecNameChanged);
+            specDisplayNameField.RegisterValueChangedCallback(OnSpecDisplayNameChanged);
             specDescriptionField.RegisterValueChangedCallback(OnSpecDescriptionChanged);
             Require<Button>("CreateSetButton").clicked += OnCreateSetClicked;
             Require<Button>("AddStatButton").clicked += OnAddStatClicked;
@@ -423,6 +429,7 @@ namespace WS_Modules.GAS.Editor
             Require<Button>("DeleteSpecButton").clicked -= OnDeleteSpecClicked;
             Require<Button>("BakeButton").clicked -= OnBakeClicked;
             specNameField.UnregisterValueChangedCallback(OnSpecNameChanged);
+            specDisplayNameField.UnregisterValueChangedCallback(OnSpecDisplayNameChanged);
             specDescriptionField.UnregisterValueChangedCallback(OnSpecDescriptionChanged);
             Require<Button>("CreateSetButton").clicked -= OnCreateSetClicked;
             Require<Button>("AddStatButton").clicked -= OnAddStatClicked;
@@ -497,6 +504,13 @@ namespace WS_Modules.GAS.Editor
             if (!renderingDetails) SpecNameSubmitted?.Invoke(evt.newValue);
         }
 
+        /// <summary>转发 DisplayName 输入提交。</summary>
+        /// <param name="evt">DisplayName 输入变化事件。</param>
+        private void OnSpecDisplayNameChanged(ChangeEvent<string> evt)
+        {
+            if (!renderingDetails) SpecDisplayNameSubmitted?.Invoke(evt.newValue);
+        }
+
         // Description 在 delayed TextField 结束编辑时提交。
         private void OnSpecDescriptionChanged(ChangeEvent<string> evt)
         {
@@ -517,6 +531,12 @@ namespace WS_Modules.GAS.Editor
 
         // Attribute 下拉选择完成后立即提交当前完整 Definition。
         private void OnDefinitionAttributeChanged(ChangeEvent<string> evt) => SubmitDefinition();
+
+        /// <summary>格式化 Definition 下拉中的玩家名称和技术名称。</summary>
+        /// <param name="node">待格式化的 Attribute Spec。</param>
+        /// <returns>同时包含 DisplayName 与 Name 的选项文本。</returns>
+        private static string FormatAttributeChoice(GameplayAttributeEditorNode node) =>
+            $"{node.DisplayName} ({node.Name})";
 
         // Type 枚举选择完成后立即提交当前完整 Definition。
         private void OnDefinitionTypeChanged(ChangeEvent<Enum> evt) => SubmitDefinition();
@@ -589,10 +609,20 @@ namespace WS_Modules.GAS.Editor
                 ? node.Name
                 : $"Invalid AttributeId ({id})";
 
+        /// <summary>使用当前 Registry 解析 Attribute 的展示名称与技术名称。</summary>
+        /// <param name="id">稳定 AttributeId。</param>
+        /// <returns>展示名称、技术名称或失效 ID 诊断文本。</returns>
+        private string ResolveAttributeDisplayName(int id) =>
+            currentRegistry != null &&
+            currentRegistry.TryGetNodeById(id, out GameplayAttributeEditorNode node)
+                ? $"{node.DisplayName} ({node.Name})"
+                : $"Invalid AttributeId ({id})";
+
         // 统一设置 Spec 详情可编辑状态。
         private void SetSpecDetailsEnabled(bool enabled)
         {
             specNameField.SetEnabled(enabled);
+            specDisplayNameField.SetEnabled(enabled);
             specDescriptionField.SetEnabled(enabled);
         }
 

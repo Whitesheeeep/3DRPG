@@ -8,7 +8,7 @@ using WS_Modules.GAS.AttributeSystem;
 
 namespace WS_Modules.GAS.Editor
 {
-    /// <summary>在 Inspector 中选择已烘焙 Gameplay Attribute，并同步序列化稳定 ID 与展示名称。</summary>
+    /// <summary>在 Inspector 中选择已烘焙 Gameplay Attribute，并同步序列化完整名称元数据。</summary>
     [CustomPropertyDrawer(typeof(GameplayAttribute))]
     public sealed class GameplayAttributePropertyDrawer : PropertyDrawer
     {
@@ -22,6 +22,7 @@ namespace WS_Modules.GAS.Editor
         {
             SerializedProperty idProperty = property.FindPropertyRelative("id");
             SerializedProperty nameProperty = property.FindPropertyRelative("name");
+            SerializedProperty displayNameProperty = property.FindPropertyRelative("displayName");
             if (idProperty == null)
             {
                 EditorGUI.HelpBox(position, "GameplayAttribute.id 无法序列化。", MessageType.Error);
@@ -49,9 +50,19 @@ namespace WS_Modules.GAS.Editor
                 {
                     idProperty.intValue = selectedId;
                     if (nameProperty != null)
-                        nameProperty.stringValue = selectedId >= 0 && registry.TryGetNodeById(selectedId, out GameplayAttributeEditorNode selectedNode)
-                            ? selectedNode.Name
-                            : string.Empty;
+                    {
+                        if (selectedId >= 0 && registry.TryGetNodeById(selectedId, out GameplayAttributeEditorNode selectedNode))
+                        {
+                            nameProperty.stringValue = selectedNode.Name;
+                            if (displayNameProperty != null)
+                                displayNameProperty.stringValue = selectedNode.DisplayName;
+                        }
+                        else
+                        {
+                            nameProperty.stringValue = string.Empty;
+                            if (displayNameProperty != null) displayNameProperty.stringValue = string.Empty;
+                        }
+                    }
                     idProperty.serializedObject.ApplyModifiedProperties();
                 });
             dropdown.Show(valueRect);
@@ -66,7 +77,7 @@ namespace WS_Modules.GAS.Editor
             if (registry == null) return error;
             if (attributeId < 0) return "None";
             return registry.TryGetNodeById(attributeId, out GameplayAttributeEditorNode node)
-                ? node.Name
+                ? $"{node.DisplayName} ({node.Name})"
                 : $"Invalid AttributeId ({attributeId})";
         }
 

@@ -105,6 +105,7 @@ namespace WS_Modules.GAS.Editor
             view.CreateSpecRequested += OnCreateSpecRequested;
             view.DeleteSpecRequested += OnDeleteSpecRequested;
             view.SpecNameSubmitted += OnSpecNameSubmitted;
+            view.SpecDisplayNameSubmitted += OnSpecDisplayNameSubmitted;
             view.SpecDescriptionSubmitted += OnSpecDescriptionSubmitted;
             view.BakeRequested += OnBakeRequested;
             view.CreateSetRequested += OnCreateSetRequested;
@@ -126,6 +127,7 @@ namespace WS_Modules.GAS.Editor
             view.CreateSpecRequested -= OnCreateSpecRequested;
             view.DeleteSpecRequested -= OnDeleteSpecRequested;
             view.SpecNameSubmitted -= OnSpecNameSubmitted;
+            view.SpecDisplayNameSubmitted -= OnSpecDisplayNameSubmitted;
             view.SpecDescriptionSubmitted -= OnSpecDescriptionSubmitted;
             view.BakeRequested -= OnBakeRequested;
             view.CreateSetRequested -= OnCreateSetRequested;
@@ -211,6 +213,16 @@ namespace WS_Modules.GAS.Editor
             GameplayAttributeEditorNode node = FindSelectedSpec();
             if (!service.TryRenameSpec(registry, node, name, out string error))
                 view.ShowError("Rename Attribute Spec", error);
+            RefreshAll();
+        }
+
+        /// <summary>校验并提交面向玩家的 Attribute 展示名称。</summary>
+        /// <param name="displayName">候选展示名称。</param>
+        private void OnSpecDisplayNameSubmitted(string displayName)
+        {
+            GameplayAttributeEditorNode node = FindSelectedSpec();
+            if (!service.TrySetSpecDisplayName(registry, node, displayName, out string error))
+                view.ShowError("Edit Attribute Display Name", error);
             RefreshAll();
         }
 
@@ -341,10 +353,10 @@ namespace WS_Modules.GAS.Editor
                 for (int i = 0; i < registry.Nodes.Count; i++)
                 {
                     GameplayAttributeEditorNode node = registry.Nodes[i];
-                    if (node != null && MatchesSearch(node.Name)) items.Add(node);
+                    if (node != null && MatchesSearch(node)) items.Add(node);
                 }
 
-            items.Sort((left, right) => string.Compare(left.Name, right.Name, StringComparison.Ordinal));
+            items.Sort((left, right) => string.Compare(left.DisplayName, right.DisplayName, StringComparison.Ordinal));
             if (!items.Any(item => item.Guid == selectedSpecGuid)) selectedSpecGuid = string.Empty;
             view.RenderSpecs(items, selectedSpecGuid);
             RefreshSpecDetails();
@@ -362,13 +374,12 @@ namespace WS_Modules.GAS.Editor
                 {
                     GameplayAttributeDefinition definition = set.Definitions[i];
                     if (definition == null) continue;
-                    string name = ResolveAttributeName(definition.Attribute.Id);
-                    if (MatchesSearch(name)) items.Add(definition);
+                    if (MatchesSearch(definition.Attribute)) items.Add(definition);
                 }
 
             items.Sort((left, right) => string.Compare(
-                ResolveAttributeName(left.Attribute.Id),
-                ResolveAttributeName(right.Attribute.Id),
+                ResolveAttributeDisplayName(left.Attribute.Id),
+                ResolveAttributeDisplayName(right.Attribute.Id),
                 StringComparison.Ordinal));
             if (!items.Any(item => item.Attribute.Id == selectedDefinitionId))
                 selectedDefinitionId = -1;
@@ -439,7 +450,7 @@ namespace WS_Modules.GAS.Editor
                     result.Add(node);
             }
 
-            result.Sort((left, right) => string.Compare(left.Name, right.Name, StringComparison.Ordinal));
+            result.Sort((left, right) => string.Compare(left.DisplayName, right.DisplayName, StringComparison.Ordinal));
             return result;
         }
 
@@ -449,11 +460,37 @@ namespace WS_Modules.GAS.Editor
                 ? node.Name
                 : $"Invalid AttributeId ({id})";
 
+        /// <summary>使用 Registry 解析面向玩家的展示名称。</summary>
+        /// <param name="id">稳定 AttributeId。</param>
+        /// <returns>展示名称或失效 ID 诊断文本。</returns>
+        private string ResolveAttributeDisplayName(int id) =>
+            registry != null && registry.TryGetNodeById(id, out GameplayAttributeEditorNode node)
+                ? node.DisplayName
+                : $"Invalid AttributeId ({id})";
+
         // 使用 OrdinalIgnoreCase 过滤平铺名称。
         private bool MatchesSearch(string value) =>
             string.IsNullOrEmpty(search) ||
             (!string.IsNullOrEmpty(value) &&
              value.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0);
+
+        /// <summary>判断 Spec 是否命中展示名称、技术名称或稳定 ID。</summary>
+        /// <param name="node">待搜索 Spec。</param>
+        /// <returns>命中当前搜索条件时返回 true。</returns>
+        private bool MatchesSearch(GameplayAttributeEditorNode node) =>
+            MatchesSearch(node?.DisplayName) ||
+            MatchesSearch(node?.Name) ||
+            (registry != null && node != null &&
+             registry.TryGetBakedAttribute(node.Guid, out GameplayAttribute attribute) &&
+             MatchesSearch(attribute.Id.ToString()));
+
+        /// <summary>判断 Attribute 是否命中展示名称、技术名称或稳定 ID。</summary>
+        /// <param name="attribute">待搜索 Attribute。</param>
+        /// <returns>命中当前搜索条件时返回 true。</returns>
+        private bool MatchesSearch(GameplayAttribute attribute) =>
+            MatchesSearch(attribute.DisplayName) ||
+            MatchesSearch(attribute.Name) ||
+            MatchesSearch(attribute.Id.ToString());
 
         #endregion
     }

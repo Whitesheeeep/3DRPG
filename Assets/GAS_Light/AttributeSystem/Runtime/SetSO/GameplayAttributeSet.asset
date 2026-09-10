@@ -16,6 +16,7 @@ MonoBehaviour:
   - attribute:
       id: 0
       name: Health
+      displayName: 当前生命值
     type: 1
     defaultValue: 3
     minValue: 0
@@ -26,6 +27,7 @@ MonoBehaviour:
   - attribute:
       id: 1
       name: MaxHealth
+      displayName: 生命值上限
     type: 0
     defaultValue: 65
     minValue: 0
@@ -36,6 +38,7 @@ MonoBehaviour:
   - attribute:
       id: 2
       name: Armor
+      displayName: 防御力
     type: 0
     defaultValue: 100
     minValue: 0
@@ -46,6 +49,7 @@ MonoBehaviour:
   - attribute:
       id: 3
       name: MP
+      displayName: 能量
     type: 1
     defaultValue: 0
     minValue: 0
@@ -56,6 +60,7 @@ MonoBehaviour:
   - attribute:
       id: 4
       name: Speed
+      displayName: 移动速度
     type: 0
     defaultValue: 2.5
     minValue: 0
@@ -66,6 +71,7 @@ MonoBehaviour:
   - attribute:
       id: 5
       name: AttackPower
+      displayName: 攻击力
     type: 0
     defaultValue: 0
     minValue: -Infinity
@@ -76,6 +82,7 @@ MonoBehaviour:
   - attribute:
       id: 6
       name: CriticalChance
+      displayName: 暴击率
     type: 0
     defaultValue: 0
     minValue: -Infinity

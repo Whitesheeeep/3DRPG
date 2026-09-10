@@ -163,7 +163,7 @@ namespace RPG.ItemSystem
     {
         [SerializeField, MinValue(1), LabelText("所需等级")] private int requiredLevel = 20;
         [SerializeField, MinValue(1), LabelText("突破后等级上限")] private int maxLevelAfter = 40;
-        [SerializeField, LabelText("突破消耗")] private WeaponGrowthCost cost = new();
+        [SerializeField, LabelText("突破消耗")] private GrowthCost cost = new();
 
         /// <summary>获取触发突破所需等级。</summary>
         public int RequiredLevel => requiredLevel;
@@ -172,7 +172,7 @@ namespace RPG.ItemSystem
         public int MaxLevelAfter => maxLevelAfter;
 
         /// <summary>获取突破消耗。</summary>
-        public WeaponGrowthCost Cost => cost;
+        public GrowthCost Cost => cost;
     }
 
     /// <summary>武器精炼阶段配置。</summary>
@@ -181,7 +181,7 @@ namespace RPG.ItemSystem
     {
         [SerializeField, MinValue(1), LabelText("精炼阶数")] private int rank = 1;
         [SerializeField, MinValue(1), LabelText("所需同名武器数量")] private int requiredDuplicateCount = 1;
-        [SerializeField, LabelText("精炼消耗")] private WeaponGrowthCost cost = new();
+        [SerializeField, LabelText("精炼消耗")] private GrowthCost cost = new();
 
         /// <summary>获取精炼阶数。</summary>
         public int Rank => rank;
@@ -190,6 +190,6 @@ namespace RPG.ItemSystem
         public int RequiredDuplicateCount => requiredDuplicateCount;
 
         /// <summary>获取精炼消耗。</summary>
-        public WeaponGrowthCost Cost => cost;
+        public GrowthCost Cost => cost;
     }
 }

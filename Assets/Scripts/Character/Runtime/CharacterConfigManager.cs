@@ -11,6 +11,9 @@ namespace RPG.Character
 
         private CharacterDatabase database;
 
+        /// <summary>获取角色数据库是否已经注入。</summary>
+        public bool IsConfigured => database != null;
+
         #endregion
 
         #region 构造与注入

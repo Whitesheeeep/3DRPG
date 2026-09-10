@@ -65,7 +65,9 @@ namespace RPG.Character.Editor
             Undo.SetCurrentGroupName("创建角色配置");
             string characterId = string.Empty;
             string path = string.Empty;
+            string growthProfilePath = string.Empty;
             CharacterConfig config = null;
+            CharacterGrowthProfile growthProfile = null;
             try
             {
                 // 先分配最终 ID 再创建文件，避免临时资产名与 CharacterId 不一致。
@@ -74,11 +76,17 @@ namespace RPG.Character.Editor
                 config = ScriptableObject.CreateInstance<CharacterConfig>();
                 config.name = characterId;
                 AssetDatabase.CreateAsset(config, path);
+                growthProfilePath = GetGrowthProfileAssetPath(folder, characterId);
+                growthProfile = ScriptableObject.CreateInstance<CharacterGrowthProfile>();
+                growthProfile.name = $"{characterId}_GrowthProfile";
+                AssetDatabase.CreateAsset(growthProfile, growthProfilePath);
+                Undo.RegisterCreatedObjectUndo(growthProfile, "创建角色成长配置");
                 SerializedObject serializedObject = new SerializedObject(config);
                 serializedObject.FindProperty("characterId").FindPropertyRelative("value").stringValue = characterId;
                 serializedObject.FindProperty("characterName").stringValue = "新角色";
-                serializedObject.FindProperty("rarity").intValue = (int)CharacterRarity.Five;
+                serializedObject.FindProperty("growthProfile").objectReferenceValue = growthProfile;
                 serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                database.DefaultData.ApplyDefault(new SerializedObject(config));
                 Undo.RegisterCreatedObjectUndo(config, "创建角色配置");
                 AddToDatabase(database, config);
                 EditorUtility.SetDirty(config);
@@ -88,7 +96,11 @@ namespace RPG.Character.Editor
             }
             catch
             {
+                // 资产创建或默认值写入失败时，先移除可能已经加入数据库的引用，再删除两个新资产。
+                if (database != null && config != null)
+                    RemoveFromDatabase(database, config);
                 if (!string.IsNullOrEmpty(path)) AssetDatabase.DeleteAsset(path);
+                if (!string.IsNullOrEmpty(growthProfilePath)) AssetDatabase.DeleteAsset(growthProfilePath);
                 RestoreCharacterIdCounter(database, characterId);
                 AssetDatabase.SaveAssets();
                 throw;
@@ -108,7 +120,9 @@ namespace RPG.Character.Editor
             Undo.SetCurrentGroupName("复制角色配置");
             string characterId = string.Empty;
             string targetPath = string.Empty;
+            string growthProfileCopyPath = string.Empty;
             CharacterConfig copy = null;
+            CharacterGrowthProfile growthProfileCopy = null;
             try
             {
                 characterId = AllocateCharacterId(database);
@@ -118,9 +132,19 @@ namespace RPG.Character.Editor
                 AssetDatabase.ImportAsset(targetPath);
                 copy = AssetDatabase.LoadAssetAtPath<CharacterConfig>(targetPath);
                 if (copy == null) throw new InvalidOperationException($"复制后的角色配置无法加载：{targetPath}。");
+                if (source.GrowthProfile == null) throw new InvalidOperationException("源角色缺少 CharacterGrowthProfile，无法复制。");
+                string sourceGrowthProfilePath = AssetDatabase.GetAssetPath(source.GrowthProfile);
+                growthProfileCopyPath = AssetDatabase.GenerateUniqueAssetPath(sourceGrowthProfilePath);
+                if (!AssetDatabase.CopyAsset(sourceGrowthProfilePath, growthProfileCopyPath))
+                    throw new InvalidOperationException($"无法复制角色成长配置：{sourceGrowthProfilePath}。");
+                AssetDatabase.ImportAsset(growthProfileCopyPath);
+                growthProfileCopy = AssetDatabase.LoadAssetAtPath<CharacterGrowthProfile>(growthProfileCopyPath);
+                if (growthProfileCopy == null) throw new InvalidOperationException($"复制后的角色成长配置无法加载：{growthProfileCopyPath}。");
+                Undo.RegisterCreatedObjectUndo(growthProfileCopy, "复制角色成长配置");
                 Undo.RegisterCreatedObjectUndo(copy, "复制角色配置");
                 SerializedObject serializedObject = new SerializedObject(copy);
                 serializedObject.FindProperty("characterId").FindPropertyRelative("value").stringValue = characterId;
+                serializedObject.FindProperty("growthProfile").objectReferenceValue = growthProfileCopy;
                 serializedObject.ApplyModifiedPropertiesWithoutUndo();
                 copy.name = characterId;
                 AddToDatabase(database, copy);
@@ -130,7 +154,11 @@ namespace RPG.Character.Editor
             }
             catch
             {
+                // 复制事务中途失败时清理已经加入数据库的副本引用，避免留下悬空数组元素。
+                if (database != null && copy != null)
+                    RemoveFromDatabase(database, copy);
                 if (!string.IsNullOrEmpty(targetPath)) AssetDatabase.DeleteAsset(targetPath);
+                if (!string.IsNullOrEmpty(growthProfileCopyPath)) AssetDatabase.DeleteAsset(growthProfileCopyPath);
                 RestoreCharacterIdCounter(database, characterId);
                 AssetDatabase.SaveAssets();
                 throw;
@@ -174,6 +202,54 @@ namespace RPG.Character.Editor
             string path = AssetDatabase.GetAssetPath(config);
             if (!string.IsNullOrEmpty(path)) AssetDatabase.DeleteAsset(path);
             AssetDatabase.SaveAssets();
+        }
+
+        /// <summary>将角色数据库默认数据应用到当前配置并同步成长 Profile 最大等级。</summary>
+        /// <param name="database">角色数据库。</param>
+        /// <param name="config">目标角色配置。</param>
+        public void ApplyDefaults(CharacterDatabase database, CharacterConfig config)
+        {
+            if (database == null || config == null) throw new InvalidOperationException("应用角色默认值前必须选择数据库和角色。");
+            if (config.GrowthProfile == null) throw new InvalidOperationException("当前角色缺少 CharacterGrowthProfile。");
+            database.DefaultData.Validate();
+            Undo.IncrementCurrentGroup();
+            int undoGroup = Undo.GetCurrentGroup();
+            Undo.SetCurrentGroupName("应用角色默认值");
+            Undo.RecordObjects(new UnityEngine.Object[] { database, config, config.GrowthProfile }, "应用角色默认值");
+            database.DefaultData.ApplyDefault(new SerializedObject(config));
+            SynchronizeGrowthProfileMaxLevel(config);
+            EditorUtility.SetDirty(database);
+            EditorUtility.SetDirty(config);
+            EditorUtility.SetDirty(config.GrowthProfile);
+            AssetDatabase.SaveAssets();
+            Undo.CollapseUndoOperations(undoGroup);
+        }
+
+        /// <summary>将角色最大等级同步到其独立成长 Profile。</summary>
+        /// <param name="config">待同步角色配置。</param>
+        /// <returns>发生 Profile 修改时返回 true。</returns>
+        internal bool SynchronizeGrowthProfileMaxLevel(CharacterConfig config)
+        {
+            if (config == null || config.GrowthProfile == null) return false;
+            CharacterGrowthProfile profile = config.GrowthProfile;
+            if (profile.MaxLevel == config.MaxLevel) return false;
+            string[] characterGuids = AssetDatabase.FindAssets("t:CharacterConfig");
+            for (int index = 0; index < characterGuids.Length; index++)
+            {
+                CharacterConfig other = AssetDatabase.LoadAssetAtPath<CharacterConfig>(AssetDatabase.GUIDToAssetPath(characterGuids[index]));
+                if (other == null || other == config || other.GrowthProfile != profile || other.MaxLevel == config.MaxLevel) continue;
+                throw new InvalidOperationException($"成长配置“{profile.name}”被不同最大等级的角色共享，请先为当前角色创建独立成长配置。");
+            }
+
+            Undo.RecordObjects(new UnityEngine.Object[] { config, profile }, "同步角色成长最大等级");
+            SerializedObject serializedProfile = new SerializedObject(profile);
+            SerializedProperty maxLevel = serializedProfile.FindProperty("maxLevel");
+            if (maxLevel == null) throw new InvalidOperationException("角色成长配置缺少最大等级字段。");
+            maxLevel.intValue = config.MaxLevel;
+            serializedProfile.ApplyModifiedProperties();
+            EditorUtility.SetDirty(profile);
+            AssetDatabase.SaveAssets();
+            return true;
         }
 
         #endregion
@@ -296,6 +372,15 @@ namespace RPG.Character.Editor
             if (File.Exists(path) || AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path) != null)
                 throw new InvalidOperationException($"角色 ID“{characterId}”对应的资产路径已存在：{path}。");
             return path;
+        }
+
+        /// <summary>生成角色独立成长 Profile 的资产路径。</summary>
+        /// <param name="folder">角色数据库所在目录。</param>
+        /// <param name="characterId">角色稳定 ID。</param>
+        /// <returns>可创建的 Profile 资产路径。</returns>
+        private static string GetGrowthProfileAssetPath(string folder, string characterId)
+        {
+            return AssetDatabase.GenerateUniqueAssetPath($"{folder}/{characterId}_GrowthProfile.asset");
         }
 
         /// <summary>按 Address 和 SpriteName 校验唯一的 UISpriteAtlas 引用。</summary>

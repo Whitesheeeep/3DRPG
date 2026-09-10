@@ -47,7 +47,7 @@ namespace RPG.ItemSystem
                     GameplayEffectStaticModifierResult result = results[resultIndex];
                     contributions.Add(new WeaponEffectContribution(effectIndex, result.ModifierIndex, result));
                 }
-                evaluations.Add(new WeaponEffectEvaluation(effectIndex, status, contributions));
+                evaluations.Add(new WeaponEffectEvaluation(effectIndex, contributions));
             }
 
             return evaluations;

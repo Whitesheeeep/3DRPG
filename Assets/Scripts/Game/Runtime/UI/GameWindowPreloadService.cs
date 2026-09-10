@@ -8,9 +8,9 @@ using WS_Modules.UIModule;
 namespace RPG.Game.UI
 {
     /// <summary>
-    /// 项目级窗口预加载服务，统一初始化 HUD、Choice 和 Dialogue 窗口。
+    /// 项目级窗口预加载服务，统一初始化 HUD、Choice、Dialogue 和 Bag 窗口。
     /// </summary>
-    //TODO: 后续：1. 将 Preload Services 作为 SO 加入到统一的预加载管理器中，允许按需注册和初始化；2. 将窗口预加载服务拆分为独立的 HUD、Choice 和 Dialogue 预加载服务，允许按需初始化。
+    //TODO: 后续：1. 将 Preload Services 作为 SO 加入到统一的预加载管理器中，允许按需注册和初始化；2. 将窗口预加载服务拆分为独立的 HUD、Choice、Dialogue 和 Bag 预加载服务，允许按需初始化。
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(-850)]
     public sealed class GameWindowPreloadService : SingletonMonoBase<GameWindowPreloadService>, IWindowPreloadService
@@ -58,7 +58,7 @@ namespace RPG.Game.UI
         /// <summary>
         /// 执行可重复等待的全窗口预加载；并发调用共享同一个完成任务。
         /// </summary>
-        /// <returns>HUD、Choice 和 Dialogue 全部初始化完成的任务。</returns>
+        /// <returns>HUD、Choice、Dialogue 和 Bag 全部初始化完成的任务。</returns>
         public UniTask PreloadAsync()
         {
             if (!preloadStarted)
@@ -93,6 +93,8 @@ namespace RPG.Game.UI
                 if (!UIManager.Instance.TryGetWindow(out DialogueWindow dialogueWindow))
                     throw new InvalidOperationException("DialogueWindow 预加载后未找到窗口实例。");
                 await dialogueWindow.WaitUntilReadyAsync();
+                // BagWindow 只预加载窗口实例；动态图集由 OnShow 启动，避免启动阶段占用 Atlas 引用。
+                await PreloadWindowAsync<BagWindow>();
                 // 预加载只创建隐藏实例；全部依赖准备完成后显式打开 HUD，保证 IsPreloaded 与可见状态一致。
                 HUDWindow openedHud = await UIManager.Instance.PopUpWindowAsync<HUDWindow>();
                 if (openedHud == null || !openedHud.Visible)

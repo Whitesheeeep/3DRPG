@@ -1,0 +1,35 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/Character/Editor/Style/CharacterGrowthDetails.uss" />
+    <ui:VisualElement name="CharacterGrowthDetailsPage" class="character-growth-details-page">
+        <ui:Label text="等级与成长" class="character-growth-section-title" />
+        <ui:VisualElement name="CharacterGrowthBaseFields" class="character-growth-field-group">
+            <uie:PropertyField name="CharacterMaxLevelField" binding-path="maxLevel" label="最大等级" class="character-growth-property-field" />
+            <uie:PropertyField name="CharacterMaxAscensionRankField" binding-path="maxAscensionRank" label="最大突破阶数" class="character-growth-property-field" />
+            <uie:ObjectField name="CharacterGrowthProfileField" binding-path="growthProfile" label="成长配置" type="RPG.Character.CharacterGrowthProfile, Assembly-CSharp" allow-scene-objects="false" class="character-growth-property-field" />
+        </ui:VisualElement>
+        <ui:Label name="CharacterAscensionStageTitle" text="突破配置" class="character-growth-subsection-title" />
+        <ui:VisualElement name="CharacterAscensionStageHost" class="character-growth-field-group">
+            <uie:PropertyField name="CharacterAscensionStagesField" binding-path="ascensionStages" label="突破阶段与消耗" class="character-growth-property-field" />
+        </ui:VisualElement>
+        <ui:Label text="成长 Profile" class="character-growth-section-title" />
+        <ui:VisualElement name="MissingCharacterGrowthProfileWarning" class="character-growth-warning">
+            <ui:Label text="当前角色没有成长配置，请先创建并绑定 CharacterGrowthProfile。" class="character-growth-warning-text" />
+        </ui:VisualElement>
+        <ui:VisualElement name="CharacterGrowthProfileContent" class="character-growth-field-group">
+            <uie:PropertyField name="CharacterGrowthProfileMaxLevelField" binding-path="maxLevel" label="最大等级" enabled="false" class="character-growth-property-field" />
+            <uie:PropertyField name="CharacterCumulativeExperienceCurveField" binding-path="cumulativeExperienceCurve" label="累计经验曲线" class="character-growth-property-field" />
+            <uie:PropertyField name="CharacterCurrencyCostCurveField" binding-path="currencyCostCurve" label="货币消耗曲线" class="character-growth-property-field" />
+            <uie:PropertyField name="CharacterAttributeGrowthCurvesField" binding-path="attributeGrowthCurves" label="Attribute BaseValue 曲线" class="character-growth-property-field" />
+            <uie:PropertyField name="CharacterLevelOverridesField" binding-path="levelOverrides" label="特殊等级覆盖" class="character-growth-property-field" />
+            <ui:Label text="经验和货币曲线的默认值仅用于编辑器占位，请按实际角色设计调整。" class="character-growth-help-text" />
+        </ui:VisualElement>
+        <ui:VisualElement name="CharacterBakedResultHost" class="character-growth-field-group">
+            <ui:Label text="烘焙结果（只读）" class="character-growth-section-title" />
+            <ui:Label name="CharacterBakedSummaryLabel" text="烘焙结果：未配置成长 Profile。" class="character-growth-baked-summary" />
+            <ui:VisualElement class="character-growth-baked-actions">
+                <ui:Button name="CharacterBakeButton" text="烘焙成长表" />
+                <ui:Button name="CharacterViewBakedResultButton" text="查看烘焙结果" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

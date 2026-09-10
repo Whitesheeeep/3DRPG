@@ -2,6 +2,8 @@
 using System;
 using UnityEditor;
 using UnityEngine;
+using WS_Modules.Baking;
+using WS_Modules.Baking.Editor;
 
 namespace RPG.Character.Editor
 {
@@ -11,11 +13,13 @@ namespace RPG.Character.Editor
         #region 依赖与状态
 
         private readonly CharacterConfigEditorService service = new();
+        private readonly BakedResultEditorService bakedResultService = new();
         private CharacterConfigEditorView view;
         private CharacterDatabase database;
         private CharacterConfig selectedConfig;
         private bool disposed;
         private bool undoRefreshScheduled;
+        private bool growthProfileSyncScheduled;
 
         #endregion
 
@@ -36,6 +40,9 @@ namespace RPG.Character.Editor
             view.SideIconChanged += OnSideIconChanged;
             view.AvatarChanged += OnAvatarChanged;
             view.PropertiesChanged += OnPropertiesChanged;
+            view.ApplyDefaultsRequested += OnApplyDefaultsRequested;
+            view.BakeGrowthRequested += OnBakeGrowthRequested;
+            view.ViewBakedResultRequested += OnViewBakedResultRequested;
             view.CreateRequested += OnCreateRequested;
             view.DuplicateRequested += OnDuplicateRequested;
             view.RemoveRequested += OnRemoveRequested;
@@ -59,6 +66,7 @@ namespace RPG.Character.Editor
             disposed = true;
             Undo.undoRedoEvent -= OnUndoRedo;
             EditorApplication.delayCall -= ExecuteUndoRefresh;
+            EditorApplication.delayCall -= ExecuteGrowthProfileSynchronization;
             if (view != null)
             {
                 view.DatabaseChanged -= OnDatabaseChanged;
@@ -69,6 +77,9 @@ namespace RPG.Character.Editor
                 view.SideIconChanged -= OnSideIconChanged;
                 view.AvatarChanged -= OnAvatarChanged;
                 view.PropertiesChanged -= OnPropertiesChanged;
+                view.ApplyDefaultsRequested -= OnApplyDefaultsRequested;
+                view.BakeGrowthRequested -= OnBakeGrowthRequested;
+                view.ViewBakedResultRequested -= OnViewBakedResultRequested;
                 view.CreateRequested -= OnCreateRequested;
                 view.DuplicateRequested -= OnDuplicateRequested;
                 view.RemoveRequested -= OnRemoveRequested;
@@ -157,6 +168,8 @@ namespace RPG.Character.Editor
             // DetailsView 已经在 SerializedPropertyChangeEvent 中刷新摘要；这里仅刷新虚拟化列表，
             // 避免在绑定事件期间重新 Bind 当前详情，同时让 Name、Rarity 和计数元信息立即更新。
             view.SetDatabase(database, CharacterConfigEditorSession.Search);
+            if (propertyPath == "maxLevel" || string.IsNullOrEmpty(propertyPath))
+                ScheduleGrowthProfileSynchronization(config);
         }
 
         /// <summary>处理列表右键菜单中的角色命令。</summary>
@@ -178,6 +191,12 @@ namespace RPG.Character.Editor
                     case CharacterConfigCommand.Validate:
                         service.ValidateConfig(config);
                         view.SetStatus("当前 CharacterConfig 验证通过。");
+                        break;
+                    case CharacterConfigCommand.ApplyDefaults:
+                        service.ApplyDefaults(database, config);
+                        view.RefreshSelectedConfig();
+                        view.SetDatabase(database, CharacterConfigEditorSession.Search);
+                        view.SetStatus("已将角色通用默认值应用到选中角色。");
                         break;
                     case CharacterConfigCommand.PingAsset:
                         EditorGUIUtility.PingObject(config);
@@ -210,6 +229,32 @@ namespace RPG.Character.Editor
 
         /// <summary>提交角色头像预览。</summary>
         private void OnAvatarChanged(CharacterConfig config, Sprite sprite) => SetPreview(config, sprite, false);
+
+        /// <summary>将角色数据库默认值应用到当前角色。</summary>
+        private void OnApplyDefaultsRequested() => OnCharacterCommandRequested(selectedConfig, CharacterConfigCommand.ApplyDefaults);
+
+        /// <summary>烘焙当前角色成长曲线并刷新摘要。</summary>
+        private void OnBakeGrowthRequested()
+        {
+            if (selectedConfig == null) return;
+            try
+            {
+                bakedResultService.Bake(selectedConfig);
+                view.RefreshSelectedConfig();
+                view.SetStatus($"已烘焙 {selectedConfig.GrowthProfile?.BakedLevelProgressions.Count ?? 0} 个角色等级条目。");
+            }
+            catch (Exception exception)
+            {
+                view.SetStatus($"角色成长烘焙失败：{exception.Message}");
+            }
+        }
+
+        /// <summary>在通用结果窗口打开当前角色成长数据源。</summary>
+        private void OnViewBakedResultRequested()
+        {
+            if (selectedConfig is IBakedResultDataSource source)
+                BakedResultViewerWindow.Open(source);
+        }
 
         /// <summary>调用 Service 同步 SpriteName，失败时恢复预览控件。</summary>
         private void SetPreview(CharacterConfig config, Sprite sprite, bool sideIcon)
@@ -291,6 +336,34 @@ namespace RPG.Character.Editor
         private void OnPingRequested()
         {
             if (selectedConfig != null) EditorGUIUtility.PingObject(selectedConfig);
+        }
+
+        /// <summary>合并同一 UI 事件期间的最大等级同步请求。</summary>
+        /// <param name="config">发生最大等级变化的角色配置。</param>
+        private void ScheduleGrowthProfileSynchronization(CharacterConfig config)
+        {
+            if (disposed || config == null || config != selectedConfig || config.GrowthProfile == null || growthProfileSyncScheduled) return;
+            growthProfileSyncScheduled = true;
+            EditorApplication.delayCall += ExecuteGrowthProfileSynchronization;
+        }
+
+        /// <summary>执行角色最大等级与成长 Profile 的同步。</summary>
+        private void ExecuteGrowthProfileSynchronization()
+        {
+            growthProfileSyncScheduled = false;
+            if (disposed || selectedConfig == null || selectedConfig.GrowthProfile == null) return;
+            try
+            {
+                if (service.SynchronizeGrowthProfileMaxLevel(selectedConfig))
+                {
+                    view.RefreshSelectedConfig();
+                    view.SetStatus("已将成长配置最大等级同步为角色最大等级；如曲线已变化，请重新烘焙。");
+                }
+            }
+            catch (Exception exception)
+            {
+                view.SetStatus($"同步角色成长配置失败：{exception.Message}");
+            }
         }
 
         /// <summary>Undo/Redo 后只安排一次 SerializedObject 和列表刷新。</summary>
