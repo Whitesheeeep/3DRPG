@@ -190,22 +190,22 @@ MonoBehaviour:
     inputType: 7
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
-  - action: {fileID: 0}
+  - action: {fileID: -1641466239674093629, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
     actionName: Player/CharacterSlot1
     inputType: 11
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
-  - action: {fileID: 0}
+  - action: {fileID: -8172520714770766036, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
     actionName: Player/CharacterSlot2
     inputType: 12
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
-  - action: {fileID: 0}
+  - action: {fileID: -8642184972703864746, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
     actionName: Player/CharacterSlot3
     inputType: 13
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
-  - action: {fileID: 0}
+  - action: {fileID: -2665493838394134933, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
     actionName: Player/CharacterSlot4
     inputType: 14
     pressBufferDuration: 0.2
@@ -230,10 +230,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   inputController: {fileID: 3408626327944978715}
-  dialogueParticipant: {fileID: 0}
-  characterRoot: {fileID: 0}
-  characterManager: {fileID: 0}
-  characterController: {fileID: 0}
+  dialogueParticipant: {fileID: 4099463995280340719}
+  characterRoot: {fileID: 3957154600284617816}
+  characterManager: {fileID: 6495212430660579562}
+  characterController: {fileID: 1810864442526910155}
   motionDriver:
     horizontalMovementBlockedTags: []
     allMovementBlockedTags: []
@@ -245,7 +245,7 @@ MonoBehaviour:
         localPosition: {x: 0, y: 0.26, z: 0}
         localEulerAngles: {x: 90, y: 0, z: 0}
         size: {x: 1, y: 1, z: 1}
-        radius: 0.24
+        radius: 0.26
         height: 2
         capsuleAxis: 1
         innerRadius: 0
@@ -255,17 +255,19 @@ MonoBehaviour:
       ceilingDetectionShape:
         type: 2
         canDrawGizmos: 1
-        localPosition: {x: 0, y: 1.54, z: 0}
+        localPosition: {x: 0, y: 1.5782391, z: -0.000000013217977}
         localEulerAngles: {x: -90, y: 0, z: 0}
         size: {x: 1, y: 1, z: 1}
-        radius: 0.24
+        radius: 0.22
         height: 2
         capsuleAxis: 1
         innerRadius: 0
         outerRadius: 2
         angle: 90
         length: 0.12
-      environmentLayerMask: -5
+      environmentLayerMask:
+        serializedVersion: 2
+        m_Bits: 51
       queryTriggerInteraction: 1
   cameraTransform: {fileID: 0}
 --- !u!114 &5783138430455601769
@@ -283,6 +285,7 @@ MonoBehaviour:
   playerController: {fileID: 6089726963410338055}
   targetCharacterId:
     value: 
+  targetSlotIndex: 0
 --- !u!114 &6236332136201973222
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -322,7 +325,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b99dd9aa66dea9d4fb1fbd01f0f79c07, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speaker: {fileID: 0}
+  speaker: {fileID: 11400000, guid: 032bd966221ad854ab394fca1df0980c, type: 2}
   voiceAudioSource: {fileID: 7316959808771529357}
 --- !u!1 &8060642726113311870
 GameObject:

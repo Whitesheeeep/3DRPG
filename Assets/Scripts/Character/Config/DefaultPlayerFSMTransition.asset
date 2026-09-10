@@ -257,9 +257,9 @@ MonoBehaviour:
   landing1InputNormalizedTime: 0.1
   landing2InputNormalizedTime: 0.5
   landing3InputNormalizedTime: 0.65
-  movementAcceleration: 5
+  movementAcceleration: 1
   turnSpeed: 0.64
-  runSpeedMultiplier: 1.35
+  runSpeedMultiplier: 2
   correctionSpeed: 5
   startDirectionCorrectionNormalizedTime: 0.4
   coyoteTime: 0.12
@@ -333,7 +333,7 @@ MonoBehaviour:
     anyTags: []
     banedTags: []
   walkReferenceSpeed: 0.914
-  runReferenceSpeed: 4.77
+  runReferenceSpeed: 3
   runFeetParameter: {fileID: 11400000, guid: 2e7a66094800e644e9d6bb724bdd7a80, type: 2}
   references:
     version: 2

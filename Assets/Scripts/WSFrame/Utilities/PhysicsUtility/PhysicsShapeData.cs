@@ -144,12 +144,13 @@ namespace WS_Modules.Utilities
         /// 由宿主 MonoBehaviour 在 OnDrawGizmos 或 OnDrawGizmosSelected 中调用，绘制当前形状。
         /// </summary>
         /// <param name="attachedTransform">局部位置和旋转所属的宿主 Transform。</param>
+        /// <param name="drawColor">绘制时使用的颜色，如果为 null 则使用默认颜色。</param>
         /// <exception cref="ArgumentNullException">attachedTransform 为空。</exception>
-        public void OnDrawGizmos(Transform attachedTransform)
+        public void OnDrawGizmos(Transform attachedTransform, Color? drawColor = null)
         {
             if (attachedTransform == null) throw new ArgumentNullException(nameof(attachedTransform));
-            if (!CanDrawGizmos) return;
-            PhysicsShapeGizmoDrawer.Draw(attachedTransform, this);
+            if (!canDrawGizmos) return;
+            PhysicsShapeGizmoDrawer.Draw(attachedTransform, this, drawColor);
         }
 
         #endregion

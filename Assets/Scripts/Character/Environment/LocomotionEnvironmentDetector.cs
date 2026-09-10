@@ -13,7 +13,6 @@ namespace RPG.Character
     public sealed class LocomotionEnvironmentDetector
     {
         #region 依赖与检测配置
-
         // 依赖字段：所有形状都以 CharacterRoot 为局部坐标宿主，避免切换角色时重新绑定。
         [SerializeField]
         private PhysicsShapeData groundDetectionShape = new();
@@ -30,11 +29,9 @@ namespace RPG.Character
         private bool previousGrounded;
         private float airbornePeakWorldY;
         private bool initialized;
-
         #endregion
 
         #region 生命周期与采样
-
         /// <summary>
         /// 绑定 CharacterRoot 并建立第一份环境快照。
         /// 初始化快照只建立位移基线，不推进跳跃、重力或任何状态机。
@@ -44,7 +41,7 @@ namespace RPG.Character
         internal void Initialize(Transform sourceCharacterRoot, PlayerStateBlackboard blackboard)
         {
             characterRoot = sourceCharacterRoot ??
-                throw new ArgumentNullException(nameof(sourceCharacterRoot));
+                            throw new ArgumentNullException(nameof(sourceCharacterRoot));
             if (blackboard == null)
                 throw new ArgumentNullException(nameof(blackboard));
             ValidateShape(groundDetectionShape, "地面检测形状");
@@ -158,11 +155,9 @@ namespace RPG.Character
                 airbornePeakWorldY = Mathf.Max(airbornePeakWorldY, currentWorldY);
             return Mathf.Max(0f, airbornePeakWorldY - currentWorldY);
         }
-
         #endregion
 
         #region 查询与校验
-
         /// <summary>使用 PhysicsShapeData 查询离 CharacterRoot 最近的有效环境命中。</summary>
         /// <param name="shape">以 CharacterRoot 为宿主的 SphereCast 形状。</param>
         /// <param name="nearestHit">最近的非角色层级命中。</param>
@@ -216,44 +211,13 @@ namespace RPG.Character
         /// <summary>
         /// 绘制与实际 SphereCast 相同的球心、半径和投射方向，避免 Inspector 中看到的形状与运行时查询不一致。
         /// </summary>
-        public void OnGizmosDraw()
+        public void OnGizmosDraw(Transform editorCharacterRoot)
         {
-            if (characterRoot == null)
-                return;
+            Transform drawTransRoot = editorCharacterRoot != null ? editorCharacterRoot : characterRoot;
 
-            DrawSphereCastGizmo(groundDetectionShape, Color.green);
-            DrawSphereCastGizmo(ceilingDetectionShape, Color.red);
-        }
+            groundDetectionShape.OnDrawGizmos(drawTransRoot, Color.green);
+            ceilingDetectionShape.OnDrawGizmos(drawTransRoot, Color.red);
 
-        /// <summary>按 PhysicsUtility 的缩放规则绘制 SphereCast 起点、终点与连接线。</summary>
-        /// <param name="shape">以 CharacterRoot 为局部坐标宿主的球体投射配置。</param>
-        /// <param name="color">该检测用途对应的 Gizmo 颜色。</param>
-        private void DrawSphereCastGizmo(PhysicsShapeData shape, Color color)
-        {
-            if (shape == null || !shape.CanDrawGizmos || shape.Type != PhysicsShapeType.Sphere)
-                return;
-
-            Vector3 start = characterRoot.TransformPoint(shape.LocalPosition);
-            Vector3 scaledDirection = characterRoot.TransformVector(
-                Quaternion.Euler(shape.LocalEulerAngles) * Vector3.forward);
-            float directionScale = scaledDirection.magnitude;
-            if (directionScale <= Mathf.Epsilon)
-                return;
-
-            Vector3 direction = scaledDirection / directionScale;
-            float length = shape.Length * directionScale;
-            Vector3 end = start + direction * length;
-            Vector3 scale = characterRoot.lossyScale;
-            float radius = shape.Radius * Mathf.Max(
-                Mathf.Abs(scale.x),
-                Mathf.Max(Mathf.Abs(scale.y), Mathf.Abs(scale.z)));
-
-            Color previousColor = Gizmos.color;
-            Gizmos.color = color;
-            Gizmos.DrawWireSphere(start, radius);
-            Gizmos.DrawWireSphere(end, radius);
-            Gizmos.DrawLine(start, end);
-            Gizmos.color = previousColor;
         }
         #endregion
     }

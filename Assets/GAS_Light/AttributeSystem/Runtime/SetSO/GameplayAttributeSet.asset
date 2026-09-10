@@ -57,7 +57,7 @@ MonoBehaviour:
       id: 4
       name: Speed
     type: 0
-    defaultValue: 3
+    defaultValue: 2.5
     minValue: 0
     maxValue: 10
     baseValue: 0

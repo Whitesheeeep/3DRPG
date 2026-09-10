@@ -58,10 +58,11 @@ namespace RPG.Character
         }
 
         /// <summary>转发当前环境子检测器的 Gizmo 绘制。</summary>
-        public void OnGizmosDraw()
+        public void OnGizmosDraw(Transform characterRootForEditor)
         {
-            if (locomotionDetector != null)
-                locomotionDetector.OnGizmosDraw();
+            if (characterRootForEditor == null)
+                throw new ArgumentNullException(nameof(characterRootForEditor));
+            locomotionDetector?.OnGizmosDraw(characterRootForEditor);
         }
         #endregion
 
