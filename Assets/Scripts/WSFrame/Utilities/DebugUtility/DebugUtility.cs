@@ -26,6 +26,32 @@ namespace WS_Modules.Utilities
 
         #region 公开绘制
 
+        /// <summary>绘制一条可在 Scene/Game 视图中短暂保留的世界空间线段。</summary>
+        /// <param name="start">线段起点。</param>
+        /// <param name="end">线段终点。</param>
+        /// <param name="color">线段颜色。</param>
+        /// <param name="duration">线段持续时间。</param>
+        /// <param name="depthTest">是否执行深度测试。</param>
+        public static void DrawLine(Vector3 start, Vector3 end, Color color,
+            float duration = 0f, bool depthTest = true)
+        {
+            ValidateDuration(duration);
+            DrawSegment(start, end, color, duration, depthTest);
+        }
+
+        /// <summary>绘制一条从起点开始的世界空间射线。</summary>
+        /// <param name="origin">射线起点。</param>
+        /// <param name="direction">射线方向和长度向量。</param>
+        /// <param name="color">射线颜色。</param>
+        /// <param name="duration">射线持续时间。</param>
+        /// <param name="depthTest">是否执行深度测试。</param>
+        public static void DrawRay(Vector3 origin, Vector3 direction, Color color,
+            float duration = 0f, bool depthTest = true)
+        {
+            ValidateDuration(duration);
+            DrawSegment(origin, origin + direction, color, duration, depthTest);
+        }
+
         /// <summary>
         /// 绘制一个可旋转的 Cube 线框。
         /// </summary>
