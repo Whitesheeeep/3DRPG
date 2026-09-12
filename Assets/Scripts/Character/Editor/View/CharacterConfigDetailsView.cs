@@ -30,6 +30,7 @@ namespace RPG.Character.Editor
         private Label sideIconPreviewFallback;
         private Image avatarPreviewImage;
         private Label avatarPreviewFallback;
+        private HelpBox emptyNormalAttackWarning;
         private bool suppressCallbacks;
         private bool disposed;
 
@@ -130,6 +131,7 @@ namespace RPG.Character.Editor
                 sideIconPreviewFallback = Require<Label>(detailsScrollView, "SideIconPreviewFallback");
                 avatarPreviewImage = Require<Image>(detailsScrollView, "AvatarPreviewImage");
                 avatarPreviewFallback = Require<Label>(detailsScrollView, "AvatarPreviewFallback");
+                emptyNormalAttackWarning = Require<HelpBox>(detailsScrollView, "EmptyNormalAttackWarning");
                 ConfigurePreviewField(sideIconField, config.EditorSideIcon, true);
                 ConfigurePreviewField(avatarField, config.EditorAvatar, false);
 
@@ -141,7 +143,9 @@ namespace RPG.Character.Editor
                 growthDetailsView.Bind(config, serializedObject);
                 CreateSerializedObjectTracker();
                 ConfigureCollection(detailsScrollView.Q<PropertyField>("InitialAttributeSetsField"), "暂无初始属性集");
-                ConfigureCollection(detailsScrollView.Q<PropertyField>("AbilityInputBindingsField"), "暂无能力输入绑定");
+                ConfigureCollection(detailsScrollView.Q<PropertyField>("NormalAttackAbilitiesField"), "暂无普通攻击连段");
+                ConfigureCollection(detailsScrollView.Q<PropertyField>("SkillInputBindingsField"), "暂无技能输入绑定");
+                RefreshCombatWarnings();
                 RefreshPreviewImages();
                 RefreshSummary();
             }
@@ -161,6 +165,7 @@ namespace RPG.Character.Editor
                 serializedObject.UpdateIfRequiredOrScript();
                 sideIconField?.SetValueWithoutNotify(selectedConfig.EditorSideIcon);
                 avatarField?.SetValueWithoutNotify(selectedConfig.EditorAvatar);
+                RefreshCombatWarnings();
                 RefreshPreviewImages();
                 RefreshSummary();
                 growthDetailsView?.Refresh();
@@ -205,6 +210,15 @@ namespace RPG.Character.Editor
                 ? "成长配置：未配置"
                 : $"成长：Lv.{selectedConfig.MaxLevel} · 突破 {selectedConfig.MaxAscensionRank} · 曲线 {selectedConfig.GrowthProfile.AttributeGrowthCurves.Count}";
             ConfigEditorRarityPresentation.EnableRarityClass(card, "character-config-summary", (int)selectedConfig.Rarity);
+        }
+
+        /// <summary>根据当前角色的普攻连段配置刷新 Editor-only 警告，不写入 Console。</summary>
+        private void RefreshCombatWarnings()
+        {
+            if (emptyNormalAttackWarning == null) return;
+            bool hasNormalAttack = selectedConfig?.CombatConfig?.NormalAttackAbilities != null &&
+                                   selectedConfig.CombatConfig.NormalAttackAbilities.Count > 0;
+            emptyNormalAttackWarning.style.display = hasNormalAttack ? DisplayStyle.None : DisplayStyle.Flex;
         }
 
         /// <summary>为原生集合 PropertyField 配置增删、重排和中文空状态。</summary>
@@ -302,6 +316,7 @@ namespace RPG.Character.Editor
             if (suppressCallbacks || selectedConfig == null || serializedObject == null) return;
             if (eventData?.changedProperty != null && eventData.changedProperty.serializedObject != serializedObject) return;
             serializedObject.UpdateIfRequiredOrScript();
+            RefreshCombatWarnings();
             RefreshSummary();
             PropertiesChanged?.Invoke(selectedConfig, eventData?.changedProperty?.propertyPath ?? string.Empty);
         }
@@ -321,6 +336,7 @@ namespace RPG.Character.Editor
         {
             if (suppressCallbacks || changedSerializedObject == null || changedSerializedObject != serializedObject || selectedConfig == null) return;
             changedSerializedObject.UpdateIfRequiredOrScript();
+            RefreshCombatWarnings();
             RefreshPreviewImages();
             RefreshSummary();
             PropertiesChanged?.Invoke(selectedConfig, string.Empty);

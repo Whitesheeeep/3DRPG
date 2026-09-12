@@ -15,8 +15,10 @@ flowchart TD
     CM --> B[CharacterActor B]
     A --> BB[共享 PlayerStateBlackboard 引用]
     B --> BB
-    A --> ASC_A[独立 ASC / Animator / Locomotion]
-    B --> ASC_B[独立 ASC / Animator / Locomotion]
+    A --> Combat_A[独立 CharacterCombatSystem]
+    B --> Combat_B[独立 CharacterCombatSystem]
+    Combat_A --> ASC_A[独立 ASC / Animator / Locomotion]
+    Combat_B --> ASC_B[独立 ASC / Animator / Locomotion]
     PC --> MD[MotionDriver]
     ASC_A -->|IMotionDriver| MD
     ASC_B -->|IMotionDriver| MD
@@ -73,7 +75,7 @@ sequenceDiagram
     participant PC as PlayerController
     participant CM as CharacterManager
     participant Input as PlayerInputController
-    participant Actor as Active CharacterActor
+    participant CharacterActor as Active CharacterActor
     participant MD as MotionDriver
 
     Unity->>PC: Update()
@@ -85,29 +87,30 @@ sequenceDiagram
 
     Unity->>PC: FixedUpdate()
     PC->>CM: AdvanceFixedStep(fixedDeltaTime)
-    CM->>Actor: FixedTickAbility + Locomotion.FixedTick
+    CM->>CharacterActor: FixedTickAbility + Locomotion.FixedTick
     PC->>MD: ResolveFixedMotion()
 
     Unity->>PC: LateUpdate()
     PC->>CM: AdvanceLateFrame(deltaTime)
 
-    Unity->>Actor: OnAnimatorMove()
-    Actor->>PC: ProcessAnimatorMotion(source, deltaPosition, deltaRotation)
+    Unity->>CharacterActor: OnAnimatorMove()
+    CharacterActor->>PC: ProcessAnimatorMotion(source, deltaPosition, deltaRotation)
     PC->>CM: TryAdvanceAnimatorStep(source)
-    PC->>Actor: GAS/FSM receives Animator delta
-    Actor->>MD: winning Handle submits AnimatorMotionSubmission
+    PC->>CharacterActor: GAS/FSM receives Animator delta
+    CharacterActor->>MD: winning Handle submits AnimatorMotionSubmission
     PC->>MD: ResolveAnimatorMotion()
 ```
 
 CharacterManager 提供以下内部接口：
 
-| 阶段 | 接口 | 职责 |
-| --- | --- | --- |
-| 全队 ASC 普通帧 | `AdvanceAbilityFrame(float)` | 遍历所有角色并调用 `TickAbility` |
-| 当前角色普通帧 | `AdvanceActiveFrame(IPlayerInputRequestBuffer, float)` | 处理技能 Request，再推进当前 Locomotion |
-| 当前角色物理帧 | `AdvanceFixedStep(float)` | 推进当前 ASC FixedTick 和 Locomotion FixedTick |
-| 全队/当前角色延迟帧 | `AdvanceLateFrame(float)` | 全队 ASC LateTick，当前 Locomotion LateTick |
-| 当前 Animator 阶段 | `TryAdvanceAnimatorStep(CharacterActor, deltaPosition, deltaRotation, evaluationDeltaTime)` | 校验来源并推进当前 GAS/FSM Animator 阶段 |
+
+| 阶段                | 接口                                                                                        | 职责                                                  |
+| ------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| 全队 ASC 普通帧     | `AdvanceAbilityFrame(float)`                                                                | 遍历所有角色并调用`TickAbility`                       |
+| 当前角色普通帧      | `AdvanceActiveFrame(IPlayerInputRequestBuffer, float)`                                      | 处理当前角色技能与普攻连段 Request，再推进 Locomotion |
+| 当前角色物理帧      | `AdvanceFixedStep(float)`                                                                   | 推进当前 ASC FixedTick 和 Locomotion FixedTick        |
+| 全队/当前角色延迟帧 | `AdvanceLateFrame(float)`                                                                   | 全队 ASC LateTick，当前 Locomotion LateTick           |
+| 当前 Animator 阶段  | `TryAdvanceAnimatorStep(CharacterActor, deltaPosition, deltaRotation, evaluationDeltaTime)` | 校验来源并推进当前 GAS/FSM Animator 阶段              |
 
 所有 deltaTime 都由 PlayerController 从 Unity 生命周期传入。CharacterManager 不读取 `Time.deltaTime`，也不执行 MotionDriver Resolve 或 `CharacterController.Move`。
 
@@ -126,7 +129,7 @@ CharacterManager 提供以下内部接口：
 9. 初始化 LooseGameplayTagEventBridge 和 DialogueParticipant 动画目标。
 
 PlayerController 的初始化任务在所有角色和 ASC 完成 `Awake` 后执行：它先调用每个 CharacterActor 的
-`InitializeFromConfig` 导入 AttributeSet、授予配置 Ability，再激活当前角色 Locomotion。
+`InitializeFromConfig` 导入 AttributeSet，再由每角色独立 CombatSystem 授予战斗配置中的 Ability，最后激活当前角色 Locomotion。
 这样 `Activate` 在持续 Move 场景下直接读取自身 GAS Speed 时，ASC 的运行时容器已经可用；
 `CharacterActor.Start` 仍保留同一初始化方法作为独立实例启用时的幂等兜底。
 
@@ -136,7 +139,7 @@ PlayerController 的初始化任务在所有角色和 ASC 完成 `Awake` 后执�
 2. `InputIntentArbiterManager.ArbitrateFrame(cameraTransform)` 转换需要复杂空间处理的连续 Move。
 3. PlayerController 执行仍存在的对话/角色阻断门禁；通过后调用 `CharacterManager.ProcessSwitchInputRequests(inputController)`。
 4. CharacterManager 重新读取切换后的 ActiveCharacter。
-5. `CharacterManager.AdvanceActiveFrame(inputController, Time.deltaTime)` 让当前 CharacterActor 直接处理技能 Request，再推进 Locomotion。
+5. `CharacterManager.AdvanceActiveFrame(inputController, Time.deltaTime)` 让当前 CharacterActor 的 CombatSystem 先处理技能和普攻连段 Request，再推进 Locomotion。
 6. Locomotion 通过 CharacterActor 的 Blackboard 引用读取 `MoveWorldInput`，Walk/Run 在 Update 阶段向 MotionDriver 提交普通移动。
 7. PlayerController 调用 `MotionDriver.ResolveUpdateMotion()`，完成本次 Update 的控制权仲裁和唯一移动出口。
 
@@ -215,26 +218,32 @@ FallLand 根据 `CurrentFallHeight` 在配置的 1h/2h/3h 动画中选择，Walk
 
 ## 输入职责
 
-| 输入 | 处理者 | 结果 |
-| --- | --- | --- |
-| WASD/左摇杆 Move | MoveInputIntentArbiter | 镜头相对方向写入 `MoveWorldInput` |
-| Primary/Secondary/Skill1-4 | CharacterActor | 直接查询 Request，成功激活后确认 PressHandle |
-| CharacterSlot1-4 | CharacterManager | 直接查询 Request，按切换结果确认或保留 PressHandle |
-| Choice 导航、提交、点击 | Unity EventSystem | 直接驱动交互 UI |
-| 复杂未来输入 | 可选自定义 Arbiter | 写入通用 Frame Intent |
+
+| 输入                    | 处理者                 | 结果                                                                |
+| ----------------------- | ---------------------- | ------------------------------------------------------------------- |
+| WASD/左摇杆 Move        | MoveInputIntentArbiter | 镜头相对方向写入`MoveWorldInput`                                    |
+| Primary                 | CharacterCombatSystem  | 按角色普攻列表选择当前连段 GA，成功激活后推进段位并确认 PressHandle |
+| Secondary/Skill1-4      | CharacterCombatSystem  | 按角色技能槽位查询 Request，成功激活后确认 PressHandle              |
+| CharacterSlot1-4        | CharacterManager       | 直接查询 Request，按切换结果确认或保留 PressHandle                  |
+| Choice 导航、提交、点击 | Unity EventSystem      | 直接驱动交互 UI                                                     |
+| 复杂未来输入            | 可选自定义 Arbiter     | 写入通用 Frame Intent                                               |
 
 固定离散输入使用 `IPlayerInputRequestBuffer.TryGetRequest`，不遍历 `Requests` 列表。Press、Held 和 Release 保持独立生命周期，为后续蓄力技能提供 `HeldDuration`、`PhysicalState` 和 `ReleaseHandle`。
 
-角色技能输入不经过 Frame Intent。`CharacterAbilityInputBinding` 同时声明固定输入槽位和该角色的初始 Ability；PlayerController.Start（以及 CharacterActor.Start 的幂等兜底）在 ASC 完成 Awake 后初始化属性并调用 ASC `GiveAbility`，缓存 `PlayerInputType` 到 `GameplayAbilityHandle`，然后在 Update 中直接查询 Request 并尝试激活。激活失败时不确认 PressHandle，允许 Cooldown、Cost 或其他 GAS 条件在 Buffer 有效期内继续重试。
+角色战斗输入不经过 Frame Intent。`CharacterConfig.CombatConfig` 保存有序普通攻击列表和 Secondary、Skill1-4 技能槽位；PlayerController.Start（以及 CharacterActor.Start 的幂等兜底）在 ASC 完成 Awake 后初始化属性，再让每个 CharacterActor 自己的 CombatSystem 去重授予 Ability，并建立普攻顺序与技能输入到 `GameplayAbilityHandle` 的运行时索引。
+
+CombatSystem 不等待前一段普攻的 AbilityEnded。缓存 Primary 到达后立即向 GAS 尝试下一段；激活失败时冻结该 PressHandle 对应的段位且不确认输入，让 Cooldown、Cost、Tag 或能力阶段在原输入 Buffer 有效期内继续重试。成功后才推进索引并刷新一秒连段保留时间，最后一段循环回第一段。角色切到后台时清除该角色的连段运行时，但不取消 ASC Ability。
 
 ```mermaid
 flowchart LR
     Start[PlayerController.Start] --> InitAttr[初始化 CharacterActor AttributeSet]
-    InitAttr --> Grant[遍历 CharacterAbilityInputBinding]
+    InitAttr --> Config[读取 CharacterCombatConfig]
+    Config --> Grant[按 AbilityData 去重授予]
     Grant --> Spec[ASC.GiveAbility]
-    Spec --> Cache[缓存 InputType 到 GameplayAbilityHandle]
-    Cache --> Request[Update 查询 Input Request]
-    Request --> Activate[TryActivateAbility]
+    Spec --> Cache[缓存普攻顺序与技能槽位 Handle]
+    Cache --> Skill[Update 先尝试技能 Press]
+    Skill --> Primary[再尝试冻结段位的 Primary Press]
+    Primary --> Activate[TryActivateAbility]
     Activate -->|成功| Consume[确认 PressHandle]
     Activate -->|失败| Retry[保留 Press Buffer，等待后续重试]
 ```
@@ -252,7 +261,7 @@ CharacterManager 处理槽位输入和队伍内部结果；PlayerController 只�
 5. PlayerController 释放旧角色 Locomotion 和 MotionDriver 请求。
 6. PlayerController 设置新的 MotionDriver ActiveOwner。
 7. PlayerController 激活新角色 Locomotion，并更新 DialogueParticipant 动画目标。
-8. PlayerController 随后由 `AdvanceActiveFrame` 重新读取新角色，处理同帧尚未消费的技能 Request。
+8. PlayerController 随后由 `AdvanceActiveFrame` 重新读取新角色，处理同帧尚未消费的战斗 Request；旧角色在隐藏时已经重置普攻连段索引。
 
 持续按住 Move 切人时，新角色 Locomotion 激活阶段直接读取共享 Blackboard 的 MoveWorldInput 并进入 Walk 或 Run，
 不先进入 Idle，也不播放起步根运动。角色从 Idle 或 Stop 重新开始移动时，根据 Sprint 选择 WalkStart 或 RunStart；
@@ -473,15 +482,75 @@ stateDiagram-v2
 只返回冻结的世界空间候选。路径 Transition 采用“收集、预检、提交”事务；完整路径进入后才执行
 `OnCommitted`，由 Grounded 分支确认 Jump Press。Traversal 不再检测下一段候选，也不存在任何 Reentry。
 
-Traversal 的高度分类、几何阈值、后沿采样步长、二分细化次数、Vault 后沿目标余量、Mantle 顶部内缩以及
+Traversal 的高度分类、几何阈值、后沿采样步长、二分细化次数、Vault 后沿目标余量、Mantle 期望内缩、
+Mantle 目标搜索步长、后沿安全余量、顶面高度容差以及
 Debug 保持时间统一由 `PlayerFSMTransition.TraversalDetectionSettings` 配置。检测器不再持有
 Traversal 业务常量：前墙会完整执行全部高度射线，顶部和厚度探针也会保留每一次已经执行的查询。
 成功或失败都使用配置时长绘制普通检测线，最终采用的墙面、顶部、真实后沿和目标位置再用特殊颜色覆盖，
 因此 Debug 结果反映的是一次真实检测，而不是只显示最后的成功线。
 
-Vault 的候选目标使用真实后沿加 `VaultTargetForwardClearance`；Mantle 使用顶部的
-`MantleStandingInset`。厚度搜索在第一次失去顶部支撑的相邻采样之间进行二分细化，不再以角色半径
-扩长 Debug 线，也不把固定近端距离当作宽墙的后沿。
+### Traversal Debug 颜色图例
+
+Traversal Debug 记录的是一次真实的几何检测快照。普通检测线先绘制，最终采用结果后绘制，因此同一条线可能先出现普通颜色，
+再被特殊颜色覆盖。颜色只表示检测阶段和绘制对象，不直接等价于“整个 Traversal 成功”或“整个 Traversal 失败”。
+
+```mermaid
+flowchart LR
+    Wall[前墙射线组] --> Top[顶部向下检测]
+    Top --> Height[高度与表面坡度]
+    Height --> Depth[顶部支撑与真实后沿]
+    Depth --> Space[目标胶囊空间]
+    Space --> Support[目标点支撑]
+    Support --> Candidate[冻结 Vault/Mantle 候选]
+```
+
+
+| 颜色     | 运行时颜色名                   | 绘制内容                                                                         | 如何解释                                                                                           |
+| -------- | ------------------------------ | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| 黄色     | `FrontRayColor`                | 全部已经执行的前墙水平射线；命中点使用黄色十字                                   | 表示这条前墙查询确实执行过；未命中也保留整条黄色线                                                 |
+| 亮绿色   | `SelectedColor`                | 最终采用的前墙射线、最终采用的顶部线段、有效目标支撑线                           | 只对当前绘制对象表示“采用/有效”；不能脱离对象把所有绿色都理解成候选成功                          |
+| 红色     | `RejectedColor`                | 墙面角度不合格、顶部坡度或高度不合格、无支撑、最大厚度仍有支撑、被拒绝的边界探针 | 表示对应命中或探针在该检测规则下被拒绝                                                             |
+| 青色     | `TopRayColor` / `CapsuleColor` | 顶部向下检测的完整投射线；目标胶囊空间查询轮廓                                   | 顶部青线表示“已执行顶面查询”；青色胶囊只表示“已执行空间检查”，随后绿色或红色覆盖才表示检查结果 |
+| 绿色     | `CapsulePassedColor` / `SelectedColor` | 通过胶囊空间、最终采用的支撑线和最终安全脚点                     | 表示对应候选已经通过这一项检查；绿色胶囊表示空间通过，不代表其他阶段都通过 |
+| 红色高亮 | `CapsuleBlockedColor` | 被环境阻挡的目标胶囊、阻挡 Collider 的 AABB 和指向最近阻挡点的连线 | 表示该候选的角色空间被具体 Collider 阻挡；红色胶囊不是高度或动画失败的含义 |
+| 蓝色     | `SupportedDepthProbeColor`     | 后沿搜索中仍有顶部支撑的普通厚度探针；有支撑的边界探针                           | 表示该前向采样点仍检测到可用顶部支撑                                                               |
+| 紫色     | `RefinementProbeColor`         | 后沿二分细化阶段的探针                                                           | 表示正在用二分查询收敛真实后沿，不表示最终候选类型                                                 |
+| 洋红色   | `FarEdgeColor`                 | 精确后沿点、后沿十字以及后沿到目标的边界标记                                     | 表示真实后沿或后沿结果，不是固定半径估算点                                                         |
+| 黄色高亮 | `TargetColor`                  | 后沿/顶部到最终目标脚点的线和目标点十字                                          | 表示候选目标位置；只有与最终绿色顶面、有效支撑一起出现时，才表示候选已完整通过                     |
+
+前墙组和顶部组的判读顺序如下：
+
+1. 只有黄色前墙线，没有亮绿色前墙线：前墙没有有效命中，或所有命中因墙面法线规则被拒绝。
+2. 有亮绿色水平前墙线，但只有青色顶部完整投射线：前墙已经采用，顶部可能没有命中，或顶部坡度/实测高度被拒绝；红色顶部命中线表示明确拒绝。
+3. 出现蓝色、红色或紫色厚度探针：顶部已经进入后沿搜索。蓝色表示仍有支撑，红色表示失去支撑，紫色表示二分细化。
+4. 出现青色目标胶囊后又出现绿色胶囊：该候选空间查询通过；出现红色胶囊并伴随红色 AABB/连线：该候选被具体 Collider 阻挡。
+5. 出现红色目标支撑线：胶囊空间可能通过，但目标点下方没有坡度合格的支撑；Mantle 还会拒绝与顶部平面高度差超出容差的命中。
+6. Mantle 的橙黄色点是配置期望内缩，白色/黄色连线指向最终采用的安全点；期望点不安全时，检测器会按搜索步长寻找最近可用位置，`FinalPosition` 使用该实际安全点。
+7. 出现亮绿色竖直顶面采用线、洋红色后沿/后沿十字和黄色目标线：几何候选已经完整生成；此时若状态仍未切换，应检查 Jump Press 缓存、HFSM 路径预检或状态 TagQuery，而不是继续扩大高度范围。
+
+最终顶面采用线只在胶囊空间和目标支撑都通过后绘制；因此“亮绿色顶面线”与“青色顶面查询线”必须区分。
+Debug 线由 `DebugUtility` 按 `DebugDuration` 保持，成功和失败都保留已经执行的查询；缓存同一个 `JumpPressHandle` 的候选时不重复执行或重复绘制检测。
+
+目标胶囊的空间查询会沿角色 `Up` 方向增加 `TargetCapsuleGroundClearance`（默认 `0.02m`）。
+该间隙只平移用于 `OverlapCapsuleNonAlloc` 的查询几何，不会写入目标脚点、`FinalPosition` 或最终角色高度：
+
+```mermaid
+flowchart LR
+    Foot[真实支撑脚点] --> Final[Traversal FinalPosition]
+    Foot --> Offset[沿 Up 增加查询间隙]
+    Offset --> Capsule[目标空间查询 Capsule]
+    Capsule -->|通过| Safe[采用原始支撑脚点]
+    Capsule -->|阻挡| Reject[尝试其他 Mantle 目标]
+```
+
+因此 Debug 中的青色、绿色和红色胶囊必须与实际抬高后的 Physics 查询重合。只有抬高后仍与环境相交，
+红色阻挡 Collider 才表示真实身体空间阻挡；脚底与顶部支撑面的接触本身不再作为阻挡依据。
+
+Vault 的候选目标使用真实后沿加 `VaultTargetForwardClearance`；Mantle 使用
+`MantleStandingInset` 作为期望内缩，并在真实顶部支撑范围内按 `MantleTargetSearchStep` 搜索最近安全点。
+`MantleFarEdgeClearance` 防止站位贴近后沿，`MantleSurfaceHeightTolerance` 防止把顶部下方的地面误认为顶部支撑。
+检测器最终把实际安全脚点写入候选 `FinalPosition`。厚度搜索在第一次失去顶部支撑的相邻采样之间进行二分细化，
+不再以角色半径扩长 Debug 线，也不把固定近端距离当作宽墙的后沿。
 
 每个 Traversal 动画独立配置 `InputOpenNormalizedTime` 和 `FallDetectionNormalizedTime`，并配置一条位置修正权重曲线。
 输入开放时间达到后持续到动画结束；已接地且存在 Move 时进入 WalkStart/RunStart；Fall 检测还必须同时满足未接地和观测垂直速度不再上升，

@@ -69,8 +69,20 @@ namespace RPG.Character
         private float vaultTargetForwardClearance = 0.2f;
 
         [SerializeField, MinValue(0f), LabelText("Mantle 顶部站立内缩（米）"),
-         Tooltip("Mantle 目标在顶部前沿之后的站立内缩距离；不参与 Vault 后沿计算。")]
-        private float mantleStandingInset = 0.33f;
+         Tooltip("Mantle 优先采用的顶部站立内缩距离；检测器会在该期望点附近寻找最近的安全站位，不参与 Vault 后沿计算。")]
+        private float mantleStandingInset = 0.20f;
+
+        [SerializeField, MinValue(0.001f), LabelText("Mantle 目标搜索步长（米）"),
+         Tooltip("Mantle 在期望内缩附近寻找安全目标时的搜索间隔；步长越小越精确，但会增加查询次数。")]
+        private float mantleTargetSearchStep = 0.025f;
+
+        [SerializeField, MinValue(0f), LabelText("Mantle 后沿安全余量（米）"),
+         Tooltip("Mantle 搜索目标距离真实后沿的最小安全余量，避免把站位放在平台边缘或后沿阻挡附近。")]
+        private float mantleFarEdgeClearance = 0.02f;
+
+        [SerializeField, MinValue(0f), LabelText("Mantle 顶面高度容差（米）"),
+         Tooltip("Mantle 支撑命中点相对顶部平面预测高度允许的最大偏差，避免误把下方地面当作顶部支撑。")]
+        private float mantleSurfaceHeightTolerance = 0.08f;
 
         [SerializeField, MinValue(0f), LabelText("目标支撑探测高度（米）"),
          Tooltip("验证 Vault 远侧或 Mantle 顶部目标支撑时，向下探针的起始抬高。")]
@@ -79,6 +91,10 @@ namespace RPG.Character
         [SerializeField, MinValue(0.001f), LabelText("目标支撑探测距离（米）"),
          Tooltip("验证目标下方是否存在有效支撑表面的向下检测距离。")]
         private float supportProbeDistance = 2.5f;
+
+        [SerializeField, MinValue(0f), MaxValue(0.1f), LabelText("目标胶囊脚底间隙（米）"),
+         Tooltip("仅将 Vault/Mantle 目标空间查询胶囊整体向上移动，避免脚底与支撑面接触时被 OverlapCapsule 判定为阻挡。不修改目标脚点、Traversal FinalPosition 或角色最终站立高度。")]
+        private float targetCapsuleGroundClearance = 0.02f;
 
         #endregion
 
@@ -126,10 +142,18 @@ namespace RPG.Character
         public float VaultTargetForwardClearance => vaultTargetForwardClearance;
         /// <summary>获取 Mantle 顶部站立内缩。</summary>
         public float MantleStandingInset => mantleStandingInset;
+        /// <summary>获取 Mantle 安全目标搜索步长。</summary>
+        public float MantleTargetSearchStep => mantleTargetSearchStep;
+        /// <summary>获取 Mantle 后沿安全余量。</summary>
+        public float MantleFarEdgeClearance => mantleFarEdgeClearance;
+        /// <summary>获取 Mantle 顶面高度容差。</summary>
+        public float MantleSurfaceHeightTolerance => mantleSurfaceHeightTolerance;
         /// <summary>获取目标支撑探测高度。</summary>
         public float SupportProbeHeight => supportProbeHeight;
         /// <summary>获取目标支撑探测距离。</summary>
         public float SupportProbeDistance => supportProbeDistance;
+        /// <summary>获取目标空间查询胶囊的脚底间隙。</summary>
+        public float TargetCapsuleGroundClearance => targetCapsuleGroundClearance;
         /// <summary>获取是否绘制本次检测 Debug。</summary>
         public bool DrawDebug => drawDebug;
         /// <summary>获取 Debug 线保持时间。</summary>
@@ -168,8 +192,16 @@ namespace RPG.Character
                 throw new System.InvalidOperationException("Traversal 检测的后沿细化次数不能小于 0。 ");
             if (vaultTargetForwardClearance < 0f || mantleStandingInset < 0f)
                 throw new System.InvalidOperationException("Traversal 检测的 Vault 后沿目标余量和 Mantle 顶部内缩不能小于 0。 ");
+            if (mantleTargetSearchStep <= 0f || mantleTargetSearchStep > vaultMaxDepth)
+                throw new System.InvalidOperationException("Traversal 检测的 Mantle 目标搜索步长必须大于 0 且不大于 Vault 最大厚度。 ");
+            if (mantleFarEdgeClearance < 0f || mantleFarEdgeClearance >= vaultMaxDepth)
+                throw new System.InvalidOperationException("Traversal 检测的 Mantle 后沿安全余量必须大于等于 0 且小于 Vault 最大厚度。 ");
+            if (mantleSurfaceHeightTolerance < 0f)
+                throw new System.InvalidOperationException("Traversal 检测的 Mantle 顶面高度容差不能小于 0。 ");
             if (supportProbeHeight < 0f || supportProbeDistance <= 0f)
                 throw new System.InvalidOperationException("Traversal 检测的目标支撑探针参数无效。 ");
+            if (targetCapsuleGroundClearance < 0f || targetCapsuleGroundClearance > 0.1f)
+                throw new System.InvalidOperationException("Traversal 检测的目标胶囊脚底间隙必须位于 0 到 0.1 米之间。 ");
             if (debugDuration < 0f)
                 throw new System.InvalidOperationException("Traversal Debug 保持时间不能小于 0。 ");
         }

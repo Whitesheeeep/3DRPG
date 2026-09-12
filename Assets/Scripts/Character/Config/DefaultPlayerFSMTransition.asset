@@ -261,7 +261,7 @@ MonoBehaviour:
     minObstacleHeight: 0.7
     maxObstacleHeight: 2.2
     vaultMaxObstacleHeight: 1.2
-    frontWallCastDistance: 1.15
+    frontWallCastDistance: 1.3
     frontWallRayCount: 5
     maxWallNormalUpDot: 0.35
     minTopNormalUpDot: 0.65
@@ -272,9 +272,13 @@ MonoBehaviour:
     depthProbeDistance: 0.3
     farEdgeRefinementIterations: 5
     vaultTargetForwardClearance: 0.2
-    mantleStandingInset: 0.33
+    mantleStandingInset: 0.2
+    mantleTargetSearchStep: 0.025
+    mantleFarEdgeClearance: 0.02
+    mantleSurfaceHeightTolerance: 0.08
     supportProbeHeight: 0.2
     supportProbeDistance: 2.5
+    targetCapsuleGroundClearance: 0.02
     drawDebug: 1
     debugDuration: 6
   vaultAnimationSetting:
