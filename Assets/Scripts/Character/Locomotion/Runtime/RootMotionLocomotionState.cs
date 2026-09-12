@@ -20,6 +20,14 @@ namespace RPG.Character
         protected RootMotionLocomotionState(CharacterLocomotionStateId stateId)
             : base(stateId) { }
 
+        /// <summary>获取该根运动状态占据的运动通道。</summary>
+        protected virtual MotionChannels RootMotionChannels =>
+            MotionChannels.Horizontal | MotionChannels.Rotation;
+
+        /// <summary>获取该根运动状态使用的碰撞模式。</summary>
+        protected virtual MotionCollisionMode RootMotionCollisionMode =>
+            MotionCollisionMode.RespectCollision;
+
         /// <summary>播放具体子状态选择的根运动动画。</summary>
         /// <returns>实际播放的 Animancer 状态；无可用动画时返回 null。</returns>
         protected abstract AnimancerState PlayRootMotionAnimation();
@@ -28,7 +36,7 @@ namespace RPG.Character
         public override void OnEnter(bool suppressDefaultState = false)
         {
             base.OnEnter(suppressDefaultState);
-            AcquireControl(MotionChannels.Horizontal | MotionChannels.Rotation);
+            AcquireControl(RootMotionChannels, RootMotionCollisionMode);
             AnimationState = PlayRootMotionAnimation();
             if (AnimationState != null)
                 AnimationState.Events(this).OnEnd += OnAnimationFinished;

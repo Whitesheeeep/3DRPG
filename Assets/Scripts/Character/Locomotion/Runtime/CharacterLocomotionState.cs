@@ -90,12 +90,16 @@ namespace RPG.Character
 
         /// <summary>为当前状态建立指定通道的持续控制请求。</summary>
         /// <param name="channels">需要竞争的运动通道。</param>
-        protected void AcquireControl(MotionChannels channels)
+        /// <param name="collisionMode">该控制请求完整获胜时使用的碰撞策略。</param>
+        protected void AcquireControl(
+            MotionChannels channels,
+            MotionCollisionMode collisionMode = MotionCollisionMode.RespectCollision)
         {
             ControlHandle = Driver.RequestControl(new MotionControlRequest(
                 Character,
                 MotionPriority.Locomotion,
-                channels));
+                channels,
+                collisionMode));
         }
 
         /// <summary>释放状态拥有的控制请求，保证状态退出不遗留运动控制权。</summary>

@@ -6,7 +6,8 @@ namespace RPG.Character
 {
     /// <summary>
     /// 统一编排 CharacterRoot 侧的环境检测器。
-    /// 当前只包含 Locomotion 环境检测；后续攀爬、贴墙和边缘检测应作为同级子检测器加入这里。
+    /// 当前只包含需要持续写入 Blackboard 的 Locomotion 环境检测；Traversal 是按输入触发的即时查询，
+    /// 不加入这个持续采样协调器。只有未来确实需要长期注入 Blackboard 的事实才扩展此处。
     /// </summary>
     [Serializable]
     public sealed class CharacterEnvironmentDetector
@@ -53,7 +54,7 @@ namespace RPG.Character
             if (blackboard == null)
                 throw new ArgumentNullException(nameof(blackboard));
 
-            // 后续 ClimbingEnvironmentDetector 应在这里按约定顺序执行，PlayerController 不增加新的调用分支。
+            // 这里只推进持续环境事实；Traversal/攀爬候选由对应 Locomotion 分支按输入即时检测。
             locomotionDetector.TickUpdate(deltaTime, blackboard);
         }
 

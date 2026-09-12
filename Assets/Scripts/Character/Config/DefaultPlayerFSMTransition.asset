@@ -257,6 +257,190 @@ MonoBehaviour:
   landing1InputNormalizedTime: 0.1
   landing2InputNormalizedTime: 0.5
   landing3InputNormalizedTime: 0.65
+  traversalDetectionSettings:
+    minObstacleHeight: 0.7
+    maxObstacleHeight: 2.2
+    vaultMaxObstacleHeight: 1.2
+    frontWallCastDistance: 1.15
+    frontWallRayCount: 5
+    maxWallNormalUpDot: 0.35
+    minTopNormalUpDot: 0.65
+    topCastForwardOffset: 0.04
+    vaultMaxDepth: 0.55
+    depthProbeStep: 0.05
+    depthProbeHeight: 0.08
+    depthProbeDistance: 0.3
+    farEdgeRefinementIterations: 5
+    vaultTargetForwardClearance: 0.2
+    mantleStandingInset: 0.33
+    supportProbeHeight: 0.2
+    supportProbeDistance: 2.5
+    drawDebug: 1
+    debugDuration: 6
+  vaultAnimationSetting:
+    transition:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 7400000, guid: f5646469d3c8831449d6eb927b8b4854, type: 2}
+      _NormalizedStartTime: NaN
+    authoredHeight: 1
+    entryCorrectionNormalizedRange: {x: 0, y: 0.12}
+    targetCorrectionNormalizedRange: {x: 0.12, y: 0.32}
+    entryDistanceOffset: 0
+    targetHeightOffset: -0.2
+    positionCorrectionWeightCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    inputOpenNormalizedTime: 0.92
+    fallDetectionNormalizedTime: 0.93
+  mantle1mAnimation:
+    transition:
+      _FadeDuration: 0
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 7400000, guid: e2d2a7451e45c6f42884d950ce9d41a4, type: 2}
+      _NormalizedStartTime: NaN
+    authoredHeight: 1
+    entryCorrectionNormalizedRange: {x: 0, y: 0.2}
+    targetCorrectionNormalizedRange: {x: 0.2, y: 0.43}
+    entryDistanceOffset: 0
+    targetHeightOffset: 0
+    positionCorrectionWeightCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    inputOpenNormalizedTime: 0.8
+    fallDetectionNormalizedTime: 0.85
+  mantle17mAnimation:
+    transition:
+      _FadeDuration: 0.25
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 7400000, guid: 95d4e3ede163b6a4c99e0f92c4a622ff, type: 2}
+      _NormalizedStartTime: NaN
+    authoredHeight: 1.5
+    entryCorrectionNormalizedRange: {x: 0, y: 0.05}
+    targetCorrectionNormalizedRange: {x: 0.05, y: 0.63}
+    entryDistanceOffset: 0
+    targetHeightOffset: 0
+    positionCorrectionWeightCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    inputOpenNormalizedTime: 0.9
+    fallDetectionNormalizedTime: 0.9
+  mantle2mAnimation:
+    transition:
+      _FadeDuration: 0
+      _Speed: 1
+      _Events:
+        _NormalizedTimes: []
+        _Callbacks: []
+        _Names: []
+      _Clip: {fileID: 7400000, guid: 32c4a97bad2fa0b4cb6de9d1f0c0029c, type: 2}
+      _NormalizedStartTime: NaN
+    authoredHeight: 2
+    entryCorrectionNormalizedRange: {x: 0, y: 0.01}
+    targetCorrectionNormalizedRange: {x: 0.01, y: 0.71}
+    entryDistanceOffset: 0
+    targetHeightOffset: 0
+    positionCorrectionWeightCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    inputOpenNormalizedTime: 0.95
+    fallDetectionNormalizedTime: 0.95
   movementAcceleration: 1
   turnSpeed: 0.64
   runSpeedMultiplier: 2
@@ -273,25 +457,25 @@ MonoBehaviour:
   externalLaunchCauseTag:
     id: -1
   idleStateTag:
-    id: 91
+    id: 148
   walkStartStateTag:
-    id: 92
+    id: 149
   runStartStateTag:
-    id: 93
+    id: 150
   walkStateTag:
-    id: 94
+    id: 151
   runStateTag:
-    id: 95
+    id: 152
   stopStateTag:
-    id: 97
+    id: 153
   jumpStateTag:
-    id: 98
+    id: 154
   externalLaunchStateTag:
-    id: 99
+    id: 155
   fallStateTag:
-    id: 100
+    id: 156
   fallLandStateTag:
-    id: 101
+    id: 157
   idleCanEnterQuery:
     allTags: []
     anyTags: []
@@ -329,6 +513,24 @@ MonoBehaviour:
     anyTags: []
     banedTags: []
   fallLandCanEnterQuery:
+    allTags: []
+    anyTags: []
+    banedTags: []
+  traversalStateTag:
+    id: 158
+  vaultStateTag:
+    id: 159
+  mantleStateTag:
+    id: 160
+  traversalCanEnterQuery:
+    allTags: []
+    anyTags: []
+    banedTags: []
+  vaultCanEnterQuery:
+    allTags: []
+    anyTags: []
+    banedTags: []
+  mantleCanEnterQuery:
     allTags: []
     anyTags: []
     banedTags: []

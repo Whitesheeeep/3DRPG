@@ -92,6 +92,12 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_State_Locomotion_Walk = new GameplayTag(151);
         /// <summary>State.Locomotion.WalkStart</summary>
         public static readonly GameplayTag Tag_State_Locomotion_WalkStart = new GameplayTag(149);
+        /// <summary>State.Locomotion.Traversal</summary>
+        public static readonly GameplayTag Tag_State_Locomotion_Traversal = new GameplayTag(158);
+        /// <summary>State.Locomotion.Traversal.Vault</summary>
+        public static readonly GameplayTag Tag_State_Locomotion_Traversal_Vault = new GameplayTag(159);
+        /// <summary>State.Locomotion.Traversal.Mantle</summary>
+        public static readonly GameplayTag Tag_State_Locomotion_Traversal_Mantle = new GameplayTag(160);
         /// <summary>State.Skill</summary>
         public static readonly GameplayTag Tag_State_Skill = new GameplayTag(130);
         /// <summary>State.Skill.Interruptible</summary>

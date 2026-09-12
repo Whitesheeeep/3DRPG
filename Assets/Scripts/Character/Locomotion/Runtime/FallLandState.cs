@@ -15,6 +15,10 @@ namespace RPG.Character
 
         #region 生命周期
 
+        /// <summary>获取当前落地动画是否已经开放 Jump 或接地 Move 输入。</summary>
+        internal bool IsInputOpen => AnimationState != null &&
+            AnimationState.NormalizedTime >= inputOpenNormalizedTime;
+
         /// <summary>创建落地状态。</summary>
         public FallLandState() : base(CharacterLocomotionStateId.FallLand) { }
 
@@ -32,7 +36,7 @@ namespace RPG.Character
                 out inputOpenNormalizedTime);
             if (selectedTransition == null || !selectedTransition.IsValid)
             {
-                HandleLandingInput(true);
+                Owner.CompleteLanding();
                 return;
             }
             base.OnEnter(suppressDefaultState);
@@ -41,11 +45,7 @@ namespace RPG.Character
         /// <inheritdoc />
         public override void OnUpdate()
         {
-            if (AnimationState == null ||
-                AnimationState.NormalizedTime < inputOpenNormalizedTime)
-                return;
-
-            HandleLandingInput(false);
+            // 输入窗口由根状态机优先处理；本状态不在同一帧再次推进新叶状态。
         }
 
         /// <inheritdoc />
@@ -57,7 +57,7 @@ namespace RPG.Character
         }
 
         /// <inheritdoc />
-        protected override void OnAnimationFinished() => HandleLandingInput(true);
+        protected override void OnAnimationFinished() => Owner.CompleteLanding();
 
         /// <summary>按高度阈值选择落地动画，并向较低档位回退缺失资源。</summary>
         /// <param name="fallHeight">环境检测器记录的本次离地下降高度。</param>
@@ -91,24 +91,6 @@ namespace RPG.Character
             }
 
             return null;
-        }
-
-        /// <summary>
-        /// 在落地输入窗口开放后按 Jump→Move→Idle 的优先级决定后续状态。
-        /// </summary>
-        private void HandleLandingInput(bool animationFinished)
-        {
-            // Jump 只有完整路径切换成功后才确认 Press，门禁失败时保留缓冲请求。
-            if (Owner.TryEnterBufferedJump())
-                return;
-
-            // 输入窗口开放后没有新输入时继续播放落地动画；只有自然结束才回到 Idle。
-            if (!Owner.Blackboard.HasMovement && !animationFinished)
-                return;
-
-            Owner.ChangeState(Owner.Blackboard.HasMovement
-                ? Owner.Blackboard.IsSprintHeld ? CharacterLocomotionStateId.Run : CharacterLocomotionStateId.Walk
-                : CharacterLocomotionStateId.Idle);
         }
 
         /// <inheritdoc />

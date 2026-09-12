@@ -38,6 +38,13 @@ namespace RPG.Character
         protected virtual bool IsForwardTransition(ITransition selected) =>
             ReferenceEquals(selected, Transition.ForwardStart);
 
+        /// <summary>
+        /// 起步只能从已接地且存在 Move 的地面上下文进入，避免 Traversal 或 FallLand
+        /// 在仍处于空中阶段时错误播放地面起步动画。
+        /// </summary>
+        public override bool CanEnter() =>
+            base.CanEnter() && Owner.Blackboard.IsGrounded && HasMovement;
+
         /// <inheritdoc />
         public override void OnEnter(bool suppressDefaultState = false)
         {

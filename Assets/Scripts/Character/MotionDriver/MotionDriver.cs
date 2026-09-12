@@ -173,7 +173,7 @@ namespace RPG.Character
                     if (rotation != null && ReferenceEquals(rotation.Handle, submission.Handle))
                         finalRotation *= submission.Submission.Rotation;
                 }
-                ApplyResolvedMotion(translation, finalRotation);
+                ApplyResolvedMotion(translation, finalRotation, horizontal, vertical, rotation);
             }
             finally
             {
@@ -204,7 +204,7 @@ namespace RPG.Character
                     if (rotation != null && ReferenceEquals(rotation.Handle, submission.Handle))
                         finalRotation *= submission.Request.Rotation;
                 }
-                ApplyResolvedMotion(translation, finalRotation);
+                ApplyResolvedMotion(translation, finalRotation, horizontal, vertical, rotation);
             }
             finally
             {
@@ -237,7 +237,7 @@ namespace RPG.Character
                     if (rotation != null && ReferenceEquals(rotation.Handle, submission.Handle))
                         finalRotation *= submission.Submission.Rotation;
                 }
-                ApplyResolvedMotion(translation, finalRotation);
+                ApplyResolvedMotion(translation, finalRotation, horizontal, vertical, rotation);
             }
             finally
             {
@@ -287,14 +287,41 @@ namespace RPG.Character
         /// <summary>应用最终 Tag 约束、旋转和 CharacterController 位移。</summary>
         /// <param name="translation">仲裁后的世界空间位移。</param>
         /// <param name="rotation">仲裁后的附加旋转。</param>
-        private void ApplyResolvedMotion(Vector3 translation, Quaternion rotation)
+        /// <param name="horizontalWinner">水平通道的获胜控制请求。</param>
+        /// <param name="verticalWinner">垂直通道的获胜控制请求。</param>
+        /// <param name="rotationWinner">旋转通道的获胜控制请求。</param>
+        private void ApplyResolvedMotion(
+            Vector3 translation,
+            Quaternion rotation,
+            ControlEntry horizontalWinner,
+            ControlEntry verticalWinner,
+            ControlEntry rotationWinner)
         {
             if (suspended || characterController == null || !characterController.enabled) return;
             if (HasAnyTag(allMovementBlockedTags)) return;
             if (HasAnyTag(horizontalMovementBlockedTags))
                 translation = new Vector3(0f, translation.y, 0f);
-            characterController.transform.rotation *= rotation;
-            if (translation != Vector3.zero) characterController.Move(translation);
+
+            // 只有同一个控制请求同时赢得三个通道时，Traversal 才能安全绕过碰撞；
+            // 分通道获胜时仍遵循正常 CharacterController 碰撞，避免把技能或重力误判成整段翻越。
+            bool bypassCollision = horizontalWinner != null &&
+                ReferenceEquals(horizontalWinner, verticalWinner) &&
+                ReferenceEquals(horizontalWinner, rotationWinner) &&
+                horizontalWinner.Request.CollisionMode == MotionCollisionMode.BypassCollision;
+
+            bool previousDetectCollisions = characterController.detectCollisions;
+            try
+            {
+                if (bypassCollision)
+                    characterController.detectCollisions = false;
+                characterController.transform.rotation *= rotation;
+                if (translation != Vector3.zero) characterController.Move(translation);
+            }
+            finally
+            {
+                if (bypassCollision)
+                    characterController.detectCollisions = previousDetectCollisions;
+            }
         }
 
         /// <summary>判断 ActiveCharacter ASC 是否拥有配置数组中任一 Tag 或其子 Tag。</summary>

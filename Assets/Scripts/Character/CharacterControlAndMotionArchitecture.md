@@ -322,6 +322,8 @@ flowchart LR
 
 `RootMotionWalkStartState` 与 `RootMotionRunStartState` 分别负责 Walk/Run 起步。WalkStart 使用九方向动画并固定以 WalkReferenceSpeed 进入 Walk；RunStart 使用十个 Run 起步槽位，前向根据进入时脚相位选择 L0/R0，并固定以 RunReferenceSpeed 进入 Run。RunStart 自然结束时先读取结束姿态脚相位，写入 RunAsset 的 RunFeet 参数，再播放 Move Mixer。方向槽位缺失属于配置错误，初始化时直接报告，不再回退到代码移动。`WalkReferenceSpeed` 对应 Mixer X=1，`RunReferenceSpeed` 对应 X=2，GAS Speed 仍是实际运动目标。
 
+RunFeet 使用续脚约定：起步结束时左脚在前写入 `1`，右脚在前或两脚相等写入 `0`，让 RunAsset 从下一只脚开始播放。
+
 ## Locomotion 状态职责
 
 ```mermaid
@@ -424,11 +426,71 @@ Move Mixer 的 RotationY 是有限的非循环参数：先计算预计角色前�
 
 当 `RunReferenceSpeed=3` 时，有效速度 1.5 对应 `X=1`，2.25 对应 `X=1.5`，3 对应 `X=2`；只有超过 3 时才把 X 保持在 2 并提高整个 Mixer 的播放倍率。有效速度由当前代码速度乘以 Move 输入幅度得到，因此半推摇杆不会直接跳到 Run 档位。
 
-FallLand 按实际选中的 1 米、2 米或 3 米动画读取独立的输入开放归一化时间。窗口开放前保持落地表现；开放后按 Jump 优先、Move 次之处理，Jump 只有完整 HFSM 路径成功才确认 Press，Move 直接续接 Walk/Run，不重复播放起步动画。
+FallLand 按实际选中的 1 米、2 米或 3 米动画读取独立的输入开放归一化时间。窗口开放前保持落地表现；开放后按 Jump 优先、Move 次之处理，Jump 只有完整 HFSM 路径成功才确认 Press，已接地的 Move 会像 Idle 一样进入 WalkStart 或 RunStart，未接地时不会播放地面起步。
 
 落地动画使用独立的 Animancer `TransitionAsset`，并由角色 AnimancerComponent 共享
-`DefaultLocomotionTransitionLibrary`。从实际播放的 1 米、2 米、3 米落地 Transition 切换到 Move Mixer
-时，Library 分别提供 `0.10s / 0.18s / 0.28s` 的来源专属淡入；未注册的内嵌 Transition 仍按自身 FadeDuration 播放，Start→Move 的显式零淡入入口不被 Library 覆盖。
+`DefaultLocomotionTransitionLibrary`。1 米、2 米、3 米的来源专属淡入配置仍保留在 Library 中；当前
+FallLand 输入窗口和自然结束统一进入 WalkStart/RunStart，因此这条入口暂不直接切 Move Mixer。
+未注册的内嵌 Transition 仍按自身 FadeDuration 播放，Start→Move 的显式零淡入入口不被 Library 覆盖。
+
+## Traversal 根级路由
+
+Locomotion 根节点现在包含三个并列分支：
+
+```mermaid
+stateDiagram-v2
+    [*] --> Grounded
+    state Grounded {
+        Idle --> WalkStart
+        Idle --> RunStart
+        WalkStart --> Walk
+        RunStart --> Run
+        Walk --> Run
+        Run --> Walk
+        Walk --> Stop
+        Run --> Stop
+    }
+    state Traversal {
+        Vault
+        Mantle
+    }
+    state Airborne {
+        JumpMotion
+        ExternalLaunch
+        Fall
+        FallLand
+    }
+    Grounded --> Traversal: Jump Press + Grounded 候选
+    Grounded --> Airborne: Jump / Fall / ExternalLaunch
+    Traversal --> Airborne: 输入窗口 + Jump 或延迟 Fall
+    Traversal --> Grounded: 输入窗口 + 接地 MoveStart 或动画 OnEnd
+    Airborne --> Grounded: FallLand 完成
+```
+
+根状态机只组合跨分支路径和优先级。只有 Grounded 分支拥有
+`PreparedTraversalAttempt`，并在首次 Jump Press 上调用
+`TraversalEnvironmentDetector`。Detector 不读取输入、不消费 PressHandle、不判断动画窗口，
+只返回冻结的世界空间候选。路径 Transition 采用“收集、预检、提交”事务；完整路径进入后才执行
+`OnCommitted`，由 Grounded 分支确认 Jump Press。Traversal 不再检测下一段候选，也不存在任何 Reentry。
+
+Traversal 的高度分类、几何阈值、后沿采样步长、二分细化次数、Vault 后沿目标余量、Mantle 顶部内缩以及
+Debug 保持时间统一由 `PlayerFSMTransition.TraversalDetectionSettings` 配置。检测器不再持有
+Traversal 业务常量：前墙会完整执行全部高度射线，顶部和厚度探针也会保留每一次已经执行的查询。
+成功或失败都使用配置时长绘制普通检测线，最终采用的墙面、顶部、真实后沿和目标位置再用特殊颜色覆盖，
+因此 Debug 结果反映的是一次真实检测，而不是只显示最后的成功线。
+
+Vault 的候选目标使用真实后沿加 `VaultTargetForwardClearance`；Mantle 使用顶部的
+`MantleStandingInset`。厚度搜索在第一次失去顶部支撑的相邻采样之间进行二分细化，不再以角色半径
+扩长 Debug 线，也不把固定近端距离当作宽墙的后沿。
+
+每个 Traversal 动画独立配置 `InputOpenNormalizedTime` 和 `FallDetectionNormalizedTime`，并配置一条位置修正权重曲线。
+输入开放时间达到后持续到动画结束；已接地且存在 Move 时进入 WalkStart/RunStart；Fall 检测还必须同时满足未接地和观测垂直速度不再上升，
+因此根运动中暂时离地不会过早切入 Fall。Vault、Mantle 的动画根位移和旋转通过
+`AnimatorMotionSubmission` 提交，预检空间安全后使用 `BypassCollision`，MotionDriver 仅在同一个
+控制句柄同时赢得水平、垂直、旋转三个通道时临时关闭碰撞并在结算后恢复。
+
+入口修正区间只修正世界水平位置；目标修正区间按位置修正权重曲线逐步收敛到最终世界位置并包含高度。
+Traversal 自然结束时按 Jump、接地 MoveStart、Stop/Fall 的顺序处理；Stop 自己从结束姿态读取左右脚相位，不由 Traversal 提前保存。
 
 ## 状态 Tag 与路径预检
 
@@ -477,6 +539,17 @@ flowchart LR
 - `Character/Locomotion/Runtime/GroundMoveLocomotionState.cs`
 - `Character/Locomotion/Runtime/WalkLocomotionState.cs`
 - `Character/Locomotion/Runtime/RunLocomotionState.cs`
+- `Character/Locomotion/Runtime/TraversalLocomotionStateMachine.cs`
+- `Character/Locomotion/Runtime/TraversalLocomotionState.cs`
+- `Character/Locomotion/Runtime/RootMotionVaultState.cs`
+- `Character/Locomotion/Runtime/RootMotionMantleState.cs`
+- `Character/Locomotion/Runtime/TraversalAnimationSettings.cs`
+- `Character/Locomotion/Runtime/TraversalTypes.cs`
+- `Character/Environment/TraversalDetectionSettings.cs`
+- `Character/Environment/TraversalEnvironmentDetector.cs`
+- `Character/MotionDriver/MotionTypes.cs`
+- `Character/MotionDriver/MotionControlRequest.cs`
+- `WSFrame/Utilities/DebugUtility/DebugUtility.cs`
 - `WSFrame/FSM/UnifiedFSM/StateMachine.cs`
 - `WSFrame/FSM/UnifiedFSM/IState.cs`
 - `WSFrame/FSM/UnifiedFSM/IStateMachine.cs`

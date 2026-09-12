@@ -190,6 +190,11 @@ MonoBehaviour:
     inputType: 7
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
+  - action: {fileID: -7471211009204490832, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    actionName: 
+    inputType: 17
+    pressBufferDuration: 0.2
+    releaseBufferDuration: 0.1
   - action: {fileID: -1641466239674093629, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
     actionName: Player/CharacterSlot1
     inputType: 11
@@ -210,8 +215,8 @@ MonoBehaviour:
     inputType: 14
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
-  - action: {fileID: 0}
-    actionName: Player/Sprint
+  - action: {fileID: 1948390332658134173, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    actionName: 
     inputType: 15
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
