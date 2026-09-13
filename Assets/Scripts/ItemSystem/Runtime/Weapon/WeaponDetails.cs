@@ -94,8 +94,6 @@ namespace RPG.ItemSystem
         public int RefinementRank => Instance.RefinementRank;
         /// <summary>当前锁定状态。</summary>
         public bool IsLocked => Instance.IsLocked;
-        /// <summary>当前新获得状态。</summary>
-        public bool IsNew => Instance.IsNew;
         /// <summary>武器等级效果的有序贡献。</summary>
         public IReadOnlyList<WeaponEffectEvaluation> LevelEffects { get; }
         /// <summary>武器精炼效果的有序贡献。</summary>

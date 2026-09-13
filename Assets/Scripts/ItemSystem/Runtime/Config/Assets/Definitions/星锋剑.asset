@@ -30,5 +30,15 @@ MonoBehaviour:
   growthProfile: {fileID: 11400000, guid: 28d498b19f3930b4c822ae935539a474, type: 2}
   levelEffects: []
   refinementEffects: []
-  ascensionStages: []
-  refinementStages: []
+  ascensionStages:
+  - requiredLevel: 0
+    maxLevelAfter: 0
+    cost:
+      itemCosts: []
+      currencyCosts: []
+  refinementStages:
+  - rank: 2
+    requiredDuplicateCount: 1
+    cost:
+      itemCosts: []
+      currencyCosts: []

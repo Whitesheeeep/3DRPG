@@ -9,7 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5e8a1c3d7f9b42a6b0d4e2f7c1a93568, type: 3}
+  m_Script: {fileID: 11500000, guid: 06cc75c6c2d87e04196511570a4cd384, type: 3}
   m_Name: NewItem
   m_EditorClassIdentifier: 
   itemId:
@@ -19,9 +19,10 @@ MonoBehaviour:
   category: 0
   rarity: 1
   sortPriority: 100
-  iconAddress: 
-  iconSpriteName: 
+  iconAddress: ItemIcons_FoodMaterial
+  iconSpriteName: UI_ItemIcon_100080
   worldPrefabAddress: 
   editorPreviewIcon: {fileID: 21300000, guid: 31a74db9b06045449b9639bb98a93d3d, type: 3}
   maxQuantity: 9999
-  useEffects: []
+  developmentType: 1
+  experienceValue: 0

@@ -18,6 +18,8 @@ namespace RPG.ItemSystem
         // 装备实例状态由对应 Manager 唯一持有；外部只能通过只读快照访问。
         protected readonly Dictionary<EquipmentInstanceId, TInstance> instances =
             new Dictionary<EquipmentInstanceId, TInstance>();
+        // Definition New 状态由 Manager 统一持有；同一 Definition 的多个实例共享一份提示。
+        private readonly HashSet<ItemId> newDefinitionIds = new HashSet<ItemId>();
         private readonly int capacity;
         private long nextAcquisitionSequence = 1;
 
@@ -58,6 +60,20 @@ namespace RPG.ItemSystem
         /// <summary>获取下一个可分配的获得顺序，供对应存档模块保存。</summary>
         public long NextAcquisitionSequence => nextAcquisitionSequence;
 
+        /// <summary>判断一个 Definition 当前是否显示新获得提示。</summary>
+        /// <param name="definitionId">Definition 标识。</param>
+        /// <returns>该 Definition 已标记为 New 时返回 true。</returns>
+        public bool IsDefinitionNew(ItemId definitionId) => newDefinitionIds.Contains(definitionId);
+
+        /// <summary>获取 Definition New 状态的稳定只读快照。</summary>
+        /// <returns>按 Definition 标识排序的新列表。</returns>
+        public IReadOnlyList<ItemId> GetNewDefinitionIds()
+        {
+            var result = new List<ItemId>(newDefinitionIds);
+            result.Sort((left, right) => left.CompareTo(right));
+            return result;
+        }
+
         /// <summary>设置装备锁定状态。</summary>
         /// <param name="instanceId">目标实例。</param>
         /// <param name="isLocked">新的锁定状态。</param>
@@ -74,13 +90,13 @@ namespace RPG.ItemSystem
                 return new EquipmentOperationResult(InventoryOperationStatus.Succeeded);
             }
 
-            TInstance updated = CopyWithState(current, current.Level, current.CurrentExperience, isLocked, current.IsNew);
+            TInstance updated = CopyWithState(current, current.Level, current.CurrentExperience, isLocked);
             instances[instanceId] = updated;
             PublishChange(EquipmentInstanceChangeType.Updated, updated);
             return new EquipmentOperationResult(InventoryOperationStatus.Succeeded);
         }
 
-        /// <summary>确认一个实例的新获得提示。</summary>
+        /// <summary>确认实例所属 Definition 的新获得提示。</summary>
         /// <param name="instanceId">目标实例。</param>
         /// <returns>操作结果。</returns>
         public EquipmentOperationResult AcknowledgeNew(EquipmentInstanceId instanceId)
@@ -90,14 +106,13 @@ namespace RPG.ItemSystem
                 return new EquipmentOperationResult(InventoryOperationStatus.InstanceNotFound);
             }
 
-            if (!current.IsNew)
+            if (!newDefinitionIds.Remove(current.DefinitionId))
             {
                 return new EquipmentOperationResult(InventoryOperationStatus.Succeeded);
             }
 
-            TInstance updated = CopyWithState(current, current.Level, current.CurrentExperience, current.IsLocked, false);
-            instances[instanceId] = updated;
-            PublishChange(EquipmentInstanceChangeType.Updated, updated);
+            // Definition 状态变化不伪造实例 Updated 事件，由具体 Manager 发布领域事件。
+            PublishDefinitionNewStateChanged(current.DefinitionId, false);
             return new EquipmentOperationResult(InventoryOperationStatus.Succeeded);
         }
 
@@ -125,18 +140,25 @@ namespace RPG.ItemSystem
         protected void ClearInstances()
         {
             instances.Clear();
+            newDefinitionIds.Clear();
             nextAcquisitionSequence = 1;
         }
 
         /// <summary>用存档系统已验证的实例集合替换当前状态。</summary>
         /// <param name="restoredInstances">恢复实例。</param>
+        /// <param name="restoredNewDefinitionIds">恢复后的 Definition New 标识。</param>
         /// <param name="nextSequence">下一个获得顺序。</param>
         /// <exception cref="ArgumentNullException">实例列表为空时抛出。</exception>
-        protected void ReplaceInstances(IReadOnlyList<TInstance> restoredInstances, long nextSequence)
+        protected void ReplaceInstances(
+            IReadOnlyList<TInstance> restoredInstances,
+            IReadOnlyList<ItemId> restoredNewDefinitionIds,
+            long nextSequence)
         {
             if (restoredInstances == null) throw new ArgumentNullException(nameof(restoredInstances));
+            if (restoredNewDefinitionIds == null) throw new ArgumentNullException(nameof(restoredNewDefinitionIds));
             if (nextSequence <= 0) throw new ArgumentOutOfRangeException(nameof(nextSequence));
             instances.Clear();
+            newDefinitionIds.Clear();
             for (int index = 0; index < restoredInstances.Count; index++)
             {
                 TInstance instance = restoredInstances[index];
@@ -145,6 +167,7 @@ namespace RPG.ItemSystem
                 instances.Add(instance.InstanceId, instance);
             }
 
+            ReplaceNewDefinitions(restoredNewDefinitionIds);
             nextAcquisitionSequence = nextSequence;
         }
 
@@ -153,14 +176,12 @@ namespace RPG.ItemSystem
         /// <param name="level">新等级。</param>
         /// <param name="currentExperience">新经验。</param>
         /// <param name="isLocked">新锁定状态。</param>
-        /// <param name="isNew">新获得状态。</param>
         /// <returns>更新后的实例。</returns>
         protected abstract TInstance CopyWithState(
             TInstance source,
             int level,
             int currentExperience,
-            bool isLocked,
-            bool isNew);
+            bool isLocked);
 
         /// <summary>向领域事件中心发布实例变化。</summary>
         /// <param name="changeType">变化类型。</param>
@@ -168,6 +189,49 @@ namespace RPG.ItemSystem
         protected abstract void PublishChange(
             EquipmentInstanceChangeType changeType,
             TInstance instance);
+
+        /// <summary>发布 Definition New 状态变化。</summary>
+        /// <param name="definitionId">发生变化的 Definition。</param>
+        /// <param name="isNew">变化后的 New 状态。</param>
+        protected abstract void PublishDefinitionNewStateChanged(ItemId definitionId, bool isNew);
+
+        /// <summary>标记一个 Definition 为新获得。</summary>
+        /// <param name="definitionId">Definition 标识。</param>
+        /// <returns>本次是否新增了集合项。</returns>
+        protected bool MarkDefinitionNew(ItemId definitionId)
+        {
+            if (!definitionId.IsValid) throw new ArgumentException("Definition 标识无效。", nameof(definitionId));
+            return newDefinitionIds.Add(definitionId);
+        }
+
+        /// <summary>恢复并校验 Definition New 集合。</summary>
+        /// <param name="definitionIds">待恢复的 Definition 标识。</param>
+        protected void ReplaceNewDefinitions(IReadOnlyList<ItemId> definitionIds)
+        {
+            if (definitionIds == null) throw new ArgumentNullException(nameof(definitionIds));
+            var existingDefinitionIds = new HashSet<ItemId>();
+            foreach (TInstance instance in instances.Values) existingDefinitionIds.Add(instance.DefinitionId);
+
+            newDefinitionIds.Clear();
+            for (int index = 0; index < definitionIds.Count; index++)
+            {
+                ItemId definitionId = definitionIds[index];
+                if (!definitionId.IsValid || !existingDefinitionIds.Contains(definitionId) || !newDefinitionIds.Add(definitionId))
+                    throw new InvalidOperationException("装备存档的 Definition New 集合包含无效、孤立或重复标识。");
+            }
+        }
+
+        /// <summary>当 Definition 已无实例时清理其 New 状态。</summary>
+        /// <param name="definitionId">待检查的 Definition。</param>
+        protected void RemoveDefinitionNewIfUnused(ItemId definitionId)
+        {
+            foreach (TInstance instance in instances.Values)
+            {
+                if (instance.DefinitionId == definitionId) return;
+            }
+
+            newDefinitionIds.Remove(definitionId);
+        }
 
         #endregion
     }

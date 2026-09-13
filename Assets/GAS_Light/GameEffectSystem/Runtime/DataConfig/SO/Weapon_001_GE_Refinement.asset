@@ -1,0 +1,359 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea401299909b4bb199d79ae4b9da5407, type: 3}
+  m_Name: Weapon_001_GE_Refinement
+  m_EditorClassIdentifier: 
+  description: "\u767D\u6E56\u51AC\u7FBD\u7684GE\u6548\u679C"
+  durationType: 2
+  duration: 0
+  period: 0
+  executePeriodicOnApplication: 0
+  targetTagQuery:
+    allTags: []
+    anyTags: []
+    banedTags: []
+  grantedTags: []
+  cueTags: []
+  modifiers:
+  - rid: 2645454896712122369
+  - rid: 2645454896712122371
+  validationSets:
+  - {fileID: 11400000, guid: fa050d1171257b24bbba13162066da88, type: 2}
+  curveBakeXAxisLabel: Level / X
+  curveBakeStartX: 1
+  curveBakeEndX: 90
+  curveBakeStep: 1
+  bakedCurveXAxisLabel: Level / X
+  bakedCurveHeaders:
+  - "\u653B\u51FB\u529B"
+  bakedCurveRows:
+  - x: 1
+    magnitudes:
+    - 50
+  - x: 2
+    magnitudes:
+    - 55.05618
+  - x: 3
+    magnitudes:
+    - 60.11236
+  - x: 4
+    magnitudes:
+    - 65.16853
+  - x: 5
+    magnitudes:
+    - 70.224724
+  - x: 6
+    magnitudes:
+    - 75.2809
+  - x: 7
+    magnitudes:
+    - 80.337074
+  - x: 8
+    magnitudes:
+    - 85.393265
+  - x: 9
+    magnitudes:
+    - 90.44944
+  - x: 10
+    magnitudes:
+    - 95.505615
+  - x: 11
+    magnitudes:
+    - 100.5618
+  - x: 12
+    magnitudes:
+    - 105.61797
+  - x: 13
+    magnitudes:
+    - 110.67416
+  - x: 14
+    magnitudes:
+    - 115.73033
+  - x: 15
+    magnitudes:
+    - 120.78652
+  - x: 16
+    magnitudes:
+    - 125.84269
+  - x: 17
+    magnitudes:
+    - 130.89888
+  - x: 18
+    magnitudes:
+    - 135.95505
+  - x: 19
+    magnitudes:
+    - 141.01123
+  - x: 20
+    magnitudes:
+    - 146.06741
+  - x: 21
+    magnitudes:
+    - 151.1236
+  - x: 22
+    magnitudes:
+    - 156.17978
+  - x: 23
+    magnitudes:
+    - 161.23595
+  - x: 24
+    magnitudes:
+    - 166.29213
+  - x: 25
+    magnitudes:
+    - 171.34831
+  - x: 26
+    magnitudes:
+    - 176.4045
+  - x: 27
+    magnitudes:
+    - 181.46066
+  - x: 28
+    magnitudes:
+    - 186.51686
+  - x: 29
+    magnitudes:
+    - 191.57303
+  - x: 30
+    magnitudes:
+    - 196.62921
+  - x: 31
+    magnitudes:
+    - 201.68538
+  - x: 32
+    magnitudes:
+    - 206.74158
+  - x: 33
+    magnitudes:
+    - 211.79776
+  - x: 34
+    magnitudes:
+    - 216.85393
+  - x: 35
+    magnitudes:
+    - 221.9101
+  - x: 36
+    magnitudes:
+    - 226.96628
+  - x: 37
+    magnitudes:
+    - 232.02248
+  - x: 38
+    magnitudes:
+    - 237.07864
+  - x: 39
+    magnitudes:
+    - 242.13483
+  - x: 40
+    magnitudes:
+    - 247.191
+  - x: 41
+    magnitudes:
+    - 252.2472
+  - x: 42
+    magnitudes:
+    - 257.30334
+  - x: 43
+    magnitudes:
+    - 262.35956
+  - x: 44
+    magnitudes:
+    - 267.41574
+  - x: 45
+    magnitudes:
+    - 272.4719
+  - x: 46
+    magnitudes:
+    - 277.5281
+  - x: 47
+    magnitudes:
+    - 282.58426
+  - x: 48
+    magnitudes:
+    - 287.64044
+  - x: 49
+    magnitudes:
+    - 292.69662
+  - x: 50
+    magnitudes:
+    - 297.7528
+  - x: 51
+    magnitudes:
+    - 302.809
+  - x: 52
+    magnitudes:
+    - 307.86517
+  - x: 53
+    magnitudes:
+    - 312.92133
+  - x: 54
+    magnitudes:
+    - 317.97754
+  - x: 55
+    magnitudes:
+    - 323.03372
+  - x: 56
+    magnitudes:
+    - 328.08987
+  - x: 57
+    magnitudes:
+    - 333.14606
+  - x: 58
+    magnitudes:
+    - 338.20224
+  - x: 59
+    magnitudes:
+    - 343.25842
+  - x: 60
+    magnitudes:
+    - 348.3146
+  - x: 61
+    magnitudes:
+    - 353.3708
+  - x: 62
+    magnitudes:
+    - 358.42694
+  - x: 63
+    magnitudes:
+    - 363.48315
+  - x: 64
+    magnitudes:
+    - 368.5393
+  - x: 65
+    magnitudes:
+    - 373.5955
+  - x: 66
+    magnitudes:
+    - 378.6517
+  - x: 67
+    magnitudes:
+    - 383.70786
+  - x: 68
+    magnitudes:
+    - 388.76404
+  - x: 69
+    magnitudes:
+    - 393.82022
+  - x: 70
+    magnitudes:
+    - 398.8764
+  - x: 71
+    magnitudes:
+    - 403.93256
+  - x: 72
+    magnitudes:
+    - 408.98877
+  - x: 73
+    magnitudes:
+    - 414.04495
+  - x: 74
+    magnitudes:
+    - 419.10114
+  - x: 75
+    magnitudes:
+    - 424.1573
+  - x: 76
+    magnitudes:
+    - 429.21347
+  - x: 77
+    magnitudes:
+    - 434.26965
+  - x: 78
+    magnitudes:
+    - 439.3258
+  - x: 79
+    magnitudes:
+    - 444.382
+  - x: 80
+    magnitudes:
+    - 449.4382
+  - x: 81
+    magnitudes:
+    - 454.4944
+  - x: 82
+    magnitudes:
+    - 459.55057
+  - x: 83
+    magnitudes:
+    - 464.60672
+  - x: 84
+    magnitudes:
+    - 469.6629
+  - x: 85
+    magnitudes:
+    - 474.7191
+  - x: 86
+    magnitudes:
+    - 479.7753
+  - x: 87
+    magnitudes:
+    - 484.83148
+  - x: 88
+    magnitudes:
+    - 489.88763
+  - x: 89
+    magnitudes:
+    - 494.94382
+  - x: 90
+    magnitudes:
+    - 500
+  stackingType: 0
+  maxStackCount: 1
+  denyOverflowApplication: 1
+  stackingDurationPolicy: 0
+  stackingPeriodPolicy: 0
+  stackingExpirationPolicy: 0
+  references:
+    version: 2
+    RefIds:
+    - rid: 2645454896712122369
+      type: {class: LevelGameplayEffectModifier, ns: WS_Modules.GAS.GameplayEffect, asm: Assembly-CSharp}
+      data:
+        attribute:
+          id: 5
+          name: AttackPower
+          displayName: "\u653B\u51FB\u529B"
+        type: 0
+        priority: 0
+        levelMagnitudes:
+        - level: 1
+          magnitude: 20
+        - level: 2
+          magnitude: 20
+        - level: 3
+          magnitude: 30
+        - level: 4
+          magnitude: 40
+        - level: 5
+          magnitude: 50
+        - level: 6
+          magnitude: 60
+    - rid: 2645454896712122371
+      type: {class: LevelGameplayEffectModifier, ns: WS_Modules.GAS.GameplayEffect, asm: Assembly-CSharp}
+      data:
+        attribute:
+          id: 6
+          name: CriticalChance
+          displayName: "\u66B4\u51FB\u7387"
+        type: 0
+        priority: 0
+        levelMagnitudes:
+        - level: 1
+          magnitude: 0.1
+        - level: 2
+          magnitude: 0.15
+        - level: 3
+          magnitude: 0.2
+        - level: 4
+          magnitude: 0.25
+        - level: 5
+          magnitude: 0.3

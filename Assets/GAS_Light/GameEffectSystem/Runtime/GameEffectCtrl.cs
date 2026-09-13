@@ -133,32 +133,32 @@ namespace WS_Modules.GAS.GameplayEffect
 
         // 创建新 Active 前完成当前应执行的 Modifier 计算与 Tag 校验；延迟周期不会提前消费随机计算。
         private bool CreateActiveEffect(
-            GameplayEffectData data,
+            GameplayEffectData geData,
             GameplayAbilitySystemComponent source,
             int level,
             IReadOnlyDictionary<GameplayTag, float> setByCaller,
             out GameEffectRuntime activeEffect)
         {
             activeEffect = null;
-            var runtime = new GameEffectRuntime(data, source, Owner, level, setByCaller);
-            bool needsImmediateCalculation = !data.IsPeriodic || data.ExecutePeriodicOnApplication;
+            var runtime = new GameEffectRuntime(geData, source, Owner, level, setByCaller);
+            bool needsImmediateCalculation = !geData.IsPeriodic || geData.ExecutePeriodicOnApplication;
             List<AttributeModifier> results = needsImmediateCalculation
                 ? runtime.CalculateModifiers(runtime)
                 : null;
 
-            // 不为 Periodic GE 时，即为 Infinite GE，那就应该替换其
-            bool numericApplied = data.IsPeriodic
-                ? !data.ExecutePeriodicOnApplication || Owner.MutableAttributes.TryApplyInstantModifiers(results)
+            // 不为 Periodic GE 时，即为 Infinite GE，那就应该替换其 Modifier；
+            bool numericApplied = geData.IsPeriodic
+                ? !geData.ExecutePeriodicOnApplication || Owner.MutableAttributes.TryApplyInstantModifiers(results)
                 : Owner.MutableAttributes.TryReplaceModifiers(runtime, results);
             if (!numericApplied) return false;
 
-            AddGrantedTags(data);
+            AddGrantedTags(geData);
             runtime.SetActive(true);
             activeEffects.Add(runtime);
             activeEffect = runtime;
-            PublishCues(data, GameplayCueEventType.Active, source, runtime, null);
-            if (data.IsPeriodic && data.ExecutePeriodicOnApplication)
-                PublishCues(data, GameplayCueEventType.Execute, source, runtime, null);
+            PublishCues(geData, GameplayCueEventType.Active, source, runtime, null);
+            if (geData.IsPeriodic && geData.ExecutePeriodicOnApplication)
+                PublishCues(geData, GameplayCueEventType.Execute, source, runtime, null);
             return true;
         }
 

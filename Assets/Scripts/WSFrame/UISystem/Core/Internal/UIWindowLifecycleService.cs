@@ -611,7 +611,7 @@ namespace WS_Modules.UIModule
         /// </summary>
         /// <param name="record">待隐藏的窗口记录。</param>
         /// <param name="notifyClosed">是否发送窗口关闭通知。</param>
-        private async UniTask HideWindowAsync(UIWindowRecord record, bool notifyClosed)
+        private async UniTask HideWindowAsync(UIWindowRecord record, bool notifyClosed = true)
         {
             WindowBase window = record.Window;
             if (window is not { GameObject: not null, Visible: true } || record.State != UIWindowState.Visible)

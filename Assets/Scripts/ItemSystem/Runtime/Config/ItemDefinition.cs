@@ -77,10 +77,12 @@ namespace RPG.ItemSystem
         {
             if (this is WeaponDefinition) category = ItemCategory.Weapon;
             else if (this is ArtifactDefinition) category = ItemCategory.Artifact;
-            else if (this is DevelopmentItemDefinition) category = ItemCategory.Material;
-            else if (category == ItemCategory.Weapon || category == ItemCategory.Artifact)
+            else if (this is DevelopmentItemDefinition) category = ItemCategory.DevelopmentItem;
+            else if (this is FoodItemDefinition) category = ItemCategory.Food;
+            else if (this is StackableItemDefinition) category = ItemCategory.Ingredient;
+            else if (category == ItemCategory.Weapon || category == ItemCategory.Artifact || category == ItemCategory.DevelopmentItem || category == ItemCategory.Food)
             {
-                category = ItemCategory.Material;
+                category = ItemCategory.Ingredient;
             }
         }
     }

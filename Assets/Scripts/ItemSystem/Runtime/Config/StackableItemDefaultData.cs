@@ -14,7 +14,7 @@ namespace RPG.ItemSystem
     {
         #region 默认字段
 
-        [SerializeField, LabelText("物品类型")] private ItemCategory category = ItemCategory.Material;
+        [SerializeField, LabelText("物品类型")] private ItemCategory category = ItemCategory.DevelopmentItem;
         [SerializeField, MinValue(1), LabelText("默认最大堆叠数量")] private int defaultMaxQuantity = 9999;
 
         #endregion

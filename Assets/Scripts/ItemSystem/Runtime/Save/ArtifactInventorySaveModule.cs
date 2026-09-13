@@ -9,7 +9,11 @@ namespace RPG.ItemSystem
     public sealed class ArtifactInventorySaveSnapshot : ISaveModuleSnapshot
     {
         /// <summary>创建空快照。</summary>
-        public ArtifactInventorySaveSnapshot() => Instances = new List<ArtifactInventorySaveEntry>();
+        public ArtifactInventorySaveSnapshot()
+        {
+            Instances = new List<ArtifactInventorySaveEntry>();
+            NewDefinitionIds = new List<string>();
+        }
 
         /// <summary>圣遗物实例数据。</summary>
         public List<ArtifactInventorySaveEntry> Instances { get; set; }
@@ -17,17 +21,33 @@ namespace RPG.ItemSystem
         /// <summary>下一个获得顺序。</summary>
         public long NextAcquisitionSequence { get; set; } = 1;
 
+        /// <summary>当前显示 New 的圣遗物 Definition 标识。</summary>
+        public List<string> NewDefinitionIds { get; set; }
+
         /// <summary>验证快照结构。</summary>
         public void ValidateShape()
         {
-            if (Instances == null || NextAcquisitionSequence <= 0) throw new InvalidOperationException("圣遗物背包快照结构无效。");
+            if (Instances == null || NewDefinitionIds == null || NextAcquisitionSequence <= 0)
+                throw new InvalidOperationException("圣遗物背包快照结构无效。");
             var ids = new HashSet<string>(StringComparer.Ordinal);
+            var definitionIds = new HashSet<string>(StringComparer.Ordinal);
             for (int index = 0; index < Instances.Count; index++)
             {
                 ArtifactInventorySaveEntry entry = Instances[index];
                 if (entry == null || string.IsNullOrWhiteSpace(entry.InstanceId) || string.IsNullOrWhiteSpace(entry.DefinitionId) ||
                     entry.Level < 0 || entry.CurrentExperience < 0 || entry.AcquisitionSequence <= 0 || !ids.Add(entry.InstanceId))
                     throw new InvalidOperationException("圣遗物背包快照包含非法或重复实例。");
+                definitionIds.Add(entry.DefinitionId);
+            }
+
+            var newDefinitionIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int index = 0; index < NewDefinitionIds.Count; index++)
+            {
+                string definitionId = NewDefinitionIds[index];
+                if (!ItemId.TryCreate(definitionId, out ItemId parsedDefinitionId) ||
+                    !newDefinitionIds.Add(definitionId) ||
+                    !definitionIds.Contains(definitionId))
+                    throw new InvalidOperationException("圣遗物背包快照的 Definition New 集合无效。");
             }
         }
     }
@@ -46,8 +66,6 @@ namespace RPG.ItemSystem
         public int CurrentExperience { get; set; }
         /// <summary>锁定状态。</summary>
         public bool IsLocked { get; set; }
-        /// <summary>新获得状态。</summary>
-        public bool IsNew { get; set; }
         /// <summary>获得顺序。</summary>
         public long AcquisitionSequence { get; set; }
     }
@@ -70,6 +88,10 @@ namespace RPG.ItemSystem
         protected override ArtifactInventorySaveSnapshot CaptureTypedSnapshot()
         {
             var snapshot = new ArtifactInventorySaveSnapshot();
+            IReadOnlyList<ItemId> newDefinitionIds = manager.GetNewDefinitionIds();
+            for (int index = 0; index < newDefinitionIds.Count; index++)
+                snapshot.NewDefinitionIds.Add(newDefinitionIds[index].Value);
+
             IReadOnlyList<ArtifactInstance> instances = manager.GetInstances();
             long nextSequence = 1;
             for (int index = 0; index < instances.Count; index++)
@@ -78,7 +100,7 @@ namespace RPG.ItemSystem
                 snapshot.Instances.Add(new ArtifactInventorySaveEntry
                 {
                     InstanceId = instance.InstanceId.Value, DefinitionId = instance.DefinitionId.Value, Level = instance.Level,
-                    CurrentExperience = instance.CurrentExperience, IsLocked = instance.IsLocked, IsNew = instance.IsNew,
+                    CurrentExperience = instance.CurrentExperience, IsLocked = instance.IsLocked,
                     AcquisitionSequence = instance.AcquisitionSequence
                 });
                 if (instance.AcquisitionSequence >= nextSequence) nextSequence = instance.AcquisitionSequence + 1;
@@ -112,9 +134,14 @@ namespace RPG.ItemSystem
             {
                 ArtifactInventorySaveEntry entry = snapshot.Instances[index];
                 instances.Add(new ArtifactInstance(new EquipmentInstanceId(entry.InstanceId), new ItemId(entry.DefinitionId), entry.Level,
-                    entry.CurrentExperience, entry.IsLocked, entry.IsNew, entry.AcquisitionSequence));
+                    entry.CurrentExperience, entry.IsLocked, entry.AcquisitionSequence));
             }
-            manager.RestoreState(instances, snapshot.NextAcquisitionSequence);
+
+            var newDefinitionIds = new List<ItemId>(snapshot.NewDefinitionIds.Count);
+            for (int index = 0; index < snapshot.NewDefinitionIds.Count; index++)
+                newDefinitionIds.Add(new ItemId(snapshot.NewDefinitionIds[index]));
+
+            manager.RestoreState(instances, newDefinitionIds, snapshot.NextAcquisitionSequence);
             manager.PublishRestored();
         }
     }

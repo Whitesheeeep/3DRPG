@@ -29,6 +29,13 @@ namespace RPG.PlayerInputSystem
         /// <inheritdoc />
         public IReadOnlyList<IReadOnlyPlayerInputRequest> Requests => requests;
 
+        #endregion
+
+        #region 即时输入事件
+
+        /// <summary>当配置为即时交付的 InputAction 发生 performed 时通知订阅者。</summary>
+        public event Action<PlayerInputType> ImmediateInputPerformed;
+
         /// <summary>通过输入类型从内部索引查询请求，供 Arbiter 在不扫描列表的情况下读取输入阶段。</summary>
         /// <param name="inputType">需要查询的输入类型。</param>
         /// <param name="request">找到时返回当前手势的只读请求。</param>
@@ -103,19 +110,29 @@ namespace RPG.PlayerInputSystem
         #endregion
 
         #region 输入回调
-        /// <summary>把真实 performed 回调转换为 Press Request。</summary>
+        /// <summary>把真实 performed 回调按绑定模式转换为缓冲 Request 或即时通知。</summary>
         /// <param name="context">新输入系统提供的动作回调上下文。</param>
         private void OnPerformed(InputAction.CallbackContext context)
         {
             ResolvedBinding binding = bindingsByAction[context.action];
+
+            if (binding.DeliveryMode == PlayerInputDeliveryMode.ImmediateNotification)
+            {
+                // UI 快捷键只转发一次物理 performed，不进入玩法 Request 生命周期。
+                Debug.Log($"[PlayerInputController] 即时转发 {binding.InputType}。", this);
+                ImmediateInputPerformed?.Invoke(binding.InputType);
+                return;
+            }
+
             NotifyPerformed(binding.InputType, binding.PressDuration);
         }
 
-        /// <summary>把真实 canceled 回调转换为独立 Release Request。</summary>
+        /// <summary>把缓冲输入的真实 canceled 回调转换为 Release Request。</summary>
         /// <param name="context">新输入系统提供的动作回调上下文。</param>
         private void OnCanceled(InputAction.CallbackContext context)
         {
             ResolvedBinding binding = bindingsByAction[context.action];
+            if (binding.DeliveryMode == PlayerInputDeliveryMode.ImmediateNotification) return;
             NotifyCanceled(binding.InputType, binding.ReleaseDuration);
         }
         #endregion
@@ -209,7 +226,8 @@ namespace RPG.PlayerInputSystem
                     throw new InvalidOperationException($"输入绑定 {i} 缺少有效 InputActionReference 或 ActionName。");
                 var resolved = new ResolvedBinding(binding.InputType,
                     binding.ResolvePressDuration(defaultPressBufferDuration),
-                    binding.ResolveReleaseDuration(defaultReleaseBufferDuration));
+                    binding.ResolveReleaseDuration(defaultReleaseBufferDuration),
+                    binding.DeliveryMode);
                 ValidateDuration(resolved.PressDuration, $"bindings[{i}].PressDuration");
                 ValidateDuration(resolved.ReleaseDuration, $"bindings[{i}].ReleaseDuration");
                 if (!bindingsByAction.TryAdd(action, resolved))
@@ -239,16 +257,24 @@ namespace RPG.PlayerInputSystem
             public float PressDuration { get; }
             /// <summary>获取 Release Buffer 秒数。</summary>
             public float ReleaseDuration { get; }
+            /// <summary>获取 InputAction 触发后的交付方式。</summary>
+            public PlayerInputDeliveryMode DeliveryMode { get; }
 
             /// <summary>创建已解析且无需在输入回调中再次访问配置的绑定。</summary>
             /// <param name="inputType">输入类型。</param>
             /// <param name="pressDuration">Press Buffer 秒数。</param>
             /// <param name="releaseDuration">Release Buffer 秒数。</param>
-            public ResolvedBinding(PlayerInputType inputType, float pressDuration, float releaseDuration)
+            /// <param name="deliveryMode">InputAction 触发后的交付方式。</param>
+            public ResolvedBinding(
+                PlayerInputType inputType,
+                float pressDuration,
+                float releaseDuration,
+                PlayerInputDeliveryMode deliveryMode)
             {
                 InputType = inputType;
                 PressDuration = pressDuration;
                 ReleaseDuration = releaseDuration;
+                DeliveryMode = deliveryMode;
             }
         }
         #endregion

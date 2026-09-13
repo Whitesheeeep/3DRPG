@@ -1035,9 +1035,41 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: bindings.Array.data[8].action
+      value: 
+      objectReference: {fileID: -1641466239674093629, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: bindings.Array.data[9].action
+      value: 
+      objectReference: {fileID: -8172520714770766036, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: bindings.Array.data[10].action
+      value: 
+      objectReference: {fileID: -8642184972703864746, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: bindings.Array.data[11].action
+      value: 
+      objectReference: {fileID: -2665493838394134933, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: bindings.Array.data[12].action
+      value: 
+      objectReference: {fileID: -7471211009204490832, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: bindings.Array.data[13].action
+      value: 
+      objectReference: {fileID: 6962443320683872922, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: bindings.Array.data[14].action
+      value: 
+      objectReference: {fileID: -1744970950929049424, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
     - target: {fileID: 5482557129118236183, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6089726963410338055, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: environmentDetector.locomotionDetector.environmentLayerMask.m_Bits
+      value: 51
       objectReference: {fileID: 0}
     - target: {fileID: 6495212430660579562, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
       propertyPath: actorContainer
@@ -1537,8 +1569,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e983688125294d54af28c352f78df72d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  testWeapon: {fileID: 11400000, guid: 766ed4bd2e34310428076c61553f6778, type: 2}
+  testWeapon: {fileID: 11400000, guid: d66c99f27e8540d45bcd3b973b2d4889, type: 2}
+  testEnhancementMaterials:
+  - {fileID: 11400000, guid: 4c42f5021fd346e468dfce5397bf702d, type: 2}
+  - {fileID: 11400000, guid: 669cc4e2c7af19f4e9b5ed3e9c747389, type: 2}
+  testAscensionMaterial: {fileID: 11400000, guid: 0b948cf03cd17bb40ad388b43ef7e728, type: 2}
   batchQuantity: 8
+  enhancementMaterialQuantity: 20
+  ascensionMaterialQuantity: 3
   targetLevel: 20
   targetExperience: 0
   targetAscensionRank: 0

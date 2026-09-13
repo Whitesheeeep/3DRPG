@@ -5,8 +5,8 @@ namespace RPG.ItemSystem
     /// <summary>背包展示和类型默认数据使用的物品分类。</summary>
     public enum ItemCategory
     {
-        /// <summary>养成素材。</summary>
-        [InspectorName("养成素材")] Material = 0,
+        /// <summary>养成道具；保留旧序列化数值 0 以兼容已有 material_ ItemId。</summary>
+        [InspectorName("养成道具")] DevelopmentItem = 0,
         /// <summary>食材。</summary>
         [InspectorName("食材")] Ingredient = 1,
         /// <summary>料理。</summary>

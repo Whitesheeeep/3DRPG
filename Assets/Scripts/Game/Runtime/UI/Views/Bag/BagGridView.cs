@@ -38,9 +38,11 @@ namespace RPG.Game.UI.Views.Bag
 
         private readonly Dictionary<BagEntryKey, BagItemView> viewByEntryKeyMap = new();
         private readonly Dictionary<int, BagItemView> viewByIndexMap = new();
+        private readonly HashSet<BagEntryKey> selectedEntryKeys = new();
         private IReadOnlyList<BagItemViewData> entries = Array.Empty<BagItemViewData>();
         private Action<BagEntryKey> selectionCallback;
-        private BagEntryKey? selectedEntryKey;
+        private Action<BagItemQuantityIntent> quantityCallback;
+        private bool quantitySelectionMode;
         private int columnCount = 1;
         private bool isInteractable = true;
 
@@ -90,17 +92,64 @@ namespace RPG.Game.UI.Views.Bag
             RecycleAllViews();
             entries = newEntries ?? throw new ArgumentNullException(nameof(newEntries));
             selectionCallback = onSelected;
+            quantityCallback = null;
+            quantitySelectionMode = false;
             RecalculateLayout();
             RefreshVisibleViews();
         }
 
-        /// <summary>设置当前稳定选择并同步可见格子的选中背景。</summary>
+        /// <summary>绑定支持左右键和长按数量调整的物品列表。</summary>
+        /// <param name="newEntries">当前列表快照。</param>
+        /// <param name="onQuantityChanged">数量调整意图回调。</param>
+        public void BindQuantitySelection(IReadOnlyList<BagItemViewData> newEntries,
+            Action<BagItemQuantityIntent> onQuantityChanged)
+        {
+            bool preserveVisibleViews = quantitySelectionMode && HasSameEntryLayout(newEntries);
+            // 数量模式与普通单选模式共享池；同一候选键列表原地刷新，避免回收对象打断长按输入。
+            if (!preserveVisibleViews) RecycleAllViews();
+            entries = newEntries ?? throw new ArgumentNullException(nameof(newEntries));
+            selectionCallback = null;
+            quantityCallback = onQuantityChanged;
+            quantitySelectionMode = true;
+            RecalculateLayout();
+            RefreshVisibleViews();
+        }
+
+        /// <summary>判断新旧列表是否拥有完全相同的稳定键顺序。</summary>
+        /// <param name="newEntries">待绑定的新列表。</param>
+        /// <returns>稳定键布局相同时返回 true。</returns>
+        private bool HasSameEntryLayout(IReadOnlyList<BagItemViewData> newEntries)
+        {
+            if (newEntries == null || entries == null || entries.Count != newEntries.Count) return false;
+            for (int index = 0; index < entries.Count; index++)
+                if (entries[index].EntryKey != newEntries[index].EntryKey) return false;
+            return true;
+        }
+
+        /// <summary>设置当前单选稳定键并同步可见格子的选中视觉。</summary>
         /// <param name="entryKey">当前选择，空值表示清空。</param>
         public void SetSelection(BagEntryKey? entryKey)
         {
-            selectedEntryKey = entryKey;
+            selectedEntryKeys.Clear();
+            if (entryKey.HasValue) selectedEntryKeys.Add(entryKey.Value);
+            RefreshVisibleSelection();
+        }
+
+        /// <summary>替换当前多选条目集合并同步所有可见格子的选中背景和图标。</summary>
+        /// <param name="entryKeys">当前选中的稳定条目标识集合。</param>
+        public void SetSelectedEntries(IReadOnlyCollection<BagEntryKey> entryKeys)
+        {
+            if (entryKeys == null) throw new ArgumentNullException(nameof(entryKeys));
+            selectedEntryKeys.Clear();
+            foreach (BagEntryKey entryKey in entryKeys) selectedEntryKeys.Add(entryKey);
+            RefreshVisibleSelection();
+        }
+
+        /// <summary>根据当前稳定键集合刷新所有可见池对象的选中状态。</summary>
+        private void RefreshVisibleSelection()
+        {
             foreach (KeyValuePair<BagEntryKey, BagItemView> pair in viewByEntryKeyMap)
-                pair.Value.SetSelected(entryKey.HasValue && pair.Key == entryKey.Value);
+                pair.Value.SetSelected(selectedEntryKeys.Contains(pair.Key));
         }
 
         /// <summary>启用或禁用网格中所有可见格子的点击。</summary>
@@ -184,9 +233,15 @@ namespace RPG.Game.UI.Views.Bag
                     rectTransform.sizeDelta = new Vector2(cellWidth, cellHeight);
                     rectTransform.anchoredPosition = GetPosition(index);
                 }
-                view.Bind(entries[index], selectionCallback);
+                if (quantitySelectionMode)
+                {
+                    // 同一条目原地刷新可以保留 PointerDown/长按状态；稳定键变化时才重新初始化输入。
+                    view.RefreshQuantitySelection(entries[index], quantityCallback);
+                }
+                else
+                    view.Bind(entries[index], selectionCallback);
                 view.SetInteractable(isInteractable);
-                view.SetSelected(selectedEntryKey.HasValue && selectedEntryKey.Value == entries[index].EntryKey);
+                view.SetSelected(selectedEntryKeys.Contains(entries[index].EntryKey));
             }
         }
 

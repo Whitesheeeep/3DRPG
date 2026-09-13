@@ -21,6 +21,7 @@ namespace RPG.ItemSystem.Editor
         private readonly VisualElement commonDetailsPage;
         private readonly VisualElement stackableDetailsPage;
         private readonly VisualElement developmentItemDetailsPage;
+        private readonly VisualElement foodDetailsPage;
         private readonly VisualElement weaponDetailsPage;
         private readonly VisualElement artifactDetailsPage;
         private readonly ItemWeaponDetailsView weaponDetailsView;
@@ -29,6 +30,7 @@ namespace RPG.ItemSystem.Editor
         private readonly VisualTreeAsset commonDetailsTemplate;
         private readonly VisualTreeAsset stackableDetailsTemplate;
         private readonly VisualTreeAsset developmentDetailsTemplate;
+        private readonly VisualTreeAsset foodDetailsTemplate;
         private readonly VisualElement summaryCard;
         private readonly Image summaryIconImage;
         private readonly Label summaryIconFallback;
@@ -39,14 +41,14 @@ namespace RPG.ItemSystem.Editor
         private readonly Label summaryId;
         private readonly PropertyField itemIdField;
         private readonly PropertyField categoryField;
-        private readonly PropertyField useEffectsField;
+        private readonly PropertyField foodUseEffectsField;
         private readonly List<(PropertyField field, string label)> fixedPropertyLabels = new();
 
         private ItemDefinition boundDefinition;
         private SerializedObject definitionSerializedObject;
         private VisualElement definitionTracker;
         private int bindingVersion;
-        private bool useEffectsListConfigured;
+        private bool foodUseEffectsListConfigured;
         private TextField displayNameField;
         private string displayNameEditingOriginal = string.Empty;
         private bool displayNameCommitCompleted;
@@ -93,6 +95,7 @@ namespace RPG.ItemSystem.Editor
             commonDetailsPage = Require<VisualElement>("CommonDetailsPage");
             stackableDetailsPage = Require<VisualElement>("StackableDetailsPage");
             developmentItemDetailsPage = Require<VisualElement>("DevelopmentItemDetailsPage");
+            foodDetailsPage = Require<VisualElement>("FoodDetailsPage");
             weaponDetailsPage = Require<VisualElement>("WeaponDetailsPage");
             artifactDetailsPage = Require<VisualElement>("ArtifactDetailsPage");
             scrollView.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
@@ -121,19 +124,24 @@ namespace RPG.ItemSystem.Editor
             developmentDetailsTemplate = LoadDetailsTemplate(
                 UxmlUssPathConstants.Uxml.AssetsScriptsItemSystemEditorStyleItemDevelopmentDetails,
                 "养成道具详情");
+            foodDetailsTemplate = LoadDetailsTemplate(
+                UxmlUssPathConstants.Uxml.AssetsScriptsItemSystemEditorStyleItemFoodDetails,
+                "料理详情");
             commonDetailsTemplate.CloneTree(commonDetailsPage);
             stackableDetailsTemplate.CloneTree(stackableDetailsPage);
             developmentDetailsTemplate.CloneTree(developmentItemDetailsPage);
+            foodDetailsTemplate.CloneTree(foodDetailsPage);
             displayNameField = RequireFromPage<TextField>(commonDetailsPage, "DisplayNameField", "公共物品详情");
             itemIdField = RequireFromPage<PropertyField>(commonDetailsPage, "ItemIdField", "公共物品详情");
             itemIdField.SetEnabled(false);
             categoryField = RequireFromPage<PropertyField>(commonDetailsPage, "CategoryField", "公共物品详情");
             categoryField.SetEnabled(false);
-            useEffectsField = RequireFromPage<PropertyField>(stackableDetailsPage, "UseEffectsField", "可堆叠物品详情");
+            foodUseEffectsField = RequireFromPage<PropertyField>(foodDetailsPage, "UseEffectsField", "料理详情");
             commonDetailsPage.RegisterCallback<SerializedPropertyChangeEvent>(OnCommonPropertyChanged);
             CacheFixedPropertyLabels(commonDetailsPage);
             CacheFixedPropertyLabels(stackableDetailsPage);
             CacheFixedPropertyLabels(developmentItemDetailsPage);
+            CacheFixedPropertyLabels(foodDetailsPage);
             displayNameField.RegisterCallback<FocusInEvent>(OnDisplayNameFocusIn);
             displayNameField.RegisterCallback<ChangeEvent<string>>(OnDisplayNameChanged);
             displayNameField.RegisterCallback<KeyDownEvent>(OnDisplayNameKeyDown);
@@ -145,7 +153,7 @@ namespace RPG.ItemSystem.Editor
             artifactDetailsView.BakeGrowthRequested += OnBakeArtifactGrowthRequested;
             artifactDetailsView.ViewBakedResultRequested += OnViewArtifactBakedResultRequested;
             artifactDetailsView.PropertiesChanged += OnArtifactPropertiesChanged;
-            SetPageVisibility(false, false, false, false, false);
+            SetPageVisibility(false, false, false, false, false, false);
             SetEmptyState(true);
         }
 
@@ -193,50 +201,59 @@ namespace RPG.ItemSystem.Editor
             }
 
             definitionSerializedObject = new SerializedObject(definition);
+            Debug.Log($"[ItemDefinitionDetailsView] 绑定物品定义：{definition.ItemId}，类型={definition.GetType().Name}。");
             commonDetailsPage.Bind(definitionSerializedObject);
             if (definition is DevelopmentItemDefinition)
             {
                 stackableDetailsPage.Bind(definitionSerializedObject);
                 developmentItemDetailsPage.Bind(definitionSerializedObject);
+                foodDetailsPage.Unbind();
                 weaponDetailsView.Unbind();
                 artifactDetailsView.Unbind();
-                SetPageVisibility(true, true, true, false, false);
+                SetPageVisibility(true, true, true, false, false, false);
             }
             else if (definition is StackableItemDefinition)
             {
                 stackableDetailsPage.Bind(definitionSerializedObject);
                 developmentItemDetailsPage.Unbind();
+                if (definition is FoodItemDefinition)
+                    foodDetailsPage.Bind(definitionSerializedObject);
+                else
+                    foodDetailsPage.Unbind();
                 weaponDetailsView.Unbind();
                 artifactDetailsPage.Unbind();
                 artifactDetailsView.Unbind();
-                SetPageVisibility(true, true, false, false, false);
+                SetPageVisibility(true, true, false, definition is FoodItemDefinition, false, false);
             }
             else if (definition is WeaponDefinition weapon)
             {
                 stackableDetailsPage.Unbind();
                 developmentItemDetailsPage.Unbind();
+                foodDetailsPage.Unbind();
                 artifactDetailsPage.Unbind();
                 // 武器页面先保持隐藏，待子 View 完成原生数组生成和中文化后再显示，避免 Element 0 首帧闪现。
-                SetPageVisibility(true, false, false, false, false);
+                SetPageVisibility(true, false, false, false, false, false);
                 weaponDetailsView.Bind(weapon, definitionSerializedObject);
             }
             else if (definition is ArtifactDefinition)
             {
                 stackableDetailsPage.Unbind();
                 developmentItemDetailsPage.Unbind();
+                foodDetailsPage.Unbind();
                 weaponDetailsView.Unbind();
                 artifactDetailsView.Bind((ArtifactDefinition)definition, definitionSerializedObject);
                 // 圣遗物页与武器页一样，先隐藏动态列表，待 Profile 绑定和中文化完成后再由子 View 显示。
-                SetPageVisibility(true, false, false, false, false);
+                SetPageVisibility(true, false, false, false, false, true);
             }
             else
             {
                 stackableDetailsPage.Unbind();
                 developmentItemDetailsPage.Unbind();
+                foodDetailsPage.Unbind();
                 weaponDetailsView.Unbind();
                 artifactDetailsPage.Unbind();
                 artifactDetailsView.Unbind();
-                SetPageVisibility(true, false, false, false, false);
+                SetPageVisibility(true, false, false, false, false, false);
             }
 
             RefreshSummary(definition);
@@ -283,6 +300,8 @@ namespace RPG.ItemSystem.Editor
         /// <summary>解除当前对象绑定但保留所有详情控件。</summary>
         private void ReleaseBinding()
         {
+            if (boundDefinition != null)
+                Debug.Log($"[ItemDefinitionDetailsView] 解除物品定义绑定：{boundDefinition.ItemId}。");
             // 绑定版本先递增，使尚未执行的标签刷新回调失效，避免它访问即将解除的页面状态。
             bindingVersion++;
             if (displayNameField != null && IsDisplayNameFieldFocused())
@@ -293,6 +312,7 @@ namespace RPG.ItemSystem.Editor
             commonDetailsPage.Unbind();
             stackableDetailsPage.Unbind();
             developmentItemDetailsPage.Unbind();
+            foodDetailsPage.Unbind();
             artifactDetailsPage.Unbind();
             definitionTracker?.RemoveFromHierarchy();
             definitionTracker = null;
@@ -304,10 +324,9 @@ namespace RPG.ItemSystem.Editor
             }
 
             boundDefinition = null;
-            useEffectsListConfigured = false;
             displayNameEditingOriginal = string.Empty;
             displayNameCommitCompleted = false;
-            SetPageVisibility(false, false, false, false, false);
+            SetPageVisibility(false, false, false, false, false, false);
         }
 
         /// <summary>切换空状态、摘要和常驻详情页面的显示状态。</summary>
@@ -317,18 +336,19 @@ namespace RPG.ItemSystem.Editor
             summaryHost.style.display = empty ? DisplayStyle.None : DisplayStyle.Flex;
             emptyState.style.display = empty ? DisplayStyle.Flex : DisplayStyle.None;
             scrollView.style.display = empty ? DisplayStyle.None : DisplayStyle.Flex;
-            if (empty) SetPageVisibility(false, false, false, false, false);
+            if (empty) SetPageVisibility(false, false, false, false, false, false);
         }
 
         /// <summary>设置公共、堆叠和武器页面的显隐。</summary>
         /// <param name="commonVisible">公共页面是否显示。</param>
         /// <param name="stackableVisible">堆叠页面是否显示。</param>
         /// <param name="weaponVisible">武器页面是否显示。</param>
-        private void SetPageVisibility(bool commonVisible, bool stackableVisible, bool developmentVisible, bool weaponVisible, bool artifactVisible)
+        private void SetPageVisibility(bool commonVisible, bool stackableVisible, bool developmentVisible, bool foodVisible, bool weaponVisible, bool artifactVisible)
         {
             commonDetailsPage.style.display = commonVisible ? DisplayStyle.Flex : DisplayStyle.None;
             stackableDetailsPage.style.display = stackableVisible ? DisplayStyle.Flex : DisplayStyle.None;
             developmentItemDetailsPage.style.display = developmentVisible ? DisplayStyle.Flex : DisplayStyle.None;
+            foodDetailsPage.style.display = foodVisible ? DisplayStyle.Flex : DisplayStyle.None;
             weaponDetailsPage.style.display = weaponVisible ? DisplayStyle.Flex : DisplayStyle.None;
             artifactDetailsPage.style.display = artifactVisible ? DisplayStyle.Flex : DisplayStyle.None;
         }
@@ -369,12 +389,16 @@ namespace RPG.ItemSystem.Editor
                     PropertyField field = fixedPropertyLabels[index].field;
                     if (field != null) field.label = fixedPropertyLabels[index].label;
                 }
-                ItemConfigEditorPresentation.ConfigureGameplayEffectList(
-                    useEffectsField,
-                    "暂无使用效果",
-                    "使用效果",
-                    !useEffectsListConfigured);
-                useEffectsListConfigured = true;
+                // 料理的 GE 集合在绑定后才生成内部 ListView，必须在固定控件完成绑定后配置一次原生列表。
+                if (boundDefinition is FoodItemDefinition && foodUseEffectsField.Q<ListView>() != null)
+                {
+                    ItemConfigEditorPresentation.ConfigureGameplayEffectList(
+                        foodUseEffectsField,
+                        "暂无使用时效果",
+                        "使用时效果",
+                        !foodUseEffectsListConfigured);
+                    foodUseEffectsListConfigured = true;
+                }
             });
         }
 
@@ -411,6 +435,7 @@ namespace RPG.ItemSystem.Editor
                 WeaponDefinition => "🗡",
                 ArtifactDefinition => "◇",
                 DevelopmentItemDefinition => "✚",
+                FoodItemDefinition => "🍲",
                 _ => "✦"
             };
             summaryName.text = string.IsNullOrWhiteSpace(definition.DisplayName) ? "未命名物品" : definition.DisplayName;

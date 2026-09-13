@@ -5,6 +5,37 @@ using UnityEngine;
 
 namespace RPG.Game.UI.Bag
 {
+    /// <summary>可堆叠物品数量调整的方向。</summary>
+    public enum BagItemQuantityDirection
+    {
+        /// <summary>增加选中数量。</summary>
+        Increase,
+        /// <summary>减少选中数量。</summary>
+        Decrease
+    }
+
+    /// <summary>背包条目向上层报告的一次数量调整意图。</summary>
+    public readonly struct BagItemQuantityIntent
+    {
+        /// <summary>创建数量调整意图。</summary>
+        /// <param name="entryKey">条目标识。</param>
+        /// <param name="direction">调整方向。</param>
+        /// <param name="step">本次调整步长。</param>
+        public BagItemQuantityIntent(BagEntryKey entryKey, BagItemQuantityDirection direction, int step)
+        {
+            EntryKey = entryKey;
+            Direction = direction;
+            Step = step;
+        }
+
+        /// <summary>条目标识。</summary>
+        public BagEntryKey EntryKey { get; }
+        /// <summary>调整方向。</summary>
+        public BagItemQuantityDirection Direction { get; }
+        /// <summary>调整步长。</summary>
+        public int Step { get; }
+    }
+
     /// <summary>定义背包列表的排序字段。</summary>
     public enum BagSortMode
     {

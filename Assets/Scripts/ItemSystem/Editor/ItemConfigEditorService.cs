@@ -354,16 +354,18 @@ namespace RPG.ItemSystem.Editor
         {
             if (definitionType != typeof(StackableItemDefinition) &&
                 definitionType != typeof(DevelopmentItemDefinition) &&
+                definitionType != typeof(FoodItemDefinition) &&
                 definitionType != typeof(WeaponDefinition) &&
                 definitionType != typeof(ArtifactDefinition))
-                throw new ArgumentException("只能创建普通物品、养成道具、武器或圣遗物定义。", nameof(definitionType));
+                throw new ArgumentException("只能创建养成道具、食材、料理、武器或圣遗物定义。", nameof(definitionType));
             if (database == null) throw new InvalidOperationException("创建物品前必须选择 ItemDatabase。");
             ItemCategory category = ResolveCreationCategory(definitionType, requestedCategory);
 
             string folder = EnsureDefinitionsFolder(database);
             string fileName = definitionType == typeof(WeaponDefinition) ? "NewWeapon" :
                 definitionType == typeof(ArtifactDefinition) ? "NewArtifact" :
-                definitionType == typeof(DevelopmentItemDefinition) ? "NewDevelopmentItem" : "NewItem";
+                definitionType == typeof(DevelopmentItemDefinition) ? "NewDevelopmentItem" :
+                definitionType == typeof(FoodItemDefinition) ? "NewFoodItem" : "NewIngredientItem";
             string assetPath = AssetDatabase.GenerateUniqueAssetPath($"{folder}/{fileName}.asset");
             ItemDefinition definition = null;
             UnityEngine.Object growthProfile = null;
@@ -404,7 +406,8 @@ namespace RPG.ItemSystem.Editor
                 SetSerializedItemId(serialized, itemId);
                 SetString(serialized, "displayName", definition is WeaponDefinition ? "新武器" :
                     definition is ArtifactDefinition ? "新圣遗物" :
-                    definition is DevelopmentItemDefinition ? "新养成道具" : "新物品");
+                    definition is DevelopmentItemDefinition ? "新养成道具" :
+                    definition is FoodItemDefinition ? "新料理" : "新食材");
                 SetEnum(serialized, "category", (int)category);
                 if (definition is WeaponDefinition)
                 {
@@ -427,6 +430,7 @@ namespace RPG.ItemSystem.Editor
                 AddDefinition(database, definition);
                 AssetDatabase.SaveAssets();
                 Undo.CollapseUndoOperations(undoGroup);
+                Debug.Log($"[ItemConfigEditorService] 创建定义完成：type={definitionType.Name}, category={category}, itemId={itemId}, asset={definition.name}");
                 EditorUtility.FocusProjectWindow();
                 Selection.activeObject = definition;
                 return definition;
@@ -646,12 +650,20 @@ namespace RPG.ItemSystem.Editor
             }
             if (definitionType == typeof(DevelopmentItemDefinition))
             {
-                if (requestedCategory != ItemCategory.Material) throw new InvalidOperationException("养成道具定义必须归入养成素材分类。");
-                return ItemCategory.Material;
+                if (requestedCategory != ItemCategory.DevelopmentItem) throw new InvalidOperationException("养成道具定义必须归入养成道具分类。");
+                return ItemCategory.DevelopmentItem;
             }
-            if (requestedCategory != ItemCategory.Material && requestedCategory != ItemCategory.Ingredient && requestedCategory != ItemCategory.Food)
-                throw new InvalidOperationException("普通可堆叠物品只能使用养成素材、食材或料理分类。");
-            return requestedCategory;
+            if (definitionType == typeof(FoodItemDefinition))
+            {
+                if (requestedCategory != ItemCategory.Food) throw new InvalidOperationException("料理定义必须使用料理分类。");
+                return ItemCategory.Food;
+            }
+            if (definitionType == typeof(StackableItemDefinition))
+            {
+                if (requestedCategory != ItemCategory.Ingredient) throw new InvalidOperationException("食材定义必须使用食材分类。");
+                return ItemCategory.Ingredient;
+            }
+            throw new InvalidOperationException("未知可堆叠定义类型。");
         }
 
         /// <summary>为指定分类分配下一个持久化 ItemId。</summary>
@@ -699,7 +711,7 @@ namespace RPG.ItemSystem.Editor
         {
             return category switch
             {
-                ItemCategory.Material => "material",
+                ItemCategory.DevelopmentItem => "material",
                 ItemCategory.Ingredient => "ingredient",
                 ItemCategory.Food => "food",
                 ItemCategory.Weapon => "weapon",
@@ -715,7 +727,7 @@ namespace RPG.ItemSystem.Editor
         {
             return category switch
             {
-                ItemCategory.Material => "nextMaterialIdNumber",
+                ItemCategory.DevelopmentItem => "nextMaterialIdNumber",
                 ItemCategory.Ingredient => "nextIngredientIdNumber",
                 ItemCategory.Food => "nextFoodIdNumber",
                 ItemCategory.Weapon => "nextWeaponIdNumber",

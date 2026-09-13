@@ -62,6 +62,8 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsScriptsItemSystemEditorStyleItemDefinitionSummary = "Assets/Scripts/ItemSystem/Editor/Style/ItemDefinitionSummary.uxml";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemDevelopmentDetails.uxml</summary>
             public const string AssetsScriptsItemSystemEditorStyleItemDevelopmentDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemDevelopmentDetails.uxml";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemFoodDetails.uxml</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemFoodDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemFoodDetails.uxml";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemStackableDetails.uxml</summary>
             public const string AssetsScriptsItemSystemEditorStyleItemStackableDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemStackableDetails.uxml";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemWeaponDetails.uxml</summary>
@@ -134,6 +136,8 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsScriptsItemSystemEditorStyleItemDefinitionSummary = "Assets/Scripts/ItemSystem/Editor/Style/ItemDefinitionSummary.uss";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemDevelopmentDetails.uss</summary>
             public const string AssetsScriptsItemSystemEditorStyleItemDevelopmentDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemDevelopmentDetails.uss";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemFoodDetails.uss</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemFoodDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemFoodDetails.uss";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemStackableDetails.uss</summary>
             public const string AssetsScriptsItemSystemEditorStyleItemStackableDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemStackableDetails.uss";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemWeaponDetails.uss</summary>

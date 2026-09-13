@@ -6,11 +6,14 @@
 // 5. 当 UI 新增可绑定事件组件时，生成器只会追加缺失的事件空方法。
 // 6. 当 UI 删除、重命名或修改组件类型时，旧事件方法不会自动删除，请手动清理。
 using DG.Tweening;
+using RPG.Game.UI.Bag;
+using WS_Modules.CustomEventSystem;
+using WS_Modules.LogModule;
 
 namespace WS_Modules.UIModule
 {
 	/// <summary>
-	/// HUD 主界面窗口，负责 HUD 自身的生命周期转发和隐藏视觉效果。
+	/// HUD 主界面窗口，负责 HUD 自身的生命周期回调、按钮意图转发和隐藏视觉效果。
 	/// </summary>
 	public partial class HUDWindow : WindowBase
 	{
@@ -74,6 +77,15 @@ namespace WS_Modules.UIModule
 		#endregion
 
 		#region UI 组件事件
+
+		/// <summary>将 HUD 上的 Bag 按钮点击转换为统一的背包打开意图。</summary>
+		public void OnBagButtonClick()
+		{
+			WSLog.Log("[HUDWindow] 点击 Bag 按钮，发布背包打开请求。");
+			EventSystem.EventTrigger_Type(
+				typeof(BagWindowOpenRequestedEventArgs),
+				new BagWindowOpenRequestedEventArgs(BagWindowRequestSource.HudButton));
+		}
 
 		#endregion
 	}

@@ -13,13 +13,12 @@ namespace RPG.ItemSystem
         /// <param name="ascensionRank">突破阶数。</param>
         /// <param name="refinementRank">精炼阶数。</param>
         /// <param name="isLocked">是否锁定。</param>
-        /// <param name="isNew">是否新获得。</param>
         /// <param name="acquisitionSequence">获得顺序。</param>
         /// <param name="equippedCharacterId">装备者角色标识；默认值表示未装备。</param>
         internal WeaponInstance(EquipmentInstanceId instanceId, ItemId definitionId, int level, int currentExperience,
-            int ascensionRank, int refinementRank, bool isLocked, bool isNew, long acquisitionSequence,
+            int ascensionRank, int refinementRank, bool isLocked, long acquisitionSequence,
             CharacterId equippedCharacterId = default(CharacterId))
-            : base(instanceId, definitionId, level, currentExperience, isLocked, isNew, acquisitionSequence)
+            : base(instanceId, definitionId, level, currentExperience, isLocked, acquisitionSequence)
         {
             AscensionRank = ascensionRank;
             RefinementRank = refinementRank;

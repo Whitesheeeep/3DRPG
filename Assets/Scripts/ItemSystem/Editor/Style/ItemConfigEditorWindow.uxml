@@ -1,12 +1,11 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
-    <ui:Style src="project://database/Assets/Scripts/WSFrame/Utilities/Editor/ConfigEditor/Style/ConfigEditorCommon.uss" />
-    <ui:Style src="project://database/Assets/Scripts/ItemSystem/Editor/Style/ItemConfigEditorWindow.uss" />
+    <Style src="project://database/Assets/Scripts/WSFrame/Utilities/Editor/ConfigEditor/Style/ConfigEditorCommon.uss?fileID=7433441132597879392&amp;guid=4081dca1656a15a4e9e8a64f6fe15d92&amp;type=3#ConfigEditorCommon" />
+    <Style src="project://database/Assets/Scripts/ItemSystem/Editor/Style/ItemConfigEditorWindow.uss?fileID=7433441132597879392&amp;guid=8b4f1e7c3a9d46e0b2f6c5a1d9e83724&amp;type=3#ItemConfigEditorWindow" />
     <ui:VisualElement name="ItemEditorRoot" class="config-editor-root item-editor-root">
         <ui:VisualElement class="item-editor-toolbar">
             <uie:ObjectField name="DatabaseField" label="物品数据库" class="item-editor-database-field" />
             <ui:Button name="NewStackableButton" text="新建物品" />
             <ui:Button name="NewWeaponButton" text="新建武器" />
-            <ui:Button name="NewDevelopmentItemButton" text="新建养成道具" />
             <ui:Button name="NewArtifactButton" text="新建圣遗物" />
             <ui:Button name="DuplicateButton" text="复制" />
             <ui:Button name="RemoveButton" text="移出数据库" />
@@ -15,27 +14,29 @@
             <ui:Button name="ValidateButton" text="验证" />
             <ui:Button name="PingButton" text="定位资产" />
         </ui:VisualElement>
-        <WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView name="ItemEditorSplitView" class="item-editor-body" fixed-pane-index="0" fixed-pane-initial-dimension="360" orientation="Horizontal">
+        <WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView name="ItemEditorSplitView" fixed-pane-index="0" fixed-pane-initial-dimension="360" orientation="Horizontal" class="item-editor-body">
             <ui:VisualElement class="item-editor-sidebar">
-                <uie:ToolbarSearchField name="SearchField" label="搜索" />
-                <ui:VisualElement class="item-editor-filter-row">
-                    <ui:VisualElement class="item-editor-filter-field">
-                        <ui:Label text="类型" class="item-editor-filter-label" />
-                        <ui:DropdownField name="CategoryField" class="item-editor-filter-dropdown" />
+                <ui:VisualElement name="ListBar" class="item-editor-list-bar">
+                    <uie:ToolbarSearchField name="SearchField" label="搜索" />
+                    <ui:VisualElement class="item-editor-filter-row">
+                        <ui:VisualElement class="item-editor-filter-field">
+                            <ui:Label text="类型" class="item-editor-filter-label" />
+                            <ui:DropdownField name="CategoryField" class="item-editor-filter-dropdown" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="item-editor-filter-field">
+                            <ui:Label text="定义" class="item-editor-filter-label" />
+                            <ui:DropdownField name="KindField" class="item-editor-filter-dropdown" />
+                        </ui:VisualElement>
                     </ui:VisualElement>
-                    <ui:VisualElement class="item-editor-filter-field">
-                        <ui:Label text="定义" class="item-editor-filter-label" />
-                        <ui:DropdownField name="KindField" class="item-editor-filter-dropdown" />
-                    </ui:VisualElement>
-                </ui:VisualElement>
-                <ui:VisualElement class="item-editor-filter-row item-editor-sort-row">
-                    <ui:VisualElement class="item-editor-filter-field">
-                        <ui:Label text="排序依据" class="item-editor-filter-label" />
-                        <ui:DropdownField name="SortField" class="item-editor-filter-dropdown" />
-                    </ui:VisualElement>
-                    <ui:VisualElement class="item-editor-filter-field item-editor-filter-field--last">
-                        <ui:Label text="排序方向" class="item-editor-filter-label" />
-                        <ui:DropdownField name="SortDirection" class="item-editor-filter-dropdown" />
+                    <ui:VisualElement class="item-editor-filter-row item-editor-sort-row">
+                        <ui:VisualElement class="item-editor-filter-field">
+                            <ui:Label text="排序依据" class="item-editor-filter-label" />
+                            <ui:DropdownField name="SortField" class="item-editor-filter-dropdown" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="item-editor-filter-field item-editor-filter-field--last">
+                            <ui:Label text="排序方向" class="item-editor-filter-label" />
+                            <ui:DropdownField name="SortDirection" class="item-editor-filter-dropdown" />
+                        </ui:VisualElement>
                     </ui:VisualElement>
                 </ui:VisualElement>
                 <ui:ListView name="DefinitionList" class="item-editor-definition-list" />
@@ -50,6 +51,7 @@
                     <ui:VisualElement name="CommonDetailsPage" class="item-editor-details-page" />
                     <ui:VisualElement name="StackableDetailsPage" class="item-editor-details-page" />
                     <ui:VisualElement name="DevelopmentItemDetailsPage" class="item-editor-details-page" />
+                    <ui:VisualElement name="FoodDetailsPage" class="item-editor-details-page" />
                     <ui:VisualElement name="WeaponDetailsPage" class="item-editor-details-page" />
                     <ui:VisualElement name="ArtifactDetailsPage" class="item-editor-details-page" />
                 </ui:ScrollView>

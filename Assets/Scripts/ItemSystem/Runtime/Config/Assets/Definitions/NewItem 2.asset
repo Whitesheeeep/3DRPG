@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06cc75c6c2d87e04196511570a4cd384, type: 3}
+  m_Name: NewItem 2
+  m_EditorClassIdentifier: 
+  itemId:
+    value: material_0008
+  displayName: "\u65B0\u7269\u54C1"
+  description: 
+  category: 0
+  rarity: 1
+  sortPriority: 100
+  iconAddress: 
+  iconSpriteName: 
+  worldPrefabAddress: 
+  editorPreviewIcon: {fileID: 0}
+  maxQuantity: 9999
+  developmentType: 1
+  experienceValue: 0

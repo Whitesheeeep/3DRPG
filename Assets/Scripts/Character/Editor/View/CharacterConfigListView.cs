@@ -15,6 +15,7 @@ namespace RPG.Character.Editor
         #region 依赖字段
 
         private const string RowUxmlPath = "Assets/Scripts/Character/Editor/Style/CharacterConfigListRow.uxml";
+        private readonly VisualElement sidebarRoot;
         private readonly ListView listView;
         private readonly ScrollView listScrollView;
         private readonly ToolbarSearchField searchField;
@@ -47,6 +48,7 @@ namespace RPG.Character.Editor
         public CharacterConfigListView(VisualElement root)
         {
             if (root == null) throw new ArgumentNullException(nameof(root));
+            sidebarRoot = Require<VisualElement>(root, "Sidebar");
             listView = Require<ListView>(root, "CharacterList");
             listScrollView = listView.Q<ScrollView>() ?? throw new InvalidOperationException("角色列表缺少原生 ScrollView。");
             searchField = Require<ToolbarSearchField>(root, "SearchField");
@@ -63,6 +65,9 @@ namespace RPG.Character.Editor
             searchField.RegisterValueChangedCallback(OnSearchChanged);
             // 在 TrickleDown 阶段统一捕获右键，避免虚拟化行中的子控件重复弹出菜单。
             listView.RegisterCallback<MouseUpEvent>(OnListViewMouseUp, TrickleDown.TrickleDown);
+            // Sidebar 只在事件目标就是自身时显示新建菜单，搜索框和列表等子控件不会被背景菜单抢占。
+            sidebarRoot.RegisterCallback<MouseUpEvent>(OnSidebarMouseUp);
+            Debug.Log("[CharacterConfigListView] 已注册列表和 Sidebar 右键事件。");
         }
 
         /// <summary>解除列表回调并释放虚拟化数据源。</summary>
@@ -73,10 +78,12 @@ namespace RPG.Character.Editor
             listView.selectionChanged -= OnSelectionChanged;
             searchField.UnregisterValueChangedCallback(OnSearchChanged);
             listView.UnregisterCallback<MouseUpEvent>(OnListViewMouseUp, TrickleDown.TrickleDown);
+            sidebarRoot.UnregisterCallback<MouseUpEvent>(OnSidebarMouseUp);
             listView.itemsSource = null;
             listView.makeItem = null;
             listView.bindItem = null;
             displayedCharacters.Clear();
+            Debug.Log("[CharacterConfigListView] 已注销列表事件并释放数据源。");
         }
 
         #endregion
@@ -177,10 +184,24 @@ namespace RPG.Character.Editor
             }
             else
             {
-                menu.AddItem(new GUIContent("新建/角色"), false, () => NewCharacterRequested?.Invoke());
+                PopulateCreationContextMenu(menu);
             }
 
             // 消费原始右键事件，避免原生控件或其他父节点再次处理同一个菜单请求。
+            eventData.StopImmediatePropagation();
+            eventData.PreventDefault();
+            menu.ShowAsContext();
+        }
+
+        /// <summary>处理角色列表 Sidebar 自身背景的右键新建请求。</summary>
+        /// <param name="eventData">Sidebar 冒泡阶段收到的鼠标释放事件。</param>
+        private void OnSidebarMouseUp(MouseUpEvent eventData)
+        {
+            if (eventData.button != 1 || eventData.target != sidebarRoot) return;
+
+            var menu = new GenericMenu();
+            PopulateCreationContextMenu(menu);
+            // 只有 Sidebar 自身背景显示菜单；搜索框、列表和其他子控件不进入此分支。
             eventData.StopImmediatePropagation();
             eventData.PreventDefault();
             menu.ShowAsContext();
@@ -243,6 +264,13 @@ namespace RPG.Character.Editor
             menu.AddSeparator(string.Empty);
             menu.AddItem(new GUIContent("移出数据库"), false, () => CharacterCommandRequested?.Invoke(config, CharacterConfigCommand.RemoveFromDatabase));
             menu.AddItem(new GUIContent("删除资产…"), false, () => CharacterCommandRequested?.Invoke(config, CharacterConfigCommand.DeleteAsset));
+        }
+
+        /// <summary>填充角色 Sidebar 与 ListView 空白区域共用的新建菜单。</summary>
+        /// <param name="menu">需要填充的 GenericMenu。</param>
+        private void PopulateCreationContextMenu(GenericMenu menu)
+        {
+            menu.AddItem(new GUIContent("新建/角色"), false, () => NewCharacterRequested?.Invoke());
         }
 
         #endregion

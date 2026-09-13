@@ -21,17 +21,26 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c722d73da1b0f734e8fdc82d7b4222e7, type: 2}
   - {fileID: 11400000, guid: a0ec1c4f230acc24580d9835339ae9a4, type: 2}
   - {fileID: 11400000, guid: 9103015d9fbdd9349b50370a3080f16e, type: 2}
+  - {fileID: 11400000, guid: 4c42f5021fd346e468dfce5397bf702d, type: 2}
+  - {fileID: 11400000, guid: dfd8a90d1a4741c41931f9be4dbac9ef, type: 2}
+  - {fileID: 11400000, guid: 150e1c9a4626c404894014762e214c78, type: 2}
+  - {fileID: 11400000, guid: c2e94407c62cb3645b62e31b22883b93, type: 2}
+  - {fileID: 11400000, guid: 669cc4e2c7af19f4e9b5ed3e9c747389, type: 2}
+  - {fileID: 11400000, guid: 0b948cf03cd17bb40ad388b43ef7e728, type: 2}
+  - {fileID: 11400000, guid: 3029039e19c4ead4bbd7756fdd828556, type: 2}
+  - {fileID: 11400000, guid: c659f84622255ea4b968d19052229613, type: 2}
+  - {fileID: 11400000, guid: 7fc10a6a4c26961438880defb1cf8579, type: 2}
   categoryDefaults:
   - rid: 100000000000000001
   - rid: 100000000000000002
   - rid: 100000000000000003
   - rid: 100000000000000005
   - rid: 100000000000000006
-  nextMaterialIdNumber: 5
-  nextIngredientIdNumber: 1
-  nextFoodIdNumber: 1
+  nextMaterialIdNumber: 14
+  nextIngredientIdNumber: 2
+  nextFoodIdNumber: 3
   nextWeaponIdNumber: 4
-  nextArtifactIdNumber: 2
+  nextArtifactIdNumber: 4
   references:
     version: 2
     RefIds:

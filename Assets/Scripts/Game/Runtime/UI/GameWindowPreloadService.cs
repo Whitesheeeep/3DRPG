@@ -95,6 +95,8 @@ namespace RPG.Game.UI
                 await dialogueWindow.WaitUntilReadyAsync();
                 // BagWindow 只预加载窗口实例；动态图集由 OnShow 启动，避免启动阶段占用 Atlas 引用。
                 await PreloadWindowAsync<BagWindow>();
+                // 武器培养窗口只预加载实例，目标数据通过 OpenContext 在显示时绑定。
+                await PreloadWindowAsync<WeaponDevelopmentWindow>();
                 // 预加载只创建隐藏实例；全部依赖准备完成后显式打开 HUD，保证 IsPreloaded 与可见状态一致。
                 HUDWindow openedHud = await UIManager.Instance.PopUpWindowAsync<HUDWindow>();
                 if (openedHud == null || !openedHud.Visible)

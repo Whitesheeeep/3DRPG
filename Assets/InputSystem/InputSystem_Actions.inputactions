@@ -140,24 +140,6 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
-                },
-                {
-                    "name": "BagWindow",
-                    "type": "Button",
-                    "id": "2a71a6b8-f28d-4b0f-9e2d-7dcd85c3c105",
-                    "expectedControlType": "Button",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "CancelWindow",
-                    "type": "Button",
-                    "id": "2a71a6b8-f28d-4b0f-9e2d-7dcd85c3c106",
-                    "expectedControlType": "Button",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -523,50 +505,6 @@
                     "action": "CharacterSlot4",
                     "isComposite": false,
                     "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "2a71a6b8-f28d-4b0f-9e2d-7dcd85c3c205",
-                    "path": "<Keyboard>/b",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "BagWindow",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "2a71a6b8-f28d-4b0f-9e2d-7dcd85c3c206",
-                    "path": "<Gamepad>/selectButton",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Gamepad",
-                    "action": "BagWindow",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "2a71a6b8-f28d-4b0f-9e2d-7dcd85c3c207",
-                    "path": "<Keyboard>/escape",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "CancelWindow",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "2a71a6b8-f28d-4b0f-9e2d-7dcd85c3c208",
-                    "path": "<Gamepad>/buttonEast",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Gamepad",
-                    "action": "CancelWindow",
-                    "isComposite": false,
-                    "isPartOfComposite": false
                 }
             ]
         },
@@ -686,6 +624,24 @@
                     "name": "Previous",
                     "type": "Button",
                     "id": "e02c65cb-16f3-4241-9024-c9dc0acef430",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "BagWindow",
+                    "type": "Button",
+                    "id": "3cdef690-3795-46b3-a921-11e7fb982aac",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "CancelWindow",
+                    "type": "Button",
+                    "id": "89687292-8ef2-49f1-89d6-c63d0d11e8ab",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -1295,6 +1251,50 @@
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "Previous",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "e1867e57-3c4a-40a8-8715-8a331b0d9ab2",
+                    "path": "<Keyboard>/b",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "BagWindow",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "a44eb850-2875-495c-991a-01629ada116f",
+                    "path": "<Gamepad>/selectButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Gamepad",
+                    "action": "BagWindow",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "e19a011f-afd6-4d93-b6ac-0dbb16b8b017",
+                    "path": "<Keyboard>/escape",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "CancelWindow",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "3e97f47d-9a42-40f5-b79b-7e1676212685",
+                    "path": "<Gamepad>/buttonEast",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Gamepad",
+                    "action": "CancelWindow",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

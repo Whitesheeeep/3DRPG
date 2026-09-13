@@ -106,21 +106,6 @@ namespace RPG.ItemSystem.Editor
             }
         }
 
-        /// <summary>转发新建养成道具请求。</summary>
-        internal event Action NewDevelopmentItemRequested
-        {
-            add
-            {
-                toolbarView.NewDevelopmentItemRequested += value;
-                definitionListView.NewDevelopmentItemRequested += value;
-            }
-            remove
-            {
-                toolbarView.NewDevelopmentItemRequested -= value;
-                definitionListView.NewDevelopmentItemRequested -= value;
-            }
-        }
-
         /// <summary>转发新建圣遗物请求。</summary>
         internal event Action NewArtifactRequested
         {

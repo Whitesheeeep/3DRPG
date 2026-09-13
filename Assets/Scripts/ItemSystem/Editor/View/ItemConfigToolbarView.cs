@@ -26,8 +26,6 @@ namespace RPG.ItemSystem.Editor
         internal event Action<ItemCategory> NewStackableRequested;
         /// <summary>新建武器请求。</summary>
         internal event Action NewWeaponRequested;
-        /// <summary>新建养成道具请求。</summary>
-        internal event Action NewDevelopmentItemRequested;
         /// <summary>新建圣遗物请求。</summary>
         internal event Action NewArtifactRequested;
         /// <summary>复制当前定义请求。</summary>
@@ -58,7 +56,6 @@ namespace RPG.ItemSystem.Editor
             databaseField.RegisterValueChangedCallback(OnDatabaseChanged);
             RegisterButton("NewStackableButton", OnNewStackableClicked);
             RegisterButton("NewWeaponButton", OnNewWeaponClicked);
-            RegisterButton("NewDevelopmentItemButton", OnNewDevelopmentItemClicked);
             RegisterButton("NewArtifactButton", OnNewArtifactClicked);
             RegisterButton("DuplicateButton", OnDuplicateClicked);
             RegisterButton("RemoveButton", OnRemoveClicked);
@@ -66,6 +63,7 @@ namespace RPG.ItemSystem.Editor
             RegisterButton("ApplyDefaultsButton", OnApplyDefaultsClicked);
             RegisterButton("ValidateButton", OnValidateClicked);
             RegisterButton("PingButton", OnPingClicked);
+            Debug.Log("[ItemConfigToolbarView] 已注册工具栏按钮事件。");
         }
 
         /// <summary>解除工具栏控件回调。</summary>
@@ -76,7 +74,6 @@ namespace RPG.ItemSystem.Editor
             databaseField.UnregisterValueChangedCallback(OnDatabaseChanged);
             UnregisterButton("NewStackableButton", OnNewStackableClicked);
             UnregisterButton("NewWeaponButton", OnNewWeaponClicked);
-            UnregisterButton("NewDevelopmentItemButton", OnNewDevelopmentItemClicked);
             UnregisterButton("NewArtifactButton", OnNewArtifactClicked);
             UnregisterButton("DuplicateButton", OnDuplicateClicked);
             UnregisterButton("RemoveButton", OnRemoveClicked);
@@ -84,6 +81,7 @@ namespace RPG.ItemSystem.Editor
             UnregisterButton("ApplyDefaultsButton", OnApplyDefaultsClicked);
             UnregisterButton("ValidateButton", OnValidateClicked);
             UnregisterButton("PingButton", OnPingClicked);
+            Debug.Log("[ItemConfigToolbarView] 已注销工具栏按钮事件。");
         }
 
         #endregion
@@ -106,7 +104,7 @@ namespace RPG.ItemSystem.Editor
         private void OnNewStackableClicked()
         {
             var menu = new GenericMenu();
-            menu.AddItem(new GUIContent("养成素材"), false, () => NewStackableRequested?.Invoke(ItemCategory.Material));
+            menu.AddItem(new GUIContent("养成道具"), false, () => NewStackableRequested?.Invoke(ItemCategory.DevelopmentItem));
             menu.AddItem(new GUIContent("食材"), false, () => NewStackableRequested?.Invoke(ItemCategory.Ingredient));
             menu.AddItem(new GUIContent("料理"), false, () => NewStackableRequested?.Invoke(ItemCategory.Food));
             menu.ShowAsContext();
@@ -114,9 +112,6 @@ namespace RPG.ItemSystem.Editor
 
         /// <summary>转发新建武器请求。</summary>
         private void OnNewWeaponClicked() => NewWeaponRequested?.Invoke();
-
-        /// <summary>转发新建养成道具请求。</summary>
-        private void OnNewDevelopmentItemClicked() => NewDevelopmentItemRequested?.Invoke();
 
         /// <summary>转发新建圣遗物请求。</summary>
         private void OnNewArtifactClicked() => NewArtifactRequested?.Invoke();

@@ -21,10 +21,13 @@ namespace WS_Modules.UIModule
 
 		public DocumentUIPanel DocumentUIPanelDocumentUIPanel;
 
+		public Button BagButton;
+
 		public void InitComponent(WindowBase target)
 		{
 		     //组件事件绑定
 		     HUDWindow mWindow=(HUDWindow)target;
+		     target.AddButtonClickListener(BagButton,mWindow.OnBagButtonClick);
 		}
 	}
 }

@@ -27,6 +27,31 @@ namespace RPG.ItemSystem
                 Evaluate(definition.RefinementEffects, instance.RefinementRank));
         }
 
+        /// <summary>按预计成长等级生成无副作用的武器属性投影。</summary>
+        /// <param name="definition">武器静态定义。</param>
+        /// <param name="instance">当前武器实例。</param>
+        /// <param name="projectedLevel">预计等级。</param>
+        /// <param name="projectedAscensionRank">预计突破阶数。</param>
+        /// <param name="projectedRefinementRank">预计精炼阶数。</param>
+        /// <returns>使用预计状态计算的详情快照。</returns>
+        /// <exception cref="ArgumentNullException">定义或实例为空。</exception>
+        /// <exception cref="InvalidOperationException">定义与实例的标识不匹配。</exception>
+        public static WeaponDetails CreateProjected(WeaponDefinition definition, WeaponInstance instance,
+            int projectedLevel, int projectedAscensionRank, int projectedRefinementRank)
+        {
+            if (definition == null) throw new ArgumentNullException(nameof(definition));
+            if (instance == null) throw new ArgumentNullException(nameof(instance));
+            if (definition.ItemId != instance.DefinitionId)
+                throw new InvalidOperationException("武器详情的 Definition 与实例不匹配。");
+
+            // 只创建内存中的投影实例，绝不写回库存 Manager 或触发变化事件。
+            var projected = new WeaponInstance(instance.InstanceId, instance.DefinitionId,
+                projectedLevel, instance.CurrentExperience, projectedAscensionRank,
+                projectedRefinementRank, instance.IsLocked, instance.AcquisitionSequence,
+                instance.EquippedCharacterId);
+            return Create(definition, projected);
+        }
+
         /// <summary>按列表顺序查询一组 GE 的静态属性贡献。</summary>
         /// <param name="effects">GE 列表。</param>
         /// <param name="level">每个 GE 使用的等级。</param>

@@ -9,7 +9,7 @@ namespace RPG.ItemSystem
     public sealed class DevelopmentItemDefinition : StackableItemDefinition
     {
         [SerializeField, LabelText("养成用途")] private DevelopmentItemType developmentType;
-        [SerializeField, Min(0), LabelText("提供经验值")] private int experienceValue;
+        [SerializeField, MinValue(0), LabelText("提供经验值")] private int experienceValue;
 
         /// <summary>获取养成道具的具体用途。</summary>
         public DevelopmentItemType DevelopmentType => developmentType;
@@ -21,9 +21,9 @@ namespace RPG.ItemSystem
         /// <exception cref="InvalidOperationException">分类、用途或经验值不合法时抛出。</exception>
         protected override void ValidateSpecific()
         {
-            if (Category != ItemCategory.Material)
+            if (Category != ItemCategory.DevelopmentItem)
             {
-                throw new InvalidOperationException($"养成道具 '{name}' 必须使用 Material 分类。");
+                throw new InvalidOperationException($"养成道具 '{name}' 必须使用养成道具分类。");
             }
 
             // 养成道具复用可堆叠数量校验，但不走普通 Stackable 对专属分类的限制。
@@ -41,7 +41,6 @@ namespace RPG.ItemSystem
                 throw new InvalidOperationException($"养成道具 '{name}' 的非经验类用途不能配置提供经验值。");
             }
 
-            ValidateEffectList(UseEffects, "useEffects");
         }
     }
 

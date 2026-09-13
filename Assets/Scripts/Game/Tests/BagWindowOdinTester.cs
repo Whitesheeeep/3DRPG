@@ -1,6 +1,9 @@
 #if UNITY_EDITOR
 using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using RPG.Game.UI.Bag;
+using RPG.Game.UI.Escape;
+using RPG.Game.UI.WeaponDevelopment;
 using RPG.ItemSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
@@ -17,12 +20,16 @@ namespace RPG.Game.Tests
         #region 依赖字段
 
         [SerializeField, Required, LabelText("测试武器定义")] private WeaponDefinition testWeapon;
+        [SerializeField, LabelText("测试武器经验素材")] private DevelopmentItemDefinition[] testEnhancementMaterials = new DevelopmentItemDefinition[0];
+        [SerializeField, LabelText("测试武器突破素材")] private DevelopmentItemDefinition testAscensionMaterial;
 
         #endregion
 
         #region 测试参数
 
         [SerializeField, MinValue(1), LabelText("批量添加数量")] private int batchQuantity = 8;
+        [SerializeField, MinValue(1), LabelText("每种经验素材添加数量")] private int enhancementMaterialQuantity = 20;
+        [SerializeField, MinValue(1), LabelText("突破素材添加数量")] private int ascensionMaterialQuantity = 3;
         [SerializeField, MinValue(1), LabelText("目标等级")] private int targetLevel = 20;
         [SerializeField, MinValue(0), LabelText("当前经验")] private int targetExperience;
         [SerializeField, MinValue(0), LabelText("目标突破阶数")] private int targetAscensionRank;
@@ -50,9 +57,30 @@ namespace RPG.Game.Tests
                 return;
             }
 
+            if (UIManager.Instance.TryGetWindow<BagWindow>(out BagWindow bagWindow) && bagWindow.Visible)
+            {
+                RPG.Game.GameArchitecture.Interface.SendCommand(new CloseBagWindowCommand());
+                return;
+            }
+
             EventSystem.EventTrigger_Type(
-                typeof(BagWindowToggleRequestedEventArgs),
-                new BagWindowToggleRequestedEventArgs(BagWindowRequestSource.Shortcut));
+                typeof(BagWindowOpenRequestedEventArgs),
+                new BagWindowOpenRequestedEventArgs(BagWindowRequestSource.Tester));
+        }
+
+        /// <summary>通过 UIManager 的 OpenContext 打开最近创建武器的培养窗口。</summary>
+        [Button("打开最近创建武器培养窗口")]
+        public void OpenLatestWeaponDevelopmentWindow()
+        {
+            if (!TryGetLatestInstance(out WeaponInstance instance)) return;
+            if (!UIManager.Instance.IsInitialized)
+            {
+                Debug.LogError("[BagWindowTest] UIManager 尚未初始化，不能打开武器培养窗口。", this);
+                return;
+            }
+
+            UIManager.Instance.PopUpWindowAsync<WeaponDevelopmentWindow, WeaponDevelopmentOpenContext>(
+                new WeaponDevelopmentOpenContext(instance.InstanceId)).Forget();
         }
 
         /// <summary>调用真实武器库存 API 添加一把测试武器并记录其实例标识。</summary>
@@ -84,6 +112,39 @@ namespace RPG.Game.Tests
             for (int index = 0; index < result.Instances.Count; index++) RememberCreatedInstance(result.Instances[index]);
         }
 
+        /// <summary>向正式堆叠背包添加测试用武器经验和突破素材。</summary>
+        [Button("添加测试培养素材")]
+        public void AddTestDevelopmentMaterials()
+        {
+            if (!EnsureInventoryReady("添加培养素材")) return;
+
+            int addedKinds = 0;
+            if (testEnhancementMaterials != null)
+            {
+                for (int index = 0; index < testEnhancementMaterials.Length; index++)
+                {
+                    DevelopmentItemDefinition material = testEnhancementMaterials[index];
+                    if (!IsDevelopmentMaterial(material, DevelopmentItemType.WeaponExperience)) continue;
+                    StackableItemOperationResult result = StackableInventoryManager.Instance.AddItem(
+                        material.ItemId, enhancementMaterialQuantity);
+                    Debug.Log($"[BagWindowTest] add enhancement material status={result.Status}, item={material.ItemId}, " +
+                              $"quantity={enhancementMaterialQuantity}。", this);
+                    if (result.Succeeded) addedKinds++;
+                }
+            }
+
+            if (IsDevelopmentMaterial(testAscensionMaterial, DevelopmentItemType.WeaponAscension))
+            {
+                StackableItemOperationResult result = StackableInventoryManager.Instance.AddItem(
+                    testAscensionMaterial.ItemId, ascensionMaterialQuantity);
+                Debug.Log($"[BagWindowTest] add ascension material status={result.Status}, item={testAscensionMaterial.ItemId}, " +
+                          $"quantity={ascensionMaterialQuantity}。", this);
+                if (result.Succeeded) addedKinds++;
+            }
+
+            Debug.Log($"[BagWindowTest] 培养素材添加完成：成功种类={addedKinds}。", this);
+        }
+
         #endregion
 
         #region 状态修改与移除
@@ -113,14 +174,15 @@ namespace RPG.Game.Tests
             Debug.Log($"[BagWindowTest] setLocked status={result.Status}, locked={!instance.IsLocked}, instance={instance.InstanceId}。", this);
         }
 
-        /// <summary>确认最近创建实例的新获得状态，验证 New 标记刷新。</summary>
+        /// <summary>确认最近创建实例所属 Definition 的新获得状态，验证共享 New 标记刷新。</summary>
         [Button("确认最近创建武器")]
         public void AcknowledgeLatestWeapon()
         {
             if (!TryGetLatestInstance(out WeaponInstance instance) || !EnsureInventoryReady("确认武器新获得状态")) return;
 
             EquipmentOperationResult result = WeaponInventoryManager.Instance.AcknowledgeNew(instance.InstanceId);
-            Debug.Log($"[BagWindowTest] acknowledge status={result.Status}, instance={instance.InstanceId}。", this);
+            Debug.Log(
+                $"[BagWindowTest] acknowledge status={result.Status}, definition={instance.DefinitionId}, instance={instance.InstanceId}。", this);
         }
 
         /// <summary>移除最近创建的实例，不自动解锁或绕过 Manager 的业务约束。</summary>
@@ -170,12 +232,17 @@ namespace RPG.Game.Tests
 
             WeaponInventoryManager manager = WeaponInventoryManager.Instance;
             IReadOnlyList<WeaponInstance> instances = manager.GetInstances();
-            Debug.Log($"[BagWindowTest] inventory count={manager.Count}/{manager.Capacity}, tracked={createdInstanceIds.Count}。", this);
+            IReadOnlyList<ItemId> newDefinitionIds = manager.GetNewDefinitionIds();
+            Debug.Log(
+                $"[BagWindowTest] inventory count={manager.Count}/{manager.Capacity}, tracked={createdInstanceIds.Count}, " +
+                $"newDefinitions={newDefinitionIds.Count} [{string.Join(", ", newDefinitionIds)}]。", this);
             for (int index = 0; index < instances.Count; index++)
             {
                 WeaponInstance instance = instances[index];
                 Debug.Log(
-                    $"[BagWindowTest] instance={instance.InstanceId}, definition={instance.DefinitionId}, level={instance.Level}, refinement={instance.RefinementRank}, locked={instance.IsLocked}, new={instance.IsNew}, equipped={instance.IsEquipped}。",
+                    $"[BagWindowTest] instance={instance.InstanceId}, definition={instance.DefinitionId}, level={instance.Level}, " +
+                    $"refinement={instance.RefinementRank}, locked={instance.IsLocked}, " +
+                    $"definitionNew={manager.IsDefinitionNew(instance.DefinitionId)}, equipped={instance.IsEquipped}。",
                     this);
             }
         }
@@ -203,6 +270,16 @@ namespace RPG.Game.Tests
             }
 
             return true;
+        }
+
+        /// <summary>检查一个培养素材是否属于指定武器培养用途。</summary>
+        /// <param name="material">待检查的素材定义。</param>
+        /// <param name="type">期望的培养用途。</param>
+        /// <returns>定义存在且用途匹配时返回 true。</returns>
+        private static bool IsDevelopmentMaterial(DevelopmentItemDefinition material, DevelopmentItemType type)
+        {
+            return material != null && material.ItemId.IsValid && material.Category == ItemCategory.DevelopmentItem &&
+                   material.DevelopmentType == type;
         }
 
         /// <summary>检查正式配置是否已经安装，避免 Tester 创建备用库存或数据库。</summary>

@@ -24,6 +24,5 @@ MonoBehaviour:
   worldPrefabAddress: 
   editorPreviewIcon: {fileID: 21300000, guid: cc0e3e60ea6f5b2469f53c9d6cafa6d3, type: 3}
   maxQuantity: 9999
-  useEffects: []
   developmentType: 0
   experienceValue: 100

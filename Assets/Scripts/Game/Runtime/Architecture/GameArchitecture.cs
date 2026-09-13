@@ -4,6 +4,7 @@ using RPG.DialogueSystemModule;
 using RPG.ItemSystem;
 using RPG.SaveSystem;
 using RPG.TaskSystem;
+using RPG.Game.UI.Escape;
 using UnityEngine;
 using WS_Modules.BusinessArchitecture;
 
@@ -46,6 +47,7 @@ namespace RPG.Game
             RegisterSystem(new WeaponInventorySystem());
             RegisterSystem(new ArtifactInventorySystem());
             RegisterSystem(new RPG.CurrencySystem.CurrencySystem());
+            RegisterManager(new EscCommandManager());
 
             // 角色、背包等跨业务 System 在这里继续注册；
             // 它们对应的 SaveModule 由各自 System 在 OnInit 中注册到 SaveManager。

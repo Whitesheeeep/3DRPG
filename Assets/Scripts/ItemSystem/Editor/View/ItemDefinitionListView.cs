@@ -25,7 +25,6 @@ namespace RPG.ItemSystem.Editor
         private readonly DropdownField kindField;
         private readonly DropdownField sortField;
         private readonly DropdownField sortDirectionField;
-        private readonly Label emptyListLabel;
         private readonly VisualTreeAsset rowTemplate;
         private readonly List<ItemDefinition> displayedDefinitions = new();
         private ItemDefinition selectedDefinition;
@@ -52,8 +51,6 @@ namespace RPG.ItemSystem.Editor
         internal event Action<ItemCategory> NewStackableRequested;
         /// <summary>从列表空白区域请求新建武器。</summary>
         internal event Action NewWeaponRequested;
-        /// <summary>从列表空白区域请求新建养成道具。</summary>
-        internal event Action NewDevelopmentItemRequested;
         /// <summary>从列表空白区域请求新建圣遗物。</summary>
         internal event Action NewArtifactRequested;
         /// <summary>列表双击或失焦重命名提交事件。</summary>
@@ -78,7 +75,6 @@ namespace RPG.ItemSystem.Editor
             kindField = Require<DropdownField>("KindField");
             sortField = Require<DropdownField>("SortField");
             sortDirectionField = Require<DropdownField>("SortDirection");
-            emptyListLabel = Require<Label>("EmptyListLabel");
             rowTemplate = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(DefinitionListRowUxmlPath);
             if (rowTemplate == null) throw new InvalidOperationException($"物品配置窗口缺少列表行 UXML：{DefinitionListRowUxmlPath}。");
 
@@ -96,6 +92,9 @@ namespace RPG.ItemSystem.Editor
             listView.selectionChanged += OnDefinitionSelectionChanged;
             // 在子控件处理右键前统一分发；不再同时安装行菜单与背景菜单。
             listView.RegisterCallback<MouseUpEvent>(OnListViewMouseUp, TrickleDown.TrickleDown);
+            // Sidebar 只在事件目标就是自身时显示新建菜单，子控件不会被背景菜单抢占。
+            root.RegisterCallback<MouseUpEvent>(OnSidebarMouseUp);
+            Debug.Log("[ItemDefinitionListView] 已注册列表、Sidebar 筛选、选择和右键事件。");
         }
 
         /// <summary>解除左栏控件回调并清空虚拟化数据源。</summary>
@@ -110,10 +109,12 @@ namespace RPG.ItemSystem.Editor
             sortDirectionField.UnregisterValueChangedCallback(OnSortDirectionChanged);
             listView.selectionChanged -= OnDefinitionSelectionChanged;
             listView.UnregisterCallback<MouseUpEvent>(OnListViewMouseUp, TrickleDown.TrickleDown);
+            root.UnregisterCallback<MouseUpEvent>(OnSidebarMouseUp);
             listView.itemsSource = null;
             listView.makeItem = null;
             listView.bindItem = null;
             displayedDefinitions.Clear();
+            Debug.Log("[ItemDefinitionListView] 已注销列表事件并释放数据源。");
         }
 
         #endregion
@@ -152,7 +153,6 @@ namespace RPG.ItemSystem.Editor
             if (definitions != null)
                 for (int index = 0; index < definitions.Count; index++) displayedDefinitions.Add(definitions[index]);
             selectedDefinition = selected;
-            emptyListLabel.style.display = displayedDefinitions.Count == 0 ? DisplayStyle.Flex : DisplayStyle.None;
             suppressSelectionChanged = true;
             listView.RefreshItems();
             int selectedIndex = selected == null ? -1 : displayedDefinitions.IndexOf(selected);
@@ -231,6 +231,7 @@ namespace RPG.ItemSystem.Editor
                 WeaponDefinition => "⚔",
                 ArtifactDefinition => "◇",
                 DevelopmentItemDefinition => "✚",
+                FoodItemDefinition => "🍲",
                 _ => "✦"
             };
             name.text = definition?.DisplayName ?? "空定义";
@@ -338,7 +339,7 @@ namespace RPG.ItemSystem.Editor
             if (eventData.button != 1 || !IsListContentPosition(eventData.mousePosition))
                 return;
 
-            // 必须在选择事件刷新虚拟行之前捕获定义，不能使用 selectedDefinition 代替命中结果。
+            // 只在 ListView 内查找真实定义；未命中时使用统一的新建菜单。
             VisualElement row = FindDefinitionRowAtPosition(eventData.mousePosition);
             ItemDefinition definition = row?.userData as ItemDefinition;
             var menu = new GenericMenu();
@@ -350,15 +351,24 @@ namespace RPG.ItemSystem.Editor
             }
             else
             {
-                menu.AddItem(new GUIContent("新建/养成素材"), false, () => NewStackableRequested?.Invoke(ItemCategory.Material));
-                menu.AddItem(new GUIContent("新建/食材"), false, () => NewStackableRequested?.Invoke(ItemCategory.Ingredient));
-                menu.AddItem(new GUIContent("新建/料理"), false, () => NewStackableRequested?.Invoke(ItemCategory.Food));
-                menu.AddItem(new GUIContent("新建/武器"), false, () => NewWeaponRequested?.Invoke());
-                menu.AddItem(new GUIContent("新建/养成道具"), false, () => NewDevelopmentItemRequested?.Invoke());
-                menu.AddItem(new GUIContent("新建/圣遗物"), false, () => NewArtifactRequested?.Invoke());
+                PopulateCreationContextMenu(menu);
             }
 
             // 在 ShowAsContext 前消费原始事件，避免子输入框或其他菜单处理器再次弹出菜单。
+            eventData.StopImmediatePropagation();
+            eventData.PreventDefault();
+            menu.ShowAsContext();
+        }
+
+        /// <summary>处理 Sidebar 自身背景的右键新建请求。</summary>
+        /// <param name="eventData">Sidebar 冒泡阶段收到的鼠标释放事件。</param>
+        private void OnSidebarMouseUp(MouseUpEvent eventData)
+        {
+            if (eventData.button != 1 || eventData.target != root) return;
+
+            var menu = new GenericMenu();
+            PopulateCreationContextMenu(menu);
+            // 只有 Sidebar 自身背景显示菜单；子控件目标不会进入此分支。
             eventData.StopImmediatePropagation();
             eventData.PreventDefault();
             menu.ShowAsContext();
@@ -424,6 +434,17 @@ namespace RPG.ItemSystem.Editor
             menu.AddItem(new GUIContent("删除资产…"), false, () => DefinitionCommandRequested?.Invoke(definition, ItemDefinitionCommand.DeleteAsset));
         }
 
+        /// <summary>填充 Sidebar 与 ListView 空白区域共用的新建菜单。</summary>
+        /// <param name="menu">需要填充的 GenericMenu。</param>
+        private void PopulateCreationContextMenu(GenericMenu menu)
+        {
+            menu.AddItem(new GUIContent("新建/养成道具"), false, () => NewStackableRequested?.Invoke(ItemCategory.DevelopmentItem));
+            menu.AddItem(new GUIContent("新建/食材"), false, () => NewStackableRequested?.Invoke(ItemCategory.Ingredient));
+            menu.AddItem(new GUIContent("新建/料理"), false, () => NewStackableRequested?.Invoke(ItemCategory.Food));
+            menu.AddItem(new GUIContent("新建/武器"), false, () => NewWeaponRequested?.Invoke());
+            menu.AddItem(new GUIContent("新建/圣遗物"), false, () => NewArtifactRequested?.Invoke());
+        }
+
         /// <summary>菜单关闭后重新定位定义的可见行，不使用可能已复用的旧节点。</summary>
         /// <param name="definition">打开菜单时捕获的定义。</param>
         private void RenameVisibleDefinition(ItemDefinition definition)
@@ -447,8 +468,8 @@ namespace RPG.ItemSystem.Editor
         /// <summary>初始化筛选和排序下拉选项。</summary>
         private void ConfigureChoices()
         {
-            categoryField.choices = new List<string> { "全部类型", "养成素材", "食材", "料理", "武器", "圣遗物" };
-            kindField.choices = new List<string> { "全部定义", "可堆叠物品", "养成道具定义", "武器定义", "圣遗物定义" };
+            categoryField.choices = new List<string> { "全部类型", "养成道具", "食材", "料理", "武器", "圣遗物" };
+            kindField.choices = new List<string> { "全部定义", "食材定义", "料理定义", "养成道具定义", "武器定义", "圣遗物定义" };
             sortField.choices = new List<string> { "默认排序优先级", "显示名称", "稀有度", "物品类型", "定义类型", "养成用途", "稳定物品标识", "最大堆叠数量", "最大等级" };
             sortDirectionField.choices = new List<string> { "升序", "降序" };
         }
@@ -479,6 +500,15 @@ namespace RPG.ItemSystem.Editor
             {
                 nextDefinition = item as ItemDefinition;
                 break;
+            }
+
+            if (nextDefinition == null)
+            {
+                // 列表内容空白区域不应清除当前 Definition；保持右侧详情和当前选择不变。
+                suppressSelectionChanged = true;
+                listView.selectedIndex = selectedDefinition == null ? -1 : displayedDefinitions.IndexOf(selectedDefinition);
+                suppressSelectionChanged = false;
+                return;
             }
 
             // ListView 的选择事件只会通知详情页，旧行不会自动重新执行 bindItem；

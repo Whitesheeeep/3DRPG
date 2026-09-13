@@ -1,0 +1,4 @@
+.item-editor-food-details {
+    min-width: 0;
+    max-width: 100%;
+}

@@ -23,8 +23,7 @@ MonoBehaviour:
     banedTags: []
   costEffect: {fileID: 0}
   cooldownEffect: {fileID: 0}
-  effects:
-  - {fileID: 11400000, guid: 6861f23c72baf27428de65bec7d0d062, type: 2}
+  effects: []
   cueTags:
   - id: 57
   rootTask:

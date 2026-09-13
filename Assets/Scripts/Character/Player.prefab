@@ -16,6 +16,7 @@ GameObject:
   - component: {fileID: 6236332136201973222}
   - component: {fileID: 1232515278871343685}
   - component: {fileID: 4099463995280340719}
+  - component: {fileID: 7100000000000000001}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -215,8 +216,32 @@ MonoBehaviour:
     inputType: 15
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
+    deliveryMode: 0
+  - action: {fileID: 0}
+    actionName: Player/BagWindow
+    inputType: 16
+    pressBufferDuration: 0.2
+    releaseBufferDuration: 0.1
+    deliveryMode: 1
+  - action: {fileID: 0}
+    actionName: Player/CancelWindow
+    inputType: 17
+    pressBufferDuration: 0.2
+    releaseBufferDuration: 0.1
+    deliveryMode: 1
   moveAction: {fileID: 5930871493289717904, guid: cfc20ea7c00b94a4781015c818a9deb0, type: 3}
   moveDeadzone: 0.1
+--- !u!114 &7100000000000000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5482557129118236183}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe6f29de2f174726b82de06d19265c7b, type: 3}
+  inputController: {fileID: 3408626327944978715}
 --- !u!114 &6089726963410338055
 MonoBehaviour:
   m_ObjectHideFlags: 0

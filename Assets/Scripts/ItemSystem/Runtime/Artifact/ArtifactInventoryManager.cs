@@ -76,10 +76,13 @@ namespace RPG.ItemSystem
             var created = new List<ArtifactInstance>(definitionIds.Count);
             for (int index = 0; index < definitionIds.Count; index++)
             {
-                var instance = new ArtifactInstance(EquipmentInstanceId.Create(), definitionIds[index], 0, 0, false, true, TakeAcquisitionSequence());
+                var instance = new ArtifactInstance(EquipmentInstanceId.Create(), definitionIds[index], 0, 0, false, TakeAcquisitionSequence());
                 instances.Add(instance.InstanceId, instance);
                 created.Add(instance);
             }
+
+            // 所有实例写入后再标记 Definition，保证 Added 事件的订阅方读取到完整状态。
+            for (int index = 0; index < created.Count; index++) MarkDefinitionNew(created[index].DefinitionId);
 
             for (int index = 0; index < created.Count; index++) PublishChange(EquipmentInstanceChangeType.Added, created[index]);
             return new EquipmentBatchAddResult<ArtifactInstance>(InventoryOperationStatus.Succeeded, created);
@@ -110,6 +113,9 @@ namespace RPG.ItemSystem
                 instances.Remove(removed[index].InstanceId);
             }
 
+            for (int index = 0; index < removed.Count; index++)
+                RemoveDefinitionNewIfUnused(removed[index].DefinitionId);
+
             // 批量移除完成后再广播，保证订阅方读取到完整的圣遗物集合。
             for (int index = 0; index < removed.Count; index++)
                 PublishChange(EquipmentInstanceChangeType.Removed, removed[index]);
@@ -133,7 +139,7 @@ namespace RPG.ItemSystem
             if (update.Level < 0 || update.Level > artifact.MaxLevel) return new EquipmentOperationResult(InventoryOperationStatus.LevelOutOfRange);
             if (update.CurrentExperience < 0) return new EquipmentOperationResult(InventoryOperationStatus.ExperienceOutOfRange);
             ArtifactInstance updated = new ArtifactInstance(current.InstanceId, current.DefinitionId, update.Level, update.CurrentExperience,
-                current.IsLocked, current.IsNew, current.AcquisitionSequence);
+                current.IsLocked, current.AcquisitionSequence);
             instances[instanceId] = updated;
             PublishChange(EquipmentInstanceChangeType.Updated, updated);
             return new EquipmentOperationResult(InventoryOperationStatus.Succeeded);
@@ -144,27 +150,38 @@ namespace RPG.ItemSystem
 
         /// <summary>用已经验证的圣遗物实例替换运行时状态。</summary>
         /// <param name="restoredInstances">圣遗物实例。</param>
+        /// <param name="restoredNewDefinitionIds">圣遗物 Definition New 标识。</param>
         /// <param name="nextSequence">下一个获得顺序。</param>
-        internal void RestoreState(IReadOnlyList<ArtifactInstance> restoredInstances, long nextSequence) => ReplaceInstances(restoredInstances, nextSequence);
+        internal void RestoreState(
+            IReadOnlyList<ArtifactInstance> restoredInstances,
+            IReadOnlyList<ItemId> restoredNewDefinitionIds,
+            long nextSequence) => ReplaceInstances(restoredInstances, restoredNewDefinitionIds, nextSequence);
 
         /// <summary>发布圣遗物背包恢复事件。</summary>
         internal void PublishRestored() => WSEventSystem.EventTrigger_Type(typeof(ArtifactInventoryRestoredEvent), new ArtifactInventoryRestoredEvent());
 
-        /// <summary>复制实例的公共状态，供基类处理锁定和新提示。</summary>
+        /// <summary>复制实例的公共状态，供基类处理锁定状态。</summary>
         /// <param name="source">原实例。</param>
         /// <param name="level">等级。</param>
         /// <param name="currentExperience">经验。</param>
         /// <param name="isLocked">锁定。</param>
-        /// <param name="isNew">新提示。</param>
         /// <returns>更新后的圣遗物实例。</returns>
-        protected override ArtifactInstance CopyWithState(ArtifactInstance source, int level, int currentExperience, bool isLocked, bool isNew) =>
-            new ArtifactInstance(source.InstanceId, source.DefinitionId, level, currentExperience, isLocked, isNew, source.AcquisitionSequence);
+        protected override ArtifactInstance CopyWithState(ArtifactInstance source, int level, int currentExperience, bool isLocked) =>
+            new ArtifactInstance(source.InstanceId, source.DefinitionId, level, currentExperience, isLocked, source.AcquisitionSequence);
 
         /// <summary>发布单个圣遗物变化事件。</summary>
         /// <param name="changeType">变化类型。</param>
         /// <param name="instance">实例。</param>
         protected override void PublishChange(EquipmentInstanceChangeType changeType, ArtifactInstance instance) =>
             WSEventSystem.EventTrigger_Type(typeof(ArtifactInstanceChangedEvent), new ArtifactInstanceChangedEvent(changeType, instance));
+
+        /// <summary>发布圣遗物 Definition New 状态变化。</summary>
+        /// <param name="definitionId">发生变化的圣遗物 Definition。</param>
+        /// <param name="isNew">变化后的 New 状态。</param>
+        protected override void PublishDefinitionNewStateChanged(ItemId definitionId, bool isNew) =>
+            WSEventSystem.EventTrigger_Type(
+                typeof(ArtifactDefinitionNewStateChangedEvent),
+                new ArtifactDefinitionNewStateChangedEvent(definitionId, isNew));
 
         #endregion
 

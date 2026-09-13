@@ -21,3 +21,5 @@ MonoBehaviour:
     windowPrefabPath: HUDWindow
   - windowName: BagWindow
     windowPrefabPath: BagWindow
+  - windowName: WeaponDevelopmentWindow
+    windowPrefabPath: WeaponDevelopmentWindow

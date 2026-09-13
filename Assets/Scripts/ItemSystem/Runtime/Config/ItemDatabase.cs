@@ -126,7 +126,7 @@ namespace RPG.ItemSystem
         {
             string prefix = definition.Category switch
             {
-                ItemCategory.Material => "material",
+                ItemCategory.DevelopmentItem => "material",
                 ItemCategory.Ingredient => "ingredient",
                 ItemCategory.Food => "food",
                 ItemCategory.Weapon => "weapon",

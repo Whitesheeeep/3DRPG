@@ -11,7 +11,6 @@ namespace RPG.ItemSystem
         /// <param name="level">当前等级。</param>
         /// <param name="currentExperience">当前等级内经验。</param>
         /// <param name="isLocked">是否锁定。</param>
-        /// <param name="isNew">是否为新获得。</param>
         /// <param name="acquisitionSequence">获得顺序。</param>
         protected EquipmentInstance(
             EquipmentInstanceId instanceId,
@@ -19,7 +18,6 @@ namespace RPG.ItemSystem
             int level,
             int currentExperience,
             bool isLocked,
-            bool isNew,
             long acquisitionSequence)
         {
             InstanceId = instanceId;
@@ -27,7 +25,6 @@ namespace RPG.ItemSystem
             Level = level;
             CurrentExperience = currentExperience;
             IsLocked = isLocked;
-            IsNew = isNew;
             AcquisitionSequence = acquisitionSequence;
         }
 
@@ -45,9 +42,6 @@ namespace RPG.ItemSystem
 
         /// <summary>获取锁定状态。</summary>
         public bool IsLocked { get; }
-
-        /// <summary>获取新获得状态。</summary>
-        public bool IsNew { get; }
 
         /// <summary>获取获得顺序。</summary>
         public long AcquisitionSequence { get; }

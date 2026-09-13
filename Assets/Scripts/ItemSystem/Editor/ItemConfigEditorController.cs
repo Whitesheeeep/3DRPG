@@ -48,7 +48,9 @@ namespace RPG.ItemSystem.Editor
             bakedResultService = new BakedResultEditorService();
             database = service.ResolveDatabase();
             search = ItemConfigEditorSession.Search;
-            category = ItemConfigEditorSession.Category;
+            category = ItemConfigEditorSession.Category == "养成素材"
+                ? "养成道具"
+                : ItemConfigEditorSession.Category;
             sortField = ItemConfigEditorSession.SortField;
             sortDirection = ItemConfigEditorSession.SortDirection;
             view.DatabaseChanged += OnDatabaseChanged;
@@ -60,7 +62,6 @@ namespace RPG.ItemSystem.Editor
             view.DefinitionSelected += OnDefinitionSelected;
             view.NewStackableRequested += OnNewStackableRequested;
             view.NewWeaponRequested += OnNewWeaponRequested;
-            view.NewDevelopmentItemRequested += OnNewDevelopmentItemRequested;
             view.NewArtifactRequested += OnNewArtifactRequested;
             view.DuplicateRequested += OnDuplicateRequested;
             view.RemoveRequested += OnRemoveRequested;
@@ -129,7 +130,6 @@ namespace RPG.ItemSystem.Editor
             view.DefinitionSelected -= OnDefinitionSelected;
             view.NewStackableRequested -= OnNewStackableRequested;
             view.NewWeaponRequested -= OnNewWeaponRequested;
-            view.NewDevelopmentItemRequested -= OnNewDevelopmentItemRequested;
             view.NewArtifactRequested -= OnNewArtifactRequested;
             view.DuplicateRequested -= OnDuplicateRequested;
             view.RemoveRequested -= OnRemoveRequested;
@@ -186,7 +186,8 @@ namespace RPG.ItemSystem.Editor
             string displayName = definition.DisplayName ?? string.Empty;
             if (!string.IsNullOrWhiteSpace(search) && displayName.IndexOf(search, StringComparison.OrdinalIgnoreCase) < 0 && definition.ItemId.ToString().IndexOf(search, StringComparison.OrdinalIgnoreCase) < 0) return false;
             if (category != "全部类型" && ItemConfigEditorPresentation.GetCategoryText(definition.Category) != category) return false;
-            if (kind == "可堆叠物品" && definition is not StackableItemDefinition) return false;
+            if (kind == "食材定义" && definition.GetType() != typeof(StackableItemDefinition)) return false;
+            if (kind == "料理定义" && definition is not FoodItemDefinition) return false;
             if (kind == "养成道具定义" && definition is not DevelopmentItemDefinition) return false;
             if (kind == "武器定义" && definition is not WeaponDefinition) return false;
             if (kind == "圣遗物定义" && definition is not ArtifactDefinition) return false;
@@ -389,14 +390,22 @@ namespace RPG.ItemSystem.Editor
             RefreshDefinitions();
         }
 
-        /// <summary>创建普通可堆叠物品。</summary>
-        private void OnNewStackableRequested(ItemCategory category) => CreateDefinition(typeof(StackableItemDefinition), category);
+        /// <summary>根据分类创建一种可堆叠定义。</summary>
+        /// <param name="category">用户选择的可堆叠分类。</param>
+        private void OnNewStackableRequested(ItemCategory category)
+        {
+            Type definitionType = category switch
+            {
+                ItemCategory.DevelopmentItem => typeof(DevelopmentItemDefinition),
+                ItemCategory.Food => typeof(FoodItemDefinition),
+                ItemCategory.Ingredient => typeof(StackableItemDefinition),
+                _ => throw new InvalidOperationException("可堆叠物品只能创建养成道具、食材或料理定义。")
+            };
+            CreateDefinition(definitionType, category);
+        }
 
         /// <summary>创建武器定义。</summary>
         private void OnNewWeaponRequested() => CreateDefinition(typeof(WeaponDefinition), ItemCategory.Weapon);
-
-        /// <summary>创建养成道具定义。</summary>
-        private void OnNewDevelopmentItemRequested() => CreateDefinition(typeof(DevelopmentItemDefinition), ItemCategory.Material);
 
         /// <summary>创建圣遗物定义。</summary>
         private void OnNewArtifactRequested() => CreateDefinition(typeof(ArtifactDefinition), ItemCategory.Artifact);

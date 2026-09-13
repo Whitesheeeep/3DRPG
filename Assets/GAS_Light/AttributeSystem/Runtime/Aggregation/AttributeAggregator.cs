@@ -105,6 +105,8 @@ namespace WS_Modules.GAS.AttributeSystem
             }
 
             double value = baseValue;
+
+            // 加入的时候已经按 Priority 排序，直接顺序遍历即可。
             int modifierIndex = 0;
             while (modifierIndex < modifiers.Count)
             {
@@ -114,6 +116,9 @@ namespace WS_Modules.GAS.AttributeSystem
                 AttributeModifier overrideModifier = null;
 
                 // 处理同一个 Priority 层级的 Modifier
+                // 对于同一个 Priority 层级，Add/Multiply 可以累积，Override 必须唯一。
+                // Add 采用累加，Multiply 采用连乘，Override 直接覆盖。
+                // 不同的 Priority 层级之间，先计算 Add/Multiply，再由 Override 覆盖。
                 while (modifierIndex < modifiers.Count &&
                        modifiers[modifierIndex].Priority == priority)
                 {

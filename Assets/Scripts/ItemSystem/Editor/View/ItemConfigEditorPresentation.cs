@@ -15,7 +15,7 @@ namespace RPG.ItemSystem.Editor
         /// <returns>中文分类名称。</returns>
         internal static string GetCategoryText(ItemCategory category) => category switch
         {
-            ItemCategory.Material => "养成素材",
+            ItemCategory.DevelopmentItem => "养成道具",
             ItemCategory.Ingredient => "食材",
             ItemCategory.Food => "料理",
             ItemCategory.Weapon => "武器",
@@ -31,7 +31,8 @@ namespace RPG.ItemSystem.Editor
             WeaponDefinition => "武器定义",
             ArtifactDefinition => "圣遗物定义",
             DevelopmentItemDefinition => "养成道具定义",
-            StackableItemDefinition => "可堆叠物品",
+            FoodItemDefinition => "料理定义",
+            StackableItemDefinition => "食材定义",
             null => "未知定义",
             _ => "物品定义"
         };

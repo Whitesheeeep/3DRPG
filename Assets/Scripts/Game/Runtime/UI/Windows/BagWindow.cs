@@ -1,6 +1,9 @@
+using RPG.Game;
 using RPG.Game.UI.Controllers;
+using RPG.Game.UI.Escape;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using WS_Modules.BusinessArchitecture;
 using WS_Modules.UIModule;
 
 namespace WS_Modules.UIModule
@@ -15,6 +18,8 @@ namespace WS_Modules.UIModule
         #region 依赖字段
 
         private BagWindowController controller;
+        private EscCommandRegistration escCommandRegistration;
+        private IArchitecture escapeArchitecture;
 
         #endregion
 
@@ -39,6 +44,11 @@ namespace WS_Modules.UIModule
         public override void OnShow()
         {
             base.OnShow();
+            // UIManager 对已可见窗口的重复打开也会调用 OnShow；先注销旧句柄，避免 Esc 栈重复堆积。
+            UnregisterEscCommand();
+            escapeArchitecture = GameArchitecture.Interface;
+            escCommandRegistration = escapeArchitecture.SendCommand(
+                new RegisterEscCommand(new CloseBagWindowCommand()));
             controller.OnWindowShown();
         }
 
@@ -50,9 +60,17 @@ namespace WS_Modules.UIModule
             controller.PrepareOpen();
         }
 
+        /// <summary>等待背包配置图集完成本轮加载尝试，供 Bag 打开协调流程使用。</summary>
+        /// <returns>图集准备任务；部分地址失败时任务仍会在所有尝试完成后成功结束。</returns>
+        public Cysharp.Threading.Tasks.UniTask PrepareOpenAsync()
+        {
+            return controller.PrepareOpenAsync();
+        }
+
         /// <summary>窗口隐藏完成时启动动态图集延迟释放。</summary>
         public override void OnHide()
         {
+            UnregisterEscCommand();
             controller.OnWindowHidden();
             base.OnHide();
         }
@@ -60,8 +78,17 @@ namespace WS_Modules.UIModule
         /// <summary>销毁窗口时幂等释放 Controller 和动态图集租约。</summary>
         public override void OnDestroy()
         {
+            UnregisterEscCommand();
             controller?.Dispose();
             base.OnDestroy();
+        }
+
+        /// <summary>注销 BagWindow 当前显示期间注册的 Esc Command。</summary>
+        private void UnregisterEscCommand()
+        {
+            if (!escCommandRegistration.IsValid) return;
+            escapeArchitecture?.SendCommand(new UnregisterEscCommand(escCommandRegistration));
+            escCommandRegistration = default;
         }
 
         #endregion

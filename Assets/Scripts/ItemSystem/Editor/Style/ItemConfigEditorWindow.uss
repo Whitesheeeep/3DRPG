@@ -55,6 +55,12 @@
     border-right-color: rgb(70, 70, 70);
 }
 
+.item-editor-list-bar {
+    flex-grow: 0;
+    flex-shrink: 0;
+    min-width: 0;
+}
+
 .item-editor-filter-row {
     flex-direction: row;
     min-width: 0;
@@ -109,6 +115,7 @@
 }
 
 .item-editor-empty-list {
+    display: none;
     flex-grow: 1;
     min-height: 120px;
     align-items: center;
