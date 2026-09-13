@@ -50,14 +50,44 @@ flowchart TD
     Level --> Contract["校验具体 Data 契约"]
     Contract --> Root["异步 Data 检查 Root Task"]
     Root --> Candidate["创建 Created Runtime 候选"]
-    Candidate --> Cooldown["提交 Cooldown"]
+    Candidate --> Dynamic["Runtime.CanActivate 动态检查"]
+    Dynamic --> Cooldown["提交 Cooldown"]
     Cooldown --> Cost["提交 Cost"]
     Cost --> Register["注册 Runtime 并进入 Active"]
     Register --> Activated["AbilityActivated"]
     Activated --> Cancel["按 CancelTags 取消匹配的旧 Runtime"]
     Cancel --> Start["Runtime.Start"]
 ```
-Cost 失败时精确移除本次刚创建的 Cooldown Runtime。只有新 Runtime 成功进入 Active 且 `AbilityActivated` 回调后仍然 Active，才会用 `CancelTags` 取消旧 Runtime；事件顺序为新 Runtime `AbilityActivated` 后再发送旧 Runtime `AbilityCancelled`。Root Task 为空或 Task 配置非法时，必须在 Cost/Cooldown 副作用前拒绝；异步 Ability 由 Owner 主动调用 ASC.Tick 推进。
+Cost 失败时精确移除本次刚创建的 Cooldown Runtime。只有新 Runtime 成功进入 Active 且 `AbilityActivated` 回调后仍然 Active，才会用 `CancelTags` 取消旧 Runtime；事件顺序为新 Runtime `AbilityActivated` 后再发送旧 Runtime `AbilityCancelled`。Root Task 为空、Task 配置非法或 Runtime.CanActivate 返回 false 时，必须在 Cost/Cooldown 副作用前拒绝；异步 Ability 由 Owner 主动调用 ASC.Tick 推进。
+
+### Runtime 动态激活条件
+
+`GameplayAbilityData` 的 `ActivationTagQuery` 和 `IsRuntimeConfigurationValid` 只负责静态配置与通用资产契约，不能覆盖角色在当前时刻的独有业务条件。每次激活创建的 `GameplayAbilityRuntime` 提供一个可覆写的 `protected internal virtual CanActivate()`，由 `GameplayAbilityCtrl` 在候选创建后、提交 Cooldown 和 Cost 前调用。
+
+```mermaid
+sequenceDiagram
+    participant Owner as Owner
+    participant Ctrl as GameplayAbilityCtrl
+    participant Runtime as Created Runtime 候选
+    participant GE as GameEffectCtrl
+    Owner->>Ctrl: TryActivate(handle, setByCaller)
+    Ctrl->>Ctrl: Spec、全局 Tag、Data 与 Cooldown 检查
+    Ctrl->>Runtime: 创建 Created 候选
+    Ctrl->>Runtime: CanActivate()
+    alt 动态条件失败
+        Runtime-->>Ctrl: false
+        Ctrl-->>Owner: false，不提交 GE
+    else 动态条件通过
+        Runtime-->>Ctrl: true
+        Ctrl->>GE: 提交 Cooldown
+        Ctrl->>GE: 提交 Cost
+        Ctrl->>Runtime: 登记 Active、Activate、Start
+    end
+```
+
+`CanActivate()` 是无副作用查询，只能读取 `Spec`、`Level`、`SourceASC`、`SourceOwner`、`SetByCaller` 和 Owner 已提供的运行时能力。它不能应用 GE、修改 Tag、创建 Task、播放表现、申请 MotionDriver 或改变 Runtime 状态。动态条件失败不会发送 `AbilityActivated`、不会执行 Cancel Tags，也不会进入 `ActiveRuntimes`。
+
+`CanActivate()` 与 `OnStart()` 的语义不同：前者拒绝尚未提交副作用的候选，后者表示 Runtime 已经进入激活流程；在 `OnStart()` 中立即完成属于“激活后结束”，不能替代动态激活检查。
 
 ```mermaid
 sequenceDiagram
@@ -68,15 +98,21 @@ sequenceDiagram
     Owner->>Ctrl: TryActivate(handle, setByCaller)
     Ctrl->>Ctrl: 查询 Spec、Level、ActivationTagQuery
     Ctrl->>Ctrl: 校验 Data 与 Root Task 契约
-    Ctrl->>GE: 提交 Cooldown
-    Ctrl->>GE: 提交 Cost
-    alt Cost 失败
-        Ctrl->>GE: 只移除本次 Cooldown
+    Ctrl->>Runtime: 创建 Created 候选
+    Ctrl->>Runtime: CanActivate()
+    alt 动态条件失败
         Ctrl-->>Owner: 激活失败
-    else Cost 成功
-        Ctrl->>Runtime: 创建并注册 Runtime
+    else 动态条件通过
+        Ctrl->>GE: 提交 Cooldown
+        Ctrl->>GE: 提交 Cost
+        alt Cost 失败
+            Ctrl->>GE: 只移除本次 Cooldown
+            Ctrl-->>Owner: 激活失败
+        else Cost 成功
+            Ctrl->>Runtime: 注册 Runtime 并进入 Active
         Ctrl-->>Owner: AbilityActivated
-        Ctrl->>Runtime: Start
+            Ctrl->>Runtime: Start
+        end
     end
 ```
 

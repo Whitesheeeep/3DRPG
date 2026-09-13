@@ -9,6 +9,7 @@ using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.AttributeSystem;
 using WS_Modules.GAS.GameplayEffect;
 using WS_Modules.GAS.Generated;
+using WS_Modules.GAS.TAG;
 using WS_Modules.Pooling;
 
 namespace WS_Modules.GAS.GameplayAbilitySystem
@@ -17,6 +18,77 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
     public sealed class GameplayAbilityOdinTester : MonoBehaviour
     {
         #region 测试类型
+        /// <summary>提供可手动切换动态激活条件的测试 Ability Data。</summary>
+        private sealed class DynamicActivationAbilityData : GameplayAbilityData
+        {
+            /// <summary>获取是否允许下一次候选 Runtime 通过动态检查。</summary>
+            internal bool AllowActivation { get; set; }
+
+            /// <summary>获取最近一次创建的动态检查 Runtime。</summary>
+            internal DynamicActivationRuntime LastRuntime { get; private set; }
+
+            /// <summary>创建带有独立动态检查状态的测试 Runtime。</summary>
+            /// <param name="activationId">Controller 分配的激活标识。</param>
+            /// <param name="spec">本次激活使用的 Ability Spec。</param>
+            /// <param name="source">拥有该 Ability 的 Source ASC。</param>
+            /// <param name="setByCaller">本次激活的 SetByCaller 快照。</param>
+            /// <returns>新的动态检查测试 Runtime。</returns>
+            protected override GameplayAbilityRuntime CreateRuntime(
+                int activationId,
+                GameplayAbilitySpec spec,
+                GameplayAbilitySystemComponent source,
+                IReadOnlyDictionary<GameplayTag, float> setByCaller)
+            {
+                LastRuntime = new DynamicActivationRuntime(
+                    activationId, spec, source, setByCaller, this);
+                return LastRuntime;
+            }
+        }
+
+        /// <summary>验证 Runtime 动态激活判断位于所有激活副作用之前。</summary>
+        private sealed class DynamicActivationRuntime : GameplayAbilityRuntime
+        {
+            private readonly DynamicActivationAbilityData data;
+
+            /// <summary>获取动态判断执行次数。</summary>
+            internal int CanActivateCount { get; private set; }
+
+            /// <summary>获取 Runtime 是否已经进入启动回调。</summary>
+            internal bool Started { get; private set; }
+
+            /// <summary>创建动态激活条件测试 Runtime。</summary>
+            /// <param name="activationId">Controller 分配的激活标识。</param>
+            /// <param name="spec">本次激活使用的 Ability Spec。</param>
+            /// <param name="source">拥有该 Ability 的 Source ASC。</param>
+            /// <param name="setByCaller">本次激活的 SetByCaller 快照。</param>
+            /// <param name="data">控制动态允许状态的测试 Data。</param>
+            internal DynamicActivationRuntime(
+                int activationId,
+                GameplayAbilitySpec spec,
+                GameplayAbilitySystemComponent source,
+                IReadOnlyDictionary<GameplayTag, float> setByCaller,
+                DynamicActivationAbilityData data)
+                : base(activationId, spec, source, setByCaller)
+            {
+                this.data = data;
+            }
+
+            /// <summary>在 Cost、Cooldown 和 Runtime 登记之前读取测试 Data 的动态条件。</summary>
+            /// <returns>测试 Data 当前允许激活时返回 true。</returns>
+            protected internal override bool CanActivate()
+            {
+                CanActivateCount++;
+                return data.AllowActivation;
+            }
+
+            /// <summary>记录动态条件通过后才进入的启动回调。</summary>
+            protected override void OnStart()
+            {
+                Started = true;
+                Complete();
+            }
+        }
+
         /// <summary>记录同步 Execute 次数的测试 Ability Data。</summary>
         private sealed class TestSynchronousAbilityData : SynchronousGameplayAbilityData
         {
@@ -523,6 +595,34 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             DestroyImmediate(originObject);
             LogSummary();
         }
+
+        /// <summary>验证 Runtime 动态条件在 Cost、Cooldown 和 Active 登记之前生效。</summary>
+        [Button("测试 Runtime 动态激活条件")]
+        public void TestRuntimeDynamicActivation()
+        {
+            ResetTest();
+            DynamicActivationAbilityData data =
+                ScriptableObject.CreateInstance<DynamicActivationAbilityData>();
+            GameplayAbilityHandle handle = source.GiveAbility(data, 3);
+            data.AllowActivation = false;
+
+            bool rejected = source.TryActivateAbility(handle, null, out GameplayAbilityRuntime rejectedRuntime);
+            Expect("动态条件拒绝激活", !rejected && rejectedRuntime == null);
+            Expect("动态拒绝不残留 Active Runtime", source.ActiveAbilities.Count == 0);
+            Expect("动态拒绝未进入 Runtime 启动", data.LastRuntime != null && !data.LastRuntime.Started);
+            Expect("动态判断读取一次候选 Runtime", data.LastRuntime != null && data.LastRuntime.CanActivateCount == 1);
+
+            data.AllowActivation = true;
+            bool activated = source.TryActivateAbility(handle, null, out GameplayAbilityRuntime acceptedRuntime);
+            Expect("动态条件恢复后激活成功", activated && acceptedRuntime != null);
+            Expect("动态条件通过后进入启动回调", data.LastRuntime.Started);
+            Expect("同步测试 Runtime 已正常结束", acceptedRuntime.State == GameplayAbilityRuntimeState.Ended);
+            Expect("动态测试结束后无 Active Runtime", source.ActiveAbilities.Count == 0);
+
+            DestroyImmediate(data);
+            LogSummary();
+        }
+
         /// <summary>验证同步 Ability 在激活调用内执行并按 Activated→Ended 顺序结束。</summary>
         [Button("测试同步 Ability")]
         public void TestSynchronousAbility()

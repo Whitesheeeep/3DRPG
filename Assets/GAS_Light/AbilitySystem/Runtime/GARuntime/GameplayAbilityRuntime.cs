@@ -63,6 +63,13 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         #endregion
 
         #region 生命周期模板
+        /// <summary>
+        /// 判断当前候选 Runtime 是否满足该 Ability 独有的动态激活条件。
+        /// 该方法由 GameplayAbilityCtrl 在提交 Cost 和 Cooldown 前调用，且实现必须是无副作用查询。
+        /// </summary>
+        /// <returns>当前运行时上下文允许激活时返回 true。</returns>
+        protected internal virtual bool CanActivate() => true;
+
         // Cost/Cooldown 提交后由 Controller 将候选切换为 Active。
         internal void Activate() => State = GameplayAbilityRuntimeState.Active;
 

@@ -198,6 +198,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             if (IsActivationBlockedByOwnerTags()) return false;
 
             WSLog.Log($"ASC {Owner.name} 统一激活条件检查通过，Ability {spec.Data.name}，Handle={handle.Id}，Level={spec.Level}");
+            // 判断逻辑：等级必须合法、Owner 拥有的 Tag 必须满足 ActivationTagQuery、Cost/Cooldown Duration Policy 必须合法、Runtime 配置必须合法。
             if (spec.Level < 1 ||
                 !spec.Data.ActivationTagQuery.Matches(Owner.Tags) ||
                 !HasValidActivationPolicies(spec.Data) ||
@@ -212,6 +213,14 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 AllocateActivationId(), spec, Owner, setByCaller);
             if (candidate == null)
                 throw new InvalidOperationException("GameplayAbilityData 不能返回空 Runtime。");
+
+            // 具体 Runtime 只在这里提供本次 Ability 独有的动态查询；此时尚未提交 Cost、Cooldown 或其他副作用。
+            if (!candidate.CanActivate())
+            {
+                WSLog.Log(
+                    $"ASC {Owner.name} 拒绝激活 Ability {spec.Data.name}，Handle={handle.Id}，Level={spec.Level}，失败阶段=Runtime 动态激活条件");
+                return false;
+            }
 
             WSLog.LogSuccess(
                 $"ASC {Owner.name} 激活 Ability {spec.Data.name}，Handle={handle.Id}，ActivationId={candidate.ActivationId}");
