@@ -280,7 +280,7 @@ MonoBehaviour:
     supportProbeDistance: 2.5
     targetCapsuleGroundClearance: 0.02
     drawDebug: 1
-    debugDuration: 6
+    debugDuration: 10
   vaultAnimationSetting:
     transition:
       _FadeDuration: 0.25

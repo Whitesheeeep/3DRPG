@@ -281,13 +281,20 @@ namespace RPG.SkillSystem.Editor
             IntegerField duration = new("持续帧") { value = clip.DurationFrames };
             duration.AddToClassList("inspector-field");
             durationRow.Add(duration);
-            Button matchDuration = new(() => viewModel.MatchAnimationDuration(clip))
+            Button matchOriginalDuration = new(() => viewModel.MatchAnimationDuration(clip))
             {
-                text = "匹配动画长度",
-                tooltip = "按 AnimationClip 原始时长和当前技能 FPS 恢复持续帧。"
+                text = "匹配原始长度",
+                tooltip = "扣除源动画偏移后，按 AnimationClip 原始播放时长和当前技能 FPS 匹配持续帧。"
             };
-            matchDuration.SetEnabled(viewModel.CanMatchAnimationDuration(clip));
-            durationRow.Add(matchDuration);
+            matchOriginalDuration.SetEnabled(viewModel.CanMatchAnimationDuration(clip));
+            durationRow.Add(matchOriginalDuration);
+            Button matchPlaybackDuration = new(() => viewModel.MatchAnimationPlaybackDuration(clip))
+            {
+                text = "匹配播放长度",
+                tooltip = "扣除源动画偏移后，按 AnimationClip PlaybackSpeed 换算实际播放时长并匹配持续帧。"
+            };
+            matchPlaybackDuration.SetEnabled(viewModel.CanMatchAnimationPlaybackDuration(clip));
+            durationRow.Add(matchPlaybackDuration);
             IntegerField sourceStart = AddField(container, new IntegerField("源动画偏移") { value = clip.SourceStartFrame });
             FloatField speed = AddField(container, new FloatField("播放速度") { value = clip.PlaybackSpeed });
             FloatField fadeDuration = AddField(container, new FloatField("淡入时长") { value = clip.FadeDuration });

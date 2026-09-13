@@ -154,6 +154,7 @@ namespace RPG.Character
             Vector3 targetFootPoint;
             Vector3 mantlePreferredPoint = Vector3.zero;
             TraversalCandidateKind kind;
+            // 如果是翻越则进行胶囊体的空间检查和支撑检查，确保目标点是安全的；如果是攀爬则在顶部范围内解析一个安全的目标点。
             if (isVault)
             {
                 // Vault 使用真实后沿，而不是角色半径或固定距离推算的近似点。
@@ -427,10 +428,12 @@ namespace RPG.Character
                 surfaceForward = characterForward;
             surfaceForward.Normalize();
 
+            // 计算顶部允许的最大内缩距离，确保不会贴近后沿或超出 Vault 最大厚度。
             float maximumInset = farEdgeStatus == FarEdgeSearchStatus.Found
                 ? obstacleDepth - settings.MantleFarEdgeClearance
                 : settings.VaultMaxDepth;
             maximumInset = Mathf.Max(0f, maximumInset);
+            // 计算配置期望内缩对应的预测脚点，作为搜索起点。
             float preferredInset = Mathf.Clamp(settings.MantleStandingInset, 0f, maximumInset);
             preferredPoint = topHit.point + surfaceForward * preferredInset;
             DrawCross(preferredPoint, PreferredTargetColor, up);
@@ -441,10 +444,12 @@ namespace RPG.Character
                 return false;
             }
 
+            // 在顶部支撑范围内按步长搜索，优先检查较小内缩，避免在存在多个安全点时再次贴近后沿。
             float step = settings.MantleTargetSearchStep;
             for (float offset = 0f; offset <= maximumInset + Epsilon; offset += step)
             {
                 // 同距离优先检查较小内缩，避免在存在多个安全点时再次贴近后沿。
+                // 一次就能找到安全点时，返回的 targetFootPoint 可能与 preferredPoint 不同，但仍是安全的。
                 if (TryEvaluateMantleInset(preferredInset - offset, maximumInset,
                         topHit.point, surfaceForward, up,
                         out targetFootPoint))

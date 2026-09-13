@@ -17,6 +17,7 @@ namespace RPG.SkillSystem
         // 状态
         private IActionPhaseRuntimeState actionPhaseState;
         private float elapsedSeconds;
+        // 当前执行的全局播放倍率，0 表示暂停，1 表示正常速度，2 表示两倍速。
         private float playbackSpeed = 1f;
         private int nextFrame;
         private bool reachedDurationBoundary;
@@ -30,6 +31,17 @@ namespace RPG.SkillSystem
         public bool CanBeInterrupted => actionPhaseState?.CanBeInterrupted ?? false;
         public bool CanCompleteNaturally => reachedDurationBoundary && pendingLateFrames.Count == 0;
 
+        /// <summary>
+        /// 获取按缩放后逻辑秒数计算的连续技能进度；整数帧仍是战斗判定的权威时间点。
+        /// </summary>
+        public float NormalizedTime
+        {
+            get
+            {
+                float durationSeconds = Config.DurationFrames / (float)Config.FrameRate;
+                return Mathf.Clamp01(elapsedSeconds / durationSeconds);
+            }
+        }
         #endregion
 
         #region 创建

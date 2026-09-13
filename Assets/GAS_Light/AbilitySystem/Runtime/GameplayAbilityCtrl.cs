@@ -410,9 +410,9 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             IReadOnlyList<GameplayTag> cancelTags)
         {
             for (int i = 0; i < abilityTags.Count; i++)
-            for (int j = 0; j < cancelTags.Count; j++)
-                if (abilityTags[i].MatchesTag(cancelTags[j]))
-                    return true;
+                for (int j = 0; j < cancelTags.Count; j++)
+                    if (abilityTags[i].MatchesTag(cancelTags[j]))
+                        return true;
             return false;
         }
 
