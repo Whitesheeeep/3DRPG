@@ -18,6 +18,7 @@ namespace RPG.ItemSystem.Editor
 
         // 依赖左栏视觉树及原生滚动视口，所有命中坐标均使用面板坐标。
         private readonly VisualElement root;
+        private readonly VisualElement listBar;
         private readonly ListView listView;
         private readonly ScrollView listScrollView;
         private readonly ToolbarSearchField searchField;
@@ -69,6 +70,7 @@ namespace RPG.ItemSystem.Editor
         {
             this.root = root ?? throw new ArgumentNullException(nameof(root));
             this.listView = listView ?? throw new ArgumentNullException(nameof(listView));
+            listBar = Require<VisualElement>("ListBar");
             listScrollView = listView.Q<ScrollView>() ?? throw new InvalidOperationException("物品列表缺少原生 ScrollView。");
             searchField = Require<ToolbarSearchField>("SearchField");
             categoryField = Require<DropdownField>("CategoryField");
@@ -92,9 +94,9 @@ namespace RPG.ItemSystem.Editor
             listView.selectionChanged += OnDefinitionSelectionChanged;
             // 在子控件处理右键前统一分发；不再同时安装行菜单与背景菜单。
             listView.RegisterCallback<MouseUpEvent>(OnListViewMouseUp, TrickleDown.TrickleDown);
-            // Sidebar 只在事件目标就是自身时显示新建菜单，子控件不会被背景菜单抢占。
-            root.RegisterCallback<MouseUpEvent>(OnSidebarMouseUp);
-            Debug.Log("[ItemDefinitionListView] 已注册列表、Sidebar 筛选、选择和右键事件。");
+            // ListBar 只在事件目标就是自身时显示新建菜单，搜索和筛选控件不会被背景菜单抢占。
+            listBar.RegisterCallback<MouseUpEvent>(OnListBarMouseUp);
+            Debug.Log("[ItemDefinitionListView] 已注册列表、ListBar 筛选、选择和右键事件。");
         }
 
         /// <summary>解除左栏控件回调并清空虚拟化数据源。</summary>
@@ -109,12 +111,12 @@ namespace RPG.ItemSystem.Editor
             sortDirectionField.UnregisterValueChangedCallback(OnSortDirectionChanged);
             listView.selectionChanged -= OnDefinitionSelectionChanged;
             listView.UnregisterCallback<MouseUpEvent>(OnListViewMouseUp, TrickleDown.TrickleDown);
-            root.UnregisterCallback<MouseUpEvent>(OnSidebarMouseUp);
+            listBar.UnregisterCallback<MouseUpEvent>(OnListBarMouseUp);
             listView.itemsSource = null;
             listView.makeItem = null;
             listView.bindItem = null;
             displayedDefinitions.Clear();
-            Debug.Log("[ItemDefinitionListView] 已注销列表事件并释放数据源。");
+            Debug.Log("[ItemDefinitionListView] 已注销列表和 ListBar 事件并释放数据源。");
         }
 
         #endregion
@@ -360,15 +362,15 @@ namespace RPG.ItemSystem.Editor
             menu.ShowAsContext();
         }
 
-        /// <summary>处理 Sidebar 自身背景的右键新建请求。</summary>
-        /// <param name="eventData">Sidebar 冒泡阶段收到的鼠标释放事件。</param>
-        private void OnSidebarMouseUp(MouseUpEvent eventData)
+        /// <summary>处理 ListBar 自身背景的右键新建请求。</summary>
+        /// <param name="eventData">ListBar 冒泡阶段收到的鼠标释放事件。</param>
+        private void OnListBarMouseUp(MouseUpEvent eventData)
         {
-            if (eventData.button != 1 || eventData.target != root) return;
+            if (eventData.button != 1 || eventData.target != listBar) return;
 
             var menu = new GenericMenu();
             PopulateCreationContextMenu(menu);
-            // 只有 Sidebar 自身背景显示菜单；子控件目标不会进入此分支。
+            // 只有 ListBar 自身背景显示菜单；搜索和筛选控件目标不会进入此分支。
             eventData.StopImmediatePropagation();
             eventData.PreventDefault();
             menu.ShowAsContext();
