@@ -204,9 +204,10 @@ namespace RPG.Character
             looseGameplayTagEventBridge?.Dispose();
         }
 
-        private void OnDrawGizmos()
+        private void OnDrawGizmosSelected()
         {
-            environmentDetector.OnGizmosDraw();
+            Transform drawTrans = GetComponentInChildren<CharacterManager>().transform;
+            environmentDetector.OnGizmosDraw(drawTrans);
         }
 
         /// <summary>依次推进全队 ASC、输入分析、角色切换和当前角色普通阶段。</summary>

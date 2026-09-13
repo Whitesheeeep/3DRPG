@@ -57,9 +57,10 @@ MonoBehaviour:
       currencyCosts: []
   initialAttributeSets:
   - {fileID: 11400000, guid: fa050d1171257b24bbba13162066da88, type: 2}
-  abilityInputBindings:
-  - inputType: 0
-    ability: {fileID: 11400000, guid: 5b1b22e4d2c647a09c12aac149412fd1, type: 2}
+  combatConfig:
+    normalAttackAbilities:
+    - {fileID: 11400000, guid: 5b1b22e4d2c647a09c12aac149412fd1, type: 2}
+    skillInputBindings: []
   gravity: 9.81
   locomotionTransition: {fileID: 11400000, guid: 8b2e9e80cfd84d94b68a1f7f15d89b21, type: 2}
   editorSideIcon: {fileID: 21300000, guid: 35d34b6790c7b1944b281565194eb412, type: 3}

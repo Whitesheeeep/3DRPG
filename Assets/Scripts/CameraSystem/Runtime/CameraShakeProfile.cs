@@ -35,6 +35,7 @@ namespace RPG.CameraSystem
         private float fadeOutDuration = 0.15f;
 
         [SerializeField, LabelText("混合方式")]
+        [Tooltip("Additive：叠加在当前噪声上。\nExclusive：覆盖当前噪声。")]
         private CameraModifierBlendMode blendMode = CameraModifierBlendMode.Additive;
 
         #endregion

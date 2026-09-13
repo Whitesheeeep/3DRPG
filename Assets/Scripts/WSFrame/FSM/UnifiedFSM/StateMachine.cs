@@ -158,6 +158,15 @@ namespace WS_Modules.FSM
         /// <returns>路径完整有效并完成切换时返回 true。</returns>
         public bool ChangeStatePath(params TStateId[] statePath)
         {
+            return ChangeStatePathInternal(statePath);
+        }
+
+        /// <summary>按只读路径执行层级切换的内部实现。</summary>
+        /// <param name="statePath">从当前状态机开始、依次指向嵌套子状态的直接子状态 ID。</param>
+        /// <returns>路径完整有效并完成切换时返回 true。</returns>
+        private bool ChangeStatePathInternal(
+            IReadOnlyList<TStateId> statePath)
+        {
             if (!TryCollectStatePath(statePath, out List<StateMachine<TStateId, TOwner>> machines,
                     out List<IState<TStateId, TOwner>> targets))
                 return false;
@@ -165,7 +174,7 @@ namespace WS_Modules.FSM
             // 计算目标路径与当前活动路径的最长公共前缀长度，复用公共前缀节点。
             int commonLength = FindCommonPathLength(machines, targets);
             // 相同说明目标路径与当前活动路径完全一致，无需切换。
-            if (commonLength == statePath.Length)
+            if (commonLength == statePath.Count)
                 return false;
 
             // 先完整预检，任何目标拒绝都不会退出当前活动路径。
@@ -174,7 +183,7 @@ namespace WS_Modules.FSM
                     return false;
 
             // 从叶节点向公共前缀退出，再逐级提交目标路径。
-            for (int index = statePath.Length - 1; index >= commonLength; index--)
+            for (int index = statePath.Count - 1; index >= commonLength; index--)
                 machines[index].ExitCurrentState();
 
             for (int index = commonLength; index < targets.Count; index++)
@@ -220,7 +229,7 @@ namespace WS_Modules.FSM
         /// </summary>
         public override void OnEnter(bool suppressDefaultState = false)
         {
-            base.OnEnter();
+            base.OnEnter(suppressDefaultState);
             if (!suppressDefaultState && mHasDefaultState)
                 ChangeState(mDefaultStateId);
         }
@@ -411,16 +420,28 @@ namespace WS_Modules.FSM
         /// <returns>本次检查完成状态切换时返回 true。</returns>
         private bool TryTransitions(List<Transition<TStateId, TOwner>> transitions)
         {
+            // 在加入的时候已经按权重排序过了，所以这里直接按顺序检查即可。
             for (int i = 0; i < transitions.Count; i++)
             {
                 var transition = transitions[i];
 
-                if (CurrentState != null &&
+                if (!transition.HasTargetStatePath &&
+                    CurrentState != null &&
                     EqualityComparer<TStateId>.Default.Equals(CurrentState.StateId, transition.ToStateId))
                     continue;
 
-                if (transition.Tick(Owner) && ChangeState(transition.ToStateId))
+                if (!transition.Tick(Owner))
+                    continue;
+
+                bool changed = transition.HasTargetStatePath
+                    ? ChangeStatePathInternal(transition.TargetStatePath)
+                    : ChangeState(transition.ToStateId);
+                if (changed)
+                {
+                    // 只有完整路径已经成功进入后才允许输入消费等不可逆副作用。
+                    transition.NotifyCommitted(Owner);
                     return true;
+                }
             }
 
             return false;

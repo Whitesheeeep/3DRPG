@@ -443,7 +443,7 @@ DialogueWindow 显示：
 - `DialogueSpeechView` 的背景 Button 同时响应鼠标点击和 Unity EventSystem Submit；正文仍在打字或淡入时只调用 `TMProTypeWriter.Skip` 并吞掉本次输入，文本完整后才调用 `Advance`。
 - `DialogueChoiceView` 是 DialogueWindow 内部 View，复用 `OptionChoice` 行 prefab，按 `DialogueChoiceSnapShot` 原始顺序显示；不可用项置灰且不可点击，可用项点击或 Submit 只发送 ChoiceNode `NodeId`，由 Controller 调用 `SelectChoice`。上下移动使用每个 Button 的 Unity EventSystem `Navigate`，View 将不可用项从显式导航链中跳过，并把当前 EventSystem Selection 作为唯一持续高亮来源。
 - `ChoiceWindowView` 与 `DialogueChoiceView` 在刷新时必须遵守 EventSystem 的 Selection 保护：如果目标已经是当前 Selection，或 EventSystem 正在派发 `OnSelect`/`OnDeselect`，View 只刷新文本和可用状态，不再次调用 `SetSelectedGameObject`。按钮的 Selected 颜色由 `OptionChoice` prefab 和 Unity Selectable 自动刷新，这样 `OnSelect -> SelectionChanged -> Refresh` 的同步链不会产生 `already selecting` 重入错误。
-- 所有正式场景继承同一个 `UIEventSystem` 预制体。`InputSystemUIInputModule` 使用 `Assets/InputSystem/InputSystem_Actions.inputactions` 的 `UI/Navigate` 与 `UI/Submit`；不允许场景额外添加第二个 UI 输入模块。`Deselect On Background Click` 关闭，点击非按钮区域不会清除当前 Selection，键盘/手柄可以继续上下导航。
+- 所有正式场景继承同一个 `UIEventSystem` 预制体。`InputSystemUIInputModule` 使用 `Assets/InputSystem/InputSystem_Actions.inputactions` 的 `UI/Navigate` 与 `UI/Submit`；不允许场景额外添加第二个 UI 输入模块。`UI/Navigate` 只使用键盘方向键、手柄方向键/摇杆等 UI 导航输入，不使用 W/A/S/D；W/A/S/D 仅用于角色移动。`Deselect On Background Click` 关闭，点击非按钮区域不会清除当前 Selection，键盘/手柄可以继续上下导航。
 - 带 Choice 的对白在正文自然显示完成或成功 Skip 后才显示 Choice；完成前保留背景 Button 用于 Skip，完成后禁用推进按钮并将焦点放到首个可用选项。
 - 有 Choice 时不能使用 Advance 默认推进。
 - 不显示头像和左右站位。

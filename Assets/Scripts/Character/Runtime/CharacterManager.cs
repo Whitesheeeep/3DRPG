@@ -280,7 +280,7 @@ namespace RPG.Character
             if (!IsReady) return;
             if (inputRequests == null) throw new ArgumentNullException(nameof(inputRequests));
             CharacterActor active = ActiveCharacter ?? throw new InvalidOperationException("[CharacterManager] Ready 状态缺少 ActiveCharacter。");
-            active.ProcessAbilityInputRequests(inputRequests);
+            active.ProcessCombatInputRequests(inputRequests, deltaTime);
             active.Locomotion.Tick(deltaTime);
         }
 

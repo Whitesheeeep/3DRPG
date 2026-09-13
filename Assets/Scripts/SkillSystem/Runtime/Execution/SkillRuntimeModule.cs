@@ -52,6 +52,11 @@ namespace RPG.SkillSystem
         /// <inheritdoc />
         public float PlaybackSpeed => playbackSpeed;
 
+        /// <summary>
+        /// 获取当前技能按缩放后逻辑秒数计算的连续进度；空闲时返回零。
+        /// </summary>
+        public float NormalizedTime => execution?.NormalizedTime ?? 0f;
+
         #endregion
 
         #region 配置与播放

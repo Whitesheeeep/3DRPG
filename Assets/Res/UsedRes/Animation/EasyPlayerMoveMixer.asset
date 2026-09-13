@@ -31,8 +31,8 @@ MonoBehaviour:
         - {fileID: 7400034, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
         - {fileID: 7400032, guid: e5366f5926c8dd949a168f5f0095a4d3, type: 3}
         - {fileID: 11400000, guid: c95ae4ea8d73dc449bf1c0573f9f1e4c, type: 2}
-        - {fileID: -6229253991352491819, guid: 4a9d1fe4bbd63ff46aa5df9914d5c824, type: 3}
-        - {fileID: 7260328011831390857, guid: 34656fd752a9acd49a7bc5837945d872, type: 3}
+        - {fileID: 7400000, guid: 493ca03b10ece8242a8179852a544b53, type: 2}
+        - {fileID: 7400000, guid: 524dba18ab235484a952e0eb684e22e5, type: 2}
         - {fileID: 1827226128182048838, guid: 0660b16472b526b4fb30b5d695f95903, type: 3}
         _Speeds: []
         _SynchronizeChildren: 

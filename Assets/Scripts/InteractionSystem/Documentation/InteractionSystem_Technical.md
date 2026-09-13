@@ -124,10 +124,14 @@ NonAlloc 缓冲区满时会扩容并立即重查，不能把“返回数量等�
 
 ## 5. 输入与 ChoiceWindow
 
-场景交互选项由 `ChoiceWindow` 通过 Unity EventSystem 直接接收 UI `Navigate` 和 `Submit`。上下键、手柄方向键
-和 UI 导航动作由 EventSystem 根据每个 `OptionChoice.Button.navigation` 的显式链移动 Selection；
+场景交互选项由 `ChoiceWindow` 通过 Unity EventSystem 直接接收 UI `Navigate` 和 `Submit`。键盘上下方向键、
+手柄方向键/摇杆和其他 UI 导航动作由 EventSystem 根据每个 `OptionChoice.Button.navigation` 的显式链移动 Selection；
 `ChoiceWindowView` 在收到 `ISelectHandler` 后通过 `SelectionRequested` 同步 `PlayerInteractor.Select`。
 点击或 Submit 则走同一条路径：先选择稳定 `InteractionOptionId`，再调用 `SubmitSelected()`。
+
+全局 `UI/Navigate` 不绑定 W/A/S/D；这些按键只进入独立 `CharacterMovement` 资产中的 `Character/Move` Action。这样 UI 焦点的
+移动由 EventSystem 单独负责，角色移动不会意外触发交互选项导航。旧的交互 Intent 和其兼容枚举仍可被
+其他调用方使用，但当前默认玩家配置不把它们接入 ChoiceWindow 输入链。
 
 `PlayerInteractor` 不再在 `Update` 中自动读取 `PlayerStateBlackboard` 的交互 Intent，也不负责消费
 `InteractionPrevious`、`InteractionNext` 或 `Interaction.Execute`。保留 `SelectPrevious`、`SelectNext`、

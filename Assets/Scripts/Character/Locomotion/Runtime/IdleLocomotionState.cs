@@ -17,7 +17,7 @@ namespace RPG.Character
         public override void OnEnter(bool suppressDefaultState = false)
         {
             base.OnEnter(suppressDefaultState);
-            Character.AnimationPlayer.Play(AnimationLayerType.Base, Transition.IdleTransition, 0f);
+            Character.AnimationPlayer.Play(AnimationLayerType.Base, Transition.IdleTransition);
         }
 
         /// <inheritdoc />

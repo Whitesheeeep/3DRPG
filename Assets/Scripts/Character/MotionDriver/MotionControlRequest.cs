@@ -10,12 +10,15 @@ namespace RPG.Character
         /// <param name="owner">请求所属 Character Owner。</param>
         /// <param name="priority">固定优先级段。</param>
         /// <param name="channels">希望控制的运动通道。</param>
+        /// <param name="collisionMode">本请求在完整获胜时使用的碰撞策略。</param>
         public MotionControlRequest(IGameplayAbilitySystemOwner owner, MotionPriority priority,
-            MotionChannels channels)
+            MotionChannels channels,
+            MotionCollisionMode collisionMode = MotionCollisionMode.RespectCollision)
         {
             Owner = owner ?? throw new ArgumentNullException(nameof(owner));
             Priority = priority;
             Channels = channels;
+            CollisionMode = collisionMode;
         }
 
         /// <summary>获取请求所属 Character Owner。</summary>
@@ -24,5 +27,7 @@ namespace RPG.Character
         public MotionPriority Priority { get; }
         /// <summary>获取请求控制的通道。</summary>
         public MotionChannels Channels { get; }
+        /// <summary>获取本请求的碰撞处理策略。</summary>
+        public MotionCollisionMode CollisionMode { get; }
     }
 }

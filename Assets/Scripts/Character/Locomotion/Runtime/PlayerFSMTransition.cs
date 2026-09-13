@@ -100,6 +100,18 @@ namespace RPG.Character
          Tooltip("3 米落地动画播放到该归一化进度后，才允许新的 Jump 或 Move 输入打断；这是动画进度，不是秒数。")]
         private float landing3InputNormalizedTime = 0.65f;
 
+        [InfoBox("Traversal 只在 Grounded 分支检测到有效候选时进入；环境检测参数在此处配置。每段动画独立配置输入窗口、下落窗口和位置修正曲线。输入窗口接地后会进入 WalkStart 或 RunStart，不会连续重入 Traversal。", InfoMessageType.Info)]
+        [FoldoutGroup("Traversal", Expanded = false), SerializeField, LabelText("环境检测")]
+        private TraversalDetectionSettings traversalDetectionSettings = new();
+        [FoldoutGroup("Traversal"), SerializeField, LabelText("Vault 动画配置")]
+        private TraversalAnimationSettings vaultAnimationSetting = new();
+        [FoldoutGroup("Traversal"), SerializeField, LabelText("Mantle 1 米动画配置")]
+        private TraversalAnimationSettings mantle1mAnimation = new();
+        [FoldoutGroup("Traversal"), SerializeField, LabelText("Mantle 1.7 米动画配置")]
+        private TraversalAnimationSettings mantle17mAnimation = new();
+        [FoldoutGroup("Traversal"), SerializeField, LabelText("Mantle 2 米动画配置")]
+        private TraversalAnimationSettings mantle2mAnimation = new();
+
         #endregion
 
         #region 运动配置
@@ -185,6 +197,18 @@ namespace RPG.Character
         private GameplayTagQuery fallCanEnterQuery;
         [FoldoutGroup("状态门禁"), SerializeField, LabelText("FallLand 进入查询")]
         private GameplayTagQuery fallLandCanEnterQuery;
+        [FoldoutGroup("状态门禁"), SerializeField, LabelText("Traversal 状态 Tag")]
+        private GameplayTag traversalStateTag = GameplayTag.Empty;
+        [FoldoutGroup("状态门禁"), SerializeField, LabelText("Vault 状态 Tag")]
+        private GameplayTag vaultStateTag = GameplayTag.Empty;
+        [FoldoutGroup("状态门禁"), SerializeField, LabelText("Mantle 状态 Tag")]
+        private GameplayTag mantleStateTag = GameplayTag.Empty;
+        [FoldoutGroup("状态门禁"), SerializeField, LabelText("Traversal 进入查询")]
+        private GameplayTagQuery traversalCanEnterQuery;
+        [FoldoutGroup("状态门禁"), SerializeField, LabelText("Vault 进入查询")]
+        private GameplayTagQuery vaultCanEnterQuery;
+        [FoldoutGroup("状态门禁"), SerializeField, LabelText("Mantle 进入查询")]
+        private GameplayTagQuery mantleCanEnterQuery;
 
         // 动画速度匹配：两个参考速度分别固定 Mixer 的 Walk/Run 采样点，不修改实际 CharacterController 位移。
         [InfoBox("Walk 动画参考速度对应 Move Mixer 的 X=1，Run 动画参考速度对应 X=2。两者之间按实际有效速度连续混合；只有超过 Run 参考速度时才提高整个 Mixer 的播放倍率。", InfoMessageType.Info)]
@@ -331,6 +355,48 @@ namespace RPG.Character
         public float Landing2InputNormalizedTime => landing2InputNormalizedTime;
         /// <summary>获取 3 米落地动画的输入开放归一化时间。</summary>
         public float Landing3InputNormalizedTime => landing3InputNormalizedTime;
+        /// <summary>获取 Vault 动画配置。</summary>
+        public TraversalAnimationSettings VaultAnimationSetting => vaultAnimationSetting;
+        /// <summary>获取 Traversal 环境检测配置。</summary>
+        public TraversalDetectionSettings TraversalDetectionSettings => traversalDetectionSettings;
+        /// <summary>获取 Mantle 1 米动画配置。</summary>
+        public TraversalAnimationSettings Mantle1mAnimation => mantle1mAnimation;
+        /// <summary>获取 Mantle 1.7 米动画配置。</summary>
+        public TraversalAnimationSettings Mantle17mAnimation => mantle17mAnimation;
+        /// <summary>获取 Mantle 2 米动画配置。</summary>
+        public TraversalAnimationSettings Mantle2mAnimation => mantle2mAnimation;
+        /// <summary>获取 Traversal 状态 Tag。</summary>
+        public GameplayTag TraversalStateTag => traversalStateTag;
+        /// <summary>获取 Vault 状态 Tag。</summary>
+        public GameplayTag VaultStateTag => vaultStateTag;
+        /// <summary>获取 Mantle 状态 Tag。</summary>
+        public GameplayTag MantleStateTag => mantleStateTag;
+        /// <summary>获取 Traversal 状态进入查询。</summary>
+        public GameplayTagQuery TraversalCanEnterQuery => traversalCanEnterQuery;
+        /// <summary>获取 Vault 状态进入查询。</summary>
+        public GameplayTagQuery VaultCanEnterQuery => vaultCanEnterQuery;
+        /// <summary>获取 Mantle 状态进入查询。</summary>
+        public GameplayTagQuery MantleCanEnterQuery => mantleCanEnterQuery;
+
+        /// <summary>按候选高度选择最接近的 Mantle 动画配置。</summary>
+        /// <param name="obstacleHeight">检测得到的障碍高度。</param>
+        /// <returns>最接近的配置。</returns>
+        internal TraversalAnimationSettings SelectMantleAnimation(float obstacleHeight)
+        {
+            TraversalAnimationSettings[] candidates = { mantle1mAnimation, mantle17mAnimation, mantle2mAnimation };
+            TraversalAnimationSettings selected = candidates[0];
+            float distance = Mathf.Abs(obstacleHeight - selected.AuthoredHeight);
+            for (int index = 1; index < candidates.Length; index++)
+            {
+                float candidateDistance = Mathf.Abs(obstacleHeight - candidates[index].AuthoredHeight);
+                if (candidateDistance < distance)
+                {
+                    selected = candidates[index];
+                    distance = candidateDistance;
+                }
+            }
+            return selected;
+        }
 
         /// <summary>
         /// 根据角色水平前向与世界空间移动方向选择对应的九方向起步动画。
@@ -432,6 +498,14 @@ namespace RPG.Character
             ValidateTransition(runRight90Start, "Run 起步/右转 90°");
             ValidateTransition(runRight135Start, "Run 起步/右转 135°");
             ValidateTransition(runRight180Start, "Run 起步/右转 180°");
+            ValidateTraversalAnimation(vaultAnimationSetting, "Vault");
+            ValidateTraversalAnimation(mantle1mAnimation, "Mantle 1 米");
+            ValidateTraversalAnimation(mantle17mAnimation, "Mantle 1.7 米");
+            ValidateTraversalAnimation(mantle2mAnimation, "Mantle 2 米");
+            if (traversalDetectionSettings == null)
+                throw new System.InvalidOperationException(
+                    $"PlayerFSMTransition '{name}' 未创建 Traversal 环境检测配置。 ");
+            traversalDetectionSettings.Validate();
         }
 
         /// <summary>校验单个起步 Transition 的真实动画对象。</summary>
@@ -442,6 +516,19 @@ namespace RPG.Character
             if (transition == null || !transition.IsValid)
                 throw new System.InvalidOperationException(
                     $"PlayerFSMTransition '{name}' 的 {slotName} 未配置有效动画。 ");
+        }
+
+        /// <summary>校验单个 Traversal 动画设置，明确报告整个设置对象缺失。</summary>
+        /// <param name="settings">待校验的 Traversal 动画设置。</param>
+        /// <param name="slotName">用于异常上下文的配置槽位名称。</param>
+        private void ValidateTraversalAnimation(
+            TraversalAnimationSettings settings,
+            string slotName)
+        {
+            if (settings == null)
+                throw new System.InvalidOperationException(
+                    $"PlayerFSMTransition '{name}' 的 Traversal 动画槽位 '{slotName}' 未创建配置对象。 ");
+            settings.Validate(slotName);
         }
 
         /// <summary>校验一个 Animancer TransitionAsset 已引用可播放的过渡。</summary>

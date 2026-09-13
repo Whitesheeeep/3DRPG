@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using RPG.PlayerInputSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using WS_Modules;
@@ -13,7 +12,7 @@ using WS_Modules.Baking;
 
 namespace RPG.Character
 {
-    /// <summary>保存角色运行时所需的身份、Prefab 地址、属性模板与移动配置。</summary>
+    /// <summary>保存角色运行时所需的身份、Prefab 地址、属性、战斗与移动配置。</summary>
     [CreateAssetMenu(fileName = "CharacterConfig", menuName = "RPG/Character/Character Config")]
 #if UNITY_EDITOR
     public sealed class CharacterConfig : ScriptableObject, IBakedResultDataSource
@@ -48,8 +47,8 @@ namespace RPG.Character
         private List<CharacterAscensionStage> ascensionStages = new();
         [SerializeField, LabelText("初始属性集")]
         private GameplayAttributeSet[] initialAttributeSets = Array.Empty<GameplayAttributeSet>();
-        [SerializeField, LabelText("能力输入绑定")]
-        private CharacterAbilityInputBinding[] abilityInputBindings = Array.Empty<CharacterAbilityInputBinding>();
+        [SerializeField, LabelText("战斗配置")]
+        private CharacterCombatConfig combatConfig = new();
         [SerializeField, MinValue(0f), LabelText("重力")]
         private float gravity = 9.81f;
         [SerializeField, Required, LabelText("Locomotion 状态过渡")]
@@ -90,8 +89,8 @@ namespace RPG.Character
         public IReadOnlyList<CharacterAscensionStage> AscensionStages => ascensionStages;
         /// <summary>获取角色初始属性集，顺序保持作者配置。</summary>
         public IReadOnlyList<GameplayAttributeSet> InitialAttributeSets => initialAttributeSets;
-        /// <summary>获取角色能力输入绑定，顺序保持作者配置。</summary>
-        public IReadOnlyList<CharacterAbilityInputBinding> AbilityInputBindings => abilityInputBindings;
+        /// <summary>获取角色普通攻击连段和技能槽位配置。</summary>
+        public CharacterCombatConfig CombatConfig => combatConfig;
         /// <summary>获取角色 Locomotion 重力。</summary>
         public float Gravity => gravity;
         /// <summary>获取角色 Locomotion 状态过渡配置。</summary>
@@ -138,6 +137,8 @@ namespace RPG.Character
                 throw new InvalidOperationException($"CharacterConfig '{name}' 的 Gravity 必须是非负有限值。");
             if (locomotionTransition == null)
                 throw new InvalidOperationException($"CharacterConfig '{name}' 未配置 LocomotionTransition。");
+            if (combatConfig == null)
+                throw new InvalidOperationException($"CharacterConfig '{name}' 未配置 CharacterCombatConfig。");
             try
             {
                 locomotionTransition.Validate();
@@ -149,7 +150,7 @@ namespace RPG.Character
                     exception);
             }
             ValidateList(initialAttributeSets, "InitialAttributeSets");
-            ValidateList(abilityInputBindings, "AbilityInputBindings");
+            combatConfig.Validate(name);
             ValidateAscensionStages();
             growthProfile.Validate(initialAttributeSets);
         }

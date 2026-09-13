@@ -183,7 +183,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 45.0645
+  field of view: 60.000004
   orthographic: 0
   orthographic size: 5
   m_Depth: -1
@@ -209,8 +209,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1287939}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.009631738, y: -0.057369545, z: 0.00055350584, w: 0.99830645}
-  m_LocalPosition: {x: 0.46708348, y: 0.8274303, z: 0.43493986}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 1.14, z: -3}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2047,6 +2047,36 @@ Transform:
   - {fileID: 206706404}
   m_Father: {fileID: 1638551280}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!21 &305251611
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: MMD4Mecanim/MMDLit-NEXTEdge-Pass4
+  m_Shader: {fileID: 4800000, guid: 684f8af9b4ff4bc459588db5b0f6275d, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: 2001
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _EdgeSize: 0.005
+    - _PostfixRenderQueue: 1
+    m_Colors:
+    - _EdgeColor: {r: 0.39999998, g: 1, b: 1, a: 1}
+  m_BuildTextureStacks: []
 --- !u!114 &305692051
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3947,8 +3977,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2dbcb8f64d6a7a640a973b2df934eb10, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  nextEdgeMaterial_Pass4: {fileID: 0}
-  nextEdgeMaterial_Pass8: {fileID: 0}
+  nextEdgeMaterial_Pass4: {fileID: 305251611}
+  nextEdgeMaterial_Pass8: {fileID: 934616027}
   nextEdgePass: 0
   nextEdgeSize: 1
   nextEdgeColor: {r: 0.4, g: 1, b: 1, a: 1}
@@ -11449,6 +11479,36 @@ Transform:
   - {fileID: 726396464}
   m_Father: {fileID: 1443508701}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!21 &934616027
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: MMD4Mecanim/MMDLit-NEXTEdge-Pass8
+  m_Shader: {fileID: 4800000, guid: ff1e1d0bbf6980244a107d25ff535f9a, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: 2001
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _EdgeSize: 0.005
+    - _PostfixRenderQueue: 1
+    m_Colors:
+    - _EdgeColor: {r: 0.39999998, g: 1, b: 1, a: 1}
+  m_BuildTextureStacks: []
 --- !u!114 &939410451
 MonoBehaviour:
   m_ObjectHideFlags: 0

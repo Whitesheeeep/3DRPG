@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System.IO;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -36,6 +37,9 @@ namespace RPG.SkillSystem.Editor
         private Button stopButton;
         private Button previousFrameButton;
         private Button nextFrameButton;
+
+        private const string Default_ConfigCreatePath = "Assets";
+        private const string LastConfigCreateFolderKey = "SkillTimelineEditor_LastConfigCreateFolder";
 
         #endregion
 
@@ -242,9 +246,34 @@ namespace RPG.SkillSystem.Editor
         // 处理新建技能配置按钮点击事件。
         private void OnCreateConfigClicked()
         {
-            string path = EditorUtility.SaveFilePanelInProject("新建技能配置", "SkillConfig", "asset", "选择保存位置");
+            string defaultFolder = GetLastConfigCreateFolder();
+            string path = EditorUtility.SaveFilePanelInProject(
+                "新建技能配置", "SkillConfig", "asset", "选择保存位置", defaultFolder);
             if (string.IsNullOrEmpty(path)) return;
+            SaveLastConfigCreateFolder(path);
             viewModel.CreateConfig(path);
+        }
+
+        private static string GetLastConfigCreateFolder()
+        {
+            string folder = EditorPrefs.GetString(LastConfigCreateFolderKey, Default_ConfigCreatePath);
+            if (string.IsNullOrWhiteSpace(folder))
+                return Default_ConfigCreatePath;
+            return AssetDatabase.IsValidFolder(folder) ? folder : Default_ConfigCreatePath;
+        }
+
+        private static void SaveLastConfigCreateFolder(string projectPath)
+        {
+            if (string.IsNullOrWhiteSpace(projectPath)) return;
+
+            string directory = Path.GetDirectoryName(projectPath);
+            if (string.IsNullOrWhiteSpace(directory)) return;
+
+            directory = directory.Replace('\\', '/');
+            if (!AssetDatabase.IsValidFolder(directory))
+                return;
+
+            EditorPrefs.SetString(LastConfigCreateFolderKey, directory);
         }
 
         // 根据当前播放状态提交播放或暂停意图。

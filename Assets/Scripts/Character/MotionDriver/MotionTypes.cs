@@ -28,4 +28,13 @@ namespace RPG.Character
         /// <summary>击退、吸附等强制运动。</summary>
         ForcedMotion = 300
     }
+
+    /// <summary>定义 CharacterController 对本阶段位移的碰撞处理策略。</summary>
+    public enum MotionCollisionMode
+    {
+        /// <summary>遵循 CharacterController 的正常碰撞处理。</summary>
+        RespectCollision = 0,
+        /// <summary>本次结算临时绕过 CharacterController 碰撞；仅供已完成空间预检的 Traversal 使用。</summary>
+        BypassCollision = 1
+    }
 }

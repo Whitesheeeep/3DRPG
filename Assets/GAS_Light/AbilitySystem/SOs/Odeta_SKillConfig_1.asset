@@ -1,0 +1,181 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-9124058035518590705
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70c14c030bc1459e93e059a6774ab2a6, type: 3}
+  m_Name: "\u97F3\u9891\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: fcbfcc616b2742ad9993a1799e2230cd
+  muted: 0
+  displayName: "\u97F3\u9891\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: 9c0c21058221482b98cf387a10a48e7c
+    audioClip: {fileID: 0}
+    startFrame: 12
+    durationFrames: 31
+    volume: 1
+    pitch: 1
+--- !u!114 &-850609102259527907
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c66f40aed7845318090c664ad121de9, type: 3}
+  m_Name: "\u4E8B\u4EF6\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 45368da10bee44b2ab8686347c0eb3e6
+  muted: 0
+  displayName: "\u4E8B\u4EF6\u8F68\u9053"
+  editorLocked: 0
+  markers:
+  - id: 6919ef21779e4c3cae42e8c6ea10e9c5
+    frame: 22
+    eventKey: 
+    displayName: "\u4E8B\u4EF6"
+    valueType: 2
+    intValue: 0
+    stringValue: 
+    longValue: 0
+    boolValue: 0
+    doubleValue: 0
+    floatValue: 0
+    objectValue: {fileID: 0}
+--- !u!114 &-414775761684800504
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977a117e6397476dafe68fee63f8f607, type: 3}
+  m_Name: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: da2990588d7846e799187df7c780d2c8
+  muted: 0
+  displayName: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: 14291d9299c44c48ad67fedf8c240e96
+    startFrame: 7
+    durationFrames: 43
+    sampleIntervalFrames: 1
+    detectionData:
+      rid: 2645454963230113796
+  references:
+    version: 2
+    RefIds:
+    - rid: 2645454963230113796
+      type: {class: WeaponTraceAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        samplePointCount: 5
+--- !u!114 &-299868827217895477
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b7edf08181143d342b9c4e9e3e3e114c, type: 3}
+  m_Name: "\u52A8\u4F5C\u9636\u6BB5\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 202d8a82daa24a198725bb2c640adcd3
+  muted: 0
+  displayName: "\u52A8\u4F5C\u9636\u6BB5\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: 1469fc76e6ba4ec7b0258ad93a9500bf
+    startFrame: 0
+    durationFrames: 19
+    phase: 3
+    canBeInterrupted: 1
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf2d0fbc1a23bf1499d50e84ac66304b, type: 3}
+  m_Name: Odeta_SKillConfig_1
+  m_EditorClassIdentifier: 
+  id: 11c77f7f583a4921ad1a107af6aa94d8
+  frameRate: 30
+  durationFrames: 73
+  isRootMotion: 1
+  tracks:
+  - {fileID: -299868827217895477}
+  - {fileID: 160663856277667501}
+  - {fileID: -414775761684800504}
+  - {fileID: 4149497598512427746}
+  - {fileID: -9124058035518590705}
+  - {fileID: -850609102259527907}
+--- !u!114 &160663856277667501
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e7d25faf1df4c8a8d184c88fdcb89d8, type: 3}
+  m_Name: "\u52A8\u753B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 3df7917946674b98b49987e58eb5e824
+  muted: 0
+  displayName: "\u52A8\u753B\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: 3a765735a8654dd9b4f1f6703b8bc970
+    animationClip: {fileID: 5466991960231897988, guid: dce69131e88561a45835a76fd90ef6e7, type: 3}
+    startFrame: 0
+    durationFrames: 73
+    sourceStartFrame: 0
+    playbackSpeed: 1.55
+    fadeDuration: 0.1
+--- !u!114 &4149497598512427746
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 166f8d5d2c664f2799bda1e1c4d8a430, type: 3}
+  m_Name: "\u7279\u6548\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: dafd487fc5d6495eae8e4d91ac199976
+  muted: 0
+  displayName: "\u7279\u6548\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: e10711ea585c4ea8abf8f23b3bff3755
+    prefab: {fileID: 0}
+    markerKey: {fileID: 0}
+    startFrame: 16
+    durationFrames: 24
+    localPosition: {x: 0, y: 0, z: 0}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+    localScale: {x: 1, y: 1, z: 1}
+    playbackSpeed: 1
+    followMode: 0
+    stopMode: 0

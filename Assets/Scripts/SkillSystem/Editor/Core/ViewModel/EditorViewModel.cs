@@ -500,21 +500,81 @@ namespace RPG.SkillSystem.Editor
         /// <summary>判断动画持续帧是否可匹配素材原始长度。</summary>
         public bool CanMatchAnimationDuration(AnimationSkillClipConfig item)
         {
-            if (item?.AnimationClip == null || CurrentConfig == null) return false;
-            return item.DurationFrames != Mathf.Max(1,
-                Mathf.CeilToInt(item.AnimationClip.length * CurrentConfig.FrameRate));
+            return TryCalculateAnimationDuration(item, false, out int duration) &&
+                item.DurationFrames != duration;
         }
 
         /// <summary>将动画持续帧匹配到素材原始长度。</summary>
         public EditResult MatchAnimationDuration(AnimationSkillClipConfig item)
         {
-            if (item?.AnimationClip == null || SelectedTrack == null)
-                return EditResult.Failure("动画素材为空。");
-            int duration = Mathf.Max(1,
-                Mathf.CeilToInt(item.AnimationClip.length * CurrentConfig.FrameRate));
-            return EditItem(SelectedTrack, item, new AnimationEditRequest(
+            if (!TryCalculateAnimationDuration(item, false, out int duration))
+                return EditResult.Failure("动画素材、技能 FPS、源动画帧率或源动画偏移无效。");
+            return SubmitAnimationDuration(item, duration);
+        }
+
+        /// <summary>判断动画持续帧是否可按 Clip 播放速度匹配实际播放长度。</summary>
+        public bool CanMatchAnimationPlaybackDuration(AnimationSkillClipConfig item)
+        {
+            return TryCalculateAnimationDuration(item, true, out int duration) &&
+                item.DurationFrames != duration;
+        }
+
+        /// <summary>将动画持续帧按剩余素材长度和 Clip 播放速度进行匹配。</summary>
+        public EditResult MatchAnimationPlaybackDuration(AnimationSkillClipConfig item)
+        {
+            if (!TryCalculateAnimationDuration(item, true, out int duration))
+                return EditResult.Failure("动画素材、技能 FPS、源动画帧率或播放速度无效。");
+            return SubmitAnimationDuration(item, duration);
+        }
+
+        /// <summary>
+        /// 计算从源动画偏移到素材末尾的剩余时间，并转换为技能时间轴持续帧。
+        /// </summary>
+        /// <param name="item">需要匹配的动画 Clip。</param>
+        /// <param name="includePlaybackSpeed">是否将 Clip PlaybackSpeed 纳入时间轴长度换算。</param>
+        /// <param name="duration">计算出的最少为一帧的时间轴持续帧。</param>
+        /// <returns>输入和计算结果有效时返回 true。</returns>
+        private bool TryCalculateAnimationDuration(AnimationSkillClipConfig item,
+            bool includePlaybackSpeed, out int duration)
+        {
+            duration = 0;
+            if (item?.AnimationClip == null || CurrentConfig == null) return false;
+
+            AnimationClip animationClip = item.AnimationClip;
+            float skillFrameRate = CurrentConfig.FrameRate;
+            float sourceFrameRate = animationClip.frameRate;
+            float playbackSpeed = item.PlaybackSpeed;
+            if (skillFrameRate <= 0 || sourceFrameRate <= 0 ||
+                float.IsNaN(sourceFrameRate) || float.IsInfinity(sourceFrameRate) ||
+                float.IsNaN(animationClip.length) || float.IsInfinity(animationClip.length))
+                return false;
+            if (includePlaybackSpeed &&
+                (float.IsNaN(playbackSpeed) || float.IsInfinity(playbackSpeed) || playbackSpeed < 0.01f))
+                return false;
+
+            // SourceStartFrame 属于素材自身帧率，先换算为秒再与素材总时长相减。
+            float sourceOffsetSeconds = item.SourceStartFrame / sourceFrameRate;
+            float remainingSourceSeconds = Mathf.Max(0f, animationClip.length - sourceOffsetSeconds);
+            if (includePlaybackSpeed) remainingSourceSeconds /= playbackSpeed;
+
+            // 任何小于一帧的有效结果都保留一个时间轴帧，避免创建零长度 Clip。
+            duration = Mathf.Max(1, Mathf.CeilToInt(remainingSourceSeconds * skillFrameRate));
+            return true;
+        }
+
+        /// <summary>通过现有动画编辑请求提交匹配后的持续帧，并复用统一 Undo 流程。</summary>
+        /// <param name="item">需要修改的动画 Clip。</param>
+        /// <param name="duration">新的时间轴持续帧。</param>
+        /// <returns>Document 提交结果。</returns>
+        private EditResult SubmitAnimationDuration(AnimationSkillClipConfig item, int duration)
+        {
+            if (SelectedTrack == null) return EditResult.Failure("当前没有选中的动画轨道。");
+            EditResult result = EditItem(SelectedTrack, item, new AnimationEditRequest(
                 item.AnimationClip, item.StartFrame, duration, item.SourceStartFrame,
                 item.PlaybackSpeed, item.FadeDuration));
+            if (result.Succeeded)
+                Debug.Log($"[SkillTimeline] 匹配动画 Clip 持续帧，clipId={item.Id}, durationFrames={duration}");
+            return result;
         }
 
         /// <summary>判断音频持续帧是否可按当前 Pitch 匹配素材播放长度。</summary>

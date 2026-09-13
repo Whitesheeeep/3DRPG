@@ -22,13 +22,14 @@ namespace WS_Modules.Utilities
         /// </summary>
         /// <param name="root">局部坐标所属的宿主 Transform。</param>
         /// <param name="data">需要绘制的形状数据。</param>
-        internal static void Draw(Transform root, PhysicsShapeData data)
+        /// <param name="drawColor">绘制时使用的颜色，如果为 null 则使用默认颜色。</param>
+        internal static void Draw(Transform root, PhysicsShapeData data, Color? drawColor = null)
         {
             Matrix4x4 previousMatrix = Gizmos.matrix;
             Color previousColor = Gizmos.color;
             try
             {
-                Gizmos.color = GizmoColor;
+                Gizmos.color = drawColor ?? GizmoColor;
                 switch (data.Type)
                 {
                     case PhysicsShapeType.Box:

@@ -2,6 +2,7 @@
 using System;
 using UnityEditor;
 using UnityEngine.UIElements;
+using WS_Modules.UIModule.Editor;
 
 namespace RPG.SkillSystem.Editor
 {
@@ -11,8 +12,7 @@ namespace RPG.SkillSystem.Editor
     [CustomEditor(typeof(TimelineWindow))]
     internal sealed class TimelineWindowInspector : UnityEditor.Editor
     {
-        private const string StylePath =
-            "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/EditorWindowStyle/SkillTimelineEditorWindow.uss";
+        private const string StylePath = UxmlUssPathConstants.Uss.AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowEditorWindowStyleSkillTimelineEditorWindow;
         private TimelineWindow window;
         private VisualElement root;
         private InspectorFieldCommitController fieldCommitController;
@@ -46,6 +46,7 @@ namespace RPG.SkillSystem.Editor
                     HelpBoxMessageType.Info));
                 return;
             }
+
             IInspectorDrawer drawer = window.Modules?.GetInspectorDrawer(data);
             if (drawer == null)
             {
@@ -53,6 +54,7 @@ namespace RPG.SkillSystem.Editor
                     HelpBoxMessageType.Info));
                 return;
             }
+
             TimelineWindow capturedWindow = window;
             EditorViewModel capturedViewModel = capturedWindow.ViewModel;
             Action cancelDraft = data switch

@@ -13,10 +13,10 @@ using WS_Modules.GAS.AttributeSystem;
 
 namespace RPG.Character
 {
-    /// <summary>封装一个角色独立的能力、动画、挂点和 Locomotion 状态。</summary>
+    /// <summary>封装一个角色独立的战斗、能力、动画、挂点和 Locomotion 状态。</summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Animator))]
-    [InfoBox("依赖 CharacterConfig、同节点 Humanoid Animator、AnimationController，以及同节点或子节点中的 ASC、MarkerProvider 与 SkillRuntimeHost；Config 提供初始属性、输入绑定和 Locomotion 参数；子树 Renderer 用于隐藏后台角色。")]
+    [InfoBox("依赖 CharacterConfig、同节点 Humanoid Animator、AnimationController，以及同节点或子节点中的 ASC、MarkerProvider 与 SkillRuntimeHost；Config 提供初始属性、战斗配置和 Locomotion 参数；子树 Renderer 用于隐藏后台角色。")]
     public sealed class CharacterActor : MonoBehaviour, IGameplayAbilitySystemOwner
     {
         #region 配置与运行时状态
@@ -32,6 +32,7 @@ namespace RPG.Character
         [SerializeField] private SkillRuntimeHost skillRuntimeHost;
         [SerializeField] private AnimationController animationController;
         [SerializeField] private CharacterLocomotionStateMachine locomotion = new();
+        private readonly CharacterCombatSystem combatSystem = new();
 
         // Player 注入的稳定运行时依赖，不随角色切换重新创建。
         private Transform characterRoot;
@@ -43,9 +44,6 @@ namespace RPG.Character
         private bool suppressAnimatorMotion;
         // 角色表现 Renderer 缓存，SetActivePresentation 时用于隐藏后台角色。
         private Renderer[] presentationRenderers;
-        // 角色技能槽位到 ASC Spec 的稳定索引；初始化时授予一次，输入阶段只查询该索引。
-        // key：战斗输入槽位；value：Config 中对应 Ability 授予后的 ASC Handle。
-        private readonly Dictionary<PlayerInputType, GameplayAbilityHandle> abilityHandleByInputMap = new();
         // PlayerController 在 Start 阶段统一初始化队伍；CharacterActor.Start 作为独立实例启用时的幂等兜底。
         private bool runtimeConfigurationInitialized;
 
@@ -158,45 +156,8 @@ namespace RPG.Character
                 throw new InvalidOperationException($"CharacterActor '{name}' 缺少同节点 Animator、AnimationController 或角色能力组件。 ");
             if (config == null)
                 throw new InvalidOperationException($"CharacterActor '{name}' 未配置 CharacterConfig。");
-            ValidateAbilityInputBindings();
             animator.applyRootMotion = true;
         }
-
-        /// <summary>校验角色能力装配只使用固定六个战斗输入且不重复。</summary>
-        private void ValidateAbilityInputBindings()
-        {
-            IReadOnlyList<CharacterAbilityInputBinding> bindings = config.AbilityInputBindings;
-            if (bindings == null) return;
-            var inputTypes = new HashSet<PlayerInputType>();
-            var abilities = new HashSet<GameplayAbilityData>();
-            foreach (CharacterAbilityInputBinding binding in bindings)
-            {
-                if (binding == null)
-                    throw new InvalidOperationException($"CharacterActor '{name}' 的能力绑定列表包含空元素。 ");
-                if (!IsAbilityInputType(binding.InputType))
-                    throw new InvalidOperationException(
-                        $"CharacterActor '{name}' 的能力绑定使用了非战斗输入 {binding.InputType}。 ");
-                if (binding.Ability == null)
-                    throw new InvalidOperationException(
-                        $"CharacterActor '{name}' 的 {binding.InputType} 未配置 GameplayAbilityData。 ");
-                if (!inputTypes.Add(binding.InputType))
-                    throw new InvalidOperationException(
-                        $"CharacterActor '{name}' 的能力输入 {binding.InputType} 被重复配置。 ");
-                if (!abilities.Add(binding.Ability))
-                    throw new InvalidOperationException(
-                        $"CharacterActor '{name}' 的 Ability '{binding.Ability.name}' 被重复配置。 ");
-            }
-        }
-
-        /// <summary>判断角色能力绑定是否使用固定的战斗输入槽位。</summary>
-        /// <param name="inputType">待校验的输入类型。</param>
-        /// <returns>属于 Primary、Secondary 或 Skill1-4 时返回 true。</returns>
-        private static bool IsAbilityInputType(PlayerInputType inputType) => inputType == PlayerInputType.Primary ||
-            inputType == PlayerInputType.Secondary ||
-            inputType == PlayerInputType.Skill1 ||
-            inputType == PlayerInputType.Skill2 ||
-            inputType == PlayerInputType.Skill3 ||
-            inputType == PlayerInputType.Skill4;
 
         /// <summary>仅在配置了 AttributeSet 且 ASC 尚未初始化时执行一次初始化。</summary>
         private void InitializeConfiguredAttributes()
@@ -206,27 +167,6 @@ namespace RPG.Character
             if (abilitySystemComponent.IsInitialized || attributeSets == null || attributeSets.Count == 0)
                 return;
             abilitySystemComponent.Initialize(attributeSets);
-        }
-
-        /// <summary>把角色能力绑定中的 Ability 授予自身 ASC，并建立输入到 Spec Handle 的索引。</summary>
-        private void GrantConfiguredAbilities()
-        {
-            IReadOnlyList<CharacterAbilityInputBinding> bindings = config.AbilityInputBindings;
-            if (bindings == null || bindings.Count == 0)
-                return;
-            if (!abilitySystemComponent.IsInitialized)
-                throw new InvalidOperationException(
-                    $"CharacterActor '{name}' 的 ASC 尚未完成属性初始化，无法授予能力绑定。 ");
-
-            abilityHandleByInputMap.Clear();
-            foreach (CharacterAbilityInputBinding binding in bindings)
-            {
-                GameplayAbilityHandle handle = abilitySystemComponent.GiveAbility(binding.Ability, 1);
-                if (!handle.IsValid)
-                    throw new InvalidOperationException(
-                        $"CharacterActor '{name}' 无法授予 {binding.InputType} 的 Ability '{binding.Ability.name}'。 ");
-                abilityHandleByInputMap.Add(binding.InputType, handle);
-            }
         }
 
         #endregion
@@ -246,7 +186,7 @@ namespace RPG.Character
             if (config == null) throw new InvalidOperationException($"CharacterActor '{name}' 未配置 CharacterConfig。");
             config.Validate();
             InitializeConfiguredAttributes();
-            GrantConfiguredAbilities();
+            combatSystem.Initialize(abilitySystemComponent, config.CombatConfig);
             runtimeConfigurationInitialized = true;
         }
 
@@ -312,6 +252,7 @@ namespace RPG.Character
         {
             EnsureDependencies();
             // ASC 所在对象不能 SetActive(false)，否则后台能力与事件生命周期会被截断。
+            if (!active) combatSystem.ResetCombo();
             presentationRenderers ??= GetComponentsInChildren<Renderer>(true);
             foreach (Renderer renderer in presentationRenderers) renderer.forceRenderingOff = !active;
             animator.enabled = active;
@@ -321,26 +262,12 @@ namespace RPG.Character
         /// <param name="deltaTime">本帧缩放时间。</param>
         internal void TickAbility(float deltaTime) => abilitySystemComponent.Tick(deltaTime);
 
-        /// <summary>直接查询角色能力绑定的 Request，激活成功后确认 Press 阶段。</summary>
-        /// <param name="inputRequests">提供技能 Request 的输入缓冲区。</param>
-        internal void ProcessAbilityInputRequests(IPlayerInputRequestBuffer inputRequests)
+        /// <summary>把当前角色的技能与普通攻击 Request 交给独立 CombatSystem 处理。</summary>
+        /// <param name="inputRequests">提供战斗 Request 的输入缓冲区。</param>
+        /// <param name="deltaTime">本帧缩放时间，用于推进连段索引保留时间。</param>
+        internal void ProcessCombatInputRequests(IPlayerInputRequestBuffer inputRequests, float deltaTime)
         {
-            if (inputRequests == null) throw new ArgumentNullException(nameof(inputRequests));
-            IReadOnlyList<CharacterAbilityInputBinding> bindings = config.AbilityInputBindings;
-            if (bindings == null) return;
-            foreach (CharacterAbilityInputBinding binding in bindings)
-            {
-                if (binding == null || binding.Ability == null ||
-                    !inputRequests.TryGetRequest(binding.InputType,
-                        out IReadOnlyPlayerInputRequest request) ||
-                    !request.HasBufferedPress) continue;
-                if (!abilityHandleByInputMap.TryGetValue(binding.InputType,
-                        out GameplayAbilityHandle handle))
-                    throw new InvalidOperationException(
-                        $"CharacterActor '{name}' 的 {binding.InputType} 未建立 Ability Handle。 ");
-                if (abilitySystemComponent.TryActivateAbility(handle, out _))
-                    inputRequests.TryConfirmConsumed(request.PressHandle);
-            }
+            combatSystem.ProcessInputRequests(inputRequests, deltaTime);
         }
 
         /// <summary>推进当前角色 ASC 物理阶段。</summary>

@@ -108,12 +108,16 @@ Scan Interval = 0.1
 
 | 操作 | Unity UI Action | 默认绑定 |
 | --- | --- | --- |
-| 上一项 | `Navigate` | 键盘 `W`/`Up Arrow`；手柄左摇杆或方向键 |
-| 下一项 | `Navigate` | 键盘 `S`/`Down Arrow`；手柄左摇杆或方向键 |
+| 上一项 | `Navigate` | 键盘 `Up Arrow`；手柄左摇杆或方向键 |
+| 下一项 | `Navigate` | 键盘 `Down Arrow`；手柄左摇杆或方向键 |
 | 执行 | `Submit` | 通用 Submit 绑定；额外支持键盘 `G` |
 
 `InteractionPrevious`、`InteractionNext` 和 `Interact` 仍保留在 PlayerInputType 与输入资产中，供
 兼容代码或未来非 UI 交互使用，但不会自动写入 PlayerInteractor 的选择状态。
+
+W/A/S/D 只属于角色移动输入，不属于全局 `UI/Navigate`。因此 ChoiceWindow、DialogueWindow
+以及其他使用同一 `InputSystemUIInputModule` 的运行时窗口，都使用方向键、手柄导航或鼠标进行选择；
+角色移动与 UI 选项导航不会因同一组 WASD 按键发生重复响应。
 
 ChoiceWindow 不再依赖 PlayerInteractor 自动消费 Blackboard Intent。上下键、手柄方向键和其他 UI Navigate 输入
 由 Unity EventSystem 移动当前 Button Selection；OptionChoice 的 `ISelectHandler` 将 Selection 同步到
