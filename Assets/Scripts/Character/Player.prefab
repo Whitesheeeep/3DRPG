@@ -152,84 +152,63 @@ MonoBehaviour:
   defaultReleaseBufferDuration: 0.1
   bindings:
   - action: {fileID: 1120369429361536294, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    actionName: 
     inputType: 0
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
   - action: {fileID: 5122240510681039964, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    actionName: 
     inputType: 1
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
   - action: {fileID: 8930928410849445186, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    actionName: 
     inputType: 2
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
   - action: {fileID: 169093821141886694, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    actionName: 
     inputType: 3
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
   - action: {fileID: 1957224943341489001, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    actionName: 
     inputType: 4
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
   - action: {fileID: -7925555515064521012, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    actionName: 
     inputType: 5
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
   - action: {fileID: -2099379676528639254, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    actionName: 
     inputType: 6
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
   - action: {fileID: 7040659881675835329, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    actionName: 
     inputType: 7
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
   - action: {fileID: -7471211009204490832, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    actionName: 
-    inputType: 17
+    inputType: 15
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
   - action: {fileID: -1641466239674093629, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    actionName: Player/CharacterSlot1
     inputType: 11
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
   - action: {fileID: -8172520714770766036, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    actionName: Player/CharacterSlot2
     inputType: 12
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
   - action: {fileID: -8642184972703864746, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    actionName: Player/CharacterSlot3
     inputType: 13
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
   - action: {fileID: -2665493838394134933, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    actionName: Player/CharacterSlot4
     inputType: 14
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
-  - action: {fileID: 1948390332658134173, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    actionName: 
-    inputType: 15
-    pressBufferDuration: 0.2
-    releaseBufferDuration: 0.1
-    deliveryMode: 0
-  - action: {fileID: 0}
-    actionName: Player/BagWindow
+  - action: {fileID: 6962443320683872922, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
     inputType: 16
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
     deliveryMode: 1
-  - action: {fileID: 0}
-    actionName: Player/CancelWindow
+  - action: {fileID: -1744970950929049424, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
     inputType: 17
     pressBufferDuration: 0.2
     releaseBufferDuration: 0.1
