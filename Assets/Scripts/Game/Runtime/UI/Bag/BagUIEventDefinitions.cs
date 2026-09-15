@@ -18,7 +18,7 @@ namespace RPG.Game.UI.Bag
         Tester
     }
 
-    /// <summary>请求打开背包窗口；具体显隐顺序由 BagWindowController 协调。</summary>
+    /// <summary>请求打开背包窗口；具体显隐顺序由 BagWindowFlowCoordinator 协调。</summary>
     public readonly struct BagWindowOpenRequestedEventArgs
     {
         /// <summary>创建背包窗口打开请求。</summary>

@@ -81,8 +81,12 @@ namespace RPG.ItemSystem
                 created.Add(instance);
             }
 
-            // 所有实例写入后再标记 Definition，保证 Added 事件的订阅方读取到完整状态。
-            for (int index = 0; index < created.Count; index++) MarkDefinitionNew(created[index].DefinitionId);
+            // 先完成全部实例写入，再按 Definition 记录永久发现状态；同批次同名圣遗物只会产生一次当前 New。
+            for (int index = 0; index < created.Count; index++)
+            {
+                ItemId definitionId = created[index].DefinitionId;
+                if (ItemDiscoveryManager.Instance.MarkDiscovered(definitionId)) MarkDefinitionNew(definitionId);
+            }
 
             for (int index = 0; index < created.Count; index++) PublishChange(EquipmentInstanceChangeType.Added, created[index]);
             return new EquipmentBatchAddResult<ArtifactInstance>(InventoryOperationStatus.Succeeded, created);

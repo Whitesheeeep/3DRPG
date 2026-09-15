@@ -48,11 +48,11 @@ namespace WS_Modules.UIModule
 
         [SerializeField] private List<ItemCategory> categoryOrder = new()
         {
-            ItemCategory.DevelopmentItem,
             ItemCategory.Weapon,
-            ItemCategory.Ingredient,
             ItemCategory.Artifact,
-            ItemCategory.Food
+            ItemCategory.DevelopmentExperienceItem,
+            ItemCategory.Food,
+            ItemCategory.DevelopmentItem
         };
 
         #endregion

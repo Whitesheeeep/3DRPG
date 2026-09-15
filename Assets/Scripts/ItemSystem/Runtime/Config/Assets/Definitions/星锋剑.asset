@@ -16,7 +16,7 @@ MonoBehaviour:
     value: weapon_0003
   displayName: "\u661F\u950B\u5251"
   description: 
-  category: 4
+  category: 0
   rarity: 3
   sortPriority: 500
   iconAddress: WeaponIcons
@@ -31,8 +31,8 @@ MonoBehaviour:
   levelEffects: []
   refinementEffects: []
   ascensionStages:
-  - requiredLevel: 0
-    maxLevelAfter: 0
+  - requiredLevel: 20
+    maxLevelAfter: 40
     cost:
       itemCosts: []
       currencyCosts: []

@@ -92,8 +92,12 @@ namespace RPG.ItemSystem
                 created.Add(instance);
             }
 
-            // 所有实例写入后再标记 Definition，保证 Added 事件的订阅方读取到完整状态。
-            for (int index = 0; index < created.Count; index++) MarkDefinitionNew(created[index].DefinitionId);
+            // 先完成全部实例写入，再按 Definition 记录永久发现状态；同批次同名武器只会产生一次当前 New。
+            for (int index = 0; index < created.Count; index++)
+            {
+                ItemId definitionId = created[index].DefinitionId;
+                if (ItemDiscoveryManager.Instance.MarkDiscovered(definitionId)) MarkDefinitionNew(definitionId);
+            }
 
             // 所有实例已经写入后才发布事件，订阅方读取 Manager 时能够拿到完整状态。
             for (int index = 0; index < created.Count; index++)

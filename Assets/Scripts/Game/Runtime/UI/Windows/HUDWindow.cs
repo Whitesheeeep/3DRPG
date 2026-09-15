@@ -6,9 +6,7 @@
 // 5. 当 UI 新增可绑定事件组件时，生成器只会追加缺失的事件空方法。
 // 6. 当 UI 删除、重命名或修改组件类型时，旧事件方法不会自动删除，请手动清理。
 using DG.Tweening;
-using RPG.Game.UI.Bag;
-using WS_Modules.CustomEventSystem;
-using WS_Modules.LogModule;
+using RPG.Game.UI.Controllers;
 
 namespace WS_Modules.UIModule
 {
@@ -17,6 +15,12 @@ namespace WS_Modules.UIModule
 	/// </summary>
 	public partial class HUDWindow : WindowBase
 	{
+		#region 依赖字段
+
+		private HUDWindowController controller;
+
+		#endregion
+
 		#region 生命周期
 
 		/// <summary>
@@ -26,6 +30,10 @@ namespace WS_Modules.UIModule
 		{
 			BindGeneratedComponents();
 			base.OnAwake();
+			controller = GameObject.GetComponent<HUDWindowController>();
+			if (controller == null)
+				throw new System.InvalidOperationException("[HUDWindow] 根节点缺少 HUDWindowController。");
+			controller.Initialize();
 		}
 
 		/// <summary>
@@ -81,10 +89,8 @@ namespace WS_Modules.UIModule
 		/// <summary>将 HUD 上的 Bag 按钮点击转换为统一的背包打开意图。</summary>
 		public void OnBagButtonClick()
 		{
-			WSLog.Log("[HUDWindow] 点击 Bag 按钮，发布背包打开请求。");
-			EventSystem.EventTrigger_Type(
-				typeof(BagWindowOpenRequestedEventArgs),
-				new BagWindowOpenRequestedEventArgs(BagWindowRequestSource.HudButton));
+			// 生成代码仍绑定 HUDWindow 方法；业务意图由同根 Controller 发布，保持 Window 与 MVC 边界清晰。
+			controller.HandleBagButtonClicked();
 		}
 
 		#endregion

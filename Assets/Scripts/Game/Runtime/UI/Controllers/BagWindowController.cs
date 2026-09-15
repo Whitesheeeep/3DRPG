@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using RPG.Game.UI.Bag;
 using RPG.Game.UI.Escape;
-using RPG.Game.UI.Flow;
 using RPG.Game.UI.Services;
 using RPG.Game.UI.Views.Bag;
 using RPG.Game.UI.WeaponDevelopment;
@@ -23,7 +22,6 @@ namespace RPG.Game.UI.Controllers
     public sealed class BagWindowController : MonoBehaviour
     {
         #region 依赖字段
-
         private BagWindowDataComponent data;
         private BagBrowseStateModel stateModel;
         private WindowSpriteAtlasLeaseService spriteAtlasLeaseService;
@@ -33,37 +31,26 @@ namespace RPG.Game.UI.Controllers
         private IUnRegister weaponChangedUnregister;
         private IUnRegister weaponRestoredUnregister;
         private IUnRegister weaponDefinitionNewChangedUnregister;
-        private IUnRegister hudVisibilityRejectedUnregister;
-        private IUnRegister bagOpenRequestedUnregister;
-
         #endregion
 
         #region 状态字段
-
         private IReadOnlyList<BagItemViewData> currentEntries = Array.Empty<BagItemViewData>();
         private bool initialized;
         private bool disposed;
         private bool windowShown;
         private bool atlasPreparationRunning;
         private UniTaskCompletionSource atlasPreparationCompletionSource;
-        private bool bagOpenRequestRunning;
-        private bool waitingForHudHidden;
-        private bool bagOpenedByHudReplacement;
-        private bool hudWasVisibleBeforeBagOpen;
-        private bool hudRestorePending;
-        private GameWindowTransitionRequestId hudVisibilityRequestId;
-
         #endregion
 
         #region 初始化与释放
-
         /// <summary>绑定窗口序列化组件并建立一次性的分类、按钮和库存事件索引。</summary>
         /// <param name="windowData">窗口序列化数据。</param>
         public void Initialize(BagWindowDataComponent windowData)
         {
             if (initialized)
             {
-                if (!ReferenceEquals(data, windowData)) throw new InvalidOperationException("[BagWindowController] 不允许替换窗口数据组件。");
+                if (!ReferenceEquals(data, windowData))
+                    throw new InvalidOperationException("[BagWindowController] 不允许替换窗口数据组件。");
                 return;
             }
 
@@ -85,11 +72,6 @@ namespace RPG.Game.UI.Controllers
                 typeof(WeaponInventoryRestoredEvent), HandleWeaponRestored);
             weaponDefinitionNewChangedUnregister = EventSystem.Register_Type<WeaponDefinitionNewStateChangedEvent>(
                 typeof(WeaponDefinitionNewStateChangedEvent), HandleWeaponDefinitionNewStateChanged);
-            bagOpenRequestedUnregister = EventSystem.Register_Type<BagWindowOpenRequestedEventArgs>(
-                typeof(BagWindowOpenRequestedEventArgs), HandleBagWindowOpenRequested);
-            hudVisibilityRejectedUnregister = EventSystem.Register_Type<HudVisibilityChangeRejectedEventArgs>(
-                typeof(HudVisibilityChangeRejectedEventArgs), HandleHudVisibilityRejected);
-            UIManager.Instance.WindowHidden += HandleWindowHidden;
             initialized = true;
         }
 
@@ -104,22 +86,18 @@ namespace RPG.Game.UI.Controllers
                 stateModel.SortChanged -= HandleSortChanged;
                 stateModel.SelectionChanged -= HandleSelectionChanged;
             }
+
             if (spriteAtlasLeaseService != null)
                 spriteAtlasLeaseService.Released -= HandleAtlasReleased;
             weaponChangedUnregister?.UnRegister();
             weaponRestoredUnregister?.UnRegister();
             weaponDefinitionNewChangedUnregister?.UnRegister();
-            hudVisibilityRejectedUnregister?.UnRegister();
-            bagOpenRequestedUnregister?.UnRegister();
-            UIManager.Instance.WindowHidden -= HandleWindowHidden;
-            waitingForHudHidden = false;
-            bagOpenRequestRunning = false;
-            hudRestorePending = false;
             for (int index = 0; data != null && index < categoryButtonActions.Count; index++)
             {
                 if (index < data.CategoryButtons.Count && data.CategoryButtons[index] != null)
                     data.CategoryButtons[index].onClick.RemoveListener(categoryButtonActions[index]);
             }
+
             data?.PreviousCategoryButton?.onClick.RemoveListener(SelectPreviousCategory);
             data?.NextCategoryButton?.onClick.RemoveListener(SelectNextCategory);
             data?.CloseButton?.onClick.RemoveListener(SubmitCloseRequest);
@@ -135,17 +113,16 @@ namespace RPG.Game.UI.Controllers
             atlasPreparationCompletionSource?.TrySetCanceled();
             atlasPreparationCompletionSource = null;
         }
-
         #endregion
 
         #region 窗口生命周期
-
         /// <summary>窗口显示时取消释放倒计时、立即刷新动态区域并准备动态图集。</summary>
         public void OnWindowShown()
         {
             if (disposed) return;
             windowShown = true;
             spriteAtlasLeaseService.CancelRelease();
+            // 这里再次启动准备是避免不走 OnWindowShown 的打开请求直接显示窗口，导致首次绑定时 Atlas 尚未完成。
             PrepareOpen();
             // 隐藏窗口时会关闭格子交互；重新显示必须在首次绑定前恢复按钮状态。
             data.GridView.SetInteractable(true);
@@ -170,7 +147,7 @@ namespace RPG.Game.UI.Controllers
             PrepareOpenAsync().Forget(HandleAsyncException);
         }
 
-        /// <summary>启动或复用动态图集准备任务，供打开请求等待资源尝试完成。</summary>
+        /// <summary>启动或复用动态图集准备任务，供需要显式等待资源尝试完成的调用方使用。</summary>
         /// <returns>当前动态图集准备任务。</returns>
         public UniTask PrepareOpenAsync()
         {
@@ -179,14 +156,12 @@ namespace RPG.Game.UI.Controllers
             atlasPreparationRunning = true;
             UniTaskCompletionSource completionSource = new UniTaskCompletionSource();
             atlasPreparationCompletionSource = completionSource;
-            PrepareAtlasesAsync(completionSource).Forget(HandleAsyncException);
+            PrepareAtlasesAsync(completionSource).Forget();
             return completionSource.Task;
         }
-
         #endregion
 
         #region 分类与排序
-
         /// <summary>建立五个分类的数据源，武器使用真实库存，其余分类保留未开放占位。</summary>
         private void BuildDataSources()
         {
@@ -195,10 +170,10 @@ namespace RPG.Game.UI.Controllers
                 new WeaponBagCategoryDataSource(ResolveSprite));
             ItemCategory[] categories =
             {
-                ItemCategory.DevelopmentItem,
-                ItemCategory.Ingredient,
+                ItemCategory.Artifact,
+                ItemCategory.DevelopmentExperienceItem,
                 ItemCategory.Food,
-                ItemCategory.Artifact
+                ItemCategory.DevelopmentItem
             };
             for (int index = 0; index < categories.Length; index++)
                 dataSourceByCategoryMap[categories[index]] = new UnavailableBagCategoryDataSource(categories[index]);
@@ -305,7 +280,8 @@ namespace RPG.Game.UI.Controllers
         private bool ContainsEntry(BagEntryKey key)
         {
             for (int index = 0; index < currentEntries.Count; index++)
-                if (currentEntries[index].EntryKey == key) return true;
+                if (currentEntries[index].EntryKey == key)
+                    return true;
             return false;
         }
 
@@ -314,21 +290,21 @@ namespace RPG.Game.UI.Controllers
         {
             int index = IndexOfCategory(stateModel.CurrentCategory);
             if (data.PreviousCategoryButton != null) data.PreviousCategoryButton.interactable = index > 0;
-            if (data.NextCategoryButton != null) data.NextCategoryButton.interactable = index >= 0 && index < data.CategoryOrder.Count - 1;
+            if (data.NextCategoryButton != null)
+                data.NextCategoryButton.interactable = index >= 0 && index < data.CategoryOrder.Count - 1;
         }
 
         /// <summary>查找当前分类在作者顺序中的位置。</summary>
         private int IndexOfCategory(ItemCategory category)
         {
             for (int index = 0; index < data.CategoryOrder.Count; index++)
-                if (data.CategoryOrder[index] == category) return index;
+                if (data.CategoryOrder[index] == category)
+                    return index;
             return -1;
         }
-
         #endregion
 
         #region 选择与业务请求
-
         /// <summary>选择网格条目并确认新获得状态。</summary>
         private void HandleEntrySelected(BagEntryKey entryKey)
         {
@@ -348,7 +324,8 @@ namespace RPG.Game.UI.Controllers
         private void SubmitDeleteRequest()
         {
             if (!stateModel.SelectedEntryKey.HasValue || stateModel.CurrentCategory != ItemCategory.Weapon ||
-                !TryParseInstanceId(stateModel.SelectedEntryKey.Value.Value, out EquipmentInstanceId instanceId)) return;
+                !TryParseInstanceId(stateModel.SelectedEntryKey.Value.Value,
+                    out EquipmentInstanceId instanceId)) return;
             EventSystem.EventTrigger_Type(typeof(BagWeaponDeleteRequestedEventArgs),
                 new BagWeaponDeleteRequestedEventArgs(instanceId));
         }
@@ -357,108 +334,9 @@ namespace RPG.Game.UI.Controllers
         private void SubmitDetailsRequest()
         {
             if (!stateModel.SelectedEntryKey.HasValue || stateModel.CurrentCategory != ItemCategory.Weapon ||
-                !TryParseInstanceId(stateModel.SelectedEntryKey.Value.Value, out EquipmentInstanceId instanceId)) return;
+                !TryParseInstanceId(stateModel.SelectedEntryKey.Value.Value,
+                    out EquipmentInstanceId instanceId)) return;
             OpenWeaponDevelopmentAsync(instanceId).Forget(HandleAsyncException);
-        }
-
-        /// <summary>处理 Bag 专用打开请求，先完成资源准备再请求隐藏 HUD。</summary>
-        /// <param name="_">Bag 打开请求来源。</param>
-        private void HandleBagWindowOpenRequested(BagWindowOpenRequestedEventArgs _)
-        {
-            if (disposed || bagOpenRequestRunning ||
-                (UIManager.Instance.TryGetWindow<BagWindow>(out BagWindow currentBag) && currentBag.Visible)) return;
-            bagOpenRequestRunning = true;
-            hudRestorePending = false;
-            hudVisibilityRequestId = GameWindowTransitionRequestId.Create();
-            StartBagOpenAsync().Forget(HandleAsyncException);
-        }
-
-        /// <summary>执行 Bag 的资源准备和 HUD 隐藏请求；HUD 隐藏完成后由 WindowHidden 回调继续。</summary>
-        private async UniTask StartBagOpenAsync()
-        {
-            try
-            {
-                if (!UIManager.Instance.TryGetWindow<BagWindow>(out BagWindow bagWindow))
-                    throw new InvalidOperationException("BagWindow 尚未完成预加载。");
-
-                // 先等待图集加载尝试完成，确保 HUD 消失后目标窗口可以立即建立列表。
-                await bagWindow.PrepareOpenAsync();
-                hudWasVisibleBeforeBagOpen = UIManager.Instance.TryGetWindow<HUDWindow>(out HUDWindow hudWindow) &&
-                                              hudWindow.Visible;
-                if (hudWasVisibleBeforeBagOpen)
-                {
-                    waitingForHudHidden = true;
-                    EventSystem.EventTrigger_Type(
-                        typeof(HudVisibilityChangeRequestedEventArgs),
-                        new HudVisibilityChangeRequestedEventArgs(hudVisibilityRequestId, false));
-                    return;
-                }
-
-                await OpenBagWindowAsync();
-            }
-            catch
-            {
-                bagOpenRequestRunning = false;
-                waitingForHudHidden = false;
-                throw;
-            }
-        }
-
-        /// <summary>在 HUD 已稳定隐藏后直接打开 BagWindow。</summary>
-        private async UniTask OpenBagWindowAsync()
-        {
-            waitingForHudHidden = false;
-            try
-            {
-                BagWindow openedWindow = await UIManager.Instance.PopUpWindowAsync<BagWindow>();
-                if (openedWindow == null || !openedWindow.Visible)
-                    throw new InvalidOperationException("BagWindow 打开请求未返回可见窗口。");
-                bagOpenedByHudReplacement = hudWasVisibleBeforeBagOpen;
-                bagOpenRequestRunning = false;
-            }
-            catch
-            {
-                bagOpenRequestRunning = false;
-                if (hudWasVisibleBeforeBagOpen) RestoreHudAfterBagFailure();
-                throw;
-            }
-        }
-
-        /// <summary>只响应属于当前 Bag 请求的 HUD 稳定隐藏通知。</summary>
-        /// <param name="snapshot">UIManager 发布的稳定窗口快照。</param>
-        private void HandleWindowHidden(UIWindowSnapshot snapshot)
-        {
-            if (disposed) return;
-            if (waitingForHudHidden && snapshot.WindowName == nameof(HUDWindow))
-            {
-                // 清除等待标志后再启动异步打开，防止同一生命周期通知重复消费。
-                waitingForHudHidden = false;
-                OpenBagWindowAsync().Forget(HandleAsyncException);
-                return;
-            }
-
-            if (snapshot.WindowName == nameof(BagWindow) && bagOpenedByHudReplacement)
-            {
-                bagOpenedByHudReplacement = false;
-                // Bag 关闭后若还有其它全屏窗口，保留待恢复状态，等待它们各自的 WindowHidden 通知。
-                hudRestorePending = hudWasVisibleBeforeBagOpen;
-            }
-
-            if (hudRestorePending && !HasVisibleFullScreenBusinessWindow())
-            {
-                hudRestorePending = false;
-                RestoreHudAfterBagClose();
-            }
-        }
-
-        /// <summary>处理 HUD Controller 对当前 Bag 隐藏请求的明确拒绝。</summary>
-        /// <param name="eventArgs">HUD 拒绝通知。</param>
-        private void HandleHudVisibilityRejected(HudVisibilityChangeRejectedEventArgs eventArgs)
-        {
-            if (!waitingForHudHidden || eventArgs.RequestId != hudVisibilityRequestId) return;
-            waitingForHudHidden = false;
-            bagOpenRequestRunning = false;
-            Debug.LogWarning($"[BagWindow] HUD 隐藏请求被拒绝：{eventArgs.Reason}", this);
         }
 
         /// <summary>直接打开武器培养窗口并传入当前实例上下文。</summary>
@@ -473,42 +351,14 @@ namespace RPG.Game.UI.Controllers
                 throw new InvalidOperationException("武器培养窗口打开请求未返回可见窗口。");
         }
 
-        /// <summary>判断 Bag 隐藏后是否仍有其它可见全屏业务窗口。</summary>
-        /// <returns>存在其它可见全屏业务窗口时返回 true。</returns>
-        private static bool HasVisibleFullScreenBusinessWindow()
-        {
-            IReadOnlyList<UIWindowSnapshot> snapshots = UIManager.Instance.GetWindowSnapshots();
-            for (int index = 0; index < snapshots.Count; index++)
-            {
-                UIWindowSnapshot snapshot = snapshots[index];
-                if (snapshot.Visible && snapshot.FullScreenWindow && snapshot.WindowName != nameof(HUDWindow) &&
-                    snapshot.WindowName != nameof(BagWindow)) return true;
-            }
-
-            return false;
-        }
-
-        /// <summary>Bag 打开失败时恢复此前可见的 HUD。</summary>
-        private static void RestoreHudAfterBagFailure()
-        {
-            if (UIManager.Instance.TryGetWindow<HUDWindow>(out HUDWindow hudWindow) && !hudWindow.Visible)
-                UIManager.Instance.PopUpWindowAsync<HUDWindow>().Forget();
-        }
-
-        /// <summary>Bag 关闭且没有其它全屏业务窗口时直接恢复 HUD。</summary>
-        private static void RestoreHudAfterBagClose()
-        {
-            if (UIManager.Instance.TryGetWindow<HUDWindow>(out HUDWindow hudWindow) && !hudWindow.Visible)
-                UIManager.Instance.PopUpWindowAsync<HUDWindow>().Forget();
-        }
-
         /// <summary>处理选择变化并刷新右侧共用详情外壳与武器内容。</summary>
         private void HandleSelectionChanged(BagEntryKey? key)
         {
             // 状态模型是选择的唯一来源；每次详情刷新同时把选择投影到当前可见格子。
             data.GridView?.SetSelection(key);
             if (!key.HasValue || !dataSourceByCategoryMap.TryGetValue(key.Value.Category,
-                    out IBagCategoryDataSource source) || !source.TryBuildDetails(key.Value, out BagDetailViewData details))
+                    out IBagCategoryDataSource source) ||
+                !source.TryBuildDetails(key.Value, out BagDetailViewData details))
             {
                 data.DetailShellView?.Clear();
                 data.WeaponDetailView?.Clear();
@@ -522,11 +372,9 @@ namespace RPG.Game.UI.Controllers
             if (data.DeleteButton != null) data.DeleteButton.interactable = true;
             if (data.DetailsButton != null) data.DetailsButton.interactable = true;
         }
-
         #endregion
 
         #region 资源与动态刷新
-
         /// <summary>动态图集真正释放后清空动态网格和详情，避免 Image 继续持有失效 Sprite。</summary>
         private void HandleAtlasReleased()
         {
@@ -561,6 +409,14 @@ namespace RPG.Game.UI.Controllers
             }
         }
 
+        /// <summary>记录 Bag 图集准备中的非取消异常，避免非阻塞调用产生未观察任务异常。</summary>
+        /// <param name="exception">图集准备异常。</param>
+        private void HandleAsyncException(Exception exception)
+        {
+            if (!(exception is OperationCanceledException))
+                Debug.LogException(exception, this);
+        }
+
         /// <summary>按当前租约解析动态图集 Sprite，未加载时返回 null。</summary>
         private Sprite ResolveSprite(string address, string spriteName)
         {
@@ -568,17 +424,9 @@ namespace RPG.Game.UI.Controllers
                 ? sprite
                 : null;
         }
-
-        /// <summary>记录窗口异步流程中的非取消异常。</summary>
-        private void HandleAsyncException(Exception exception)
-        {
-            if (!(exception is OperationCanceledException)) Debug.LogException(exception, this);
-        }
-
         #endregion
 
         #region 库存事件
-
         /// <summary>武器实例变化后按稳定选择刷新当前列表。</summary>
         private void HandleWeaponChanged(WeaponInstanceChangedEvent _)
         {
@@ -610,7 +458,6 @@ namespace RPG.Game.UI.Controllers
             instanceId = new EquipmentInstanceId(value);
             return true;
         }
-
         #endregion
     }
 }

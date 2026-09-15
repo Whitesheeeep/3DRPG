@@ -1,7 +1,7 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
     <ui:Style src="project://database/Assets/Scripts/ItemSystem/Editor/Style/ItemFoodDetails.uss" />
     <ui:VisualElement name="FoodDetailsRoot" class="item-editor-food-details">
-        <ui:Label text="料理配置" class="item-editor-section-title" />
+        <ui:Label text="食物配置" class="item-editor-section-title" />
         <uie:PropertyField name="UseEffectsField" binding-path="useEffects" label="使用时效果列表" class="item-editor-property-field" />
     </ui:VisualElement>
 </ui:UXML>

@@ -6,7 +6,7 @@ using WS_Modules.BusinessArchitecture;
 
 namespace WS_Modules.UIModule
 {
-    /// <summary>覆盖在 BagWindow 上方的武器升级、突破与精炼窗口。</summary>
+    /// <summary>覆盖在 BagWindow 上方的武器成长与精炼窗口。</summary>
     public sealed class WeaponDevelopmentWindow : WindowBase, IWindowWithOpenContext<WeaponDevelopmentOpenContext>
     {
         #region 依赖与状态

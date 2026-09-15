@@ -20,7 +20,6 @@ namespace WS_Modules.UIModule
         [SerializeField] private bool doAnimation = true;
         [SerializeField, Required] private WeaponDevelopmentView view;
         [SerializeField] private ItemSelectionPanelView selectionPanel;
-        [SerializeField] private Button closeButton;
         [SerializeField, WSAddressableKey("UISpriteAtlas")] private List<string> dynamicAtlasAddresses = new() { "WeaponIcons" };
         [SerializeField, MinValue(0f)] private float atlasReleaseDelaySeconds = 30f;
 
@@ -36,8 +35,6 @@ namespace WS_Modules.UIModule
         public WeaponDevelopmentView View => view;
         /// <summary>获取通用物品选择面板。</summary>
         public ItemSelectionPanelView SelectionPanel => selectionPanel;
-        /// <summary>获取关闭按钮。</summary>
-        public Button CloseButton => closeButton;
         /// <summary>获取动态图集地址。</summary>
         public IReadOnlyList<string> DynamicAtlasAddresses => dynamicAtlasAddresses;
         /// <summary>获取动态图集延迟释放时间。</summary>
@@ -55,7 +52,6 @@ namespace WS_Modules.UIModule
             view.ValidateConfiguration();
             if (selectionPanel == null) throw new InvalidOperationException("[WeaponDevelopmentWindowDataComponent] 未绑定 ItemSelectionPanelView。");
             selectionPanel.ValidateConfiguration();
-            if (closeButton == null) throw new InvalidOperationException("[WeaponDevelopmentWindowDataComponent] 未绑定关闭按钮。");
         }
 
         #endregion

@@ -14,9 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemId:
     value: food_0002
-  displayName: "\u65B0\u6599\u7406"
+  displayName: "\u65B0\u98DF\u7269"
   description: 
-  category: 2
+  category: 3
   rarity: 2
   sortPriority: 300
   iconAddress: 

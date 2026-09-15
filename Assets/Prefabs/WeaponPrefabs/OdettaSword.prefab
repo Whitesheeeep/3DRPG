@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 7535206280757991054}
   - component: {fileID: 4488812411363592519}
   m_Layer: 0
-  m_Name: "\u5251"
+  m_Name: OdettaSword
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

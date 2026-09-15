@@ -20,7 +20,7 @@ namespace RPG.Game.Tests
         #region 依赖字段
 
         [SerializeField, Required, LabelText("测试武器定义")] private WeaponDefinition testWeapon;
-        [SerializeField, LabelText("测试武器经验素材")] private DevelopmentItemDefinition[] testEnhancementMaterials = new DevelopmentItemDefinition[0];
+        [SerializeField, LabelText("测试武器经验素材")] private DevelopmentExperienceItemDefinition[] testEnhancementMaterials = new DevelopmentExperienceItemDefinition[0];
         [SerializeField, LabelText("测试武器突破素材")] private DevelopmentItemDefinition testAscensionMaterial;
 
         #endregion
@@ -123,8 +123,8 @@ namespace RPG.Game.Tests
             {
                 for (int index = 0; index < testEnhancementMaterials.Length; index++)
                 {
-                    DevelopmentItemDefinition material = testEnhancementMaterials[index];
-                    if (!IsDevelopmentMaterial(material, DevelopmentItemType.WeaponExperience)) continue;
+                    DevelopmentExperienceItemDefinition material = testEnhancementMaterials[index];
+                    if (!IsExperienceMaterial(material, DevelopmentExperienceItemType.Weapon)) continue;
                     StackableItemOperationResult result = StackableInventoryManager.Instance.AddItem(
                         material.ItemId, enhancementMaterialQuantity);
                     Debug.Log($"[BagWindowTest] add enhancement material status={result.Status}, item={material.ItemId}, " +
@@ -231,18 +231,22 @@ namespace RPG.Game.Tests
             if (!EnsureInventoryReady("输出武器库存")) return;
 
             WeaponInventoryManager manager = WeaponInventoryManager.Instance;
+            ItemDiscoveryManager discoveryManager = ItemDiscoveryManager.Instance;
             IReadOnlyList<WeaponInstance> instances = manager.GetInstances();
             IReadOnlyList<ItemId> newDefinitionIds = manager.GetNewDefinitionIds();
+            IReadOnlyList<ItemId> discoveredDefinitionIds = discoveryManager.GetDiscoveredDefinitionIds();
             Debug.Log(
                 $"[BagWindowTest] inventory count={manager.Count}/{manager.Capacity}, tracked={createdInstanceIds.Count}, " +
-                $"newDefinitions={newDefinitionIds.Count} [{string.Join(", ", newDefinitionIds)}]。", this);
+                $"newDefinitions={newDefinitionIds.Count} [{string.Join(", ", newDefinitionIds)}], " +
+                $"discoveredDefinitions={discoveredDefinitionIds.Count} [{string.Join(", ", discoveredDefinitionIds)}]。", this);
             for (int index = 0; index < instances.Count; index++)
             {
                 WeaponInstance instance = instances[index];
                 Debug.Log(
                     $"[BagWindowTest] instance={instance.InstanceId}, definition={instance.DefinitionId}, level={instance.Level}, " +
                     $"refinement={instance.RefinementRank}, locked={instance.IsLocked}, " +
-                    $"definitionNew={manager.IsDefinitionNew(instance.DefinitionId)}, equipped={instance.IsEquipped}。",
+                    $"definitionNew={manager.IsDefinitionNew(instance.DefinitionId)}, " +
+                    $"isDiscovered={discoveryManager.IsDiscovered(instance.DefinitionId)}, equipped={instance.IsEquipped}。",
                     this);
             }
         }
@@ -279,7 +283,19 @@ namespace RPG.Game.Tests
         private static bool IsDevelopmentMaterial(DevelopmentItemDefinition material, DevelopmentItemType type)
         {
             return material != null && material.ItemId.IsValid && material.Category == ItemCategory.DevelopmentItem &&
-                   material.DevelopmentType == type;
+                   material.SupportsDevelopmentType(type);
+        }
+
+        /// <summary>检查一个养成经验道具是否支持指定成长对象。</summary>
+        /// <param name="material">待检查经验道具。</param>
+        /// <param name="type">期望成长对象。</param>
+        /// <returns>定义存在且用途匹配时返回 true。</returns>
+        private static bool IsExperienceMaterial(DevelopmentExperienceItemDefinition material,
+            DevelopmentExperienceItemType type)
+        {
+            return material != null && material.ItemId.IsValid &&
+                   material.Category == ItemCategory.DevelopmentExperienceItem &&
+                   material.SupportsExperienceType(type);
         }
 
         /// <summary>检查正式配置是否已经安装，避免 Tester 创建备用库存或数据库。</summary>

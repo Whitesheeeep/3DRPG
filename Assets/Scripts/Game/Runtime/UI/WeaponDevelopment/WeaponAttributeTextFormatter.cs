@@ -1,3 +1,4 @@
+using System;
 using System.Globalization;
 using WS_Modules.GAS.AttributeSystem;
 
@@ -13,10 +14,20 @@ namespace RPG.Game.UI.WeaponDevelopment
         public static string Format(AttributeModifierType type, float value)
         {
             if (type == AttributeModifierType.Add && value >= 0f && value <= 1f)
-                return value.ToString("0.##%", CultureInfo.InvariantCulture);
+            {
+                int percentage = (int)Math.Round(value * 100f, MidpointRounding.AwayFromZero);
+                return percentage.ToString(CultureInfo.InvariantCulture) + "%";
+            }
+
             if (type == AttributeModifierType.Multiply)
-                return (value - 1f).ToString("+0.##%;-0.##%;0%", CultureInfo.InvariantCulture);
-            return value.ToString("0.###", CultureInfo.InvariantCulture);
+            {
+                int percentage = (int)Math.Round((value - 1f) * 100f, MidpointRounding.AwayFromZero);
+                string sign = percentage > 0 ? "+" : string.Empty;
+                return sign + percentage.ToString(CultureInfo.InvariantCulture) + "%";
+            }
+
+            int roundedValue = (int)Math.Round(value, MidpointRounding.AwayFromZero);
+            return roundedValue.ToString(CultureInfo.InvariantCulture);
         }
     }
 }

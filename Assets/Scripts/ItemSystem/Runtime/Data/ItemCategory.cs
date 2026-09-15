@@ -2,18 +2,18 @@ using UnityEngine;
 
 namespace RPG.ItemSystem
 {
-    /// <summary>背包展示和类型默认数据使用的物品分类。</summary>
+    /// <summary>背包展示和类型默认数据使用的互斥物品分类。</summary>
     public enum ItemCategory
     {
-        /// <summary>养成道具；保留旧序列化数值 0 以兼容已有 material_ ItemId。</summary>
-        [InspectorName("养成道具")] DevelopmentItem = 0,
-        /// <summary>食材。</summary>
-        [InspectorName("食材")] Ingredient = 1,
-        /// <summary>料理。</summary>
-        [InspectorName("料理")] Food = 2,
         /// <summary>武器。</summary>
-        [InspectorName("武器")] Weapon = 4,
+        [InspectorName("武器")] Weapon = 0,
         /// <summary>圣遗物。</summary>
-        [InspectorName("圣遗物")] Artifact = 5
+        [InspectorName("圣遗物")] Artifact = 1,
+        /// <summary>养成经验道具。</summary>
+        [InspectorName("养成经验道具")] DevelopmentExperienceItem = 2,
+        /// <summary>食物；合并原食材与料理分类。</summary>
+        [InspectorName("食物")] Food = 3,
+        /// <summary>不提供经验、仅作为配方成本的养成道具。</summary>
+        [InspectorName("养成道具")] DevelopmentItem = 4
     }
 }

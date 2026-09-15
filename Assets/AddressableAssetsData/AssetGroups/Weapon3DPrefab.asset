@@ -10,13 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
-  m_Name: Packed Assets
+  m_Name: Weapon3DPrefab
   m_EditorClassIdentifier: 
-  m_GroupName: Packed Assets
+  m_GroupName: Weapon3DPrefab
   m_Data:
     m_SerializedData: []
   m_GUID: 34e20b5498285eb47ae7dad85e7a6349
-  m_SerializeEntries: []
+  m_SerializeEntries:
+  - m_GUID: f7cd217d74b5764469dfe3b43be8eb8c
+    m_Address: Weapon/OdettaSword
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: cf483ba42ae65ea478a5243d9f39d4df, type: 2}
   m_SchemaSet:

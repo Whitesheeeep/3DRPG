@@ -13,7 +13,7 @@ namespace RPG.ItemSystem
         [SerializeReference, LabelText("分类默认数据")] private List<ItemDefaultData> categoryDefaults = new();
         // 这些计数器记录已经分配过的编号，删除定义后也不回退，避免未来复用旧 ID。
         [SerializeField, HideInInspector, MinValue(1)] private int nextMaterialIdNumber = 1;
-        [SerializeField, HideInInspector, MinValue(1)] private int nextIngredientIdNumber = 1;
+        [SerializeField, HideInInspector, MinValue(1)] private int nextExperienceMaterialIdNumber = 1;
         [SerializeField, HideInInspector, MinValue(1)] private int nextFoodIdNumber = 1;
         [SerializeField, HideInInspector, MinValue(1)] private int nextWeaponIdNumber = 1;
         [SerializeField, HideInInspector, MinValue(1)] private int nextArtifactIdNumber = 1;
@@ -92,7 +92,7 @@ namespace RPG.ItemSystem
             }
 
             ValidateCounter("material", nextMaterialIdNumber, definitions);
-            ValidateCounter("ingredient", nextIngredientIdNumber, definitions);
+            ValidateCounter("experience_material", nextExperienceMaterialIdNumber, definitions);
             ValidateCounter("food", nextFoodIdNumber, definitions);
             ValidateCounter("weapon", nextWeaponIdNumber, definitions);
             ValidateCounter("artifact", nextArtifactIdNumber, definitions);
@@ -126,11 +126,11 @@ namespace RPG.ItemSystem
         {
             string prefix = definition.Category switch
             {
-                ItemCategory.DevelopmentItem => "material",
-                ItemCategory.Ingredient => "ingredient",
-                ItemCategory.Food => "food",
                 ItemCategory.Weapon => "weapon",
                 ItemCategory.Artifact => "artifact",
+                ItemCategory.DevelopmentExperienceItem => "experience_material",
+                ItemCategory.Food => "food",
+                ItemCategory.DevelopmentItem => "material",
                 _ => string.Empty
             };
             if (string.IsNullOrEmpty(prefix) || !TryParseStableId(definition.ItemId.Value, prefix, out _))

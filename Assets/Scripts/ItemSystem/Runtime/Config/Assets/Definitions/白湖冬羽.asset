@@ -16,12 +16,12 @@ MonoBehaviour:
     value: weapon_0001
   displayName: "\u767D\u6E56\u51AC\u7FBD"
   description: "\u8FD9\u662F\u4E00\u4E2A\u5200"
-  category: 4
+  category: 0
   rarity: 5
   sortPriority: 500
   iconAddress: WeaponIcons
   iconSpriteName: "\u767D\u6E56\u51AC\u7FBD_11210"
-  worldPrefabAddress: 
+  worldPrefabAddress: Weapon/OdettaSword
   editorPreviewIcon: {fileID: 21300000, guid: 91df821d9dcbb3b499239864e744b8dc, type: 3}
   weaponType: 0
   maxLevel: 90
@@ -43,8 +43,100 @@ MonoBehaviour:
       currencyCosts:
       - currencyId: 0
         amount: 45000
+  - requiredLevel: 40
+    maxLevelAfter: 50
+    cost:
+      itemCosts:
+      - itemId:
+          value: material_0010
+        quantity: 1
+      currencyCosts:
+      - currencyId: 0
+        amount: 45000
+  - requiredLevel: 50
+    maxLevelAfter: 60
+    cost:
+      itemCosts:
+      - itemId:
+          value: material_0010
+        quantity: 1
+      currencyCosts:
+      - currencyId: 0
+        amount: 45000
+  - requiredLevel: 60
+    maxLevelAfter: 70
+    cost:
+      itemCosts:
+      - itemId:
+          value: material_0010
+        quantity: 1
+      currencyCosts:
+      - currencyId: 0
+        amount: 45000
+  - requiredLevel: 70
+    maxLevelAfter: 80
+    cost:
+      itemCosts:
+      - itemId:
+          value: material_0010
+        quantity: 1
+      currencyCosts:
+      - currencyId: 0
+        amount: 45000
+  - requiredLevel: 80
+    maxLevelAfter: 90
+    cost:
+      itemCosts:
+      - itemId:
+          value: material_0010
+        quantity: 1
+      currencyCosts:
+      - currencyId: 0
+        amount: 45000
+      - currencyId: 0
+        amount: 45000
   refinementStages:
+  - rank: 2
+    requiredDuplicateCount: 1
+    cost:
+      itemCosts:
+      - itemId:
+          value:
+        quantity: 0
+      currencyCosts:
+      - currencyId: 1
+        amount: 10
   - rank: 3
+    requiredDuplicateCount: 1
+    cost:
+      itemCosts:
+      - itemId:
+          value:
+        quantity: 0
+      currencyCosts:
+      - currencyId: 1
+        amount: 50
+  - rank: 4
+    requiredDuplicateCount: 1
+    cost:
+      itemCosts:
+      - itemId:
+          value:
+        quantity: 0
+      currencyCosts:
+      - currencyId: 0
+        amount: 0
+  - rank: 5
+    requiredDuplicateCount: 1
+    cost:
+      itemCosts:
+      - itemId:
+          value:
+        quantity: 0
+      currencyCosts:
+      - currencyId: 0
+        amount: 0
+  - rank: 5
     requiredDuplicateCount: 1
     cost:
       itemCosts:

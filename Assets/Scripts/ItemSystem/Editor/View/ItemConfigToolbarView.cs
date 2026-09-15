@@ -104,9 +104,9 @@ namespace RPG.ItemSystem.Editor
         private void OnNewStackableClicked()
         {
             var menu = new GenericMenu();
+            menu.AddItem(new GUIContent("养成经验道具"), false, () => NewStackableRequested?.Invoke(ItemCategory.DevelopmentExperienceItem));
+            menu.AddItem(new GUIContent("食物"), false, () => NewStackableRequested?.Invoke(ItemCategory.Food));
             menu.AddItem(new GUIContent("养成道具"), false, () => NewStackableRequested?.Invoke(ItemCategory.DevelopmentItem));
-            menu.AddItem(new GUIContent("食材"), false, () => NewStackableRequested?.Invoke(ItemCategory.Ingredient));
-            menu.AddItem(new GUIContent("料理"), false, () => NewStackableRequested?.Invoke(ItemCategory.Food));
             menu.ShowAsContext();
         }
 

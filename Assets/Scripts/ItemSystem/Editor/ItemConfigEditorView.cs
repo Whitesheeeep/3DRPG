@@ -48,13 +48,6 @@ namespace RPG.ItemSystem.Editor
             remove => definitionListView.CategoryChanged -= value;
         }
 
-        /// <summary>转发定义类型筛选变化事件。</summary>
-        internal event Action<string> KindChanged
-        {
-            add => definitionListView.KindChanged += value;
-            remove => definitionListView.KindChanged -= value;
-        }
-
         /// <summary>转发排序字段变化事件。</summary>
         internal event Action<string> SortFieldChanged
         {
@@ -275,10 +268,9 @@ namespace RPG.ItemSystem.Editor
         /// <param name="value">搜索文本。</param>
         internal void SetSearch(string value) => definitionListView.SetSearch(value);
 
-        /// <summary>设置筛选控件显示值。</summary>
+        /// <summary>设置分类筛选控件显示值。</summary>
         /// <param name="category">分类筛选。</param>
-        /// <param name="kind">定义类型筛选。</param>
-        internal void SetFilters(string category, string kind) => definitionListView.SetFilters(category, kind);
+        internal void SetFilters(string category) => definitionListView.SetFilters(category);
 
         /// <summary>设置排序控件显示值。</summary>
         /// <param name="field">排序字段。</param>

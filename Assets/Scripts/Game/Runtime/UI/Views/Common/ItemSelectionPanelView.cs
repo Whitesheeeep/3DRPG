@@ -14,7 +14,6 @@ namespace RPG.Game.UI.Views.Common
 
         [SerializeField] private BagGridView gridView;
         [SerializeField] private Button returnButton;
-        [SerializeField] private GameObject emptyText;
         private Action<BagEntryKey> boundEntryCallback;
 
         #endregion
@@ -47,7 +46,7 @@ namespace RPG.Game.UI.Views.Common
         /// <summary>校验正式 Prefab 的候选网格、返回按钮和空状态提示绑定。</summary>
         public void ValidateConfiguration()
         {
-            if (gridView == null || returnButton == null || emptyText == null)
+            if (gridView == null || returnButton == null)
                 throw new InvalidOperationException("[ItemSelectionPanelView] 选择面板存在未绑定控件。");
         }
 
@@ -62,7 +61,6 @@ namespace RPG.Game.UI.Views.Common
             // 先写入多选稳定键，再创建当前可见池对象，避免列表重绑时短暂套用上一批选择。
             gridView?.SetSelectedEntries(selectedEntryKeys ?? Array.Empty<BagEntryKey>());
             gridView?.Bind(entries ?? Array.Empty<BagItemViewData>(), HandleEntryClicked);
-            emptyText.SetActive(entries == null || entries.Count == 0);
         }
 
         /// <summary>绑定支持数量调整的候选列表，并在创建可见池对象前投影选择键。</summary>
@@ -75,7 +73,6 @@ namespace RPG.Game.UI.Views.Common
             gridView?.SetSelectedEntries(selectedEntryKeys ?? Array.Empty<BagEntryKey>());
             gridView?.BindQuantitySelection(entries ?? Array.Empty<BagItemViewData>(),
                 intent => QuantityChangeRequested?.Invoke(intent));
-            emptyText.SetActive(entries == null || entries.Count == 0);
         }
 
         /// <summary>设置面板网格是否可交互。</summary>

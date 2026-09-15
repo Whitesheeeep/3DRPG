@@ -16,7 +16,7 @@ MonoBehaviour:
     value: weapon_0002
   displayName: "\u9ED1\u8680"
   description: 
-  category: 4
+  category: 0
   rarity: 4
   sortPriority: 500
   iconAddress: WeaponIcons

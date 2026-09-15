@@ -16,7 +16,7 @@ MonoBehaviour:
     value: material_0010
   displayName: "\u6B66\u5668\u7A81\u7834\u7D20\u6750"
   description: 
-  category: 0
+  category: 4
   rarity: 1
   sortPriority: 100
   iconAddress: ItemIcons_DevelopmentMaterial
@@ -24,5 +24,4 @@ MonoBehaviour:
   worldPrefabAddress: 
   editorPreviewIcon: {fileID: 0}
   maxQuantity: 9999
-  developmentType: 4
-  experienceValue: 0
+  developmentTypes: 4

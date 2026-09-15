@@ -418,9 +418,9 @@ MonoBehaviour:
   doAnimation: 1
   categoryButtons:
   - {fileID: 2712018371044770488}
-  - {fileID: 55718924737871649}
   - {fileID: 7860950047979609687}
   - {fileID: 6743791230722766580}
+  - {fileID: 55718924737871649}
   - {fileID: 3548044360310706155}
   previousCategoryButton: {fileID: 806020876267503324}
   nextCategoryButton: {fileID: 7199554277369268579}
@@ -436,7 +436,7 @@ MonoBehaviour:
   - WeaponIcons
   - CharacterSideIcons
   atlasReleaseDelaySeconds: 30
-  categoryOrder: 0400000002000000050000000000000001000000
+  categoryOrder: 0000000001000000020000000300000004000000
 --- !u!1 &777139639972794877
 GameObject:
   m_ObjectHideFlags: 0
@@ -2571,7 +2571,7 @@ GameObject:
   - component: {fileID: 2494939760903648946}
   - component: {fileID: 6743791230722766580}
   m_Layer: 5
-  m_Name: SuCaiBtn
+  m_Name: DevelopmentExperienceBtn
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3427,7 +3427,7 @@ GameObject:
   - component: {fileID: 2214919290587363676}
   - component: {fileID: 3548044360310706155}
   m_Layer: 5
-  m_Name: ItemBtn
+  m_Name: DevelopmentItemBtn
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

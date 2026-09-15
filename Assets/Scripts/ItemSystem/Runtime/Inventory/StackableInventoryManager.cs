@@ -56,21 +56,47 @@ namespace RPG.ItemSystem
             return result;
         }
 
-        /// <summary>按养成用途获取养成道具条目。</summary>
-        /// <param name="type">养成用途。</param>
+        /// <summary>按任一养成用途获取仅用于成本的养成道具条目。</summary>
+        /// <param name="requestedTypes">养成用途组合。</param>
         /// <returns>匹配条目。</returns>
-        public IReadOnlyList<StackableInventoryEntry> GetDevelopmentItems(DevelopmentItemType type)
+        public IReadOnlyList<StackableInventoryEntry> GetDevelopmentItems(DevelopmentItemType requestedTypes)
         {
+            ValidateDevelopmentTypes(requestedTypes);
             var result = new List<StackableInventoryEntry>();
             foreach (StackableInventoryEntry entry in entries.Values)
             {
                 if (TryGetDefinition(entry.ItemId, out ItemDefinition definition) &&
-                    definition is DevelopmentItemDefinition development && development.DevelopmentType == type)
+                    definition is DevelopmentItemDefinition development && development.SupportsDevelopmentType(requestedTypes))
                 {
                     result.Add(entry);
                 }
             }
 
+            // 字典只负责按 ItemId 索引；对外投影按首次获得顺序稳定排列，避免材料卡片顺序随哈希布局变化。
+            SortEntriesByAcquisition(result);
+            return result;
+        }
+
+        /// <summary>按任一成长对象获取养成经验道具条目。</summary>
+        /// <param name="requestedTypes">经验适用对象组合。</param>
+        /// <returns>匹配条目。</returns>
+        public IReadOnlyList<StackableInventoryEntry> GetDevelopmentExperienceItems(
+            DevelopmentExperienceItemType requestedTypes)
+        {
+            ValidateExperienceTypes(requestedTypes);
+            var result = new List<StackableInventoryEntry>();
+            foreach (StackableInventoryEntry entry in entries.Values)
+            {
+                if (TryGetDefinition(entry.ItemId, out ItemDefinition definition) &&
+                    definition is DevelopmentExperienceItemDefinition experience &&
+                    experience.SupportsExperienceType(requestedTypes))
+                {
+                    result.Add(entry);
+                }
+            }
+
+            // 升级材料候选和已选材料投影共用确定顺序，避免重载或删除条目后出现视觉跳序。
+            SortEntriesByAcquisition(result);
             return result;
         }
 
@@ -130,7 +156,9 @@ namespace RPG.ItemSystem
             foreach (KeyValuePair<ItemId, int> pair in merged)
             {
                 int previous = entries.TryGetValue(pair.Key, out StackableInventoryEntry oldEntry) ? oldEntry.Quantity : 0;
-                bool isNew = oldEntry == null || oldEntry.IsNew;
+                // 永久发现与当前 New 解耦：只有第一次成功获得 Definition 才创建 New，追加数量不会重新标记。
+                bool newlyDiscovered = ItemDiscoveryManager.Instance.MarkDiscovered(pair.Key);
+                bool isNew = (oldEntry != null && oldEntry.IsNew) || newlyDiscovered;
                 long sequence = oldEntry == null ? nextAcquisitionSequence++ : oldEntry.AcquisitionSequence;
                 int current = previous + pair.Value;
                 entries[pair.Key] = new StackableInventoryEntry(pair.Key, current, isNew, sequence);
@@ -250,6 +278,44 @@ namespace RPG.ItemSystem
         /// <param name="definition">找到时返回 Definition。</param>
         /// <returns>找到时返回 true。</returns>
         private bool TryGetDefinition(ItemId itemId, out ItemDefinition definition) => ItemManager.Instance.TryGetDefinition(itemId, out definition);
+
+        /// <summary>校验普通养成用途查询掩码。</summary>
+        /// <param name="requestedTypes">待校验用途组合。</param>
+        private static void ValidateDevelopmentTypes(DevelopmentItemType requestedTypes)
+        {
+            const DevelopmentItemType definedTypes = DevelopmentItemType.CharacterAscension |
+                                                      DevelopmentItemType.CharacterTalent |
+                                                      DevelopmentItemType.WeaponAscension |
+                                                      DevelopmentItemType.WeaponRefinement;
+            if (requestedTypes == DevelopmentItemType.None ||
+                (requestedTypes & ~definedTypes) != DevelopmentItemType.None)
+                throw new ArgumentException("养成道具查询用途必须包含有效用途。", nameof(requestedTypes));
+        }
+
+        /// <summary>校验养成经验用途查询掩码。</summary>
+        /// <param name="requestedTypes">待校验对象组合。</param>
+        private static void ValidateExperienceTypes(DevelopmentExperienceItemType requestedTypes)
+        {
+            const DevelopmentExperienceItemType definedTypes = DevelopmentExperienceItemType.Character |
+                                                                DevelopmentExperienceItemType.Weapon |
+                                                                DevelopmentExperienceItemType.Artifact;
+            if (requestedTypes == DevelopmentExperienceItemType.None ||
+                (requestedTypes & ~definedTypes) != DevelopmentExperienceItemType.None)
+                throw new ArgumentException("养成经验道具查询对象必须包含有效对象。", nameof(requestedTypes));
+        }
+
+        /// <summary>按首次获得顺序和稳定 ItemId 对可堆叠条目排序。</summary>
+        /// <param name="entriesToSort">待排序的条目列表。</param>
+        private static void SortEntriesByAcquisition(List<StackableInventoryEntry> entriesToSort)
+        {
+            entriesToSort.Sort((left, right) =>
+            {
+                int sequenceComparison = left.AcquisitionSequence.CompareTo(right.AcquisitionSequence);
+                return sequenceComparison != 0
+                    ? sequenceComparison
+                    : left.ItemId.CompareTo(right.ItemId);
+            });
+        }
 
         /// <summary>发布已提交的数量变化事件。</summary>
         /// <param name="itemId">物品标识。</param>

@@ -72,7 +72,7 @@ namespace RPG.Game.UI
         }
 
         /// <summary>
-        /// 等待 UIManager 初始化后按固定顺序创建窗口，并等待 ChoiceWindow 的行 View 完成初始化。
+        /// 等待 UIManager 初始化后并行创建窗口；HUD 完成自身预加载后立即显示。
         /// </summary>
         private async UniTaskVoid PreloadCoreAsync()
         {
@@ -80,27 +80,16 @@ namespace RPG.Game.UI
             {
                 await UniTask.WaitUntil(() => UIManager.Instance.IsInitialized);
 
-                await PreloadWindowAsync<HUDWindow>();
-                await PreloadWindowAsync<ChoiceWindow>();
-
-                if (!UIManager.Instance.TryGetWindow(out ChoiceWindow choiceWindow))
-                    throw new InvalidOperationException("ChoiceWindow 预加载后未找到窗口实例。");
-
-                await choiceWindow.WaitUntilReadyAsync();
-                choiceWindow.ActivateInteractionController();
-
-                await PreloadWindowAsync<DialogueWindow>();
-                if (!UIManager.Instance.TryGetWindow(out DialogueWindow dialogueWindow))
-                    throw new InvalidOperationException("DialogueWindow 预加载后未找到窗口实例。");
-                await dialogueWindow.WaitUntilReadyAsync();
-                // BagWindow 只预加载窗口实例；动态图集由 OnShow 启动，避免启动阶段占用 Atlas 引用。
-                await PreloadWindowAsync<BagWindow>();
-                // 武器培养窗口只预加载实例，目标数据通过 OpenContext 在显示时绑定。
-                await PreloadWindowAsync<WeaponDevelopmentWindow>();
-                // 预加载只创建隐藏实例；全部依赖准备完成后显式打开 HUD，保证 IsPreloaded 与可见状态一致。
-                HUDWindow openedHud = await UIManager.Instance.PopUpWindowAsync<HUDWindow>();
-                if (openedHud == null || !openedHud.Visible)
-                    throw new InvalidOperationException("HUDWindow 预加载后打开失败或仍处于隐藏状态。");
+                // 各窗口互不依赖，统一并行启动；单独的 HUD 任务完成后即可显示 HUD。
+                UniTask[] preloadTasks =
+                {
+                    PreloadHudAndShowAsync(),
+                    PreloadChoiceAsync(),
+                    PreloadDialogueAsync(),
+                    PreloadWindowAsync<BagWindow>(),
+                    PreloadWindowAsync<WeaponDevelopmentWindow>()
+                };
+                await UniTask.WhenAll(preloadTasks);
                 preloaded = true;
                 preloadCompletionSource.TrySetResult();
             }
@@ -108,6 +97,37 @@ namespace RPG.Game.UI
             {
                 preloadCompletionSource.TrySetException(exception);
             }
+        }
+
+        /// <summary>预加载 HUD 并在 HUD 自身完成后立即显示。</summary>
+        private async UniTask PreloadHudAndShowAsync()
+        {
+            await PreloadWindowAsync<HUDWindow>();
+            HUDWindow openedHud = await UIManager.Instance.PopUpWindowAsync<HUDWindow>();
+            if (openedHud == null || !openedHud.Visible)
+                throw new InvalidOperationException("HUDWindow 预加载后打开失败或仍处于隐藏状态。");
+            Debug.Log("[GameWindowPreloadService] HUDWindow 已完成预加载并显示。", this);
+        }
+
+        /// <summary>预加载 ChoiceWindow 并等待其交互 View 初始化完成。</summary>
+        private async UniTask PreloadChoiceAsync()
+        {
+            await PreloadWindowAsync<ChoiceWindow>();
+            if (!UIManager.Instance.TryGetWindow(out ChoiceWindow choiceWindow))
+                throw new InvalidOperationException("ChoiceWindow 预加载后未找到窗口实例。");
+
+            await choiceWindow.WaitUntilReadyAsync();
+            choiceWindow.ActivateInteractionController();
+        }
+
+        /// <summary>预加载 DialogueWindow 并等待其内部 View 初始化完成。</summary>
+        private async UniTask PreloadDialogueAsync()
+        {
+            await PreloadWindowAsync<DialogueWindow>();
+            if (!UIManager.Instance.TryGetWindow(out DialogueWindow dialogueWindow))
+                throw new InvalidOperationException("DialogueWindow 预加载后未找到窗口实例。");
+
+            await dialogueWindow.WaitUntilReadyAsync();
         }
 
         /// <summary>

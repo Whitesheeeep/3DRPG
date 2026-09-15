@@ -16,7 +16,7 @@ MonoBehaviour:
     value: artifact_0001
   displayName: "\u65B0\u5723\u9057\u7269"
   description: 
-  category: 5
+  category: 1
   rarity: 5
   sortPriority: 500
   iconAddress: 

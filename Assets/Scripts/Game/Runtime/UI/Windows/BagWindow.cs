@@ -60,7 +60,7 @@ namespace WS_Modules.UIModule
             controller.PrepareOpen();
         }
 
-        /// <summary>等待背包配置图集完成本轮加载尝试，供 Bag 打开协调流程使用。</summary>
+        /// <summary>等待背包配置图集完成本轮加载尝试，供需要显式等待资源的工具或调用方使用。</summary>
         /// <returns>图集准备任务；部分地址失败时任务仍会在所有尝试完成后成功结束。</returns>
         public Cysharp.Threading.Tasks.UniTask PrepareOpenAsync()
         {

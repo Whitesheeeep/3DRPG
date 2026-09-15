@@ -9,14 +9,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 06cc75c6c2d87e04196511570a4cd384, type: 3}
-  m_Name: NewDevelopmentItem 5
+  m_Script: {fileID: 11500000, guid: 0058d3534c3f41cc8bea51cd6995e61a, type: 3}
+  m_Name: NewDevelopmentExperienceItem
   m_EditorClassIdentifier: 
   itemId:
-    value: material_0013
-  displayName: "\u65B0\u517B\u6210\u9053\u5177"
+    value: experience_material_0007
+  displayName: "\u65B0\u517B\u6210\u7ECF\u9A8C\u9053\u5177"
   description: 
-  category: 0
+  category: 2
   rarity: 1
   sortPriority: 100
   iconAddress: 
@@ -24,5 +24,5 @@ MonoBehaviour:
   worldPrefabAddress: 
   editorPreviewIcon: {fileID: 0}
   maxQuantity: 9999
-  developmentType: 0
+  experienceTypes: 2
   experienceValue: 100

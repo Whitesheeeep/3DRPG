@@ -262,8 +262,8 @@ namespace RPG.Game.UI.Controllers
                 return;
             if (!ItemId.TryCreate(intent.EntryKey.Value, out ItemId itemId) ||
                 !ItemManager.Instance.TryGetDefinition(itemId, out ItemDefinition item) ||
-                !(item is DevelopmentItemDefinition definition) ||
-                definition.DevelopmentType != DevelopmentItemType.WeaponExperience)
+                !(item is DevelopmentExperienceItemDefinition definition) ||
+                !definition.SupportsExperienceType(DevelopmentExperienceItemType.Weapon))
                 return;
 
             int ownedQuantity = StackableInventoryManager.Instance.GetQuantity(itemId);
@@ -287,14 +287,14 @@ namespace RPG.Game.UI.Controllers
             if (requiredExperience <= 0) return;
 
             IReadOnlyList<StackableInventoryEntry> inventory =
-                StackableInventoryManager.Instance.GetDevelopmentItems(DevelopmentItemType.WeaponExperience);
+                StackableInventoryManager.Instance.GetDevelopmentExperienceItems(DevelopmentExperienceItemType.Weapon);
             var candidates = new List<EnhancementMaterialCandidate>();
             for (int index = 0; index < inventory.Count; index++)
             {
                 StackableInventoryEntry entry = inventory[index];
                 if (entry == null || entry.Quantity <= 0 ||
                     !ItemManager.Instance.TryGetDefinition(entry.ItemId, out ItemDefinition item) ||
-                    !(item is DevelopmentItemDefinition material) || material.ExperienceValue <= 0) continue;
+                    !(item is DevelopmentExperienceItemDefinition material) || material.ExperienceValue <= 0) continue;
                 candidates.Add(new EnhancementMaterialCandidate(entry.ItemId, entry.Quantity, material.ExperienceValue));
             }
 
@@ -386,7 +386,7 @@ namespace RPG.Game.UI.Controllers
             }
         }
 
-        /// <summary>根据当前页生成成长或精炼页面摘要、正文和状态文本。</summary>
+        /// <summary>根据当前页生成升级、突破或精炼页面的专用展示数据。</summary>
         /// <param name="definition">武器定义。</param>
         /// <param name="instance">武器实例。</param>
         /// <param name="detailsLines">当前属性文本。</param>
@@ -399,7 +399,7 @@ namespace RPG.Game.UI.Controllers
                 case WeaponDevelopmentPage.Growth:
                     return BuildGrowthData(definition, instance, detailsLines);
                 case WeaponDevelopmentPage.Refinement:
-                    return BuildRefinementData(definition, instance, detailsLines);
+                    return BuildRefinementData(definition, instance);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(stateModel.CurrentPage),
                         stateModel.CurrentPage, "未知的武器培养页面。");
@@ -426,7 +426,7 @@ namespace RPG.Game.UI.Controllers
             }
         }
 
-        /// <summary>构建可使用经验素材升级时的预览数据。</summary>
+        /// <summary>构建可使用经验素材升级时的等级、经验和素材预览数据。</summary>
         private WeaponDevelopmentViewData BuildEnhancementData(WeaponDefinition definition, WeaponInstance instance,
             IReadOnlyList<string> detailsLines, int currentCap)
         {
@@ -438,73 +438,95 @@ namespace RPG.Game.UI.Controllers
             IReadOnlyList<string> previewLines = BuildComparisonLines(detailsLines,
                 BuildDetailsLines(WeaponDetailsQuery.CreateProjected(definition, instance, projectedLevel,
                     instance.AscensionRank, instance.RefinementRank)));
+            IReadOnlyList<BagItemViewData> selectedMaterials = BuildSelectedEnhancementEntries();
             bool hasCandidates = HasEnhancementCandidates();
-            string status = $"已选经验：{selectedExperience}/{requiredExperience}；预计升级消耗：{projectedCost}";
-            if (selectedExperience > requiredExperience)
-                status += $"；溢出：{selectedExperience - requiredExperience}";
-            var growthPreview = new WeaponGrowthPreviewData(WeaponGrowthMode.Enhancement, "升级",
-                hasCandidates, hasCandidates, "选择素材", "自动添加", selectedExperience, requiredExperience);
-            string summary = $"Lv.{instance.Level}/{currentCap} → Lv.{projectedLevel}/{currentCap}；" +
-                             $"EXP {instance.CurrentExperience}/{GetCurrentNextExperience(definition.GrowthProfile, instance.Level)} → " +
-                             $"{projectedExperience}/{projectedNextExperience}";
-            return new WeaponDevelopmentViewData(WeaponDevelopmentPage.Growth, "武器升级",
-                "使用武器强化素材预览成长", summary, previewLines, status, false, "升级（预览）", growthPreview);
+            long currencyOwned = CurrencyManager.Instance.GetBalance(CurrencyId.Mola);
+            float progress = projectedNextExperience <= 0
+                ? (projectedLevel >= currentCap ? 1f : 0f)
+                : Mathf.Clamp01(projectedExperience / (float)projectedNextExperience);
+            var enhancement = new WeaponEnhancementViewData(
+                "武器升级", "使用武器强化素材预览成长", instance.Level, projectedLevel,
+                selectedExperience, projectedExperience, projectedNextExperience, progress,
+                previewLines, selectedMaterials, currencyOwned, projectedCost, false, "升级（预览）",
+                hasCandidates, hasCandidates);
+            return new WeaponDevelopmentViewData(WeaponDevelopmentPage.Growth, "升级",
+                WeaponGrowthMode.Enhancement, enhancement, null, null);
         }
 
-        /// <summary>构建达到阶段上限后显示的突破预览数据。</summary>
+        /// <summary>构建达到阶段上限后显示的突破星级、等级上限和材料数据。</summary>
         private WeaponDevelopmentViewData BuildAscensionData(WeaponDefinition definition, WeaponInstance instance,
             IReadOnlyList<string> detailsLines, int currentCap, WeaponAscensionStage nextStage)
         {
             var lines = new List<string>(detailsLines) { "突破属性增量暂未配置" };
-            string summary = $"Lv.{instance.Level}/{currentCap} → Lv.{instance.Level}/{nextStage.MaxLevelAfter}";
+            IReadOnlyList<BagItemViewData> requiredMaterials = BuildRequiredAscensionEntries(nextStage.Cost);
             string status = BuildCostSummary(nextStage.Cost);
-            var growthPreview = new WeaponGrowthPreviewData(WeaponGrowthMode.Ascension, "突破",
-                false, false, "选择素材", "自动添加", 0, 0);
-            return new WeaponDevelopmentViewData(WeaponDevelopmentPage.Growth, "武器突破",
-                "达到当前等级上限后解锁下一阶段", summary, lines, status, false, "突破（预览）", growthPreview);
+            var ascension = new WeaponAscensionViewData(WeaponGrowthMode.Ascension, "武器突破",
+                "达到当前等级上限后解锁下一阶段", instance.AscensionRank, instance.AscensionRank + 1,
+                instance.Level, currentCap, nextStage.MaxLevelAfter, true, lines, requiredMaterials,
+                status, false, "突破（预览）");
+            return new WeaponDevelopmentViewData(WeaponDevelopmentPage.Growth, "突破",
+                WeaponGrowthMode.Ascension, null, ascension, null);
         }
 
-        /// <summary>构建已经达到 Definition 全局等级上限时的成长状态。</summary>
+        /// <summary>构建已经达到 Definition 全局等级上限时的突破布局终态。</summary>
         private static WeaponDevelopmentViewData BuildMaxLevelData(WeaponInstance instance,
             IReadOnlyList<string> detailsLines)
         {
-            var growthPreview = new WeaponGrowthPreviewData(WeaponGrowthMode.MaxLevel, "已满级",
-                false, false, "选择素材", "自动添加", 0, 0);
-            return new WeaponDevelopmentViewData(WeaponDevelopmentPage.Growth, "武器已满级",
-                "当前 Definition 没有更高等级", $"Lv.{instance.Level}（已达全局上限）", detailsLines,
-                "无需继续升级", false, "已满级", growthPreview);
+            var ascension = new WeaponAscensionViewData(WeaponGrowthMode.MaxLevel, "武器已满级",
+                "当前 Definition 没有更高等级", instance.AscensionRank, 0, instance.Level, instance.Level,
+                instance.Level, false, detailsLines, Array.Empty<BagItemViewData>(), "无需继续升级", false, "已满级");
+            return new WeaponDevelopmentViewData(WeaponDevelopmentPage.Growth, "已满级",
+                WeaponGrowthMode.MaxLevel, null, ascension, null);
         }
 
         /// <summary>构建突破配置不完整时的明确错误展示。</summary>
         private static WeaponDevelopmentViewData BuildUnavailableGrowthData(WeaponInstance instance,
             IReadOnlyList<string> detailsLines, int currentCap)
         {
-            var growthPreview = new WeaponGrowthPreviewData(WeaponGrowthMode.ConfigurationUnavailable, "培养",
-                false, false, "选择素材", "自动添加", 0, 0);
             string capText = currentCap > 0 ? $"当前阶段上限：{currentCap}" : "无法推导当前阶段上限";
-            return new WeaponDevelopmentViewData(WeaponDevelopmentPage.Growth, "成长配置不可用",
-                "请补齐突破阶段配置", $"Lv.{instance.Level}；{capText}", detailsLines,
-                "无法安全预览升级或突破", false, "配置不可用", growthPreview);
+            var ascension = new WeaponAscensionViewData(WeaponGrowthMode.ConfigurationUnavailable, "成长配置不可用",
+                "请补齐突破阶段配置", instance.AscensionRank, 0, instance.Level, currentCap, currentCap,
+                false, detailsLines, Array.Empty<BagItemViewData>(), $"无法安全预览升级或突破；{capText}", false,
+                "配置不可用");
+            return new WeaponDevelopmentViewData(WeaponDevelopmentPage.Growth, "培养",
+                WeaponGrowthMode.ConfigurationUnavailable, null, ascension, null);
         }
 
-        /// <summary>构建精炼页数据并显示下一阶所需重复武器数量。</summary>
-        private WeaponDevelopmentViewData BuildRefinementData(WeaponDefinition definition, WeaponInstance instance,
-            IReadOnlyList<string> detailsLines)
+        /// <summary>构建精炼页的阶数、效果、已选武器和费用数据。</summary>
+        private WeaponDevelopmentViewData BuildRefinementData(WeaponDefinition definition, WeaponInstance instance)
         {
-            var lines = new List<string>(detailsLines);
+            WeaponGrowthMode growthMode = ResolveGrowthMode(definition, instance, out _, out _);
+            currentGrowthMode = growthMode;
+            string growthTabLabel = GetGrowthTabLabel(growthMode);
             WeaponRefinementStage nextStage = FindNextRefinementStage(definition, instance.RefinementRank);
             if (nextStage == null || nextStage.RequiredDuplicateCount <= 0)
             {
-                return new WeaponDevelopmentViewData(WeaponDevelopmentPage.Refinement, "武器精炼",
-                    "不可继续精炼", $"当前 R{instance.RefinementRank} · 未配置下一精炼阶段", lines,
-                    "无法选择精炼材料", false, "已达上限或未配置");
+                return new WeaponDevelopmentViewData(WeaponDevelopmentPage.Refinement, growthTabLabel,
+                    growthMode, null, null,
+                    new WeaponRefinementViewData("武器精炼", "不可继续精炼", instance.RefinementRank, 0,
+                        false, BuildRefinementEffectLines(WeaponDetailsQuery.CreateProjected(definition, instance,
+                            instance.Level, instance.AscensionRank, instance.RefinementRank)),
+                        Array.Empty<BagItemViewData>(), 0, 0,
+                        CurrencyManager.Instance.GetBalance(CurrencyId.Mola), 0L, false,
+                        "已达上限或未配置", false));
             }
 
-            string summary = $"R{instance.RefinementRank} → R{nextStage.Rank}";
-            string status = $"已选 {stateModel.SelectedMaterialIds.Count}/{nextStage.RequiredDuplicateCount}";
-            AppendCostLines(lines, nextStage.Cost);
-            return new WeaponDevelopmentViewData(WeaponDevelopmentPage.Refinement, "武器精炼",
-                "选择同名武器作为材料", summary, lines, status, false, "精炼（展示联动）");
+            WeaponDetails currentDetails = WeaponDetailsQuery.CreateProjected(definition, instance,
+                instance.Level, instance.AscensionRank, instance.RefinementRank);
+            WeaponDetails projectedDetails = WeaponDetailsQuery.CreateProjected(definition, instance,
+                instance.Level, instance.AscensionRank, nextStage.Rank);
+            IReadOnlyList<string> currentEffects = BuildRefinementEffectLines(currentDetails);
+            IReadOnlyList<string> projectedEffects = BuildRefinementEffectLines(projectedDetails);
+            IReadOnlyList<BagItemViewData> selectedMaterials = BuildSelectedRefinementEntries(definition, instance);
+            long currencyOwned = CurrencyManager.Instance.GetBalance(CurrencyId.Mola);
+            long currencyCost = GetCurrencyCost(nextStage.Cost, CurrencyId.Mola);
+            return new WeaponDevelopmentViewData(WeaponDevelopmentPage.Refinement, growthTabLabel,
+                growthMode, null, null,
+                new WeaponRefinementViewData("武器精炼", "精炼效果与材料预览",
+                    instance.RefinementRank, nextStage.Rank, true,
+                    BuildComparisonLines(currentEffects, projectedEffects), selectedMaterials,
+                    stateModel.SelectedMaterialIds.Count, nextStage.RequiredDuplicateCount,
+                    currencyOwned, currencyCost, false, "精炼（预览）", true));
         }
 
         /// <summary>解析成长入口当前应该显示的升级、突破或终态。</summary>
@@ -531,6 +553,24 @@ namespace RPG.Game.UI.Controllers
             if (instance.Level >= definition.MaxLevel && instance.AscensionRank >= definition.MaxAscensionRank)
                 return WeaponGrowthMode.MaxLevel;
             return currentCap > instance.Level ? WeaponGrowthMode.Enhancement : WeaponGrowthMode.ConfigurationUnavailable;
+        }
+
+        /// <summary>将成长模式转换为左侧成长 Tab 的稳定文案。</summary>
+        /// <param name="growthMode">目标武器当前成长模式。</param>
+        /// <returns>成长入口文案。</returns>
+        private static string GetGrowthTabLabel(WeaponGrowthMode growthMode)
+        {
+            switch (growthMode)
+            {
+                case WeaponGrowthMode.Enhancement:
+                    return "升级";
+                case WeaponGrowthMode.Ascension:
+                    return "突破";
+                case WeaponGrowthMode.MaxLevel:
+                    return "已满级";
+                default:
+                    return "培养";
+            }
         }
 
         /// <summary>将当前和预计属性行按相同顺序合并为前后对比文本。</summary>
@@ -576,6 +616,104 @@ namespace RPG.Game.UI.Controllers
             if (current == null || cap == null) return 0;
             long absoluteCurrent = (long)current.CumulativeExperience + instance.CurrentExperience;
             return Math.Max(0L, (long)cap.CumulativeExperience - absoluteCurrent);
+        }
+
+        /// <summary>按库存顺序构建当前已经选择的升级素材条目。</summary>
+        /// <returns>已选择数量大于零的素材列表。</returns>
+        private IReadOnlyList<BagItemViewData> BuildSelectedEnhancementEntries()
+        {
+            var result = new List<BagItemViewData>();
+            IReadOnlyList<StackableInventoryEntry> inventory =
+                StackableInventoryManager.Instance.GetDevelopmentExperienceItems(DevelopmentExperienceItemType.Weapon);
+            for (int index = 0; index < inventory.Count; index++)
+            {
+                StackableInventoryEntry entry = inventory[index];
+                if (entry == null || entry.Quantity <= 0 ||
+                    !ItemManager.Instance.TryGetDefinition(entry.ItemId, out ItemDefinition item) ||
+                    !(item is DevelopmentExperienceItemDefinition definition) || definition.ExperienceValue <= 0 ||
+                    !stateModel.SelectedEnhancementQuantities.TryGetValue(entry.ItemId, out int selectedQuantity) ||
+                    selectedQuantity <= 0) continue;
+
+                Sprite icon = spriteAtlasLeaseService.TryGetSprite(definition.IconAddress, definition.IconSpriteName,
+                    out Sprite resolved) ? resolved : null;
+                var entryKey = new BagEntryKey(ItemCategory.DevelopmentExperienceItem, entry.ItemId.ToString());
+                result.Add(new BagItemViewData(entryKey, definition.DisplayName, (int)definition.Rarity,
+                    FormatSelectedQuantity(selectedQuantity, entry.Quantity), icon, null, string.Empty, false, false, false));
+            }
+
+            return result;
+        }
+
+        /// <summary>按当前选择顺序构建已选同名武器的精炼材料卡片。</summary>
+        /// <param name="definition">目标武器定义。</param>
+        /// <param name="target">当前目标武器实例。</param>
+        /// <returns>仍存在且属于候选范围的已选武器卡片。</returns>
+        private IReadOnlyList<BagItemViewData> BuildSelectedRefinementEntries(WeaponDefinition definition,
+            WeaponInstance target)
+        {
+            var result = new List<BagItemViewData>();
+            IReadOnlyList<WeaponInstance> instances = WeaponInventoryManager.Instance.GetInstances();
+            for (int index = 0; index < instances.Count; index++)
+            {
+                WeaponInstance material = instances[index];
+                if (material == null || material.InstanceId == target.InstanceId ||
+                    material.DefinitionId != definition.ItemId || !IsMaterialSelected(material.InstanceId) ||
+                    material.IsLocked || material.IsEquipped) continue;
+                if (!ItemManager.Instance.TryGetDefinition(material.DefinitionId, out ItemDefinition item) ||
+                    !(item is WeaponDefinition materialDefinition)) continue;
+
+                Sprite icon = spriteAtlasLeaseService.TryGetSprite(materialDefinition.IconAddress,
+                    materialDefinition.IconSpriteName, out Sprite resolved) ? resolved : null;
+                var entryKey = new BagEntryKey(ItemCategory.Weapon, material.InstanceId.ToString());
+                result.Add(new BagItemViewData(entryKey, materialDefinition.DisplayName,
+                    (int)materialDefinition.Rarity, $"Lv.{material.Level} · R{material.RefinementRank}", icon,
+                    null, string.Empty, false, material.IsLocked, material.IsEquipped));
+            }
+
+            return result;
+        }
+
+        /// <summary>按突破配置顺序构建所需素材及其实际拥有数量。</summary>
+        /// <param name="cost">突破消耗。</param>
+        /// <returns>突破素材列表。</returns>
+        private IReadOnlyList<BagItemViewData> BuildRequiredAscensionEntries(GrowthCost cost)
+        {
+            var result = new List<BagItemViewData>();
+            if (cost == null || cost.ItemCosts == null) return result;
+            for (int index = 0; index < cost.ItemCosts.Count; index++)
+            {
+                ItemCostEntry itemCost = cost.ItemCosts[index];
+                if (itemCost == null || !ItemManager.Instance.TryGetDefinition(itemCost.ItemId,
+                        out ItemDefinition definition)) continue;
+                Sprite icon = spriteAtlasLeaseService.TryGetSprite(definition.IconAddress, definition.IconSpriteName,
+                    out Sprite resolved) ? resolved : null;
+                int ownedQuantity = StackableInventoryManager.Instance.GetQuantity(itemCost.ItemId);
+                var entryKey = new BagEntryKey(ItemCategory.DevelopmentItem, itemCost.ItemId.ToString());
+                result.Add(new BagItemViewData(entryKey, definition.DisplayName, (int)definition.Rarity,
+                    FormatOwnedQuantity(ownedQuantity, itemCost.Quantity), icon, null, string.Empty, false, false, false));
+            }
+
+            return result;
+        }
+
+        /// <summary>格式化素材条目的已拥有数量和需求数量，不足数量使用红色富文本。</summary>
+        /// <param name="ownedQuantity">当前拥有数量。</param>
+        /// <param name="requiredQuantity">需求数量。</param>
+        /// <returns>条目数量文本。</returns>
+        private static string FormatOwnedQuantity(int ownedQuantity, int requiredQuantity)
+        {
+            return ownedQuantity < requiredQuantity
+                ? $"<color=#E36B6B>{ownedQuantity}</color>/{requiredQuantity}"
+                : $"{ownedQuantity}/{requiredQuantity}";
+        }
+
+        /// <summary>格式化升级素材的已选数量与背包总拥有量，不将正常未选数量标记为不足。</summary>
+        /// <param name="selectedQuantity">本次已经选择的数量。</param>
+        /// <param name="ownedQuantity">背包中的总拥有量。</param>
+        /// <returns>已选数量/拥有数量文本。</returns>
+        private static string FormatSelectedQuantity(int selectedQuantity, int ownedQuantity)
+        {
+            return $"{Math.Max(0, selectedQuantity)}/{Math.Max(0, ownedQuantity)}";
         }
 
         /// <summary>把所选素材经验投影为当前阶段上限内的等级和经验。</summary>
@@ -645,7 +783,7 @@ namespace RPG.Game.UI.Controllers
             foreach (KeyValuePair<ItemId, int> pair in stateModel.SelectedEnhancementQuantities)
             {
                 if (!ItemManager.Instance.TryGetDefinition(pair.Key, out ItemDefinition item) ||
-                    !(item is DevelopmentItemDefinition definition)) continue;
+                    !(item is DevelopmentExperienceItemDefinition definition)) continue;
                 total += (long)pair.Value * definition.ExperienceValue;
             }
 
@@ -657,13 +795,13 @@ namespace RPG.Game.UI.Controllers
         private bool HasEnhancementCandidates()
         {
             IReadOnlyList<StackableInventoryEntry> entries =
-                StackableInventoryManager.Instance.GetDevelopmentItems(DevelopmentItemType.WeaponExperience);
+                StackableInventoryManager.Instance.GetDevelopmentExperienceItems(DevelopmentExperienceItemType.Weapon);
             for (int index = 0; index < entries.Count; index++)
             {
                 StackableInventoryEntry entry = entries[index];
                 if (entry == null || entry.Quantity <= 0 ||
                     !ItemManager.Instance.TryGetDefinition(entry.ItemId, out ItemDefinition item) ||
-                    !(item is DevelopmentItemDefinition definition) || definition.ExperienceValue <= 0) continue;
+                    !(item is DevelopmentExperienceItemDefinition definition) || definition.ExperienceValue <= 0) continue;
                 return true;
             }
 
@@ -678,6 +816,25 @@ namespace RPG.Game.UI.Controllers
             AppendAttributes(details.RefinementEffects, values);
             var lines = new List<string>(2);
             for (int index = 0; index < values.Count && lines.Count < 2; index++)
+            {
+                AttributeDisplayValue value = values[index];
+                lines.Add($"{value.Attribute.DisplayName}: {WeaponAttributeTextFormatter.Format(value.Type, value.Value)}");
+            }
+
+            return lines;
+        }
+
+        /// <summary>只构建精炼效果贡献文本，不混入等级效果或突破属性。</summary>
+        /// <param name="details">指定精炼阶数的武器详情快照。</param>
+        /// <returns>精炼效果文本；没有静态效果时返回明确的未配置提示。</returns>
+        private static IReadOnlyList<string> BuildRefinementEffectLines(WeaponDetails details)
+        {
+            var values = new List<AttributeDisplayValue>();
+            AppendAttributes(details.RefinementEffects, values);
+            if (values.Count == 0) return new[] { "精炼效果暂未配置" };
+
+            var lines = new List<string>(values.Count);
+            for (int index = 0; index < values.Count; index++)
             {
                 AttributeDisplayValue value = values[index];
                 lines.Add($"{value.Attribute.DisplayName}: {WeaponAttributeTextFormatter.Format(value.Type, value.Value)}");
@@ -747,6 +904,23 @@ namespace RPG.Game.UI.Controllers
             }
         }
 
+        /// <summary>读取成长消耗中的指定货币金额；未配置时返回零。</summary>
+        /// <param name="cost">成长消耗配置。</param>
+        /// <param name="currencyId">要读取的货币标识。</param>
+        /// <returns>指定货币的需求总量。</returns>
+        private static long GetCurrencyCost(GrowthCost cost, CurrencyId currencyId)
+        {
+            if (cost?.CurrencyCosts == null) return 0L;
+            long total = 0L;
+            for (int index = 0; index < cost.CurrencyCosts.Count; index++)
+            {
+                CurrencyCostEntry entry = cost.CurrencyCosts[index];
+                if (entry != null && entry.CurrencyId == currencyId) total += Math.Max(0, entry.Amount);
+            }
+
+            return total;
+        }
+
         /// <summary>将成长成本格式化为独立状态文本，避免成本与页面摘要占用同一文本区域。</summary>
         /// <param name="cost">待格式化的成长成本。</param>
         /// <returns>成本摘要或未配置提示。</returns>
@@ -807,17 +981,17 @@ namespace RPG.Game.UI.Controllers
             var entries = new List<BagItemViewData>();
             var selectedEntryKeys = new List<BagEntryKey>();
             IReadOnlyList<StackableInventoryEntry> inventory =
-                StackableInventoryManager.Instance.GetDevelopmentItems(DevelopmentItemType.WeaponExperience);
+                StackableInventoryManager.Instance.GetDevelopmentExperienceItems(DevelopmentExperienceItemType.Weapon);
             for (int index = 0; index < inventory.Count; index++)
             {
                 StackableInventoryEntry entry = inventory[index];
                 if (entry == null || entry.Quantity <= 0 ||
                     !ItemManager.Instance.TryGetDefinition(entry.ItemId, out ItemDefinition item) ||
-                    !(item is DevelopmentItemDefinition definition) || definition.ExperienceValue <= 0) continue;
+                    !(item is DevelopmentExperienceItemDefinition definition) || definition.ExperienceValue <= 0) continue;
 
                 Sprite icon = spriteAtlasLeaseService.TryGetSprite(definition.IconAddress, definition.IconSpriteName,
                     out Sprite resolved) ? resolved : null;
-                var entryKey = new BagEntryKey(ItemCategory.DevelopmentItem, entry.ItemId.ToString());
+                var entryKey = new BagEntryKey(ItemCategory.DevelopmentExperienceItem, entry.ItemId.ToString());
                 int selectedQuantity = stateModel.SelectedEnhancementQuantities.TryGetValue(entry.ItemId,
                     out int selected) ? selected : 0;
                 entries.Add(new BagItemViewData(entryKey, definition.DisplayName, (int)definition.Rarity,
@@ -867,7 +1041,10 @@ namespace RPG.Game.UI.Controllers
         private async UniTask PrepareAtlasAsync()
         {
             await spriteAtlasLeaseService.BeginLoadConfiguredAtlasesAsync();
-            if (!disposed && stateModel.SelectionPanelVisible) BindSelectionPanel();
+            if (disposed) return;
+
+            // 图集完成后重新构建当前页面数据，使升级已选素材和突破材料立即拿到真实 Sprite。
+            Refresh();
         }
 
         /// <summary>查找当前突破阶数后的下一阶段。</summary>
