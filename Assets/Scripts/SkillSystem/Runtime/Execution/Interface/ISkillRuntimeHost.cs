@@ -10,13 +10,19 @@ namespace RPG.SkillSystem
         /// <summary>获取共享技能时间轴当前是否正在执行。</summary>
         bool IsPlaying { get; }
 
+        /// <summary>获取当前动作阶段；空闲时返回 None。</summary>
+        ActionPhaseType CurrentPhase { get; }
+
+        /// <summary>获取当前动作阶段开放的外部转换窗口。</summary>
+        SkillTransitionMask AllowedTransitions { get; }
+
         /// <summary>报告技能时间轴产生有效命中。</summary>
         event Action<SkillHitEventArgs> HitDetected;
 
         /// <summary>报告技能时间轴完成清理。</summary>
         event Action<SkillCompletedEventArgs> Completed;
 
-        /// <summary>报告技能动作阶段或可打断状态变化。</summary>
+        /// <summary>报告技能动作阶段或外部转换窗口变化。</summary>
         event Action<SkillActionPhaseChangedEventArgs> ActionPhaseChanged;
 
         /// <summary>报告技能时间轴到达投射物发射帧。</summary>

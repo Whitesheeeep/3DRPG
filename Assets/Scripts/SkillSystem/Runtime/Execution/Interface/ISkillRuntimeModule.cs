@@ -20,7 +20,7 @@ namespace RPG.SkillSystem
         /// </summary>
         event Action<SkillCompletedEventArgs> Completed;
 
-        /// <summary>在整数逻辑帧切换动作阶段或可打断状态后触发。</summary>
+        /// <summary>在整数逻辑帧切换动作阶段或转换窗口后触发。</summary>
         event Action<SkillActionPhaseChangedEventArgs> ActionPhaseChanged;
 
         /// <summary>在 Projectile Clip 到达自身发射帧时触发。</summary>
@@ -46,9 +46,9 @@ namespace RPG.SkillSystem
         ActionPhaseType CurrentPhase { get; }
 
         /// <summary>
-        /// 获取当前动作阶段是否允许外部系统发起打断。
+        /// 获取当前动作阶段开放的外部转换窗口。
         /// </summary>
-        bool CanBeInterrupted { get; }
+        SkillTransitionMask AllowedTransitions { get; }
 
         /// <summary>
         /// 获取当前通道的全局播放倍率；该值会保留到后续技能执行。

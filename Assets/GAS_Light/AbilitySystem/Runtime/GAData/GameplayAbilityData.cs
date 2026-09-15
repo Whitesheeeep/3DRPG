@@ -16,6 +16,10 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
 
         [SerializeField, HideInInspector]
         private int abilityId = InvalidId;
+        [SerializeField, Tooltip("面向技能栏、冷却 UI 和其他业务界面的显示名称；为空时回退到资产名。")]
+        private string abilityName;
+        [SerializeField, Tooltip("面向技能栏和其他业务界面的技能图标；可为空。")]
+        private Sprite icon;
         [SerializeField, TextArea, Tooltip("用于编辑器和日志显示的能力说明。")]
         private string description;
         [SerializeField, Tooltip("当前 Ability 的分类标签，供其他 Ability 通过 Cancel Tags 匹配并取消。")]
@@ -37,6 +41,10 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         #region 属性
         /// <summary>获取由 GameplayAbilityDatabase Bake 的全局稳定 AbilityId。</summary>
         public int AbilityId => abilityId;
+        /// <summary>获取面向业务界面的技能显示名称；未填写时回退到 Unity 资产名。</summary>
+        public string Name => string.IsNullOrWhiteSpace(abilityName) ? name : abilityName;
+        /// <summary>获取面向业务界面的技能图标；未配置时返回 null。</summary>
+        public Sprite Icon => icon;
         /// <summary>获取能力说明。</summary>
         public string Description => description;
         /// <summary>获取表示当前 Ability 分类身份的标签。</summary>

@@ -207,7 +207,7 @@ namespace RPG.SkillSystem.Editor
     }
 
     /// <summary>
-    /// 绘制动作阶段区间、阶段类型与外部打断设置。
+    /// 绘制动作阶段区间、阶段类型与外部转换窗口设置。
     /// </summary>
     internal sealed class ActionPhaseInspectorDrawer : InspectorDrawer, IInspectorDrawer
     {
@@ -232,19 +232,66 @@ namespace RPG.SkillSystem.Editor
                 value = clip.DurationFrames,
                 isDelayed = true
             });
-            EnumField phase = AddField(container, new EnumField("动作阶段", clip.Phase));
-            Toggle canBeInterrupted = AddField(container,
-                new Toggle("可被外部打断") { value = clip.CanBeInterrupted });
+            List<string> phaseNames = new() { "未指定", "前摇", "生效", "后摇" };
+            PopupField<string> phase = AddField(container,
+                new PopupField<string>("动作阶段", phaseNames,
+                    Mathf.Clamp((int)clip.Phase, 0, phaseNames.Count - 1)));
+            Toggle allowMove = AddField(container,
+                new Toggle("移动")
+                {
+                    value = clip.AllowedTransitions.HasFlag(SkillTransitionMask.Move)
+                });
+            Toggle allowJump = AddField(container,
+                new Toggle("跳跃")
+                {
+                    value = clip.AllowedTransitions.HasFlag(SkillTransitionMask.Jump)
+                });
+            Toggle allowAbility = AddField(container,
+                new Toggle("其他 Ability")
+                {
+                    value = clip.AllowedTransitions.HasFlag(SkillTransitionMask.Ability)
+                });
+            HelpBox transitionHelp = new(
+                "转换窗口只表示允许对应动作尝试转换；实际执行由后续 FullBody Action Execution 与 Arbiter 决定。Ability 仍通过 GAS TryActivateAbility 判断。",
+                HelpBoxMessageType.Info);
+            container.Add(transitionHelp);
+            VisualElement transitionActions = AddActionRow(container);
+            transitionActions.Add(new Button(() =>
+            {
+                allowMove.SetValueWithoutNotify(true);
+                allowJump.SetValueWithoutNotify(true);
+                allowAbility.SetValueWithoutNotify(true);
+                Submit();
+            }) { text = "全部允许" });
+            transitionActions.Add(new Button(() =>
+            {
+                allowMove.SetValueWithoutNotify(false);
+                allowJump.SetValueWithoutNotify(false);
+                allowAbility.SetValueWithoutNotify(false);
+                Submit();
+            }) { text = "全部清空" });
+
+            SkillTransitionMask GetAllowedTransitions()
+            {
+                SkillTransitionMask transitions = SkillTransitionMask.None;
+                if (allowMove.value) transitions |= SkillTransitionMask.Move;
+                if (allowJump.value) transitions |= SkillTransitionMask.Jump;
+                if (allowAbility.value) transitions |= SkillTransitionMask.Ability;
+                return transitions;
+            }
 
             // 每次离散修改或延迟输入完成时提交完整请求，避免 Inspector 逐字重建。
             void Submit() => viewModel.EditItem(viewModel.SelectedTrack, clip,
                 new ActionPhaseEditRequest(start.value, duration.value,
-                    (ActionPhaseType)phase.value, canBeInterrupted.value));
+                    (ActionPhaseType)phase.index,
+                    GetAllowedTransitions()));
 
             start.RegisterValueChangedCallback(_ => Submit());
             duration.RegisterValueChangedCallback(_ => Submit());
             phase.RegisterValueChangedCallback(_ => Submit());
-            canBeInterrupted.RegisterValueChangedCallback(_ => Submit());
+            allowMove.RegisterValueChangedCallback(_ => Submit());
+            allowJump.RegisterValueChangedCallback(_ => Submit());
+            allowAbility.RegisterValueChangedCallback(_ => Submit());
             AddItemActions(container, viewModel);
         }
 

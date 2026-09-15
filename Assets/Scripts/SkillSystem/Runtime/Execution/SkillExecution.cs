@@ -28,7 +28,8 @@ namespace RPG.SkillSystem
         public GameObject Owner => context.Actor.Owner;
         public int CurrentFrame { get; private set; } = -1;
         public ActionPhaseType CurrentPhase => actionPhaseState?.CurrentPhase ?? ActionPhaseType.None;
-        public bool CanBeInterrupted => actionPhaseState?.CanBeInterrupted ?? false;
+        public SkillTransitionMask AllowedTransitions =>
+            actionPhaseState?.AllowedTransitions ?? SkillTransitionMask.None;
         public bool CanCompleteNaturally => reachedDurationBoundary && pendingLateFrames.Count == 0;
 
         /// <summary>

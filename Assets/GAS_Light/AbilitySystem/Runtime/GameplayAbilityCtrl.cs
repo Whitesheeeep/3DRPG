@@ -84,9 +84,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <inheritdoc />
         public bool TryGetAbilityHandle(int abilityId, out GameplayAbilityHandle handle)
         {
-            if (!GameplayAbilityManager.Instance.TryGetAbility(
-                    abilityId,
-                    out GameplayAbilityData ability))
+            // AbilityId 是 Bake 后写入 Data 的稳定身份；当前查询只关心本 ASC 已授予的 Spec。
+            if (abilityId == GameplayAbilityData.InvalidId)
             {
                 handle = GameplayAbilityHandle.Invalid;
                 return false;
@@ -95,7 +94,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             for (int i = 0; i < grantedAbilities.Count; i++)
             {
                 GameplayAbilitySpec spec = grantedAbilities[i];
-                if (!ReferenceEquals(spec.Data, ability)) continue;
+                if (spec.Data == null || spec.Data.AbilityId != abilityId) continue;
                 handle = spec.Handle;
                 return true;
             }
@@ -388,7 +387,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             return null;
         }
 
-        /// <summary>取消 AbilityTags 与新 Runtime CancelTags 层级匹配的其他 Active Runtime。</summary>
+        /// <summary>强制取消 AbilityTags 与新 Runtime CancelTags 层级匹配的其他 Active Runtime。不判断 GA 是否能被打断。</summary>
         /// <param name="activatingRuntime">已发送 Activated 事件且仍处于 Active 的新 Runtime。</param>
         private void CancelAbilitiesMatching(GameplayAbilityRuntime activatingRuntime)
         {

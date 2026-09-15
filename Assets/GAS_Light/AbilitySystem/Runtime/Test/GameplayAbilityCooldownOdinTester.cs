@@ -20,8 +20,6 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         [SerializeField, AssetsOnly, Required]
         private GameplayTagDatabase tagDatabase;
         [SerializeField, AssetsOnly, Required]
-        private GameplayAbilityDatabase abilityDatabase;
-        [SerializeField, AssetsOnly, Required]
         private GameplayCueDatabase cueDatabase;
         [SerializeField, AssetsOnly, Required]
         private PassiveGameplayAbilityData passiveAbility;
@@ -42,15 +40,14 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         {
             Cleanup();
             bool configured = attributeSet != null && tagDatabase != null &&
-                              abilityDatabase != null && cueDatabase != null && passiveAbility != null;
+                              cueDatabase != null && passiveAbility != null;
             if (!configured)
             {
-                Debug.LogError("[CooldownTest] 缺少 AttributeSet、TagDatabase、AbilityDatabase、CueDatabase 或 Passive Ability。", this);
+                Debug.LogError("[CooldownTest] 缺少 AttributeSet、TagDatabase、CueDatabase 或 Passive Ability。", this);
                 return;
             }
 
             GameplayTagManager.Instance.Initialize(tagDatabase);
-            GameplayAbilityManager.Instance.Initialize(abilityDatabase);
             GameplayCueManager.Instance.Initialize(cueDatabase);
             testObject = new GameObject("Gameplay Ability Cooldown Test");
             testObject.hideFlags = HideFlags.HideAndDontSave;
@@ -150,7 +147,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         #endregion
 
         #region 清理与辅助
-        /// <summary>清理事件、临时 ASC 和全局测试 Manager。</summary>
+        /// <summary>清理事件、临时 ASC 和全局 Tag/Cue 测试数据库引用。</summary>
         private void Cleanup()
         {
             Unsubscribe();
@@ -159,7 +156,6 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 DestroyImmediate(testObject);
             testObject = null;
             GameplayCueManager.Instance.Reset();
-            GameplayAbilityManager.Instance.Reset();
             GameplayTagManager.Instance.Reset();
             eventLog.Clear();
         }

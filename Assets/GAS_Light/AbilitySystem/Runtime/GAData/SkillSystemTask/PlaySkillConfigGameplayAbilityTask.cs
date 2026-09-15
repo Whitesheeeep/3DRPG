@@ -3,8 +3,6 @@ using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.GameplayAbilitySystem;
 using WS_Modules.GAS.GameplayCue;
-using WS_Modules.GAS.Generated;
-using WS_Modules.GAS.TAG;
 using RPG.Character;
 
 namespace RPG.SkillSystem
@@ -17,10 +15,6 @@ namespace RPG.SkillSystem
         private readonly SkillConfig skillConfig;
         private ISkillRuntimeHost host;
         private bool subscribed;
-        private GameplayTag appliedPhaseTag;
-        private GameplayTag appliedInterruptTag;
-        private bool hasAppliedPhaseTag;
-        private bool hasAppliedInterruptTag;
         private IMotionDriver motionDriver;
         private MotionControlHandle motionHandle;
 
@@ -93,7 +87,6 @@ namespace RPG.SkillSystem
         protected override void OnStop()
         {
             Unsubscribe();
-            ClearRuntimeTags();
             ReleaseMotion();
             host?.Stop();
         }
@@ -102,7 +95,6 @@ namespace RPG.SkillSystem
         protected override void OnCancel()
         {
             Unsubscribe();
-            ClearRuntimeTags();
             ReleaseMotion();
             host?.Cancel();
         }
@@ -111,7 +103,6 @@ namespace RPG.SkillSystem
         protected override void OnComplete()
         {
             Unsubscribe();
-            ClearRuntimeTags();
             ReleaseMotion();
         }
 
@@ -124,9 +115,10 @@ namespace RPG.SkillSystem
         /// <param name="deltaRotation">Animator 根旋转增量。</param>
         protected override void OnUpdateAnimationMove(Vector3 deltaPosition, Quaternion deltaRotation)
         {
-            if (motionHandle != null)
-                motionDriver.SubmitAnimatorMotion(motionHandle,
-                    new AnimatorMotionSubmission(deltaPosition, deltaRotation));
+            // 非根运动技能仍可占据水平与旋转通道，但不能消费 Animator 增量；否则站桩技能会意外随动画移动。
+            if (!skillConfig.IsRootMotion || motionHandle == null) return;
+            motionDriver.SubmitAnimatorMotion(motionHandle,
+                new AnimatorMotionSubmission(deltaPosition, deltaRotation));
         }
 
         /// <summary>在动画姿态稳定后处理挂点、攻击检测和自然结束。</summary>
@@ -186,21 +178,12 @@ namespace RPG.SkillSystem
                 Runtime.SourceASC);
         }
 
-        /// <summary>把当前 SkillExecution 的阶段快照替换为 Source ASC 上的两个引用计数 Tag。</summary>
-        /// <param name="args">同帧生效的阶段与可打断状态。</param>
-        private void OnActionPhaseChanged(SkillActionPhaseChangedEventArgs args)
-        {
-            if (args.Config != skillConfig) return;
-            ApplyRuntimeTags(args.Phase, args.CanBeInterrupted);
-        }
-
-        /// <summary>订阅当前共享 Module 的完成与命中事件。</summary>
+        /// <summary>订阅当前共享 Module 的完成、命中与投射物事件。</summary>
         private void Subscribe()
         {
             if (subscribed) return;
             host.Completed += OnSkillCompleted;
             host.HitDetected += OnSkillHit;
-            host.ActionPhaseChanged += OnActionPhaseChanged;
             host.ProjectileSpawnRequested += OnProjectileSpawnRequested;
             subscribed = true;
         }
@@ -211,42 +194,8 @@ namespace RPG.SkillSystem
             if (!subscribed || host == null) return;
             host.Completed -= OnSkillCompleted;
             host.HitDetected -= OnSkillHit;
-            host.ActionPhaseChanged -= OnActionPhaseChanged;
             host.ProjectileSpawnRequested -= OnProjectileSpawnRequested;
             subscribed = false;
-        }
-
-        /// <summary>先撤销上一帧贡献，再写入当前阶段与打断状态，避免同一 Task 产生计数泄漏。</summary>
-        /// <param name="phase">当前动作阶段。</param>
-        /// <param name="canBeInterrupted">当前阶段是否允许外部打断。</param>
-        private void ApplyRuntimeTags(ActionPhaseType phase, bool canBeInterrupted)
-        {
-            GameplayTag nextPhaseTag = GetPhaseTag(phase);
-            GameplayTag nextInterruptTag = canBeInterrupted
-                ? GameplayTags.Tag_State_Skill_Interruptible
-                : GameplayTags.Tag_State_Skill_Uninterruptible;
-            if (hasAppliedPhaseTag && appliedPhaseTag == nextPhaseTag &&
-                hasAppliedInterruptTag && appliedInterruptTag == nextInterruptTag)
-                return;
-
-            ClearRuntimeTags();
-            Runtime.SourceASC.UpdateRuntimeTagCount(nextPhaseTag, 1);
-            Runtime.SourceASC.UpdateRuntimeTagCount(nextInterruptTag, 1);
-            appliedPhaseTag = nextPhaseTag;
-            appliedInterruptTag = nextInterruptTag;
-            hasAppliedPhaseTag = true;
-            hasAppliedInterruptTag = true;
-        }
-
-        /// <summary>对称撤销当前 Task 写入 Source ASC 的阶段与打断状态 Tag。</summary>
-        private void ClearRuntimeTags()
-        {
-            if (hasAppliedPhaseTag)
-                Runtime.SourceASC.UpdateRuntimeTagCount(appliedPhaseTag, -1);
-            if (hasAppliedInterruptTag)
-                Runtime.SourceASC.UpdateRuntimeTagCount(appliedInterruptTag, -1);
-            hasAppliedPhaseTag = false;
-            hasAppliedInterruptTag = false;
         }
 
         /// <summary>对称释放技能占用的运动控制权。</summary>
@@ -256,17 +205,6 @@ namespace RPG.SkillSystem
             motionHandle = null;
             motionDriver = null;
         }
-
-        /// <summary>将 SkillSystem 阶段枚举映射到正式 GameplayTag；空白区间使用 Phase.None。</summary>
-        /// <param name="phase">SkillConfig 当前动作阶段。</param>
-        /// <returns>对应的正式阶段 Tag。</returns>
-        private static GameplayTag GetPhaseTag(ActionPhaseType phase) => phase switch
-        {
-            ActionPhaseType.Startup => GameplayTags.Tag_State_Skill_Phase_StartUp,
-            ActionPhaseType.Active => GameplayTags.Tag_State_Skill_Phase_Active,
-            ActionPhaseType.Recovery => GameplayTags.Tag_State_Skill_Phase_Recovery,
-            _ => GameplayTags.Tag_State_Skill_Phase_None
-        };
 
         #endregion
     }

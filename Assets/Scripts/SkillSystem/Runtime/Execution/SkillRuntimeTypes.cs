@@ -48,7 +48,7 @@ namespace RPG.SkillSystem
     }
 
     /// <summary>
-    /// 保存一次 SkillExecution 在指定逻辑帧切换后的动作阶段与可打断状态快照。
+    /// 保存一次 SkillExecution 在指定逻辑帧切换后的动作阶段与转换窗口快照。
     /// </summary>
     public readonly struct SkillActionPhaseChangedEventArgs
     {
@@ -56,26 +56,26 @@ namespace RPG.SkillSystem
         public SkillConfig Config { get; }
         public int Frame { get; }
         public ActionPhaseType Phase { get; }
-        public bool CanBeInterrupted { get; }
+        public SkillTransitionMask AllowedTransitions { get; }
 
         /// <summary>创建动作阶段变化事件快照。</summary>
         /// <param name="executionId">Module 内单调递增的执行标识。</param>
         /// <param name="config">本次执行使用的 SkillConfig。</param>
         /// <param name="frame">阶段状态生效的整数逻辑帧。</param>
         /// <param name="phase">当前动作阶段。</param>
-        /// <param name="canBeInterrupted">当前阶段是否允许外部打断。</param>
+        /// <param name="allowedTransitions">当前阶段允许外部逻辑尝试的转换类型。</param>
         public SkillActionPhaseChangedEventArgs(
             ulong executionId,
             SkillConfig config,
             int frame,
             ActionPhaseType phase,
-            bool canBeInterrupted)
+            SkillTransitionMask allowedTransitions)
         {
             ExecutionId = executionId;
             Config = config;
             Frame = frame;
             Phase = phase;
-            CanBeInterrupted = canBeInterrupted;
+            AllowedTransitions = allowedTransitions;
         }
     }
 

@@ -233,7 +233,6 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         {
             if (!ValidateRealCharacterInputs()) return;
             GameplayTagManager.Instance.Initialize(tagDatabase);
-            GameplayAbilityManager.Instance.Initialize(abilityDatabase);
             GameplayCueManager.Instance.Initialize(cueDatabase);
             realCharacterAsc.Clear();
             InitializeAsc(realCharacterAsc);
@@ -251,19 +250,17 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         [Button("真实角色播放技能 2", ButtonSizes.Medium)]
         public void PlayRealCharacterSkill2() => ActivateRealCharacterSkill(realSecondSkillHandle, "Skill2");
 
-        /// <summary>输出真实角色当前时间轴帧、动作阶段、可打断状态和 ASC 阶段 Tag。</summary>
+        /// <summary>输出真实角色当前时间轴帧、动作阶段与 SkillRuntime 转换窗口。</summary>
         [Button("输出真实角色技能状态")]
         public void LogRealCharacterSkillState()
         {
             if (!ValidateRealCharacterInputs()) return;
             Debug.Log($"[ASCTest][RealCharacter] Playing={realCharacterHost.IsPlaying}, " +
                       $"Frame={realCharacterHost.CurrentFrame}, Phase={realCharacterHost.CurrentPhase}, " +
-                      $"Interruptible={realCharacterHost.CanBeInterrupted}, " +
-                      $"PhaseTag={FormatRealCharacterPhaseTag()}, " +
-                      $"StateTag={FormatRealCharacterInterruptTag()}.", realCharacterAsc);
+                      $"AllowedTransitions={realCharacterHost.AllowedTransitions}.", realCharacterAsc);
         }
 
-        /// <summary>取消真实角色全部 Ability、GE 与阶段 Tag，并重新导入测试 AttributeSet。</summary>
+        /// <summary>取消真实角色全部 Ability、GE 与 SkillRuntime 执行，并重新导入测试 AttributeSet。</summary>
         [Button("清理真实角色技能状态")]
         public void ClearRealCharacterSkills()
         {
@@ -319,7 +316,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             return valid;
         }
 
-        /// <summary>使用已授予 Handle 激活真实角色技能，并输出阶段 Tag 与激活结果。</summary>
+        /// <summary>使用已授予 Handle 激活真实角色技能，并输出运行时阶段与激活结果。</summary>
         /// <param name="handle">初始化真实角色技能时保存的授予 Handle。</param>
         /// <param name="label">日志使用的技能标识。</param>
         private void ActivateRealCharacterSkill(GameplayAbilityHandle handle, string label)
@@ -335,29 +332,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             Debug.Log($"[ASCTest][RealCharacter] {label} Activated={activated}, " +
                       $"Runtime={runtime?.State.ToString() ?? "null"}, " +
                       $"Frame={realCharacterHost.CurrentFrame}, Phase={realCharacterHost.CurrentPhase}, " +
-                      $"Interruptible={realCharacterHost.CanBeInterrupted}.", realCharacterAsc);
-        }
-
-        /// <summary>格式化真实角色当前显式拥有的动作阶段 Tag。</summary>
-        /// <returns>当前阶段 Tag 名称；无匹配时返回 Missing。</returns>
-        private string FormatRealCharacterPhaseTag()
-        {
-            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Skill_Phase_None)) return "None";
-            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Skill_Phase_StartUp)) return "StartUp";
-            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Skill_Phase_Active)) return "Active";
-            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Skill_Phase_Recovery)) return "Recovery";
-            return "Missing";
-        }
-
-        /// <summary>格式化真实角色当前显式拥有的可打断状态 Tag。</summary>
-        /// <returns>Interruptible、Uninterruptible 或 Missing。</returns>
-        private string FormatRealCharacterInterruptTag()
-        {
-            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Skill_Interruptible))
-                return "Interruptible";
-            if (realCharacterAsc.HasTagExact(GameplayTags.Tag_State_Skill_Uninterruptible))
-                return "Uninterruptible";
-            return "Missing";
+                      $"AllowedTransitions={realCharacterHost.AllowedTransitions}.", realCharacterAsc);
         }
 
         /// <summary>检查运行条件并初始化本轮汇总。</summary>
@@ -473,7 +448,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
                     yield return RunSkillConfigTerminationScenario(cancel: true);
                     break;
                 case AbilityTestScenario.SkillConfigInterruption:
-                    yield return RunSkillConfigInterruptionScenario();
+                    yield return RunSkillConfigReplacementScenario();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(scenario), scenario, null);
@@ -844,35 +819,28 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             source.TryCancelAbility(replayRuntime);
         }
 
-        /// <summary>验证公共动作 Tag 先取消旧 Runtime，再由新 Task 占用共享 Module。</summary>
+        /// <summary>验证 GA→GA 替换只依赖现有 CancelTags 与 SkillRuntime 占用，不依赖 Phase GameplayTag。</summary>
         /// <returns>等待激活事件完整发送的协程枚举器。</returns>
-        private IEnumerator RunSkillConfigInterruptionScenario()
+        private IEnumerator RunSkillConfigReplacementScenario()
         {
             GameplayAbilityHandle firstHandle = source.GiveAbility(skillConfigAbility, 1);
             GameplayAbilityHandle secondHandle = source.GiveAbility(secondSkillConfigAbility, 1);
             source.TryActivateAbility(firstHandle, out GameplayAbilityRuntime firstRuntime);
             Expect("旧 SkillConfig 已占用 Module", firstRuntime != null && skillRuntimeHost.IsPlaying);
-            Expect("可打断阶段写入 Interruptible Tag",
-                source.HasTagExact(GameplayTags.Tag_State_Skill_Interruptible));
-
             bool activated = source.TryActivateAbility(secondHandle, out GameplayAbilityRuntime secondRuntime);
             Expect("新 SkillConfig 激活成功", activated);
             Expect("旧 Runtime 被公共 CancelTag 取消",
                 firstRuntime.State == GameplayAbilityRuntimeState.Cancelled);
             Expect("新 Runtime 在 Module 释放后保持 Active",
                 secondRuntime.State == GameplayAbilityRuntimeState.Active && skillRuntimeHost.IsPlaying);
-            Expect("第二技能不可打断阶段写入 Uninterruptible Tag",
-                source.HasTagExact(GameplayTags.Tag_State_Skill_Uninterruptible));
-
-            bool rejected = !source.TryActivateAbility(firstHandle, out GameplayAbilityRuntime rejectedRuntime);
-            Expect("不可打断阶段在提交前拒绝其他 SkillConfig GA",
-                rejected && rejectedRuntime == null && secondRuntime.State == GameplayAbilityRuntimeState.Active);
+            Expect("第二技能的转换窗口由 SkillRuntime 自己持有",
+                secondRuntime.State == GameplayAbilityRuntimeState.Active &&
+                skillRuntimeHost.CurrentPhase != ActionPhaseType.None);
             yield return null;
             source.TryCancelAbility(secondRuntime);
-            Expect("取消后清除阶段与打断状态 Tag",
-                !source.HasTag(GameplayTags.Tag_State_Skill_Phase) &&
-                !source.HasTag(GameplayTags.Tag_State_Skill_Interruptible) &&
-                !source.HasTag(GameplayTags.Tag_State_Skill_Uninterruptible));
+            Expect("取消后 SkillRuntime 阶段恢复为空",
+                skillRuntimeHost.CurrentPhase == ActionPhaseType.None &&
+                skillRuntimeHost.AllowedTransitions == SkillTransitionMask.None);
         }
 
         /// <summary>执行一次 Linear Projectile 发射，并记录池化 Rigidbody 的生成 Pose 与飞行轨迹。</summary>
@@ -1122,7 +1090,6 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         {
             CleanupWorld();
             GameplayTagManager.Instance.Initialize(tagDatabase);
-            GameplayAbilityManager.Instance.Initialize(abilityDatabase);
             GameplayCueManager.Instance.Initialize(cueDatabase);
 
             Vector3 sourcePosition = transform.position + transform.rotation * testWorldOffset;
@@ -1307,7 +1274,6 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             lastCueTarget = null;
             if (visualizer != null)
                 visualizer.DetachActors();
-            GameplayAbilityManager.Instance.Reset();
             GameplayCueManager.Instance.Reset();
             GameplayTagManager.Instance.Reset();
         }

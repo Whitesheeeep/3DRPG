@@ -314,6 +314,7 @@ namespace RPG.Character
             if (inputRequests == null) throw new ArgumentNullException(nameof(inputRequests));
             for (int slotIndex = 0; slotIndex < characterSlotInputTypes.Length; slotIndex++)
             {
+                // 查询是否有缓冲按下请求，未按下或已被其他系统消费时跳过。
                 if (!inputRequests.TryGetRequest(characterSlotInputTypes[slotIndex], out IReadOnlyPlayerInputRequest request) || !request.HasBufferedPress)
                     continue;
                 CharacterSwitchStatus status = TrySwitchSlot(slotIndex);

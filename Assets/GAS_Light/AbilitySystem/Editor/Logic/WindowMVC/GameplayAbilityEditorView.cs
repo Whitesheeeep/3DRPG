@@ -32,6 +32,7 @@ namespace WS_Modules.GAS.Editor
         private readonly VisualElement subclassFieldsContainer;
         private readonly Label abilityTitle;
         private readonly Label abilityIdLabel;
+        private readonly VisualElement abilityIconPreview;
         private readonly VisualElement validationContainer;
         private readonly VisualTreeAsset rowTemplate;
         private readonly List<GameplayAbilityData> displayedAbilities = new();
@@ -87,6 +88,7 @@ namespace WS_Modules.GAS.Editor
             subclassFieldsContainer = Require<VisualElement>("SubclassFieldsContainer");
             abilityTitle = Require<Label>("AbilityTitle");
             abilityIdLabel = Require<Label>("AbilityIdLabel");
+            abilityIconPreview = Require<VisualElement>("AbilityIconPreview");
             validationContainer = Require<VisualElement>("ValidationContainer");
             rowTemplate = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(RowUxmlPath);
             if (rowTemplate == null)
@@ -174,6 +176,7 @@ namespace WS_Modules.GAS.Editor
             bool hasAbility = ability != null;
             detailsRoot.EnableInClassList(HiddenClass, !hasAbility);
             abilityTitle.text = hasAbility ? ability.name : "No Gameplay Ability Selected";
+            RefreshAbilityIconPreview(hasAbility ? ability.Icon : null);
             abilityIdLabel.text = !hasAbility
                 ? "Ability ID: -"
                 : ability.AbilityId == GameplayAbilityData.InvalidId
@@ -302,11 +305,15 @@ namespace WS_Modules.GAS.Editor
             AbilitySelected?.Invoke(null);
         }
 
-        // 原生序列化写回后通知 Controller 重新校验。
+        /// <summary>在原生序列化写回后刷新图标预览并通知 Controller 重新校验。</summary>
+        /// <param name="serializedObject">发生变化的 Ability 序列化对象。</param>
         private void OnSerializedObjectChanged(SerializedObject serializedObject)
         {
             if (!disposed && boundAbility != null && serializedObject.targetObject == boundAbility)
+            {
+                RefreshAbilityIconPreview(boundAbility.Icon);
                 AbilityChanged?.Invoke();
+            }
         }
         #endregion
 
@@ -430,6 +437,19 @@ namespace WS_Modules.GAS.Editor
             detailsRoot.Unbind();
             serializedObjectTracker?.RemoveFromHierarchy();
             serializedObjectTracker = null;
+            RefreshAbilityIconPreview(null);
+        }
+
+        /// <summary>刷新当前 Ability Icon 预览 VE 的背景图。</summary>
+        /// <param name="icon">要显示的 Sprite；为空时清空预览。</param>
+        private void RefreshAbilityIconPreview(Sprite icon)
+        {
+            // 预览只负责呈现绑定后的引用，不参与 PropertyField 的写回，避免产生第二套 Undo 数据流。
+            if (icon == null)
+                abilityIconPreview.style.backgroundImage = new StyleBackground(StyleKeyword.None);
+            else
+                abilityIconPreview.style.backgroundImage = new StyleBackground(icon);
+            abilityIconPreview.tooltip = icon == null ? "未选择 Icon" : icon.name;
         }
 
         /// <summary>判断新的校验内容是否与当前渲染结果完全一致。</summary>
@@ -447,6 +467,8 @@ namespace WS_Modules.GAS.Editor
         // 排除脚本引用和 GameplayAbilityData 的固定公共字段。
         private static bool IsCommonProperty(string propertyPath) =>
             propertyPath == "m_Script" ||
+            propertyPath == "abilityName" ||
+            propertyPath == "icon" ||
             propertyPath == "description" ||
             propertyPath == "abilityTags" ||
             propertyPath == "cancelTags" ||
@@ -511,10 +533,23 @@ namespace WS_Modules.GAS.Editor
             internal void Bind(GameplayAbilityData value, bool hasValidationError)
             {
                 ability = value;
-                nameLabel.text = value.name;
+                nameLabel.text = FormatAbilityLabel(value);
                 pathLabel.text = AssetDatabase.GetAssetPath(value);
                 visualRoot.EnableInClassList(ValidationErrorClass, hasValidationError);
                 if (!renaming) SetRenameVisible(false);
+            }
+
+            /// <summary>组合资产名和业务显示名，避免两个名称相同时重复展示。</summary>
+            /// <param name="value">当前行绑定的 Ability 资产。</param>
+            /// <returns>用于列表行的定位标签。</returns>
+            private static string FormatAbilityLabel(GameplayAbilityData value)
+            {
+                string assetName = value.name;
+                string abilityName = value.Name;
+                return string.IsNullOrWhiteSpace(abilityName) ||
+                       string.Equals(assetName, abilityName, StringComparison.Ordinal)
+                    ? assetName
+                    : $"{assetName} ({abilityName})";
             }
 
             // 回收时取消编辑和错误背景。

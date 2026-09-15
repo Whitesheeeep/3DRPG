@@ -80,6 +80,30 @@
     margin-bottom: 4px;
 }
 
+.ga-icon-editor-row {
+    flex-direction: row;
+    align-items: center;
+    min-height: 86px;
+    margin-bottom: 4px;
+}
+
+.ga-icon-preview {
+    width: 86px;
+    height: 86px;
+    min-width: 86px;
+    min-height: 86px;
+    margin-right: 12px;
+    background-color: rgb(52, 52, 52);
+    border-width: 1px;
+    border-color: rgb(95, 95, 95);
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.ga-icon-field {
+    flex-grow: 1;
+    min-width: 0;
+}
+
 .ga-section-title {
     -unity-font-style: bold;
     margin-top: 3px;

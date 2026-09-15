@@ -126,14 +126,14 @@ GAS 集成基准使用现有 30 FPS、35 帧 `SkillConfig.asset`。ASC Tester �
 立即重播、命中 Effect 与命中点 Execute Cue。占用共享 Host 的主动技能统一配置
 `Ability.Action.Skill` 到 `AbilityTags` 与 `CancelTags`；配置第二个 SkillConfig GA 后可执行互相打断测试。
 
-阶段 Handler 会在普通逻辑帧中先发布动作阶段变化，`PlaySkillConfigGameplayAbilityTask` 再将它投影为 Source ASC 的 `State.Skill.Phase.*` 与 `Interruptible/Uninterruptible` 引用计数 Tag。SkillConfig GA 禁止在 `Uninterruptible` 存在时激活，因此拒绝发生在 Cost/Cooldown 提交前；Natural、End、Cancel 和 Clear 都会对称撤销阶段 Tag。
+阶段 Handler 会在普通逻辑帧中发布动作阶段与 `AllowedTransitions` 变化。该数据只属于具体 `SkillRuntime`，供后续 FullBody Action Execution 与 Arbiter 观察，不再投影为 Source ASC 的 Phase 或 Interrupt GameplayTag。Ability 候选仍通过现有 GAS `TryActivateAbility` 判断，移动和跳跃转换由后续业务执行器处理。
 
 ```mermaid
 flowchart LR
-    ASC["ASC 三阶段"] --> Task["PlaySkillConfig Task"]
-    Task --> Host["SkillRuntimeHost"]
-    Host --> Module["共享 SkillRuntimeModule"]
-    Module --> Result["命中 / Cue / Natural Completed"]
+    Config["SkillConfig ActionPhase"] --> Runtime["SkillRuntime Phase + AllowedTransitions"]
+    Runtime --> Execution["未来 FullBody Action Execution"]
+    Execution --> Arbiter["未来 Action Arbiter"]
+    Arbiter --> GAS["Ability: TryActivateAbility"]
 ```
 
 在场景对象上挂载 `SkillRuntimeOdinTester`，配置 Runner、Owner、Origin、Animancer、SkillConfig 和可选武器节点，然后依次使用：

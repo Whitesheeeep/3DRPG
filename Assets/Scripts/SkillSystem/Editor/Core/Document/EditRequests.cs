@@ -120,14 +120,14 @@ namespace RPG.SkillSystem.Editor
         }
     }
     /// <summary>
-    /// 描述动作阶段片段 Inspector 提交的一次完整区间、阶段和打断设置。
+    /// 描述动作阶段片段 Inspector 提交的一次完整区间、阶段和转换窗口设置。
     /// </summary>
     internal readonly struct ActionPhaseEditRequest : IItemEditRequest
     {
         public int StartFrame { get; }
         public int DurationFrames { get; }
         public ActionPhaseType Phase { get; }
-        public bool CanBeInterrupted { get; }
+        public SkillTransitionMask AllowedTransitions { get; }
 
         /// <summary>
         /// 创建并初始化动作阶段编辑请求。
@@ -135,14 +135,14 @@ namespace RPG.SkillSystem.Editor
         /// <param name="startFrame">半开区间起始帧。</param>
         /// <param name="durationFrames">区间持续帧数。</param>
         /// <param name="phase">动作阶段。</param>
-        /// <param name="canBeInterrupted">当前阶段是否允许被外部逻辑打断。</param>
+        /// <param name="allowedTransitions">当前阶段开放的外部转换窗口。</param>
         public ActionPhaseEditRequest(int startFrame, int durationFrames,
-            ActionPhaseType phase, bool canBeInterrupted)
+            ActionPhaseType phase, SkillTransitionMask allowedTransitions)
         {
             StartFrame = startFrame;
             DurationFrames = durationFrames;
             Phase = phase;
-            CanBeInterrupted = canBeInterrupted;
+            AllowedTransitions = allowedTransitions;
         }
     }
     /// <summary>

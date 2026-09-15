@@ -36,8 +36,8 @@ namespace RPG.SkillSystem
         public int CurrentFrame => module.CurrentFrame;
         /// <summary>获取当前动作阶段；空闲时为 None。</summary>
         public ActionPhaseType CurrentPhase => module.CurrentPhase;
-        /// <summary>获取当前阶段是否允许外部技能打断。</summary>
-        public bool CanBeInterrupted => module.CanBeInterrupted;
+        /// <summary>获取当前阶段开放的外部转换窗口。</summary>
+        public SkillTransitionMask AllowedTransitions => module.AllowedTransitions;
         /// <summary>获取共享技能通道的全局播放倍率。</summary>
         public float PlaybackSpeed => module.PlaybackSpeed;
 
@@ -59,7 +59,7 @@ namespace RPG.SkillSystem
             remove => module.Completed -= value;
         }
 
-        /// <summary>在共享 Module 的动作阶段或可打断状态变化后转发。</summary>
+        /// <summary>在共享 Module 的动作阶段或转换窗口变化后转发。</summary>
         public event Action<SkillActionPhaseChangedEventArgs> ActionPhaseChanged
         {
             add => module.ActionPhaseChanged += value;

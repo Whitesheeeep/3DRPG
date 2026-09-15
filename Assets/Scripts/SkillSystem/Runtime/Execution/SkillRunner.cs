@@ -31,6 +31,15 @@ namespace RPG.SkillSystem
             remove => module.Completed -= value;
         }
 
+        /// <summary>
+        /// 在 SkillRuntime 的动作阶段或转换窗口变化后转发事件，供 OdinTester 和未来 Action Execution 观察。
+        /// </summary>
+        public event Action<SkillActionPhaseChangedEventArgs> ActionPhaseChanged
+        {
+            add => module.ActionPhaseChanged += value;
+            remove => module.ActionPhaseChanged -= value;
+        }
+
         #endregion
 
         #region 状态查询
@@ -38,7 +47,8 @@ namespace RPG.SkillSystem
         public bool IsPlaying => module.IsPlaying;
         public int CurrentFrame => module.CurrentFrame;
         public ActionPhaseType CurrentPhase => module.CurrentPhase;
-        public bool CanBeInterrupted => module.CanBeInterrupted;
+        /// <summary>获取当前阶段开放的外部转换窗口。</summary>
+        public SkillTransitionMask AllowedTransitions => module.AllowedTransitions;
         /// <summary>获取当前技能通道的全局播放倍率。</summary>
         public float PlaybackSpeed => module.PlaybackSpeed;
 

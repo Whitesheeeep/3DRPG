@@ -23,6 +23,8 @@ classDiagram
 
 GameplayAbilityData 只保存所有技能共用的作者配置：
 
+- Name（为空时回退到资产名）
+- Icon（可为空的 Sprite 引用）
 - Description
 - AbilityTags
 - CancelTags
@@ -347,23 +349,22 @@ flowchart TD
     Editor["Editor 数据<br/>GUID 到 ID 历史<br/>废弃 ID / NextId / BakeDirty"]
     Runtime["Runtime 数据<br/>AbilityId 到 GameplayAbilityData"]
     Data["GameplayAbilityData<br/>AbilityId"]
-    Manager["GameplayAbilityManager"]
-    Manager --> Spec["当前 ASC 的 GameplayAbilitySpec"]
+    Data --> Spec["当前 ASC 的 GameplayAbilitySpec"]
     Spec --> Handle["GameplayAbilityHandle<br/>ASC 局部身份"]
     Database --> Editor
     Database --> Runtime
     Editor -->|Bake| Data
     Data --> Runtime
-    Runtime --> Manager
+    Runtime -. 编辑器/存档等 ID 解析边界 .-> Data
 ```
 
 Database 使用 Unity 资产 GUID 识别同一个 Data，因此资产改名或移动不会改变 AbilityId。被删除资产使用过的 ID 进入废弃列表，后续不再复用。Editor 历史字段位于 `#if UNITY_EDITOR` 中，不进入 Player；运行时只保留已经 Bake 的 `AbilityId → GameplayAbilityData` 字典。
 
-GA Editor 顶部只选择一个 GameplayAbilityDatabase 并执行 Bake。Play Mode 和 Build Guard 会检查 Data、GUID 历史与运行时字典是否一致。运行时启动流程负责调用 `GameplayAbilityManager.Initialize(database)`，Manager 不再临时重建第二份索引。
+GA Editor 顶部只选择一个 GameplayAbilityDatabase 并执行 Bake。Play Mode 和 Build Guard 会检查 Data、GUID 历史与运行时字典是否一致。运行时不再初始化额外的全局 Ability 运行时单例；Database 只负责 Editor 的稳定 ID 历史与 Bake 生成的映射。
 
 Database Inspector 中的 `Abilities By Id` 直接显示这份 Bake 生成的运行时字典，Key 是稳定 AbilityId，Value 是对应的 GA SO。该字典只读，不能在 Inspector 中手工增删；Ability 资产集合变化后必须回到 GA Editor 重新 Bake。Editor GUID 历史与 Runtime 字典始终由同一个 Database 维护。
 
-同一 ASC 不能重复授予同一个 `GameplayAbilityData`。需要从未来存档的 AbilityId 找回当前 ASC Handle 时，调用 `TryGetAbilityHandle(abilityId, out handle)`：Manager 先将 ID 解析为 Data，当前 Controller 再查找该 Data 的 Spec。
+同一 ASC 不能重复授予同一个 `GameplayAbilityData`。需要从未来存档的 AbilityId 找回当前 ASC Handle 时，调用 `TryGetAbilityHandle(abilityId, out handle)`：当前 Controller 直接扫描自己的 Spec，并比较已授予 `GameplayAbilityData.AbilityId`，不依赖全局运行时注册器。
 
 本阶段不定义玩家存档 DTO、Capture 或 Restore API。未来存档只需保存 `AbilityId + Level`，不保存 `GameplayAbilityHandle`。
 
@@ -460,7 +461,7 @@ flowchart LR
 
 独立的 `GameplayAbilitySystemComponentTestVisualizer` 只读取 CurrentValue 和只读 Runtime 列表。Source 默认显示蓝色，Armor 增益期间变为绿色；Target Health 降低时短暂闪烁黄色。面板实时显示 Health、MP、Armor、Active GA、Active GE、Active Cue、当前阶段和 PASS/FAIL，不参与任何业务提交。
 
-完整周期依赖 `GameplayAbilityDatabase` 与 `GameplayCueDatabase`。每个场景只检查当前 GA 的非空 CueTag；测试结束时通过 ASC 正式 `Clear` 路径清理 Active Cue，再解除静态观察事件并重置测试 Manager。
+完整周期依赖 `GameplayAbilityDatabase` 与 `GameplayCueDatabase`。每个场景只检查当前 GA 的非空 CueTag；测试结束时通过 ASC 正式 `Clear` 路径清理 Active Cue，再解除静态观察事件并重置 Tag/Cue 测试状态。
 
 投射物场景使用相对 Tester 的 `Test World Offset` 建立独立测试通道。发射前通过物理查询检查 Source 到 Target 之间是否存在第三方 ASC；发现时输出具体对象和位置并停止当前投射物场景。命中断言同时检查专用 Target 的 Health 和 Cue Runtime 的实际 Target，避免投射物先命中其他角色后产生误报。
 
@@ -480,7 +481,7 @@ ASC 默认在 `Update` 中先推进 GE、再推进 GA 普通阶段；`FixedUpdat
 
 SkillConfig 类型的异步 Task 从 `Runtime.SourceOwner` 获取 `ISkillRuntimeHost`。Host 为每个角色长期持有唯一
 
-SkillConfig 当前动作阶段通过 Task 写入 Source ASC：阶段使用 `State.Skill.Phase.*`，打断状态使用 `State.Skill.Interruptible/Uninterruptible`。所有 SkillConfig GA 的 ActivationTagQuery 禁止 `Uninterruptible`，使不可打断阶段在 Runtime 创建及 Cost/Cooldown 提交前拒绝新技能；可打断阶段仍由公共 `Ability.Action.Skill` CancelTag 替换旧 Runtime。Task 的全部终态都必须对称撤销其 Tag 计数。
+SkillConfig 当前动作阶段只由具体 `SkillRuntime` 持有：阶段使用 `ActionPhaseType`，转换窗口使用 `SkillTransitionMask`。这些数据通过 `ActionPhaseChanged` 事件提供给后续 FullBody Action Execution 与 Arbiter，不再转换为 Source ASC 的 Phase 或 Interrupt GameplayTag。Ability 候选仍通过现有 `TryActivateAbility` 执行完整 GAS 条件检查；移动和跳跃转换由未来对应业务执行器负责。`PlaySkillConfigGameplayAbilityTask` 不再订阅阶段事件，也不承担转换决策。
 `SkillRuntimeModule`，自身不实现 Unity 更新；当前 Running Task 在普通阶段调用 `Tick`，在延迟阶段
 调用 `LateTick`。GAS 通过 AbilityTags、CancelTags 与 Runtime 生命周期决定替换和打断，Module 只负责
 时间轴、轨道命中和资源清理。

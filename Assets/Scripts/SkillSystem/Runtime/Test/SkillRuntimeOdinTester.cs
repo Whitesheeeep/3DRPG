@@ -40,6 +40,7 @@ namespace RPG.SkillSystem.Editor
             if (runner == null) return;
             runner.HitDetected += OnHitDetected;
             runner.Completed += OnCompleted;
+            runner.ActionPhaseChanged += OnActionPhaseChanged;
         }
 
         /// <summary>
@@ -50,6 +51,7 @@ namespace RPG.SkillSystem.Editor
             if (runner == null) return;
             runner.HitDetected -= OnHitDetected;
             runner.Completed -= OnCompleted;
+            runner.ActionPhaseChanged -= OnActionPhaseChanged;
         }
 
         #endregion
@@ -100,13 +102,13 @@ namespace RPG.SkillSystem.Editor
         }
 
         /// <summary>
-        /// 输出当前帧、动作阶段和可打断状态，供状态机接入前手动验证。
+        /// 输出当前帧、动作阶段和转换窗口，供后续 Action Execution 接入前手动验证。
         /// </summary>
         [Button("打印运行状态")]
         public void PrintState()
         {
             Debug.Log($"[SkillRuntimeTest] playing={runner.IsPlaying}, frame={runner.CurrentFrame}, " +
-                      $"phase={runner.CurrentPhase}, interruptible={runner.CanBeInterrupted}", this);
+                      $"phase={runner.CurrentPhase}, allowedTransitions={runner.AllowedTransitions}", this);
         }
 
         #endregion
@@ -131,6 +133,17 @@ namespace RPG.SkillSystem.Editor
         {
             Debug.Log($"[SkillRuntimeTest] Completed execution={args.ExecutionId}, reason={args.Reason}, " +
                       $"lastFrame={args.LastFrame}", this);
+        }
+
+        /// <summary>
+        /// 输出 SkillRuntime 原生阶段事件，确认转换窗口不会被投影成 ASC GameplayTag。
+        /// </summary>
+        /// <param name="args">阶段与转换窗口快照。</param>
+        private void OnActionPhaseChanged(SkillActionPhaseChangedEventArgs args)
+        {
+            Debug.Log($"[SkillRuntimeTest] PhaseChanged execution={args.ExecutionId}, " +
+                      $"frame={args.Frame}, phase={args.Phase}, " +
+                      $"allowedTransitions={args.AllowedTransitions}", this);
         }
 
         #endregion

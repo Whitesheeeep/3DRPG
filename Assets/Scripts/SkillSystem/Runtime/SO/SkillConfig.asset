@@ -104,17 +104,17 @@ MonoBehaviour:
     startFrame: 0
     durationFrames: 6
     phase: 1
-    canBeInterrupted: 1
+    allowedTransitions: 7
   - id: 6d1b11b89a5748cab3e4f9fd673ee89e
     startFrame: 6
     durationFrames: 8
     phase: 2
-    canBeInterrupted: 0
+    allowedTransitions: 0
   - id: 507007bd51e64918a1fabe572f50be19
     startFrame: 14
     durationFrames: 21
     phase: 3
-    canBeInterrupted: 1
+    allowedTransitions: 7
 --- !u!114 &-1994680328166295026
 MonoBehaviour:
   m_ObjectHideFlags: 1

@@ -17,6 +17,26 @@ namespace RPG.SkillSystem
     }
 
     /// <summary>
+    /// 描述当前技能动作阶段开放的外部转换窗口。
+    /// 该掩码只表达候选动作可以尝试转换，不负责执行取消、激活或状态切换。
+    /// </summary>
+    [Flags]
+    public enum SkillTransitionMask
+    {
+        /// <summary>当前阶段不开放外部转换。</summary>
+        None = 0,
+
+        /// <summary>允许移动逻辑尝试转换。</summary>
+        Move = 1 << 0,
+
+        /// <summary>允许跳跃逻辑尝试转换。</summary>
+        Jump = 1 << 1,
+
+        /// <summary>允许其他 Gameplay Ability 尝试转换。</summary>
+        Ability = 1 << 2
+    }
+
+    /// <summary>
     /// 保存一个技能的动作阶段区间；每个 SkillConfig 最多允许创建一条该类型轨道。
     /// </summary>
     [TimelineTrack("动作阶段轨道", -10, false)]
@@ -45,7 +65,7 @@ namespace RPG.SkillSystem
     }
 
     /// <summary>
-    /// 描述一个左闭右开动作阶段区间及该阶段是否允许被外部逻辑打断。
+    /// 描述一个左闭右开动作阶段区间及该阶段开放的外部转换窗口。
     /// </summary>
     [Serializable]
     public sealed class ActionPhaseSkillClipConfig : TimelineItemConfigBase
@@ -55,17 +75,18 @@ namespace RPG.SkillSystem
         [SerializeField, ReadOnly, LabelText("内容 ID")]
         private string id = string.Empty;
 
-        [SerializeField, Min(0), LabelText("起始帧")]
+        [SerializeField, MinValue(0), LabelText("起始帧")]
         private int startFrame;
 
-        [SerializeField, Min(1), LabelText("持续帧")]
+        [SerializeField, MinValue(1), LabelText("持续帧")]
         private int durationFrames = 1;
 
         [SerializeField, LabelText("动作阶段")]
         private ActionPhaseType phase = ActionPhaseType.Startup;
 
-        [SerializeField, LabelText("可被外部打断")]
-        private bool canBeInterrupted;
+        [SerializeField, EnumToggleButtons, LabelText("允许转换"),
+         Tooltip("只声明本阶段允许哪些动作尝试转换，不直接取消技能或启动目标动作。")]
+        private SkillTransitionMask allowedTransitions;
 
         #endregion
 
@@ -81,9 +102,9 @@ namespace RPG.SkillSystem
         public ActionPhaseType Phase => phase;
 
         /// <summary>
-        /// 当前动作在该区间内是否允许被外部动作或状态逻辑打断。
+        /// 当前阶段允许外部逻辑尝试的转换类型。
         /// </summary>
-        public bool CanBeInterrupted => canBeInterrupted;
+        public SkillTransitionMask AllowedTransitions => allowedTransitions;
 
         #endregion
     }

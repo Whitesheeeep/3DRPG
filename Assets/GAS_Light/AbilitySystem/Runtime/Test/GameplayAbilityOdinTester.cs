@@ -443,10 +443,13 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
 
             GameplayAbilityHandle first = source.GiveAbility(instantSkill, 1);
             GameplayAbilityHandle duplicate = source.GiveAbility(instantSkill, 1);
-            bool dataResolved = GameplayAbilityManager.Instance.TryGetAbility(
+            bool dataResolved = abilityDatabase.TryGetAbility(
                 instantSkill.AbilityId,
                 out GameplayAbilityData resolvedData);
             bool resolved = source.TryGetAbilityHandle(instantSkill.AbilityId, out GameplayAbilityHandle queried);
+            bool invalidIdResolved = source.TryGetAbilityHandle(
+                GameplayAbilityData.InvalidId,
+                out GameplayAbilityHandle invalidIdHandle);
             var otherObject = new GameObject("GA Stable ID Other ASC")
             {
                 hideFlags = HideFlags.HideAndDontSave
@@ -462,6 +465,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             Expect("同一 ASC 拒绝重复授予", !duplicate.IsValid);
             Expect("不同 ASC 可分别授予同一 Ability Data", otherHandle.IsValid);
             Expect("AbilityId 反查返回当前 ASC Handle", resolved && queried == first);
+            Expect("Invalid AbilityId 不返回当前 ASC Handle",
+                !invalidIdResolved && invalidIdHandle == GameplayAbilityHandle.Invalid);
             DestroyImmediate(otherObject);
             LogSummary();
         }
@@ -880,7 +885,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             return false;
         }
 
-        /// <summary>为每个场景创建独立 ASC 并初始化 Ability Database，避免运行时状态相互污染。</summary>
+        /// <summary>为每个场景创建独立 ASC，避免运行时状态相互污染。</summary>
         private void ResetTest()
         {
             CleanupSource();
@@ -895,9 +900,6 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             failed = 0;
             attributesReady = false;
             attributeInitializationError = string.Empty;
-
-            if (abilityDatabase != null)
-                GameplayAbilityManager.Instance.Initialize(abilityDatabase);
 
             if (testAttributeSet == null)
             {
@@ -960,13 +962,12 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             CleanupSource();
         }
 
-        /// <summary>销毁隔离测试创建的临时 ASC，并清除本测试的 Manager 数据库引用。</summary>
+        /// <summary>销毁隔离测试创建的临时 ASC。</summary>
         private void CleanupSource()
         {
             if (sourceObject != null) DestroyImmediate(sourceObject);
             sourceObject = null;
             source = null;
-            GameplayAbilityManager.Instance.Reset();
         }
         #endregion
     }

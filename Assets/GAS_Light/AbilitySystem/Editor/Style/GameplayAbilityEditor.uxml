@@ -23,6 +23,11 @@
                 <ui:VisualElement name="AbilityDetailsRoot" class="ga-details-root">
                     <ui:Label text="Ability" class="ga-section-title" />
                     <ui:Label name="AbilityIdLabel" text="Ability ID: Unbaked" class="ga-ability-id" />
+                    <uie:PropertyField binding-path="abilityName" label="Name" />
+                    <ui:VisualElement class="ga-icon-editor-row">
+                        <ui:VisualElement name="AbilityIconPreview" class="ga-icon-preview" picking-mode="Ignore" />
+                        <uie:PropertyField binding-path="icon" label="Icon" class="ga-icon-field" />
+                    </ui:VisualElement>
                     <uie:PropertyField binding-path="description" label="Description" />
                     <uie:PropertyField binding-path="abilityTags" label="Ability Tags" />
                     <uie:PropertyField binding-path="cancelTags" label="Cancel Tags" />

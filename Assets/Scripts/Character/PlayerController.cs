@@ -223,6 +223,7 @@ namespace RPG.Character
                 InputIntentArbiterManager.ArbitrateFrame(cameraTransform);
 
                 // 切人 Request 的映射和消费由 CharacterManager 处理；玩家级对话锁仍在 PlayerController 门禁。
+                // TODO: 优化切人门禁
                 if (CanProcessCharacterSwitchInput())
                     characterManager.ProcessSwitchInputRequests(inputController);
 

@@ -78,8 +78,8 @@ namespace RPG.SkillSystem.Editor
         internal const string Pitch = "pitch";
         /// <summary>动作阶段片段的阶段枚举。</summary>
         internal const string ActionPhase = "phase";
-        /// <summary>动作阶段内当前动作是否允许被外部逻辑打断。</summary>
-        internal const string CanBeInterrupted = "canBeInterrupted";
+        /// <summary>动作阶段开放的外部转换窗口位标记。</summary>
+        internal const string AllowedTransitions = "allowedTransitions";
         /// <summary>攻击检测片段的采样间隔帧，最小为一帧。</summary>
         internal const string SampleIntervalFrames = "sampleIntervalFrames";
         /// <summary>攻击检测片段保存的局部多态检测参数。</summary>

@@ -100,20 +100,6 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_State_Locomotion_Traversal_Mantle = new GameplayTag(160);
         /// <summary>State.Skill</summary>
         public static readonly GameplayTag Tag_State_Skill = new GameplayTag(130);
-        /// <summary>State.Skill.Interruptible</summary>
-        public static readonly GameplayTag Tag_State_Skill_Interruptible = new GameplayTag(136);
-        /// <summary>State.Skill.Phase</summary>
-        public static readonly GameplayTag Tag_State_Skill_Phase = new GameplayTag(131);
-        /// <summary>State.Skill.Phase.Active</summary>
-        public static readonly GameplayTag Tag_State_Skill_Phase_Active = new GameplayTag(134);
-        /// <summary>State.Skill.Phase.None</summary>
-        public static readonly GameplayTag Tag_State_Skill_Phase_None = new GameplayTag(132);
-        /// <summary>State.Skill.Phase.Recovery</summary>
-        public static readonly GameplayTag Tag_State_Skill_Phase_Recovery = new GameplayTag(135);
-        /// <summary>State.Skill.Phase.StartUp</summary>
-        public static readonly GameplayTag Tag_State_Skill_Phase_StartUp = new GameplayTag(133);
-        /// <summary>State.Skill.Uninterruptible</summary>
-        public static readonly GameplayTag Tag_State_Skill_Uninterruptible = new GameplayTag(137);
         /// <summary>Test</summary>
         public static readonly GameplayTag Tag_Test = new GameplayTag(107);
         /// <summary>Test.GE</summary>

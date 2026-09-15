@@ -164,13 +164,13 @@ namespace RPG.SkillSystem.Editor
                 {
                     item.FindPropertyRelative(DocumentFieldNames.ActionPhase).enumValueIndex =
                         (int)actionPhase.Phase;
-                    item.FindPropertyRelative(DocumentFieldNames.CanBeInterrupted).boolValue =
-                        actionPhase.CanBeInterrupted;
+                    item.FindPropertyRelative(DocumentFieldNames.AllowedTransitions).intValue =
+                        (int)actionPhase.AllowedTransitions;
                 });
         }
 
         /// <summary>
-        /// 复制动作阶段类型与打断设置，供复制操作共用。
+        /// 复制动作阶段类型与转换窗口设置，供复制操作共用。
         /// </summary>
         /// <param name="source">保持不变的源 Item。</param>
         /// <param name="destination">接收类型专用字段的新 Item。</param>
@@ -178,16 +178,17 @@ namespace RPG.SkillSystem.Editor
         {
             destination.FindPropertyRelative(DocumentFieldNames.ActionPhase).enumValueIndex =
                 source.FindPropertyRelative(DocumentFieldNames.ActionPhase).enumValueIndex;
-            destination.FindPropertyRelative(DocumentFieldNames.CanBeInterrupted).boolValue =
-                source.FindPropertyRelative(DocumentFieldNames.CanBeInterrupted).boolValue;
+            destination.FindPropertyRelative(DocumentFieldNames.AllowedTransitions).intValue =
+                source.FindPropertyRelative(DocumentFieldNames.AllowedTransitions).intValue;
         }
 
-        // 新建动作阶段默认为一帧前摇，并且不允许被外部逻辑打断。
+        // 新建动作阶段默认为一帧前摇，转换窗口需要由设计者明确开启。
         protected override void InitializeSpecificFields(SerializedProperty item)
         {
             item.FindPropertyRelative(DocumentFieldNames.ActionPhase).enumValueIndex =
                 (int)ActionPhaseType.Startup;
-            item.FindPropertyRelative(DocumentFieldNames.CanBeInterrupted).boolValue = false;
+            item.FindPropertyRelative(DocumentFieldNames.AllowedTransitions).intValue =
+                (int)SkillTransitionMask.None;
         }
     }
     /// <summary>

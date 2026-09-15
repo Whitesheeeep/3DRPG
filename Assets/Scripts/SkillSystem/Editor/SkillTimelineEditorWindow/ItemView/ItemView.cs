@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using RPG.SkillSystem.Editor;
 using UnityEngine.UIElements;
 
@@ -54,7 +55,7 @@ namespace RPG.SkillSystem.Editor
             _ => item.GetType().Name
         };
 
-        // 将动作阶段枚举转换为紧凑中文标题，并显式提示该阶段可被外部打断。
+        // 将动作阶段枚举转换为紧凑中文标题，并显示已开放的转换窗口。
         private static string GetActionPhaseDisplayName(ActionPhaseSkillClipConfig item)
         {
             string phase = item.Phase switch
@@ -65,7 +66,33 @@ namespace RPG.SkillSystem.Editor
                 ActionPhaseType.Recovery => "后摇",
                 _ => item.Phase.ToString()
             };
-            return item.CanBeInterrupted ? $"{phase} · 可打断" : phase;
+            string transitions = item.AllowedTransitions switch
+            {
+                SkillTransitionMask.None => string.Empty,
+                SkillTransitionMask.Move => "移",
+                SkillTransitionMask.Jump => "跳",
+                SkillTransitionMask.Ability => "技",
+                _ => string.Concat(
+                    item.AllowedTransitions.HasFlag(SkillTransitionMask.Move) ? "移/" : string.Empty,
+                    item.AllowedTransitions.HasFlag(SkillTransitionMask.Jump) ? "跳/" : string.Empty,
+                    item.AllowedTransitions.HasFlag(SkillTransitionMask.Ability) ? "技" : string.Empty).TrimEnd('/')
+            };
+            return string.IsNullOrEmpty(transitions) ? phase : $"{phase} · {transitions}";
+        }
+
+        /// <summary>
+        /// 将转换窗口位标记转换为 Inspector 与时间轴 Tooltip 共用的完整中文描述。
+        /// </summary>
+        /// <param name="transitions">当前动作阶段开放的转换窗口。</param>
+        /// <returns>转换窗口的中文名称；无权限时返回“无”。</returns>
+        protected static string GetActionPhaseTransitionDescription(SkillTransitionMask transitions)
+        {
+            if (transitions == SkillTransitionMask.None) return "无";
+            List<string> names = new();
+            if (transitions.HasFlag(SkillTransitionMask.Move)) names.Add("移动");
+            if (transitions.HasFlag(SkillTransitionMask.Jump)) names.Add("跳跃");
+            if (transitions.HasFlag(SkillTransitionMask.Ability)) names.Add("其他 Ability");
+            return string.Join("、", names);
         }
     }
 
@@ -119,6 +146,10 @@ namespace RPG.SkillSystem.Editor
                 ActionPhaseType.Recovery => "phase-recovery",
                 _ => "phase-none"
             });
+            Element.tooltip = $"阶段：{GetDisplayName(item)}\n" +
+                              $"起始帧：{item.StartFrame}\n" +
+                              $"持续帧：{item.DurationFrames}\n" +
+                              $"允许转换：{GetActionPhaseTransitionDescription(item.AllowedTransitions)}";
         }
     }
     /// <summary>

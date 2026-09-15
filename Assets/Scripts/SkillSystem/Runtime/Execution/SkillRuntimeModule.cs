@@ -47,7 +47,8 @@ namespace RPG.SkillSystem
         public ActionPhaseType CurrentPhase => execution?.CurrentPhase ?? ActionPhaseType.None;
 
         /// <inheritdoc />
-        public bool CanBeInterrupted => execution?.CanBeInterrupted ?? false;
+        public SkillTransitionMask AllowedTransitions =>
+            execution?.AllowedTransitions ?? SkillTransitionMask.None;
 
         /// <inheritdoc />
         public float PlaybackSpeed => playbackSpeed;
@@ -192,7 +193,7 @@ namespace RPG.SkillSystem
         }
 
         /// <summary>将当前执行同帧生效的动作阶段快照发送给 Module 监听者。</summary>
-        /// <param name="args">阶段、帧和可打断状态快照。</param>
+        /// <param name="args">阶段、帧和转换窗口快照。</param>
         private void PublishActionPhaseChanged(SkillActionPhaseChangedEventArgs args)
         {
             ActionPhaseChanged?.Invoke(args);

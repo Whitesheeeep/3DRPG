@@ -198,8 +198,12 @@ namespace WS_Modules.GAS.Editor
             RefreshAssets(request.Ability);
         }
 
-        // 原生 SerializedObject 写回后重新校验当前资产。
-        private void OnAbilityChanged() => ScheduleValidation(ValidationRequestScope.Current);
+        /// <summary>处理原生 SerializedObject 写回，刷新显示并重新校验当前资产。</summary>
+        private void OnAbilityChanged()
+        {
+            RenderList();
+            ScheduleValidation(ValidationRequestScope.Current);
+        }
 
         // Undo/Redo 后重新绑定，避免继续使用旧 SerializedProperty。
         private void OnUndoRedo() => ScheduleAssetRefresh(currentAbility);
@@ -236,7 +240,7 @@ namespace WS_Modules.GAS.Editor
             allAbilities.AddRange(service.FindAllAbilities());
         }
 
-        // 搜索只匹配资产名与路径，并保持 Service 排序。
+        // 搜索匹配业务显示名、资产名和路径，并保持 Service 排序。
         private void ApplyFilter()
         {
             filteredAbilities.Clear();
@@ -245,6 +249,7 @@ namespace WS_Modules.GAS.Editor
             {
                 GameplayAbilityData ability = allAbilities[i];
                 if (string.IsNullOrEmpty(query) ||
+                    ability.Name.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ||
                     ability.name.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ||
                     AssetDatabase.GetAssetPath(ability).IndexOf(
                         query, StringComparison.OrdinalIgnoreCase) >= 0)

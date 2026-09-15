@@ -43,6 +43,6 @@ namespace RPG.SkillSystem
     internal interface IActionPhaseRuntimeState
     {
         ActionPhaseType CurrentPhase { get; }
-        bool CanBeInterrupted { get; }
+        SkillTransitionMask AllowedTransitions { get; }
     }
 }

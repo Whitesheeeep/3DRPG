@@ -49,17 +49,17 @@ MonoBehaviour:
     startFrame: 0
     durationFrames: 8
     phase: 1
-    canBeInterrupted: 0
+    allowedTransitions: 0
   - id: ac5d5c5d9d7e4d089a1ea2e389ed5d01
     startFrame: 8
     durationFrames: 6
     phase: 2
-    canBeInterrupted: 0
+    allowedTransitions: 0
   - id: 787964fdf1344c1bac7f208eb9245693
     startFrame: 14
     durationFrames: 18
     phase: 3
-    canBeInterrupted: 1
+    allowedTransitions: 7
 --- !u!114 &-3908211605310873526
 MonoBehaviour:
   m_ObjectHideFlags: 1
