@@ -33,6 +33,7 @@ namespace RPG.Character
         [SerializeField] private AnimationController animationController;
         [SerializeField] private CharacterLocomotionStateMachine locomotion = new();
         private readonly CharacterCombatSystem combatSystem = new();
+        private CharacterActionArbiter actionArbiter;
 
         // Player 注入的稳定运行时依赖，不随角色切换重新创建。
         private Transform characterRoot;
@@ -122,6 +123,9 @@ namespace RPG.Character
         }
         /// <inheritdoc />
         public IMotionDriver MotionDriver => motionDriver;
+        /// <inheritdoc />
+        public IFullBodyActionArbiter FullBodyActionArbiter => actionArbiter ??
+            throw new InvalidOperationException($"角色 '{name}' 尚未完成 Action Arbiter 初始化。");
 
         #endregion
 
@@ -130,8 +134,20 @@ namespace RPG.Character
         /// <summary>在角色包装 Prefab 的真实序列化边界解析并校验必需依赖。</summary>
         private void Awake() => EnsureDependencies();
 
-        /// <summary>在所有 ASC Awake 完成后导入属性并授予角色配置的初始技能。</summary>
-        private void Start() => InitializeFromConfig();
+        /// <summary>在 Player 已完成运行时绑定时，作为幂等兜底导入属性并组装角色业务。</summary>
+        private void Start()
+        {
+            // 正式入口由 PlayerController 初始化流程调用；Player 初始化失败时不能再制造缺少 Locomotion 依赖的次生异常。
+            if (stateBlackboard != null)
+                InitializeFromConfig();
+        }
+
+        /// <summary>销毁角色时释放 FullBody Action 注册并归还共享 Blackboard 占据。</summary>
+        private void OnDestroy()
+        {
+            actionArbiter?.Dispose();
+            actionArbiter = null;
+        }
 
         /// <summary>在父级 PlayerController 先于子角色 Awake 时也能同步解析依赖。</summary>
         private void EnsureDependencies()
@@ -187,6 +203,12 @@ namespace RPG.Character
             config.Validate();
             InitializeConfiguredAttributes();
             combatSystem.Initialize(abilitySystemComponent, config.CombatConfig);
+            actionArbiter = new CharacterActionArbiter(
+                this,
+                stateBlackboard,
+                combatSystem,
+                abilitySystemComponent,
+                locomotion.GroundedJumpTransitionQueryService);
             runtimeConfigurationInitialized = true;
         }
 
@@ -262,12 +284,13 @@ namespace RPG.Character
         /// <param name="deltaTime">本帧缩放时间。</param>
         internal void TickAbility(float deltaTime) => abilitySystemComponent.Tick(deltaTime);
 
-        /// <summary>把当前角色的技能与普通攻击 Request 交给独立 CombatSystem 处理。</summary>
+        /// <summary>先推进连段时间，再由角色 Action Arbiter 按 Ability、Jump、Move 顺序处理输入。</summary>
         /// <param name="inputRequests">提供战斗 Request 的输入缓冲区。</param>
-        /// <param name="deltaTime">本帧缩放时间，用于推进连段索引保留时间。</param>
-        internal void ProcessCombatInputRequests(IPlayerInputRequestBuffer inputRequests, float deltaTime)
+        /// <param name="deltaTime">本帧缩放时间。</param>
+        internal void AdvanceActionFrame(IPlayerInputRequestBuffer inputRequests, float deltaTime)
         {
-            combatSystem.ProcessInputRequests(inputRequests, deltaTime);
+            combatSystem.AdvanceFrame(deltaTime);
+            actionArbiter.ArbitrateFrame(inputRequests);
         }
 
         /// <summary>推进当前角色 ASC 物理阶段。</summary>

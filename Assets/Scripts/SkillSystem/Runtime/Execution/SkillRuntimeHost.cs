@@ -81,6 +81,7 @@ namespace RPG.SkillSystem
         private void Awake()
         {
             Transform resolvedOrigin = origin != null ? origin : transform;
+            animationController ??= GetComponentInChildren<AnimationController>();
             var actor = new SkillActorContext(
                 gameObject,
                 resolvedOrigin,

@@ -280,7 +280,8 @@ namespace RPG.Character
             if (!IsReady) return;
             if (inputRequests == null) throw new ArgumentNullException(nameof(inputRequests));
             CharacterActor active = ActiveCharacter ?? throw new InvalidOperationException("[CharacterManager] Ready 状态缺少 ActiveCharacter。");
-            active.ProcessCombatInputRequests(inputRequests, deltaTime);
+            // Action Arbiter 必须先于 Locomotion Tick；Jump 取消 GA 后，本帧原有 FSM Transition 即可提交目标路径。
+            active.AdvanceActionFrame(inputRequests, deltaTime);
             active.Locomotion.Tick(deltaTime);
         }
 

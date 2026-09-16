@@ -22,7 +22,7 @@ flowchart LR
 
 `SkillRuntimeModule`负责技能时间轴状态和单次执行所有权，但不依赖 `MonoBehaviour`或任何全局更新器。调用方必须按 Unity 阶段分别调用 `Tick(deltaTime)`和`LateTick()`；同一个 Module 只能由一个调用方驱动，避免重复推进帧、事件和攻击检测。
 
-`SkillRunner`只是在 `Update/LateUpdate`中转发帧驱动的默认 MonoBehaviour 适配器。是否能释放、是否能打断以及结束后进入哪个状态，均由外部状态机决定。动画 Handler 通过角色 `IAnimationPlayer`在固定语义层播放，并在技能结束时有意不停止该层或恢复 Locomotion。
+`SkillRunner`只是在 `Update/LateUpdate`中转发帧驱动的默认 MonoBehaviour 适配器。是否能释放、是否能打断以及结束后进入哪个状态，均由外部状态机决定。动画 Handler 通过角色 `IAnimationPlayer`在固定语义层播放，并在 SkillExecution 结束时立即停止本次技能层；它不负责恢复或重路由 Locomotion。
 
 每次 `SkillExecution`都会创建 ActionPhase、Animation、AttackDetection、VFX、Audio 和 Event 六个独立 Handler。每个 Handler 在初始化时按 `SkillConfig.Tracks`物理顺序收集自己的全部同类型未静音轨道；执行期间 Config 视为不可变，不会动态重新收集。不同技能执行不会共享命中记录、特效实例或音频句柄。
 
@@ -126,15 +126,20 @@ GAS 集成基准使用现有 30 FPS、35 帧 `SkillConfig.asset`。ASC Tester �
 立即重播、命中 Effect 与命中点 Execute Cue。占用共享 Host 的主动技能统一配置
 `Ability.Action.Skill` 到 `AbilityTags` 与 `CancelTags`；配置第二个 SkillConfig GA 后可执行互相打断测试。
 
-阶段 Handler 会在普通逻辑帧中发布动作阶段与 `AllowedTransitions` 变化。该数据只属于具体 `SkillRuntime`，供后续 FullBody Action Execution 与 Arbiter 观察，不再投影为 Source ASC 的 Phase 或 Interrupt GameplayTag。Ability 候选仍通过现有 GAS `TryActivateAbility` 判断，移动和跳跃转换由后续业务执行器处理。
+阶段 Handler 会在普通逻辑帧中发布动作阶段与 `AllowedTransitions` 变化。该数据只属于具体 `SkillRuntime`，不再投影为 Source ASC 的 Phase 或 Interrupt GameplayTag。`PlaySkillConfigGameplayAbilityTask` 在时间轴成功启动后注册 FullBody 执行，并用该事件更新注册 Handle 的转换权限；Phase 名称本身不会写入 Blackboard。
 
 ```mermaid
 flowchart LR
     Config["SkillConfig ActionPhase"] --> Runtime["SkillRuntime Phase + AllowedTransitions"]
-    Runtime --> Execution["未来 FullBody Action Execution"]
-    Execution --> Arbiter["未来 Action Arbiter"]
+    Runtime --> Task["PlaySkillConfig Task"]
+    Task --> Execution["FullBody Skill Execution"]
+    Execution --> Arbiter["CharacterActionArbiter"]
     Arbiter --> GAS["Ability: TryActivateAbility"]
+    Arbiter --> Jump["Grounded Jump 预检后 TryCancelAbility"]
+    Arbiter --> Move["Move 窗口 TryCancelAbility"]
 ```
+
+FullBody 注册存在的整个生命周期中，Blackboard 的占据保持为 true；开放 Jump 或 Move 只表示允许尝试转换，不等于归还占据。只有 GA 自然结束、停止、取消或启动回滚使 Task 释放注册 Handle 后，占据才恢复为 false。Locomotion 始终在 Skill 表现层下方推进，技能结束不执行额外的 Locomotion 恢复路由。AnimationRuntimeHandler 在同一结束链路中调用 `IAnimationPlayer.StopLayer`，由 AnimationController 立即停止 Action 层并显露底层 Locomotion。
 
 在场景对象上挂载 `SkillRuntimeOdinTester`，配置 Runner、Owner、Origin、Animancer、SkillConfig 和可选武器节点，然后依次使用：
 

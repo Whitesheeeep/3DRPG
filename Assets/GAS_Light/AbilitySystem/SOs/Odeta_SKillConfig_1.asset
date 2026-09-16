@@ -18,9 +18,9 @@ MonoBehaviour:
   editorLocked: 0
   clips:
   - id: 9c0c21058221482b98cf387a10a48e7c
-    audioClip: {fileID: 0}
-    startFrame: 12
-    durationFrames: 31
+    audioClip: {fileID: 8300000, guid: fa74ec4c0ce45b141ba123657f24ec77, type: 3}
+    startFrame: 1
+    durationFrames: 23
     volume: 1
     pitch: 1
 --- !u!114 &-850609102259527907
@@ -41,7 +41,7 @@ MonoBehaviour:
   editorLocked: 0
   markers:
   - id: 6919ef21779e4c3cae42e8c6ea10e9c5
-    frame: 22
+    frame: 16
     eventKey: 
     displayName: "\u4E8B\u4EF6"
     valueType: 2
@@ -70,18 +70,23 @@ MonoBehaviour:
   editorLocked: 0
   clips:
   - id: 14291d9299c44c48ad67fedf8c240e96
-    startFrame: 7
-    durationFrames: 43
+    startFrame: 3
+    durationFrames: 21
     sampleIntervalFrames: 1
     detectionData:
-      rid: 2645454963230113796
+      rid: 2645455034387267589
   references:
     version: 2
     RefIds:
-    - rid: 2645454963230113796
-      type: {class: WeaponTraceAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+    - rid: 2645455034387267589
+      type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
-        samplePointCount: 5
+        localPosition: {x: 0.11156896, y: 0.46572793, z: 0.5871822}
+        localEulerAngles: {x: 0, y: 0, z: 0}
+        innerRadius: 0
+        outerRadius: 2
+        angle: 90
+        height: 1
 --- !u!114 &-299868827217895477
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -99,11 +104,11 @@ MonoBehaviour:
   displayName: "\u52A8\u4F5C\u9636\u6BB5\u8F68\u9053"
   editorLocked: 0
   clips:
-  - id: 1469fc76e6ba4ec7b0258ad93a9500bf
+  - id: 44e979f7a67647679f225f88dc3c551d
     startFrame: 0
-    durationFrames: 19
-    phase: 3
-    allowedTransitions: 7
+    durationFrames: 29
+    phase: 1
+    allowedTransitions: 0
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -118,7 +123,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: 11c77f7f583a4921ad1a107af6aa94d8
   frameRate: 30
-  durationFrames: 73
+  durationFrames: 30
   isRootMotion: 1
   tracks:
   - {fileID: -299868827217895477}
@@ -144,12 +149,12 @@ MonoBehaviour:
   displayName: "\u52A8\u753B\u8F68\u9053"
   editorLocked: 0
   clips:
-  - id: 3a765735a8654dd9b4f1f6703b8bc970
-    animationClip: {fileID: 5466991960231897988, guid: dce69131e88561a45835a76fd90ef6e7, type: 3}
+  - id: 5a9223bf105048a1b9bae6f497e8c5ec
+    animationClip: {fileID: 4960409498807354063, guid: 506e94c4333125c42aa1194fcc9a92cd, type: 3}
     startFrame: 0
-    durationFrames: 73
+    durationFrames: 30
     sourceStartFrame: 0
-    playbackSpeed: 1.55
+    playbackSpeed: 1
     fadeDuration: 0.1
 --- !u!114 &4149497598512427746
 MonoBehaviour:
@@ -170,8 +175,8 @@ MonoBehaviour:
   clips:
   - id: e10711ea585c4ea8abf8f23b3bff3755
     prefab: {fileID: 0}
-    markerKey: {fileID: 0}
-    startFrame: 16
+    markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
+    startFrame: 3
     durationFrames: 24
     localPosition: {x: 0, y: 0, z: 0}
     localEulerAngles: {x: 0, y: 0, z: 0}

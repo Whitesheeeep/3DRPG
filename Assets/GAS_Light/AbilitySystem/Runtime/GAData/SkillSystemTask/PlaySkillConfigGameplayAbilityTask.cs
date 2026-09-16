@@ -17,6 +17,8 @@ namespace RPG.SkillSystem
         private bool subscribed;
         private IMotionDriver motionDriver;
         private MotionControlHandle motionHandle;
+        private IFullBodyActionArbiter fullBodyActionArbiter;
+        private FullBodyActionHandle fullBodyActionHandle;
 
         #endregion
 
@@ -73,20 +75,44 @@ namespace RPG.SkillSystem
                 motionChannels));
 
             Subscribe();
-            SkillStartResult result = host.TryPlay(skillConfig);
-            if (result.Succeeded) return;
+            try
+            {
+                SkillStartResult result = host.TryPlay(skillConfig);
+                if (result.Succeeded)
+                {
+                    // SkillRuntimeHost 已经成功取得表现层后再发布占据，避免播放失败留下虚假的 FullBody 状态。
+                    fullBodyActionArbiter = skillOwner.FullBodyActionArbiter ??
+                        throw new InvalidOperationException(
+                            $"Ability '{Runtime.Data.name}' 的角色未绑定 FullBody Action Arbiter。");
+                    fullBodyActionHandle = fullBodyActionArbiter.RegisterFullBodyAction(
+                        Runtime,
+                        host.AllowedTransitions);
+                    return;
+                }
 
-            Debug.Log(
-                $"Ability '{Runtime.Data.name}' 无法播放 SkillConfig：{result.Message}",
-                Runtime.SourceASC);
-            Unsubscribe();
-            Complete();
+                Debug.Log(
+                    $"Ability '{Runtime.Data.name}' 无法播放 SkillConfig：{result.Message}",
+                    Runtime.SourceASC);
+                Unsubscribe();
+                Complete();
+            }
+            catch
+            {
+                // 时间轴启动与 FullBody 注册属于同一事务；异常不能遗留事件、运动权或 Blackboard 占据。
+                Unsubscribe();
+                ReleaseFullBodyAction();
+                ReleaseMotion();
+                host.Cancel();
+                Complete();
+                throw;
+            }
         }
 
         /// <summary>正常提前结束时停止属于当前 Task 的共享时间轴。</summary>
         protected override void OnStop()
         {
             Unsubscribe();
+            ReleaseFullBodyAction();
             ReleaseMotion();
             host?.Stop();
         }
@@ -95,6 +121,7 @@ namespace RPG.SkillSystem
         protected override void OnCancel()
         {
             Unsubscribe();
+            ReleaseFullBodyAction();
             ReleaseMotion();
             host?.Cancel();
         }
@@ -103,6 +130,7 @@ namespace RPG.SkillSystem
         protected override void OnComplete()
         {
             Unsubscribe();
+            ReleaseFullBodyAction();
             ReleaseMotion();
         }
 
@@ -135,6 +163,17 @@ namespace RPG.SkillSystem
         {
             if (args.Reason != SkillCompletionReason.Natural || args.Config != skillConfig) return;
             Complete();
+        }
+
+        /// <summary>把 SkillRuntime 的原生 Phase 转换权限同步到当前 FullBody 注册。</summary>
+        /// <param name="args">已经去重发布的阶段与转换权限快照。</param>
+        private void OnActionPhaseChanged(SkillActionPhaseChangedEventArgs args)
+        {
+            if (args.Config != skillConfig)
+                return;
+
+            // Phase 本身不进入 Blackboard；Handle 只把当前允许尝试的转换类型交给 Action Arbiter。
+            fullBodyActionHandle?.UpdateAllowedTransitions(args.AllowedTransitions);
         }
 
         /// <summary>把 SkillSystem 去重后的命中映射为当前 GA 的 Effects 与 Execute Cue。</summary>
@@ -178,11 +217,12 @@ namespace RPG.SkillSystem
                 Runtime.SourceASC);
         }
 
-        /// <summary>订阅当前共享 Module 的完成、命中与投射物事件。</summary>
+        /// <summary>订阅当前共享 Module 的完成、Phase、命中与投射物事件。</summary>
         private void Subscribe()
         {
             if (subscribed) return;
             host.Completed += OnSkillCompleted;
+            host.ActionPhaseChanged += OnActionPhaseChanged;
             host.HitDetected += OnSkillHit;
             host.ProjectileSpawnRequested += OnProjectileSpawnRequested;
             subscribed = true;
@@ -193,6 +233,7 @@ namespace RPG.SkillSystem
         {
             if (!subscribed || host == null) return;
             host.Completed -= OnSkillCompleted;
+            host.ActionPhaseChanged -= OnActionPhaseChanged;
             host.HitDetected -= OnSkillHit;
             host.ProjectileSpawnRequested -= OnProjectileSpawnRequested;
             subscribed = false;
@@ -204,6 +245,14 @@ namespace RPG.SkillSystem
             motionHandle?.Dispose();
             motionHandle = null;
             motionDriver = null;
+        }
+
+        /// <summary>幂等注销当前 Skill 的 FullBody 执行并归还共享 Blackboard 占据。</summary>
+        private void ReleaseFullBodyAction()
+        {
+            fullBodyActionHandle?.Dispose();
+            fullBodyActionHandle = null;
+            fullBodyActionArbiter = null;
         }
 
         #endregion

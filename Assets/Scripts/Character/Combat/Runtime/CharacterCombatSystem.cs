@@ -91,30 +91,36 @@ namespace RPG.Character
 
         #region 输入处理
 
-        /// <summary>按技能优先、普通攻击随后顺序处理当前角色的缓存 Press。</summary>
-        /// <param name="inputRequests">玩家输入请求缓冲区。</param>
-        /// <param name="deltaTime">本帧缩放时间，用于推进连段索引保留时间。</param>
-        /// <exception cref="ArgumentNullException">输入缓冲为空时抛出。</exception>
+        /// <summary>推进普通攻击连段保留时间，不读取或消费本帧 Ability 输入。</summary>
+        /// <param name="deltaTime">本帧缩放时间。</param>
         /// <exception cref="ArgumentOutOfRangeException">帧时间不是非负有限值时抛出。</exception>
         /// <exception cref="InvalidOperationException">系统尚未初始化时抛出。</exception>
-        internal void ProcessInputRequests(IPlayerInputRequestBuffer inputRequests, float deltaTime)
+        internal void AdvanceFrame(float deltaTime)
+        {
+            if (!initialized) throw new InvalidOperationException("CharacterCombatSystem 尚未初始化。");
+            if (float.IsNaN(deltaTime) || float.IsInfinity(deltaTime) || deltaTime < 0f)
+                throw new ArgumentOutOfRangeException(nameof(deltaTime), deltaTime, "战斗帧时间必须是非负有限值。");
+            AdvanceComboRetention(deltaTime);
+        }
+
+        /// <summary>按技能优先、普通攻击随后顺序尝试执行一个 Ability Press。</summary>
+        /// <param name="inputRequests">玩家输入请求缓冲区。</param>
+        /// <returns>本帧有 Ability 成功激活并消费 Press 时返回 true。</returns>
+        /// <exception cref="ArgumentNullException">输入缓冲为空时抛出。</exception>
+        /// <exception cref="InvalidOperationException">系统尚未初始化时抛出。</exception>
+        internal bool TryExecuteAbilityInput(IPlayerInputRequestBuffer inputRequests)
         {
             if (!initialized) throw new InvalidOperationException("CharacterCombatSystem 尚未初始化。");
             if (inputRequests == null) throw new ArgumentNullException(nameof(inputRequests));
-            if (float.IsNaN(deltaTime) || float.IsInfinity(deltaTime) || deltaTime < 0f)
-                throw new ArgumentOutOfRangeException(nameof(deltaTime), deltaTime, "战斗帧时间必须是非负有限值。");
-
-            ProcessSkillInputRequests(inputRequests);
-            bool normalAttackActivated = ProcessNormalAttackInput(inputRequests);
-
-            // 成功激活的帧已经把窗口重置为完整时长，不在同一帧立刻扣除一次 deltaTime。
-            if (!normalAttackActivated)
-                AdvanceComboRetention(deltaTime);
+            return ProcessSkillInputRequests(inputRequests) || ProcessNormalAttackInput(inputRequests);
         }
 
-        /// <summary>按角色配置顺序尝试技能槽位，并仅在 GAS 接受激活后消费 Press。</summary>
+        // 技能输入按配置顺序尝试激活，首个成功激活后立即返回 true 并消费 Press；未成功激活时不消费 Press。
+
+        /// <summary>按角色配置顺序尝试技能槽位，并在首个成功激活后停止。</summary>
         /// <param name="inputRequests">玩家输入请求缓冲区。</param>
-        private void ProcessSkillInputRequests(IPlayerInputRequestBuffer inputRequests)
+        /// <returns>本帧有技能成功激活并消费 Press 时返回 true。</returns>
+        private bool ProcessSkillInputRequests(IPlayerInputRequestBuffer inputRequests)
         {
             IReadOnlyList<CharacterAbilityInputBinding> bindings = combatConfig.SkillInputBindings;
             for (int index = 0; index < bindings.Count; index++)
@@ -126,8 +132,12 @@ namespace RPG.Character
 
                 GameplayAbilityHandle handle = skillAbilityHandleByInputMap[binding.InputType];
                 if (abilitySystemComponent.TryActivateAbility(handle, out _))
+                {
                     inputRequests.TryConfirmConsumed(request.PressHandle);
+                    return true;
+                }
             }
+            return false;
         }
 
         /// <summary>冻结当前 Primary Press 的目标段位，并尝试激活对应普通攻击。</summary>

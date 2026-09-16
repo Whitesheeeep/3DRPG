@@ -140,25 +140,25 @@ namespace WS_Modules.GAS.GameplayEffect
             out GameEffectRuntime activeEffect)
         {
             activeEffect = null;
-            var runtime = new GameEffectRuntime(geData, source, Owner, level, setByCaller);
+            var gameEffectRuntime = new GameEffectRuntime(geData, source, Owner, level, setByCaller);
             bool needsImmediateCalculation = !geData.IsPeriodic || geData.ExecutePeriodicOnApplication;
             List<AttributeModifier> results = needsImmediateCalculation
-                ? runtime.CalculateModifiers(runtime)
+                ? gameEffectRuntime.CalculateModifiers(gameEffectRuntime)
                 : null;
 
             // 不为 Periodic GE 时，即为 Infinite GE，那就应该替换其 Modifier；
             bool numericApplied = geData.IsPeriodic
                 ? !geData.ExecutePeriodicOnApplication || Owner.MutableAttributes.TryApplyInstantModifiers(results)
-                : Owner.MutableAttributes.TryReplaceModifiers(runtime, results);
+                : Owner.MutableAttributes.TryReplaceModifiers(gameEffectRuntime, results);
             if (!numericApplied) return false;
 
             AddGrantedTags(geData);
-            runtime.SetActive(true);
-            activeEffects.Add(runtime);
-            activeEffect = runtime;
-            PublishCues(geData, GameplayCueEventType.Active, source, runtime, null);
+            gameEffectRuntime.SetActive(true);
+            activeEffects.Add(gameEffectRuntime);
+            activeEffect = gameEffectRuntime;
+            PublishCues(geData, GameplayCueEventType.Active, source, gameEffectRuntime, null);
             if (geData.IsPeriodic && geData.ExecutePeriodicOnApplication)
-                PublishCues(geData, GameplayCueEventType.Execute, source, runtime, null);
+                PublishCues(geData, GameplayCueEventType.Execute, source, gameEffectRuntime, null);
             return true;
         }
 

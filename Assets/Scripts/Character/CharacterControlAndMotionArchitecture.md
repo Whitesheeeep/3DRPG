@@ -139,7 +139,7 @@ PlayerController 的初始化任务在所有角色和 ASC 完成 `Awake` 后执�
 2. `InputIntentArbiterManager.ArbitrateFrame(cameraTransform)` 转换需要复杂空间处理的连续 Move。
 3. PlayerController 执行仍存在的对话/角色阻断门禁；通过后调用 `CharacterManager.ProcessSwitchInputRequests(inputController)`。
 4. CharacterManager 重新读取切换后的 ActiveCharacter。
-5. `CharacterManager.AdvanceActiveFrame(inputController, Time.deltaTime)` 让当前 CharacterActor 的 CombatSystem 先处理技能和普攻连段 Request，再推进 Locomotion。
+5. `CharacterManager.AdvanceActiveFrame(inputController, Time.deltaTime)` 先推进当前角色 CombatSystem 的连段时间，再由 CharacterActionArbiter 按 Ability、Jump、Move 仲裁，最后推进 Locomotion。
 6. Locomotion 通过 CharacterActor 的 Blackboard 引用读取 `MoveWorldInput`，Walk/Run 在 Update 阶段向 MotionDriver 提交普通移动。
 7. PlayerController 调用 `MotionDriver.ResolveUpdateMotion()`，完成本次 Update 的控制权仲裁和唯一移动出口。
 
@@ -204,6 +204,7 @@ Blackboard 保留：
 - 通用 Frame IntentTag；
 - Intent 来源 Handle 映射；
 - `IntentSourceConsumed` 消费回传链路。
+- `IsFullBodyActionOccupied`，只记录当前角色是否存在真实 FullBody Action，不保存 Phase 或转换权限；
 - `IsGrounded`、`GroundNormal`、`GroundDistance`；
 - `IsCeilingBlocked`、`CeilingNormal`、`CeilingDistance`；
 - `TimeSinceGrounded`、`ObservedVerticalSpeed`、`ObservedPlanarVelocity` 和 `CurrentFallHeight`。
@@ -233,6 +234,31 @@ FallLand 根据 `CurrentFallHeight` 在配置的 1h/2h/3h 动画中选择，Walk
 角色战斗输入不经过 Frame Intent。`CharacterConfig.CombatConfig` 保存有序普通攻击列表和 Secondary、Skill1-4 技能槽位；PlayerController.Start（以及 CharacterActor.Start 的幂等兜底）在 ASC 完成 Awake 后初始化属性，再让每个 CharacterActor 自己的 CombatSystem 去重授予 Ability，并建立普攻顺序与技能输入到 `GameplayAbilityHandle` 的运行时索引。
 
 CombatSystem 不等待前一段普攻的 AbilityEnded。缓存 Primary 到达后立即向 GAS 尝试下一段；激活失败时冻结该 PressHandle 对应的段位且不确认输入，让 Cooldown、Cost、Tag 或能力阶段在原输入 Buffer 有效期内继续重试。成功后才推进索引并刷新一秒连段保留时间，最后一段循环回第一段。角色切到后台时清除该角色的连段运行时，但不取消 ASC Ability。
+
+## FullBody Action 覆盖与 Grounded Jump 打断
+
+FullBody Skill 不停用或重路由 Locomotion。Base FSM、环境检测、状态 Tag、重力和 Locomotion 运动请求持续推进；Skill 动画层与 Skill 优先级运动请求只在最终表现和运动通道上覆盖它们。技能退出后直接显露一直运行的 Base 状态，不强制进入 Idle。
+
+```mermaid
+flowchart TD
+    Task["PlaySkillConfig Task"] -->|播放成功后注册| Action["CharacterActionArbiter"]
+    Action -->|占据 true/false| BB["PlayerStateBlackboard"]
+    Phase["SkillRuntime AllowedTransitions"] -->|Handle 更新| Action
+    Input["Ability / Jump / Move 输入"] --> Action
+    Action --> Ability["Ability Execution"]
+    Action --> Jump["Jump Execution"]
+    Action --> Move["Move Execution"]
+    Jump --> Query["GroundedJumpTransitionQueryService"]
+    Query -->|复用现有条件与 PreparedTraversalAttempt| FSM["Grounded FSM"]
+    Jump -->|路径可用才取消| GAS["ASC TryCancelAbility"]
+    GAS -->|Task 清理并注销| Action
+    Action -->|占据 false| BB
+    BB -->|同帧正常 Tick| FSM
+```
+
+Action 候选顺序固定为 Ability、Jump、Move。Ability 仍通过 GAS 的完整激活流程决定是否成功；失败后才继续检查 Jump。Jump Execution 仅在 Grounded 根分支、真实接地、存在缓冲 Press 且 Vault、Mantle 或普通 Jump 至少一条完整路径可进入时取消 GA，不直接切状态或消费输入。随后原有 FSM Transition 再次检查条件并在提交成功后消费 Press。
+
+所有 Jump Request 驱动的 Vault、Mantle 和 JumpMotion Transition 都先检查 `!IsFullBodyActionOccupied`，因此 FullBody 占据期间不会提前冻结执行、设置垂直速度或消费 Jump。Fall、Landing、ExternalLaunch 和不依赖 Jump Request 的环境转换不受该门禁影响。本阶段不允许 Traversal 或 Airborne 中的技能被 Jump 打断。
 
 ```mermaid
 flowchart LR

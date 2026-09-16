@@ -218,7 +218,7 @@ namespace RPG.SkillSystem
             execution = null;
             completedExecution.Complete(reason);
 
-            // 动画退出由外部状态机负责，Module 只发送已结束执行的不可变上下文。
+            // 各轨道已在 Complete 中释放自己的资源；动画轨道已经通过 IAnimationPlayer 停止技能层。
             Completed?.Invoke(new SkillCompletedEventArgs(
                 completedExecution.ExecutionId,
                 completedExecution.Config,

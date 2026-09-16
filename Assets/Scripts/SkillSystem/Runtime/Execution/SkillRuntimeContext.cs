@@ -6,7 +6,7 @@ using UnityEngine;
 namespace RPG.SkillSystem
 {
     /// <summary>
-    /// 保存 SkillRuntimeModule 初始化后稳定不变的角色依赖；动画退出策略仍由外部状态机负责。
+    /// 保存 SkillRuntimeModule 初始化后稳定不变的角色依赖；技能动画层的停止由 IAnimationPlayer 统一处理。
     /// </summary>
     public readonly struct SkillActorContext
     {
@@ -22,7 +22,7 @@ namespace RPG.SkillSystem
         /// <param name="owner">施法者根对象。</param>
         /// <param name="origin">普通检测和空 Marker VFX 使用的空间基准。</param>
         /// <param name="animationPlayer">播放技能动画的角色动画服务；无动画角色可为空。</param>
-        /// <param name="skillAnimationLayer">技能动画使用的固定层，技能结束时不会由运行时 Module 停止该层。</param>
+        /// <param name="skillAnimationLayer">技能动画使用的固定层；运行时动画处理器结束执行时通过 IAnimationPlayer 停止该层。</param>
         /// <param name="markerProvider">解析 VFX 语义挂点的实例 Provider；仅使用根节点时可为空。</param>
         /// <exception cref="ArgumentNullException">Owner 或 Origin 为空。</exception>
         public SkillActorContext(GameObject owner, Transform origin, IAnimationPlayer animationPlayer,

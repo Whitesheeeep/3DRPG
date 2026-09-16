@@ -24,6 +24,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         /// <inheritdoc />
         public IMotionDriver MotionDriver => motionDriver;
 
+        /// <inheritdoc />
+        public IFullBodyActionArbiter FullBodyActionArbiter => null;
+
         /// <summary>缓存测试对象根节点的 Marker Provider。</summary>
         private void Awake()
         {

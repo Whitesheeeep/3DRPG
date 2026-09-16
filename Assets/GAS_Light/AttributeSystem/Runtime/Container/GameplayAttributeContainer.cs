@@ -480,14 +480,16 @@ namespace WS_Modules.GAS.AttributeSystem
             EnsureTransientState();
             if (source == null || modifiers == null || changeTransaction.IsProcessing) return false;
 
+            // newDefinitions 与 modifiers 一一对应，保证后续提交 CurrentValue 时能正确匹配。
             var newDefinitions = new List<GameplayAttributeDefinition>(modifiers.Count);
             var uniqueModifiers = new HashSet<AttributeModifier>();
+            // 过滤重复 Modifier、非法 Modifier、归属错误、目标 Attribute 不存在或非 Stat、Override 冲突等问题。
             for (int i = 0; i < modifiers.Count; i++)
             {
                 AttributeModifier modifier = modifiers[i];
+                // Modifier 必须合法、未归属 Container、未重复、来源正确、目标 Attribute 存在且为 Stat，且不与本次列表前段的 Override 冲突。
                 if (modifier == null || !modifier.IsValid() || modifier.Owner != null ||
                     !uniqueModifiers.Add(modifier) ||
-                    !ReferenceEquals(modifier.Source, source) ||
                     !TryGetDefinition(modifier.Attribute, out GameplayAttributeDefinition definition) ||
                     definition.Type != GameplayAttributeType.Stat ||
                     (modifier.Type == AttributeModifierType.Override &&
@@ -503,6 +505,7 @@ namespace WS_Modules.GAS.AttributeSystem
             try
             {
                 var affected = new List<GameplayAttributeDefinition>();
+                // 先移除源自 source 的全部 Modifier，收集受影响的 Definition。
                 for (int i = 0; i < attributes.Count; i++)
                 {
                     GameplayAttributeDefinition definition = attributes[i];
@@ -513,6 +516,7 @@ namespace WS_Modules.GAS.AttributeSystem
                     AddAffectedDefinition(affected, definition);
                 }
 
+                // 将新 Modifier 添加到对应 Definition 的 Aggregator，并收集受影响的 Definition。
                 for (int i = 0; i < modifiers.Count; i++)
                 {
                     AttributeModifier modifier = modifiers[i];

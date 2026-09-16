@@ -223,7 +223,7 @@ namespace RPG.PlayerInputSystem
                 if (action == null && fallbackAsset != null && !string.IsNullOrWhiteSpace(binding.ActionName))
                     action = fallbackAsset.FindAction(binding.ActionName, false);
                 if (action == null)
-                    throw new InvalidOperationException($"输入绑定 {i} 缺少有效 InputActionReference 或 ActionName。");
+                    throw new InvalidOperationException($"输入绑定 {binding.InputType} 缺少有效 InputActionReference 或 ActionName。");
                 var resolved = new ResolvedBinding(binding.InputType,
                     binding.ResolvePressDuration(defaultPressBufferDuration),
                     binding.ResolveReleaseDuration(defaultReleaseBufferDuration),

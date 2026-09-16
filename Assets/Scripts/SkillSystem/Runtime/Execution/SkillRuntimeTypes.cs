@@ -5,7 +5,7 @@ using WS_Modules.GAS.GameplayAbilitySystem;
 namespace RPG.SkillSystem
 {
     /// <summary>
-    /// 标识一次技能执行结束的原因，供外部状态机决定后续状态，而不由技能播放器接管动画退出。
+    /// 标识一次技能执行结束的原因；外部状态机据此处理后续业务，动画处理器负责归还技能动画层。
     /// </summary>
     public enum SkillCompletionReason
     {

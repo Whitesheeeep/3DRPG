@@ -52,6 +52,11 @@ namespace RPG.Character.State
         public float CeilingDistance { get; internal set; }
         /// <summary>获取本次离地过程累计的最大下降高度，供落地动画分级使用。</summary>
         public float CurrentFallHeight { get; internal set; }
+        /// <summary>
+        /// 获取当前玩家控制角色是否存在有效的 FullBody Action 占据。
+        /// 该事实不表示当前 Phase、允许转换类型或 MotionDriver 通道归属。
+        /// </summary>
+        public bool IsFullBodyActionOccupied { get; internal set; }
         #endregion
 
         #region 构造

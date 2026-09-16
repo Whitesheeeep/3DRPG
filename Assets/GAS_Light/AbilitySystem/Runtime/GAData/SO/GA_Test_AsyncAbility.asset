@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: GA_Test_AsyncAbility
   m_EditorClassIdentifier: 
   abilityId: 0
+  abilityName: 
+  icon: {fileID: 0}
   description: Test asynchronous Ability driven by a one second WaitDuration task.
   abilityTags: []
   cancelTags: []

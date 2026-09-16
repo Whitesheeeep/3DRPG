@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: GA_Test_SkillConfig
   m_EditorClassIdentifier: 
   abilityId: 8
+  abilityName: "\u6D4B\u8BD5\u7528\u6280\u80FD"
+  icon: {fileID: 0}
   description: GAS SkillRuntimeHost integration fixture using the existing 35-frame
     SkillConfig.
   abilityTags: []
@@ -34,4 +36,4 @@ MonoBehaviour:
     - rid: 8492673064478303488
       type: {class: PlaySkillConfigGameplayAbilityTaskConfig, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
-        skillConfig: {fileID: 11400000, guid: 335542837cf153a4aae423f0d0ffb3ee, type: 2}
+        skillConfig: {fileID: 11400000, guid: 202aa15b2413d8946b2ee3489ec52fd0, type: 2}

@@ -2342,6 +2342,42 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: bindings.Array.size
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: bindings.Array.data[13].action
+      value: 
+      objectReference: {fileID: 6962443320683872922, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: bindings.Array.data[14].action
+      value: 
+      objectReference: {fileID: -1744970950929049424, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: bindings.Array.data[15].action
+      value: 
+      objectReference: {fileID: -1744970950929049424, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: bindings.Array.data[8].inputType
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: bindings.Array.data[13].inputType
+      value: 16
+      objectReference: {fileID: 0}
+    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: bindings.Array.data[14].inputType
+      value: 17
+      objectReference: {fileID: 0}
+    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: bindings.Array.data[14].actionName
+      value: Player/CancelWindow
+      objectReference: {fileID: 0}
+    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: bindings.Array.data[13].deliveryMode
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5482557129118236183, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
       propertyPath: m_Name
       value: Player

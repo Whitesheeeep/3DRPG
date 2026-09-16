@@ -23,6 +23,9 @@
 *.svd
 *.pdb
 *.mdb
+# Unity 为被忽略的调试符号生成的伴生元数据同样不纳入版本控制
+*.pdb.meta
+*.mdb.meta
 *.opendb
 *.VC.db
 *.DotSettings.user

@@ -134,7 +134,7 @@ namespace RPG.SkillSystem
         }
 
         /// <summary>
-        /// 结束全部轨道处理器并冻结当前执行对象，动画轨道不会在这里停止 Animancer。
+        /// 结束全部轨道处理器并冻结当前执行对象；动画轨道会通过 IAnimationPlayer 立即停止技能层。
         /// </summary>
         /// <param name="reason">自然结束、Stop 或 Cancel。</param>
         public void Complete(SkillCompletionReason reason)

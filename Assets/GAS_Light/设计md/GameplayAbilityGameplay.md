@@ -481,10 +481,31 @@ ASC 默认在 `Update` 中先推进 GE、再推进 GA 普通阶段；`FixedUpdat
 
 SkillConfig 类型的异步 Task 从 `Runtime.SourceOwner` 获取 `ISkillRuntimeHost`。Host 为每个角色长期持有唯一
 
-SkillConfig 当前动作阶段只由具体 `SkillRuntime` 持有：阶段使用 `ActionPhaseType`，转换窗口使用 `SkillTransitionMask`。这些数据通过 `ActionPhaseChanged` 事件提供给后续 FullBody Action Execution 与 Arbiter，不再转换为 Source ASC 的 Phase 或 Interrupt GameplayTag。Ability 候选仍通过现有 `TryActivateAbility` 执行完整 GAS 条件检查；移动和跳跃转换由未来对应业务执行器负责。`PlaySkillConfigGameplayAbilityTask` 不再订阅阶段事件，也不承担转换决策。
+SkillConfig 当前动作阶段只由具体 `SkillRuntime` 持有：阶段使用 `ActionPhaseType`，转换窗口使用 `SkillTransitionMask`。这些数据不再转换为 Source ASC 的 Phase 或 Interrupt GameplayTag。`PlaySkillConfigGameplayAbilityTask` 在 SkillRuntimeHost 播放成功后注册 FullBody 执行，并订阅 `ActionPhaseChanged`，只把最新 `AllowedTransitions` 更新到注册 Handle；Task 不选择转换候选，也不直接写 Blackboard。SkillExecution 结束时，AnimationRuntimeHandler 通过角色 `IAnimationPlayer.StopLayer` 立即停止技能动画层；结束后的 Locomotion 路由仍由外部系统决定。
 `SkillRuntimeModule`，自身不实现 Unity 更新；当前 Running Task 在普通阶段调用 `Tick`，在延迟阶段
 调用 `LateTick`。GAS 通过 AbilityTags、CancelTags 与 Runtime 生命周期决定替换和打断，Module 只负责
 时间轴、轨道命中和资源清理。
+
+```mermaid
+sequenceDiagram
+    participant Task as PlaySkillConfig Task
+    participant Host as SkillRuntimeHost
+    participant Action as CharacterActionArbiter
+    participant BB as PlayerStateBlackboard
+    participant ASC
+    participant FSM as Locomotion FSM
+
+    Task->>Host: TryPlay 成功
+    Task->>Action: RegisterFullBodyAction(Runtime, Mask)
+    Action->>BB: IsFullBodyActionOccupied = true
+    Host-->>Task: ActionPhaseChanged
+    Task->>Action: Handle.UpdateAllowedTransitions
+    Action->>ASC: 合法窗口中尝试 Ability 或取消当前 GA
+    ASC-->>Task: Stop / Cancel / Complete
+    Task->>Action: Handle.Dispose
+    Action->>BB: IsFullBodyActionOccupied = false
+    Note over FSM: 全程持续推进；不执行技能结束恢复路由
+```
 
 ```mermaid
 flowchart LR

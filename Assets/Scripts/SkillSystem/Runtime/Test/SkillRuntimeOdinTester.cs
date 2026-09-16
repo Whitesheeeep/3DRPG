@@ -23,6 +23,7 @@ namespace RPG.SkillSystem.Editor
 
         [Title("播放输入")]
         [SerializeField] private SkillConfig config;
+        [SerializeField] private SkillConfig replacementConfig;
         [SerializeField] private Transform weaponRoot;
         [SerializeField] private Transform weaponTip;
         [SerializeField] private LayerMask attackLayerMask = ~0;
@@ -102,6 +103,27 @@ namespace RPG.SkillSystem.Editor
         }
 
         /// <summary>
+        /// 在同一调用栈中取消当前技能并立即播放替换技能，验证旧 Action 层停止后新技能能够重新接管。
+        /// </summary>
+        [Button("取消并播放替换技能")]
+        public void CancelAndPlayReplacementSkill()
+        {
+            if (replacementConfig == null)
+            {
+                Debug.LogWarning("[SkillRuntimeTest] replacementConfig 未配置，无法执行替换技能测试。", this);
+                return;
+            }
+
+            runner.Cancel();
+            SkillStartResult result = runner.TryPlay(
+                new SkillPlayRequest(replacementConfig, weaponRoot, weaponTip));
+            Debug.Log(
+                $"[SkillRuntimeTest] Replace succeeded={result.Succeeded}, message={result.Message}, " +
+                $"config={replacementConfig.name}",
+                this);
+        }
+
+        /// <summary>
         /// 输出当前帧、动作阶段和转换窗口，供后续 Action Execution 接入前手动验证。
         /// </summary>
         [Button("打印运行状态")]
@@ -126,7 +148,7 @@ namespace RPG.SkillSystem.Editor
         }
 
         /// <summary>
-        /// 输出统一技能结束事件，验证外部状态机可按原因恢复 Locomotion。
+        /// 输出统一技能结束事件，验证技能动画层已经归还且外部系统可按原因处理后续业务。
         /// </summary>
         /// <param name="args">技能结束事件快照。</param>
         private void OnCompleted(SkillCompletedEventArgs args)

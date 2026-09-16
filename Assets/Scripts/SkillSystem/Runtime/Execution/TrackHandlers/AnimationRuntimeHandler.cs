@@ -1,10 +1,11 @@
 using Animancer;
 using RPG.Character.Animation;
+using UnityEngine;
 
 namespace RPG.SkillSystem
 {
     /// <summary>
-    /// 在动画 Clip 起始帧播放并淡入 Animancer 状态；结束时不停止动画或恢复 Locomotion。
+    /// 在动画 Clip 起始帧播放并淡入 Animancer 状态；执行结束时立即归还本次技能使用的动画层。
     /// </summary>
     internal sealed class AnimationRuntimeHandler : TrackRuntimeHandler<AnimationTrackConfig>
     {
@@ -82,14 +83,26 @@ namespace RPG.SkillSystem
         }
 
         /// <summary>
-        /// 技能结束时有意不停止 Animancer 状态，动画退出完全交由外部状态机。
+        /// 技能结束时恢复状态播放倍率并立即停止技能动画层；Locomotion 状态本身不在这里恢复或重路由。
         /// </summary>
         /// <param name="reason">技能结束原因。</param>
         public override void Complete(SkillCompletionReason reason)
         {
-            // 动画退出仍由外部状态机负责，但执行结束后不能让通道倍率泄漏到遗留 State。
+            IAnimationPlayer animationPlayer = Context.Actor.AnimationPlayer;
             if (currentState != null && currentClip != null)
+            {
+                // 先恢复 Clip 的原始倍率，再停止层，避免 Animancer 复用 State 时把技能全局倍率带给后续表现。
                 currentState.Speed = currentClip.PlaybackSpeed;
+
+                // AnimationRuntimeHandler 只通知统一动画服务归还层；具体 Stop、权重和状态清理由 AnimationController 处理。
+                animationPlayer.FadeLayer(Context.Actor.SkillAnimationLayer, 0, .2f);
+                Debug.Log(
+                    $"[SkillRuntime.Animation] execution={Context.ExecutionId}, " +
+                    $"skill={Context.Request.Config.name}, layer={Context.Actor.SkillAnimationLayer}, " +
+                    $"animation layer stopped, reason={reason}",
+                    Context.Actor.Owner);
+            }
+
             currentClip = null;
             currentState = null;
         }

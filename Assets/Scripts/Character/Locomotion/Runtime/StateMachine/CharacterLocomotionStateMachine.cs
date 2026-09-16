@@ -65,6 +65,7 @@ namespace RPG.Character
         private GroundedLocomotionStateMachine groundedMachine;
         private TraversalLocomotionStateMachine traversalMachine;
         private AirborneLocomotionStateMachine airborneMachine;
+        private GroundedJumpTransitionQueryService groundedJumpTransitionQueryService;
 
         // Locomotion 状态机的阶段上下文由 PlayerController 传入，状态机不缓存 Update/Fixed/Late 的 deltaTime。
         private float verticalSpeed;
@@ -89,6 +90,12 @@ namespace RPG.Character
         /// <summary>获取当前活动叶状态的标识。</summary>
         public CharacterLocomotionStateId CurrentState =>
             stateMachine?.CurrentLeafState?.StateId ?? CharacterLocomotionStateId.Disable;
+        /// <summary>获取当前根分支状态标识，供 Grounded Jump 查询限制业务范围。</summary>
+        internal CharacterLocomotionStateId CurrentRootState =>
+            stateMachine?.CurrentState?.StateId ?? CharacterLocomotionStateId.Disable;
+        /// <summary>获取复用现有 Grounded Jump 条件的只读查询服务。</summary>
+        internal GroundedJumpTransitionQueryService GroundedJumpTransitionQueryService =>
+            groundedJumpTransitionQueryService ?? throw new InvalidOperationException("Locomotion 尚未完成 Jump 查询服务组装。");
         /// <summary>获取当前是否处于一次重新激活入口。</summary>
         internal bool IsActivationEntry => activationEntryPending;
         /// <summary>获取本次普通 Tick 的外部时间。</summary>
@@ -141,6 +148,11 @@ namespace RPG.Character
             stateMachine.AddState(traversalMachine);
             stateMachine.AddState(airborneMachine);
             stateMachine.Init(this, null);
+            groundedJumpTransitionQueryService = new GroundedJumpTransitionQueryService(
+                this,
+                groundedMachine,
+                traversalMachine,
+                airborneMachine);
             AddRootTransitions();
         }
 
@@ -341,6 +353,7 @@ namespace RPG.Character
             stateMachine.AddTransition(new Transition<CharacterLocomotionStateId, CharacterLocomotionStateMachine>(
                     CharacterLocomotionStateId.Traversal,
                     new[] { CharacterLocomotionStateId.Airborne, CharacterLocomotionStateId.JumpMotion }, 300)
+                .AddCondition(owner => !owner.Blackboard.IsFullBodyActionOccupied)
                 .AddCondition(owner => owner.traversalMachine.CanEnterBufferedJump())
                 .OnCommitted(owner => owner.traversalMachine.CommitBufferedJump()));
 
@@ -373,6 +386,7 @@ namespace RPG.Character
             stateMachine.AddTransition(new Transition<CharacterLocomotionStateId, CharacterLocomotionStateMachine>(
                     CharacterLocomotionStateId.Airborne,
                     new[] { CharacterLocomotionStateId.Airborne, CharacterLocomotionStateId.JumpMotion }, 400)
+                .AddCondition(owner => !owner.Blackboard.IsFullBodyActionOccupied)
                 .AddCondition(owner => owner.airborneMachine.CanEnterBufferedJumpFromLanding())
                 .OnCommitted(owner => owner.ConfirmJumpPress()));
             stateMachine.AddTransition(new Transition<CharacterLocomotionStateId, CharacterLocomotionStateMachine>(
@@ -420,6 +434,7 @@ namespace RPG.Character
                 new Transition<CharacterLocomotionStateId, CharacterLocomotionStateMachine>(
                         sourceState,
                         new[] { CharacterLocomotionStateId.Traversal, CharacterLocomotionStateId.Vault }, 400)
+                    .AddCondition(owner => !owner.Blackboard.IsFullBodyActionOccupied)
                     .AddCondition(_ => canVault())
                     .OnCommitted(commit);
             stateMachine.AddTransition(vaultTransition);
@@ -428,11 +443,15 @@ namespace RPG.Character
                 new Transition<CharacterLocomotionStateId, CharacterLocomotionStateMachine>(
                     sourceState,
                     new[] { CharacterLocomotionStateId.Traversal, CharacterLocomotionStateId.Mantle }, 390);
-            stateMachine.AddTransition(mantleTransition.AddCondition(_ => canMantle()).OnCommitted(commit));
+            stateMachine.AddTransition(mantleTransition
+                .AddCondition(owner => !owner.Blackboard.IsFullBodyActionOccupied)
+                .AddCondition(_ => canMantle())
+                .OnCommitted(commit));
 
             stateMachine.AddTransition(new Transition<CharacterLocomotionStateId, CharacterLocomotionStateMachine>(
                     sourceState,
                     new[] { CharacterLocomotionStateId.Airborne, CharacterLocomotionStateId.JumpMotion }, 300)
+                .AddCondition(owner => !owner.Blackboard.IsFullBodyActionOccupied)
                 .AddCondition(_ => canJump())
                 .OnCommitted(commit));
 
@@ -494,7 +513,8 @@ namespace RPG.Character
         internal void CompleteTraversal()
         {
             // Jump 资格成立但目标 TagQuery/路径预检失败时，不能吞掉输入窗口；继续尝试接地 MoveStart。
-            if (traversalMachine.CanEnterBufferedJump() &&
+            if (!Blackboard.IsFullBodyActionOccupied &&
+                traversalMachine.CanEnterBufferedJump() &&
                 ChangeStatePath(
                     CharacterLocomotionStateId.Airborne,
                     CharacterLocomotionStateId.JumpMotion))
@@ -564,7 +584,8 @@ namespace RPG.Character
         /// </summary>
         internal bool TryEnterBufferedJump()
         {
-            if (!HasBufferedJump)
+            // 动画 OnEnd 也可能在自动 Transition 之外提交 Jump；必须使用同一 FullBody 占据门禁。
+            if (Blackboard.IsFullBodyActionOccupied || !HasBufferedJump)
                 return false;
 
             if (!ChangeStatePath(
