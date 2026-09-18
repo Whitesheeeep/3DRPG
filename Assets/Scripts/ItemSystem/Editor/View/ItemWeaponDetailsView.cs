@@ -17,6 +17,10 @@ namespace RPG.ItemSystem.Editor
         private readonly VisualElement pageRoot;
         private readonly VisualTreeAsset weaponTemplate;
         private readonly List<(PropertyField field, string label)> fixedPropertyLabels = new();
+        // key：Unity 原生动态 ListView；value：该列表当前被包装的 bindItem 回调。
+        private readonly Dictionary<ListView, DynamicListBindingHook> dynamicListBindingHookByListViewMap = new();
+        // 记录已注册 ChangeEvent<bool> 的动态区域，避免同一窗口生命周期内重复注册。
+        private readonly HashSet<VisualElement> dynamicFoldoutHostSet = new();
 
         private readonly VisualElement weaponBaseFields;
         private readonly VisualElement ascensionStageHost;
@@ -192,6 +196,8 @@ namespace RPG.ItemSystem.Editor
             disposed = true;
             if (bakeButton != null) bakeButton.clicked -= OnBakeButtonClicked;
             if (viewBakedResultButton != null) viewBakedResultButton.clicked -= OnViewBakedResultButtonClicked;
+            // 先恢复 Unity 原生 bindItem，再释放绑定对象，避免虚拟化列表保留当前 View 的闭包。
+            RestoreDynamicListBindingHooks();
             Unbind();
             BakeGrowthRequested = null;
             ViewBakedResultRequested = null;
@@ -376,16 +382,58 @@ namespace RPG.ItemSystem.Editor
                 "精炼效果",
                 expandEffectLists);
             effectListsConfigured = true;
+            NormalizeDynamicPropertySubtree(pageRoot);
+        }
 
-            pageRoot.Query<PropertyField>().ForEach(field =>
+        /// <summary>局部中文化一个动态行或动态折叠区域，不触发整页查询。</summary>
+        /// <param name="subtree">需要处理的动态视觉子树。</param>
+        private void NormalizeDynamicPropertySubtree(VisualElement subtree)
+        {
+            if (subtree == null || boundWeapon == null) return;
+            ApplyPropertyFieldLabels(subtree);
+            ApplyDynamicLabelText(subtree);
+            // 外层阶段行绑定完成后，Unity 可能才创建嵌套的物品/货币消耗 ListView；此处及时发现并包装。
+            ConfigureDynamicListsInSubtree(subtree);
+        }
+
+        /// <summary>按绑定路径修正指定子树中的动态 PropertyField 标签。</summary>
+        /// <param name="root">查询起点。</param>
+        private static void ApplyPropertyFieldLabels(VisualElement root)
+        {
+            root.Query<PropertyField>().ForEach(field =>
             {
                 string label = GetNestedPropertyLabel(field.bindingPath);
-                // 只有标签确实变化时才重新设置，避免 PropertyField 触发内部 PropertyDrawer 重建。
-                if (!string.IsNullOrEmpty(label) && !string.Equals(field.label, label, StringComparison.Ordinal))
-                    field.label = label;
+                if (!string.IsNullOrEmpty(label))
+                    SetPropertyFieldLabelWithoutRebinding(field, label);
             });
+        }
 
-            pageRoot.Query<Label>().ForEach(label =>
+        /// <summary>直接修改 PropertyField 已生成的标签节点，避免 setter 触发原生列表重绑。</summary>
+        /// <param name="field">目标 PropertyField。</param>
+        /// <param name="labelText">要显示的中文标签。</param>
+        private static void SetPropertyFieldLabelWithoutRebinding(PropertyField field, string labelText)
+        {
+            Label displayLabel = field.Q<Label>(className: "unity-label");
+            if (displayLabel == null)
+            {
+                // 不同 Unity 版本的 PropertyField 标签 Class 可能不同；按当前可见文本回退查找，避免调用 label setter。
+                field.Query<Label>().ForEach(candidate =>
+                {
+                    if (displayLabel == null && string.Equals(candidate.text, field.label, StringComparison.Ordinal))
+                        displayLabel = candidate;
+                });
+            }
+
+            displayLabel ??= field.Q<Label>();
+            if (displayLabel != null && !string.Equals(displayLabel.text, labelText, StringComparison.Ordinal))
+                displayLabel.text = labelText;
+        }
+
+        /// <summary>修正指定子树中动态数组元素标题和空列表文本。</summary>
+        /// <param name="root">查询起点。</param>
+        private static void ApplyDynamicLabelText(VisualElement root)
+        {
+            root.Query<Label>().ForEach(label =>
             {
                 string text = label.text ?? string.Empty;
                 string bindingPath = FindBindingPath(label);
@@ -393,6 +441,13 @@ namespace RPG.ItemSystem.Editor
                     label.text = GetLocalizedElementLabel(collectionName, index);
                 else if (IsEmptyListText(text))
                     label.text = GetLocalizedEmptyListLabel(bindingPath);
+                else
+                {
+                    string propertyLabel = GetNestedPropertyLabel(bindingPath);
+                    if (!string.IsNullOrEmpty(propertyLabel) &&
+                        !string.Equals(text, propertyLabel, StringComparison.Ordinal))
+                        label.text = propertyLabel;
+                }
             });
         }
 
@@ -410,7 +465,7 @@ namespace RPG.ItemSystem.Editor
             {
                 PropertyField field = fixedPropertyLabels[index].field;
                 if (field != null && !string.Equals(field.label, fixedPropertyLabels[index].label, StringComparison.Ordinal))
-                    field.label = fixedPropertyLabels[index].label;
+                    SetPropertyFieldLabelWithoutRebinding(field, fixedPropertyLabels[index].label);
             }
         }
 
@@ -531,21 +586,148 @@ namespace RPG.ItemSystem.Editor
         /// <summary>配置阶段列表的原生折叠、增删和集合长度显示。</summary>
         /// <param name="host">阶段列表容器。</param>
         /// <param name="expandInitially">是否首次展开。</param>
-        private static void ConfigureStageList(VisualElement host, bool expandInitially)
+        private void ConfigureStageList(VisualElement host, bool expandInitially)
         {
             if (host == null) return;
+            RegisterDynamicFoldoutHook(host);
             host.Query<ListView>().ForEach(listView =>
             {
-                listView.showBoundCollectionSize = false;
-                listView.showFoldoutHeader = true;
-                listView.showAddRemoveFooter = true;
-                listView.AddToClassList("item-editor-stage-list");
-                if (expandInitially)
-                {
-                    Foldout foldout = listView.Q<Foldout>();
-                    if (foldout != null) foldout.SetValueWithoutNotify(true);
-                }
+                ConfigureDynamicListView(listView, expandInitially);
             });
+        }
+
+        /// <summary>配置动态列表的原生显示选项，并安装一次虚拟化绑定包装。</summary>
+        /// <param name="listView">要配置的原生列表。</param>
+        /// <param name="expandInitially">是否首次展开列表折叠头。</param>
+        private void ConfigureDynamicListView(ListView listView, bool expandInitially)
+        {
+            if (listView == null) return;
+            listView.showBoundCollectionSize = false;
+            listView.showFoldoutHeader = true;
+            listView.showAddRemoveFooter = true;
+            listView.AddToClassList("item-editor-stage-list");
+            ConfigureDynamicListBinding(listView);
+            if (expandInitially)
+            {
+                Foldout foldout = listView.Q<Foldout>();
+                if (foldout != null) foldout.SetValueWithoutNotify(true);
+            }
+        }
+
+        /// <summary>配置子树中当前已经生成的动态 ListView。</summary>
+        /// <param name="subtree">动态视觉子树。</param>
+        private void ConfigureDynamicListsInSubtree(VisualElement subtree)
+        {
+            if (subtree == null) return;
+            if (subtree is ListView ownListView && IsDynamicPropertyList(ownListView))
+                ConfigureDynamicListView(ownListView, false);
+            subtree.Query<ListView>().ForEach(listView =>
+            {
+                if (IsDynamicPropertyList(listView))
+                    ConfigureDynamicListView(listView, false);
+            });
+        }
+
+        /// <summary>判断列表是否属于需要中文化的武器阶段或消耗集合。</summary>
+        /// <param name="listView">待判断的原生列表。</param>
+        /// <returns>属于目标动态集合时返回 true。</returns>
+        private static bool IsDynamicPropertyList(ListView listView)
+        {
+            for (VisualElement current = listView; current != null; current = current.parent)
+            {
+                if (!(current is IBindable bindable) || string.IsNullOrEmpty(bindable.bindingPath))
+                    continue;
+
+                string bindingPath = bindable.bindingPath;
+                if (bindingPath.Contains("ascensionStages", StringComparison.Ordinal) ||
+                    bindingPath.Contains("refinementStages", StringComparison.Ordinal) ||
+                    bindingPath.Contains("itemCosts", StringComparison.Ordinal) ||
+                    bindingPath.Contains("currencyCosts", StringComparison.Ordinal) ||
+                    bindingPath.Contains("levelOverrides", StringComparison.Ordinal))
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>包装原生 bindItem，使虚拟化行绑定完成后只刷新该行。</summary>
+        /// <param name="listView">需要包装的原生列表。</param>
+        private void ConfigureDynamicListBinding(ListView listView)
+        {
+            if (listView == null) return;
+            if (dynamicListBindingHookByListViewMap.TryGetValue(listView, out DynamicListBindingHook existingHook) &&
+                ReferenceEquals(listView.bindItem, existingHook.WrappedBindItem))
+                return;
+
+            Action<VisualElement, int> originalBindItem = listView.bindItem;
+            if (originalBindItem == null) return;
+
+            Action<VisualElement, int> wrappedBindItem = (element, index) =>
+            {
+                // 必须先调用 Unity 原生绑定，确保 SerializedProperty、Undo 和虚拟化复用状态已经就绪。
+                originalBindItem(element, index);
+                ScheduleBoundElementLocalization(element, bindingVersion);
+            };
+
+            dynamicListBindingHookByListViewMap[listView] =
+                new DynamicListBindingHook(originalBindItem, wrappedBindItem);
+            listView.bindItem = wrappedBindItem;
+        }
+
+        /// <summary>延迟局部中文化刚完成原生绑定的虚拟化行。</summary>
+        /// <param name="element">Unity 当前复用的行节点。</param>
+        /// <param name="scheduledVersion">注册回调时的绑定版本。</param>
+        private void ScheduleBoundElementLocalization(VisualElement element, int scheduledVersion)
+        {
+            if (element == null) return;
+            pageRoot.schedule.Execute(() =>
+            {
+                // 行可能已经被复用或页面已经切换；版本检查保证旧任务不能修改新武器。
+                if (disposed || scheduledVersion != bindingVersion || boundWeapon == null || element.parent == null)
+                    return;
+                NormalizeDynamicPropertySubtree(element);
+            });
+        }
+
+        /// <summary>监听动态折叠展开，以发现延迟生成的嵌套消耗列表。</summary>
+        /// <param name="host">需要监听的动态区域。</param>
+        private void RegisterDynamicFoldoutHook(VisualElement host)
+        {
+            if (host == null || !dynamicFoldoutHostSet.Add(host)) return;
+            host.RegisterCallback<ChangeEvent<bool>>(OnDynamicFoldoutChanged);
+        }
+
+        /// <summary>在折叠展开后的下一轮 UI 调度中局部中文化新生成的控件。</summary>
+        /// <param name="eventData">折叠值变化事件。</param>
+        private void OnDynamicFoldoutChanged(ChangeEvent<bool> eventData)
+        {
+            if (disposed || boundWeapon == null) return;
+            VisualElement host = eventData.currentTarget as VisualElement;
+            if (host == null) return;
+            int scheduledVersion = bindingVersion;
+            pageRoot.schedule.Execute(() =>
+            {
+                if (disposed || scheduledVersion != bindingVersion || boundWeapon == null || host.parent == null)
+                    return;
+                NormalizeDynamicPropertySubtree(host);
+            });
+        }
+
+        /// <summary>恢复动态 ListView 原始绑定回调并注销折叠监听。</summary>
+        private void RestoreDynamicListBindingHooks()
+        {
+            foreach (KeyValuePair<ListView, DynamicListBindingHook> pair in dynamicListBindingHookByListViewMap)
+            {
+                ListView listView = pair.Key;
+                DynamicListBindingHook hook = pair.Value;
+                if (listView != null && ReferenceEquals(listView.bindItem, hook.WrappedBindItem))
+                    listView.bindItem = hook.OriginalBindItem;
+            }
+
+            dynamicListBindingHookByListViewMap.Clear();
+            foreach (VisualElement host in dynamicFoldoutHostSet)
+                host?.UnregisterCallback<ChangeEvent<bool>>(OnDynamicFoldoutChanged);
+            dynamicFoldoutHostSet.Clear();
         }
 
         /// <summary>按绑定路径获取动态 PropertyField 的中文标签。</summary>
@@ -558,6 +740,8 @@ namespace RPG.ItemSystem.Editor
             if (bindingPath.EndsWith("maxLevelAfter", StringComparison.Ordinal)) return "突破后等级上限";
             if (bindingPath.EndsWith("requiredDuplicateCount", StringComparison.Ordinal)) return "所需同名武器数量";
             if (bindingPath.EndsWith("rank", StringComparison.Ordinal)) return "精炼阶数";
+            if (bindingPath.EndsWith("currencyCost", StringComparison.Ordinal)) return "货币消耗";
+            if (bindingPath.EndsWith("cost", StringComparison.Ordinal)) return "消耗";
             if (bindingPath.EndsWith("itemCosts", StringComparison.Ordinal)) return "物品消耗";
             if (bindingPath.EndsWith("currencyCosts", StringComparison.Ordinal)) return "货币消耗";
             if (bindingPath.EndsWith("itemId", StringComparison.Ordinal)) return "物品标识";
@@ -565,7 +749,6 @@ namespace RPG.ItemSystem.Editor
             if (bindingPath.EndsWith("currencyId", StringComparison.Ordinal)) return "货币标识";
             if (bindingPath.EndsWith("amount", StringComparison.Ordinal)) return "金额";
             if (bindingPath.EndsWith("nextExperience", StringComparison.Ordinal)) return "下一级所需经验";
-            if (bindingPath.EndsWith("currencyCost", StringComparison.Ordinal)) return "货币消耗";
             if (bindingPath.EndsWith("level", StringComparison.Ordinal) &&
                 bindingPath.Contains("levelOverrides", StringComparison.Ordinal))
                 return "等级";
@@ -694,6 +877,31 @@ namespace RPG.ItemSystem.Editor
                 if (current is IBindable bindable && !string.IsNullOrEmpty(bindable.bindingPath))
                     return bindable.bindingPath;
             return string.Empty;
+        }
+
+        #endregion
+
+        #region 嵌套类型
+
+        /// <summary>保存动态 ListView 的原始绑定回调和中文化包装回调。</summary>
+        private sealed class DynamicListBindingHook
+        {
+            /// <summary>Unity 原生绑定回调。</summary>
+            internal readonly Action<VisualElement, int> OriginalBindItem;
+
+            /// <summary>调用原生绑定后触发局部中文化的包装回调。</summary>
+            internal readonly Action<VisualElement, int> WrappedBindItem;
+
+            /// <summary>创建一个动态列表绑定钩子记录。</summary>
+            /// <param name="originalBindItem">Unity 原生绑定回调。</param>
+            /// <param name="wrappedBindItem">当前 View 的包装回调。</param>
+            internal DynamicListBindingHook(
+                Action<VisualElement, int> originalBindItem,
+                Action<VisualElement, int> wrappedBindItem)
+            {
+                OriginalBindItem = originalBindItem;
+                WrappedBindItem = wrappedBindItem;
+            }
         }
 
         #endregion

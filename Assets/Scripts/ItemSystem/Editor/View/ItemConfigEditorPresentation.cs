@@ -15,11 +15,11 @@ namespace RPG.ItemSystem.Editor
         /// <returns>中文分类名称。</returns>
         internal static string GetCategoryText(ItemCategory category) => category switch
         {
-            ItemCategory.DevelopmentItem => "养成道具",
-            ItemCategory.Ingredient => "食材",
-            ItemCategory.Food => "料理",
             ItemCategory.Weapon => "武器",
             ItemCategory.Artifact => "圣遗物",
+            ItemCategory.DevelopmentExperienceItem => "养成经验道具",
+            ItemCategory.Food => "食物",
+            ItemCategory.DevelopmentItem => "养成道具",
             _ => "未知"
         };
 
@@ -30,9 +30,9 @@ namespace RPG.ItemSystem.Editor
         {
             WeaponDefinition => "武器定义",
             ArtifactDefinition => "圣遗物定义",
+            DevelopmentExperienceItemDefinition => "养成经验道具定义",
             DevelopmentItemDefinition => "养成道具定义",
-            FoodItemDefinition => "料理定义",
-            StackableItemDefinition => "食材定义",
+            FoodItemDefinition => "食物定义",
             null => "未知定义",
             _ => "物品定义"
         };
@@ -40,16 +40,45 @@ namespace RPG.ItemSystem.Editor
         /// <summary>获取养成道具用途中文名。</summary>
         /// <param name="type">养成用途。</param>
         /// <returns>用途中文名。</returns>
-        internal static string GetDevelopmentTypeText(DevelopmentItemType type) => type switch
+        internal static string GetDevelopmentTypeText(DevelopmentItemType types)
         {
-            DevelopmentItemType.CharacterExperience => "角色经验素材",
-            DevelopmentItemType.CharacterAscension => "角色突破素材",
-            DevelopmentItemType.CharacterTalent => "角色天赋素材",
-            DevelopmentItemType.WeaponExperience => "武器强化素材",
-            DevelopmentItemType.WeaponAscension => "武器突破素材",
-            DevelopmentItemType.WeaponRefinement => "武器精炼素材",
-            DevelopmentItemType.ArtifactExperience => "圣遗物强化素材",
-            _ => "未知养成用途"
+            const DevelopmentItemType definedTypes = DevelopmentItemType.CharacterAscension |
+                                                      DevelopmentItemType.CharacterTalent |
+                                                      DevelopmentItemType.WeaponAscension |
+                                                      DevelopmentItemType.WeaponRefinement;
+            if (types == DevelopmentItemType.None) return "未配置";
+            var values = new System.Collections.Generic.List<string>();
+            if ((types & DevelopmentItemType.CharacterAscension) != 0) values.Add("角色突破");
+            if ((types & DevelopmentItemType.CharacterTalent) != 0) values.Add("角色天赋");
+            if ((types & DevelopmentItemType.WeaponAscension) != 0) values.Add("武器突破");
+            if ((types & DevelopmentItemType.WeaponRefinement) != 0) values.Add("武器精炼");
+            return (types & ~definedTypes) == DevelopmentItemType.None ? string.Join("、", values) : "未知养成用途";
+        }
+
+        /// <summary>获取养成经验适用对象组合的中文名。</summary>
+        /// <param name="types">经验适用对象组合。</param>
+        /// <returns>稳定排序的中文对象名称。</returns>
+        internal static string GetExperienceTypeText(DevelopmentExperienceItemType types)
+        {
+            if (types == DevelopmentExperienceItemType.None) return "未配置";
+            var values = new System.Collections.Generic.List<string>();
+            if ((types & DevelopmentExperienceItemType.Character) != 0) values.Add("角色");
+            if ((types & DevelopmentExperienceItemType.Weapon) != 0) values.Add("武器");
+            if ((types & DevelopmentExperienceItemType.Artifact) != 0) values.Add("圣遗物");
+            const DevelopmentExperienceItemType definedTypes = DevelopmentExperienceItemType.Character |
+                                                                DevelopmentExperienceItemType.Weapon |
+                                                                DevelopmentExperienceItemType.Artifact;
+            return (types & ~definedTypes) == DevelopmentExperienceItemType.None ? string.Join("、", values) : "未知经验对象";
+        }
+
+        /// <summary>获取定义对应的稳定用途摘要文本。</summary>
+        /// <param name="definition">待展示的物品定义。</param>
+        /// <returns>用途摘要；非养成定义返回空字符串。</returns>
+        internal static string GetDevelopmentUsageText(ItemDefinition definition) => definition switch
+        {
+            DevelopmentItemDefinition material => GetDevelopmentTypeText(material.DevelopmentTypes),
+            DevelopmentExperienceItemDefinition experience => GetExperienceTypeText(experience.ExperienceTypes),
+            _ => string.Empty
         };
 
         /// <summary>获取圣遗物部位中文名。</summary>

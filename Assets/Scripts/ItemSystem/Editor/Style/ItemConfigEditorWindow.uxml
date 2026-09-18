@@ -23,10 +23,6 @@
                             <ui:Label text="类型" class="item-editor-filter-label" />
                             <ui:DropdownField name="CategoryField" class="item-editor-filter-dropdown" />
                         </ui:VisualElement>
-                        <ui:VisualElement class="item-editor-filter-field">
-                            <ui:Label text="定义" class="item-editor-filter-label" />
-                            <ui:DropdownField name="KindField" class="item-editor-filter-dropdown" />
-                        </ui:VisualElement>
                     </ui:VisualElement>
                     <ui:VisualElement class="item-editor-filter-row item-editor-sort-row">
                         <ui:VisualElement class="item-editor-filter-field">
@@ -51,6 +47,7 @@
                     <ui:VisualElement name="CommonDetailsPage" class="item-editor-details-page" />
                     <ui:VisualElement name="StackableDetailsPage" class="item-editor-details-page" />
                     <ui:VisualElement name="DevelopmentItemDetailsPage" class="item-editor-details-page" />
+                    <ui:VisualElement name="DevelopmentExperienceDetailsPage" class="item-editor-details-page" />
                     <ui:VisualElement name="FoodDetailsPage" class="item-editor-details-page" />
                     <ui:VisualElement name="WeaponDetailsPage" class="item-editor-details-page" />
                     <ui:VisualElement name="ArtifactDetailsPage" class="item-editor-details-page" />

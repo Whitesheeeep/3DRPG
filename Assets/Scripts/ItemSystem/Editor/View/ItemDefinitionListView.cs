@@ -23,7 +23,6 @@ namespace RPG.ItemSystem.Editor
         private readonly ScrollView listScrollView;
         private readonly ToolbarSearchField searchField;
         private readonly DropdownField categoryField;
-        private readonly DropdownField kindField;
         private readonly DropdownField sortField;
         private readonly DropdownField sortDirectionField;
         private readonly VisualTreeAsset rowTemplate;
@@ -40,8 +39,6 @@ namespace RPG.ItemSystem.Editor
         internal event Action<string> SearchChanged;
         /// <summary>分类筛选变化事件。</summary>
         internal event Action<string> CategoryChanged;
-        /// <summary>定义类型筛选变化事件。</summary>
-        internal event Action<string> KindChanged;
         /// <summary>排序字段变化事件。</summary>
         internal event Action<string> SortFieldChanged;
         /// <summary>排序方向变化事件。</summary>
@@ -74,7 +71,6 @@ namespace RPG.ItemSystem.Editor
             listScrollView = listView.Q<ScrollView>() ?? throw new InvalidOperationException("物品列表缺少原生 ScrollView。");
             searchField = Require<ToolbarSearchField>("SearchField");
             categoryField = Require<DropdownField>("CategoryField");
-            kindField = Require<DropdownField>("KindField");
             sortField = Require<DropdownField>("SortField");
             sortDirectionField = Require<DropdownField>("SortDirection");
             rowTemplate = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(DefinitionListRowUxmlPath);
@@ -88,7 +84,6 @@ namespace RPG.ItemSystem.Editor
             listView.bindItem = BindDefinitionRow;
             searchField.RegisterValueChangedCallback(OnSearchChanged);
             categoryField.RegisterValueChangedCallback(OnCategoryChanged);
-            kindField.RegisterValueChangedCallback(OnKindChanged);
             sortField.RegisterValueChangedCallback(OnSortFieldChanged);
             sortDirectionField.RegisterValueChangedCallback(OnSortDirectionChanged);
             listView.selectionChanged += OnDefinitionSelectionChanged;
@@ -106,7 +101,6 @@ namespace RPG.ItemSystem.Editor
             disposed = true;
             searchField.UnregisterValueChangedCallback(OnSearchChanged);
             categoryField.UnregisterValueChangedCallback(OnCategoryChanged);
-            kindField.UnregisterValueChangedCallback(OnKindChanged);
             sortField.UnregisterValueChangedCallback(OnSortFieldChanged);
             sortDirectionField.UnregisterValueChangedCallback(OnSortDirectionChanged);
             listView.selectionChanged -= OnDefinitionSelectionChanged;
@@ -127,14 +121,9 @@ namespace RPG.ItemSystem.Editor
         /// <param name="value">搜索文本。</param>
         internal void SetSearch(string value) => searchField.SetValueWithoutNotify(value ?? string.Empty);
 
-        /// <summary>设置筛选控件显示值而不触发筛选请求。</summary>
+        /// <summary>设置分类筛选控件显示值而不触发筛选请求。</summary>
         /// <param name="category">分类筛选。</param>
-        /// <param name="kind">定义类型筛选。</param>
-        internal void SetFilters(string category, string kind)
-        {
-            categoryField.SetValueWithoutNotify(category ?? "全部类型");
-            kindField.SetValueWithoutNotify(kind ?? "全部定义");
-        }
+        internal void SetFilters(string category) => categoryField.SetValueWithoutNotify(category ?? "全部类型");
 
         /// <summary>设置排序控件显示值而不触发排序请求。</summary>
         /// <param name="field">排序字段。</param>
@@ -232,6 +221,7 @@ namespace RPG.ItemSystem.Editor
             {
                 WeaponDefinition => "⚔",
                 ArtifactDefinition => "◇",
+                DevelopmentExperienceItemDefinition => "✦",
                 DevelopmentItemDefinition => "✚",
                 FoodItemDefinition => "🍲",
                 _ => "✦"
@@ -246,7 +236,8 @@ namespace RPG.ItemSystem.Editor
             {
                 WeaponDefinition weapon => $"武器 · 等级上限 {weapon.MaxLevel}",
                 ArtifactDefinition artifact => $"圣遗物 · {ItemConfigEditorPresentation.GetArtifactSlotText(artifact.Slot)} · 等级上限 {artifact.MaxLevel}",
-                DevelopmentItemDefinition development => $"养成道具 · {ItemConfigEditorPresentation.GetDevelopmentTypeText(development.DevelopmentType)} · 最大堆叠 {development.MaxQuantity}",
+                DevelopmentExperienceItemDefinition experience => $"养成经验道具 · {ItemConfigEditorPresentation.GetExperienceTypeText(experience.ExperienceTypes)} · 提供经验 {experience.ExperienceValue} · 最大堆叠 {experience.MaxQuantity}",
+                DevelopmentItemDefinition development => $"养成道具 · {ItemConfigEditorPresentation.GetDevelopmentTypeText(development.DevelopmentTypes)} · 最大堆叠 {development.MaxQuantity}",
                 StackableItemDefinition stackable => $"{ItemConfigEditorPresentation.GetCategoryText(definition.Category)} · 最大堆叠 {stackable.MaxQuantity}",
                 _ => "未知类型"
             };
@@ -440,11 +431,11 @@ namespace RPG.ItemSystem.Editor
         /// <param name="menu">需要填充的 GenericMenu。</param>
         private void PopulateCreationContextMenu(GenericMenu menu)
         {
-            menu.AddItem(new GUIContent("新建/养成道具"), false, () => NewStackableRequested?.Invoke(ItemCategory.DevelopmentItem));
-            menu.AddItem(new GUIContent("新建/食材"), false, () => NewStackableRequested?.Invoke(ItemCategory.Ingredient));
-            menu.AddItem(new GUIContent("新建/料理"), false, () => NewStackableRequested?.Invoke(ItemCategory.Food));
             menu.AddItem(new GUIContent("新建/武器"), false, () => NewWeaponRequested?.Invoke());
             menu.AddItem(new GUIContent("新建/圣遗物"), false, () => NewArtifactRequested?.Invoke());
+            menu.AddItem(new GUIContent("新建/养成经验道具"), false, () => NewStackableRequested?.Invoke(ItemCategory.DevelopmentExperienceItem));
+            menu.AddItem(new GUIContent("新建/食物"), false, () => NewStackableRequested?.Invoke(ItemCategory.Food));
+            menu.AddItem(new GUIContent("新建/养成道具"), false, () => NewStackableRequested?.Invoke(ItemCategory.DevelopmentItem));
         }
 
         /// <summary>菜单关闭后重新定位定义的可见行，不使用可能已复用的旧节点。</summary>
@@ -470,8 +461,7 @@ namespace RPG.ItemSystem.Editor
         /// <summary>初始化筛选和排序下拉选项。</summary>
         private void ConfigureChoices()
         {
-            categoryField.choices = new List<string> { "全部类型", "养成道具", "食材", "料理", "武器", "圣遗物" };
-            kindField.choices = new List<string> { "全部定义", "食材定义", "料理定义", "养成道具定义", "武器定义", "圣遗物定义" };
+            categoryField.choices = new List<string> { "全部类型", "武器", "圣遗物", "养成经验道具", "食物", "养成道具" };
             sortField.choices = new List<string> { "默认排序优先级", "显示名称", "稀有度", "物品类型", "定义类型", "养成用途", "稳定物品标识", "最大堆叠数量", "最大等级" };
             sortDirectionField.choices = new List<string> { "升序", "降序" };
         }
@@ -482,9 +472,6 @@ namespace RPG.ItemSystem.Editor
         /// <summary>处理分类变化。</summary>
         /// <param name="change">下拉变化。</param>
         private void OnCategoryChanged(ChangeEvent<string> change) => CategoryChanged?.Invoke(change.newValue);
-        /// <summary>处理定义类型变化。</summary>
-        /// <param name="change">下拉变化。</param>
-        private void OnKindChanged(ChangeEvent<string> change) => KindChanged?.Invoke(change.newValue);
         /// <summary>处理排序字段变化。</summary>
         /// <param name="change">下拉变化。</param>
         private void OnSortFieldChanged(ChangeEvent<string> change) => SortFieldChanged?.Invoke(change.newValue);

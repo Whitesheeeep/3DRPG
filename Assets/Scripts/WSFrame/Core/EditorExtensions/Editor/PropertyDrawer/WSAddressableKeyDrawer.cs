@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEditor.AddressableAssets;
 using UnityEditor.AddressableAssets.Settings;
 using UnityEngine;
+using WS_Modules.LogModule;
 
 namespace WS_Modules
 {
@@ -22,6 +23,11 @@ namespace WS_Modules
         private const string UnsupportedTypeMessage = "[WSAddressableKey] only supports string, string[], or List<string> fields.";
         private const string MissingSettingsMessage = "Addressables Settings have not been created.";
         private const string EmptyOptionsMessage = "No Addressables entries match the current group and label filters.";
+        private const string PingButtonLabel = "Ping";
+        private const string PingButtonTooltip = "在 Project 窗口中定位当前 Addressable 资源。";
+        private const float PingButtonWidth = 38f;
+        private const float ObjectFieldRatio = 0.32f;
+        private const float FieldSpacing = 2f;
 
         #endregion
 
@@ -202,7 +208,7 @@ namespace WS_Modules
                 return;
             }
 
-            DrawPopup(position, property, label, options);
+            DrawAddressableKeyRow(position, property, label, options);
         }
 
         /// <summary>
@@ -224,13 +230,13 @@ namespace WS_Modules
         }
 
         /// <summary>
-        /// Draws the popup and writes the selected Addressables address back to the serialized property.
+        /// Draws the popup, the Addressable object preview, and the Ping action in one row.
         /// </summary>
-        /// <param name="position">The rectangle allocated by Unity for the popup.</param>
+        /// <param name="position">The rectangle allocated by Unity for the complete selector row.</param>
         /// <param name="property">The serialized string property.</param>
         /// <param name="label">The field label.</param>
         /// <param name="options">The filtered and sorted Addressables options.</param>
-        private static void DrawPopup(
+        private static void DrawAddressableKeyRow(
             Rect position,
             SerializedProperty property,
             GUIContent label,
@@ -259,17 +265,65 @@ namespace WS_Modules
                 currentIndex = 0;
             }
 
+            TryGetOptionForAddress(options, currentValue, out AddressableKeyOption selectedOption);
+            UnityEngine.Object selectedAsset = selectedOption.Entry?.TargetAsset;
+
             EditorGUI.BeginProperty(position, label, property);
+            Rect contentRect = EditorGUI.PrefixLabel(position, label);
+            float pingButtonWidth = Mathf.Min(PingButtonWidth, contentRect.width);
+            float objectFieldWidth = Mathf.Max(
+                0f,
+                (contentRect.width - pingButtonWidth - FieldSpacing * 2f) * ObjectFieldRatio);
+            float popupWidth = Mathf.Max(
+                0f,
+                contentRect.width - objectFieldWidth - pingButtonWidth - FieldSpacing * 2f);
+            Rect popupRect = new Rect(contentRect.x, contentRect.y, popupWidth, contentRect.height);
+            Rect objectFieldRect = new Rect(
+                popupRect.xMax + FieldSpacing,
+                contentRect.y,
+                objectFieldWidth,
+                contentRect.height);
+            Rect pingButtonRect = new Rect(
+                objectFieldRect.xMax + FieldSpacing,
+                contentRect.y,
+                pingButtonWidth,
+                contentRect.height);
+
             EditorGUI.BeginChangeCheck();
             int selectedIndex = EditorGUI.Popup(
-                new Rect(position.x, position.y, position.width, EditorGUIUtility.singleLineHeight),
-                label,
+                popupRect,
+                GUIContent.none,
                 currentIndex,
                 labels.ToArray());
 
             if (EditorGUI.EndChangeCheck() && selectedIndex >= 0 && selectedIndex < values.Count)
             {
                 property.stringValue = values[selectedIndex];
+                currentValue = property.stringValue;
+                TryGetOptionForAddress(options, property.stringValue, out selectedOption);
+                selectedAsset = selectedOption.Entry?.TargetAsset;
+            }
+
+            EditorGUI.BeginChangeCheck();
+            UnityEngine.Object droppedAsset = EditorGUI.ObjectField(
+                objectFieldRect,
+                selectedAsset,
+                typeof(UnityEngine.Object),
+                false);
+            if (EditorGUI.EndChangeCheck())
+            {
+                HandleObjectFieldChanged(property, options, droppedAsset);
+            }
+
+            using (new EditorGUI.DisabledScope(selectedAsset == null))
+            {
+                if (GUI.Button(
+                        pingButtonRect,
+                        new GUIContent(PingButtonLabel, PingButtonTooltip),
+                        EditorStyles.miniButton))
+                {
+                    PingAddressableAsset(selectedAsset, currentValue);
+                }
             }
 
             EditorGUI.EndProperty();
@@ -328,6 +382,102 @@ namespace WS_Modules
 
         #endregion
 
+        #region 对象预览与拖拽绑定
+
+        /// <summary>
+        /// Finds the popup option that owns the serialized Address value.
+        /// </summary>
+        /// <param name="options">The filtered Addressables options.</param>
+        /// <param name="address">The serialized Address value.</param>
+        /// <param name="option">The matching option when one exists.</param>
+        /// <returns><see langword="true"/> when the Address has a matching option.</returns>
+        private static bool TryGetOptionForAddress(
+            IReadOnlyList<AddressableKeyOption> options,
+            string address,
+            out AddressableKeyOption option)
+        {
+            for (int i = 0; i < options.Count; i++)
+            {
+                if (string.Equals(options[i].Address, address, StringComparison.Ordinal))
+                {
+                    option = options[i];
+                    return true;
+                }
+            }
+
+            option = default;
+            return false;
+        }
+
+        /// <summary>
+        /// Resolves a changed ObjectField value to one unique filtered Addressables entry.
+        /// </summary>
+        /// <param name="property">The serialized string property that stores the Address.</param>
+        /// <param name="options">The filtered Addressables options available to the field.</param>
+        /// <param name="selectedAsset">The object selected or dropped by the user.</param>
+        private static void HandleObjectFieldChanged(
+            SerializedProperty property,
+            IReadOnlyList<AddressableKeyOption> options,
+            UnityEngine.Object selectedAsset)
+        {
+            if (selectedAsset == null)
+            {
+                // ObjectField 的清空操作不能伪造一个空 Address，保留原字符串作为唯一数据源。
+                WSLog.LogWarning("[WSAddressableKeyDrawer] 拒绝清空 ObjectField：请通过 Popup 选择 None 来清空 Address。");
+                return;
+            }
+
+            int matchCount = 0;
+            AddressableKeyOption matchedOption = default;
+            for (int i = 0; i < options.Count; i++)
+            {
+                AddressableKeyOption option = options[i];
+                if (option.Entry != null && option.Entry.TargetAsset == selectedAsset)
+                {
+                    matchCount++;
+                    matchedOption = option;
+                }
+            }
+
+            if (matchCount == 0)
+            {
+                WSLog.LogWarning(
+                    $"[WSAddressableKeyDrawer] 拒绝对象 {selectedAsset.name}：它不是当前 Group/Label 筛选范围内的 Addressable 资源。");
+                return;
+            }
+
+            if (matchCount > 1)
+            {
+                WSLog.LogWarning(
+                    $"[WSAddressableKeyDrawer] 拒绝对象 {selectedAsset.name}：匹配到 {matchCount} 个 Addressable Entry，无法唯一确定 Address。");
+                return;
+            }
+
+            // 只写回 Address 字符串；ObjectField 对象本身不进入序列化数据，避免产生双重状态。
+            property.stringValue = matchedOption.Address;
+            WSLog.Log(
+                $"[WSAddressableKeyDrawer] 已通过 ObjectField 写入 Address：{matchedOption.Address}，资源={selectedAsset.name}。");
+        }
+
+        /// <summary>
+        /// Selects and pings the Addressable object in the Project window.
+        /// </summary>
+        /// <param name="asset">The Addressable object to locate.</param>
+        /// <param name="address">The Address shown in the serialized field.</param>
+        private static void PingAddressableAsset(UnityEngine.Object asset, string address)
+        {
+            if (asset == null)
+            {
+                return;
+            }
+
+            Selection.activeObject = asset;
+            EditorGUIUtility.PingObject(asset);
+            WSLog.Log($"[WSAddressableKeyDrawer] 定位 Addressable 资源：{address}，资源={asset.name}。");
+        }
+
+        #endregion
+
         #region Addressables 筛选
 
         /// <summary>
@@ -364,7 +514,7 @@ namespace WS_Modules
                         continue;
                     }
 
-                    options.Add(new AddressableKeyOption(entry.address, group.Name, CreateTooltip(entry)));
+                    options.Add(new AddressableKeyOption(entry.address, group.Name, CreateTooltip(entry), entry));
                 }
             }
 
@@ -549,11 +699,17 @@ namespace WS_Modules
             /// <param name="address">The entry address.</param>
             /// <param name="groupName">The owning group name.</param>
             /// <param name="tooltip">The tooltip shown for the option.</param>
-            public AddressableKeyOption(string address, string groupName, string tooltip)
+            /// <param name="entry">The Addressables entry used to resolve the preview object.</param>
+            public AddressableKeyOption(
+                string address,
+                string groupName,
+                string tooltip,
+                AddressableAssetEntry entry)
             {
                 Address = address;
                 GroupName = groupName;
                 Tooltip = tooltip;
+                Entry = entry;
             }
 
             /// <summary>
@@ -570,6 +726,11 @@ namespace WS_Modules
             /// Gets the tooltip text for the option.
             /// </summary>
             public string Tooltip { get; }
+
+            /// <summary>
+            /// Gets the Addressables entry used to resolve the selected preview object.
+            /// </summary>
+            public AddressableAssetEntry Entry { get; }
         }
 
         #endregion

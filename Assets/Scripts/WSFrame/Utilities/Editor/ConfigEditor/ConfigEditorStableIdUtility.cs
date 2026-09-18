@@ -24,7 +24,7 @@ namespace WS_Modules.EditorExtensions
         /// <summary>
         /// 从序列化数据库计数器中分配一个新的类别编号，并推进计数器。
         /// </summary>
-        /// <param name="prefix">小写 ASCII 类别前缀。</param>
+        /// <param name="prefix">由小写 ASCII 字母片段和单个下划线组成的类别前缀。</param>
         /// <param name="counterOwner">保存计数器的序列化数据库。</param>
         /// <param name="counterPropertyPath">计数器的序列化属性路径。</param>
         /// <param name="existingIds">当前数据库已使用的 ID。</param>
@@ -71,7 +71,7 @@ namespace WS_Modules.EditorExtensions
 
         /// <summary>解析指定前缀的四位编号 ID。</summary>
         /// <param name="id">待解析 ID。</param>
-        /// <param name="expectedPrefix">预期的小写类别前缀。</param>
+        /// <param name="expectedPrefix">预期的类别前缀；必须使用小写 ASCII 字母片段和单个下划线。</param>
         /// <param name="number">解析出的编号。</param>
         /// <returns>格式和编号均合法时返回 true。</returns>
         public static bool TryParseNumber(string id, string expectedPrefix, out int number)
@@ -132,14 +132,19 @@ namespace WS_Modules.EditorExtensions
 
         #region 内部辅助
 
-        /// <summary>验证类别前缀只能由小写 ASCII 字母组成。</summary>
+        /// <summary>验证类别前缀由小写 ASCII 字母片段和单个下划线组成。</summary>
         /// <param name="prefix">待验证前缀。</param>
         private static void ValidatePrefix(string prefix)
         {
             if (string.IsNullOrWhiteSpace(prefix)) throw new ArgumentException("ID 前缀不能为空。", nameof(prefix));
             for (int index = 0; index < prefix.Length; index++)
-                if (prefix[index] < 'a' || prefix[index] > 'z')
-                    throw new ArgumentException($"ID 前缀“{prefix}”必须只包含小写 ASCII 字母。", nameof(prefix));
+            {
+                char character = prefix[index];
+                if (character >= 'a' && character <= 'z') continue;
+                // 下划线只能分隔两个非空的小写字母片段，避免生成双下划线或首尾分隔符。
+                if (character == '_' && index > 0 && index < prefix.Length - 1 && prefix[index - 1] != '_' && prefix[index + 1] != '_') continue;
+                throw new ArgumentException($"ID 前缀“{prefix}”必须由小写 ASCII 字母片段和单个下划线组成。", nameof(prefix));
+            }
         }
 
         /// <summary>按固定四位格式组合 ID。</summary>

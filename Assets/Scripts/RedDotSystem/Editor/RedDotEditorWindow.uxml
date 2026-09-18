@@ -1,0 +1,126 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/RedDotSystem/Editor/RedDotEditorWindow.uss" />
+    <ui:VisualElement class="red-dot-editor-root">
+        <ui:VisualElement class="tab-toolbar">
+            <ui:Button name="SettingsTabButton" text="节点设置" class="tab-button" />
+            <ui:Button name="DebuggerTabButton" text="Runtime Debugger" class="tab-button" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="SettingsTabContent" class="tab-content">
+            <ui:VisualElement class="settings-toolbar">
+                <ui:VisualElement class="settings-toolbar-row config-toolbar">
+                    <uie:ObjectField name="ConfigField" label="RedDotConfig" class="config-field" />
+                    <ui:Button name="CreateConfigButton" text="新建 Config" />
+                    <ui:Button name="RefreshConfigButton" text="刷新" />
+                </ui:VisualElement>
+                <ui:VisualElement class="settings-toolbar-row folder-toolbar">
+                    <uie:PropertyField name="NodeFolderField" label="新建节点 Asset 目录"
+                                       binding-path="newNodeAssetFolder" class="folder-field" />
+                    <ui:Button name="CreateFolderButton" text="创建目录" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:HelpBox name="ConfigHelpBox" text="节点设置修改静态 Asset；运行时由 ConfigInstaller 注入的 Config 决定。" message-type="Info" />
+            <ui:TwoPaneSplitView fixed-pane-index="0" fixed-pane-initial-dimension="460" orientation="Horizontal" class="content-split">
+                <ui:VisualElement class="tree-panel">
+                    <ui:Label text="配置节点树" class="panel-title" />
+                    <ui:VisualElement class="node-command-toolbar">
+                        <ui:TextField name="NewNodeNameField" label="节点名称" value="New" class="name-field" />
+                        <ui:Button name="CreateRootNodeButton" text="新建根节点" class="accent-button" />
+                        <ui:Button name="CreateChildNodeButton" text="新建子节点" class="accent-button" />
+                        <ui:Button name="MoveUpButton" text="上移" />
+                        <ui:Button name="MoveDownButton" text="下移" />
+                    </ui:VisualElement>
+                    <ui:TreeView name="ConfigTreeView" class="node-tree" />
+                </ui:VisualElement>
+                <ui:VisualElement class="detail-panel">
+                    <ui:Label text="节点详情" class="panel-title" />
+                    <ui:Label name="ConfigDetailLabel" text="请选择一个节点。" class="detail-context" />
+                    <ui:HelpBox name="DetailEmptyState" text="请选择节点以查看和编辑。"
+                                message-type="Info" class="detail-empty-state" />
+                    <ui:ScrollView name="DetailContent" class="detail-content"
+                                   horizontal-scroller-visibility="Hidden">
+                        <ui:VisualElement class="detail-card">
+                            <ui:Label text="基本信息" class="detail-section-title" />
+                            <ui:TextField name="SegmentNameField" label="节点名称" />
+                            <uie:ObjectField name="ParentField" label="父节点" allow-scene-objects="false" />
+                            <ui:TextField name="DerivedPathField" label="目标父节点路径"
+                                         tooltip="输入当前 Config 中已有节点的派生路径；提交后当前节点会成为该节点的最后一个子节点。"
+                                         is-delayed="true" />
+                            <ui:HelpBox name="DerivedPathErrorHelpBox"
+                                        message-type="Error" class="derived-path-error" />
+                            <ui:VisualElement class="detail-row">
+                                <ui:Label text="同级排序" class="detail-key" />
+                                <ui:Label name="SiblingOrderLabel" text="0" class="detail-value" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="detail-card">
+                            <ui:Label text="Asset 信息" class="detail-section-title" />
+                            <ui:TextField name="AssetPathField" label="Asset 路径" is-read-only="true"
+                                         class="detail-readonly-field" />
+                            <ui:VisualElement class="detail-row">
+                                <ui:Label text="直接子节点" class="detail-key" />
+                                <ui:Label name="DirectChildrenCountLabel" text="0" class="detail-value" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+
+                        <ui:VisualElement class="detail-card detail-actions-card">
+                            <ui:Label text="节点操作" class="detail-section-title" />
+                            <ui:VisualElement class="toolbar-row detail-actions-row">
+                                <ui:Button name="PingAssetButton" text="Ping Asset" />
+                                <ui:Button name="DeleteNodeButton" text="删除节点" class="danger-button" />
+                                <ui:Button name="DeleteSubtreeButton" text="删除整个子树" class="danger-button" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:ScrollView>
+                </ui:VisualElement>
+            </ui:TwoPaneSplitView>
+            <ui:Label name="ConfigStatusLabel" text="请选择一个 RedDotConfig。" class="footer-status" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="DebuggerTabContent" class="tab-content">
+            <ui:VisualElement class="status-strip">
+                <ui:Label name="ModeLabel" text="模式：Edit Mode" />
+                <ui:Label name="ConnectionLabel" text="连接：仅 Play Mode 可用" />
+                <ui:Label name="RuntimeConfigLabel" text="运行时 Config：未连接" />
+                <ui:Label name="CountLabel" text="节点：0    Dirty：0" />
+            </ui:VisualElement>
+
+            <ui:HelpBox text="运行时调试操作仅在 Play Mode 可用；Edit Mode 不会访问或初始化 GameArchitecture。" message-type="Info" />
+
+            <ui:VisualElement name="RuntimeControls" class="runtime-controls">
+                <ui:VisualElement class="toolbar-row">
+                    <ui:Button name="FlushButton" text="立即 Flush" />
+                    <ui:Button name="RefreshButton" text="刷新快照" />
+                    <ui:Button name="ClearAllOverridesButton" text="清除全部 Override" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:TwoPaneSplitView fixed-pane-index="0" fixed-pane-initial-dimension="460" orientation="Horizontal" class="content-split">
+                <ui:VisualElement class="tree-panel">
+                    <ui:Label text="运行时节点树" class="panel-title" />
+                    <ui:TreeView name="NodeTreeView" class="node-tree" />
+                </ui:VisualElement>
+                <ui:VisualElement class="detail-panel">
+                    <ui:Label text="运行时详情" class="panel-title" />
+                    <ui:Label name="DetailLabel" text="请选择一个节点。" class="detail-label" />
+                    <ui:Button name="CopyKeyButton" text="复制路径" />
+                    <ui:Button name="PingKeyButton" text="Ping RedDotKey Asset" />
+                    <ui:VisualElement name="SelectedNodeControls" class="selected-leaf-controls">
+                        <ui:VisualElement class="toolbar-row">
+                            <ui:Button name="IncrementButton" text="+1" />
+                            <ui:Button name="DecrementButton" text="-1" />
+                            <ui:Button name="SetZeroButton" text="设为 0" />
+                        </ui:VisualElement>
+                        <uie:IntegerField name="OverrideValueField" label="Override SelfValue" value="0" />
+                        <ui:Button name="SetValueButton" text="设为输入值" />
+                        <ui:Button name="ClearOverrideButton" text="清除 Override" />
+                        <ui:Button name="MarkDirtyButton" text="Mark Dirty" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:TwoPaneSplitView>
+
+            <ui:Label name="StatusLabel" text="仅 Play Mode 可进行红点调试。" class="footer-status" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

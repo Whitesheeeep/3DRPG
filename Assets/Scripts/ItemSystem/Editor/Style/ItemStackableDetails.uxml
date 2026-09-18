@@ -1,7 +1,7 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
     <ui:Style src="project://database/Assets/Scripts/ItemSystem/Editor/Style/ItemStackableDetails.uss" />
     <ui:VisualElement name="StackableDetailsRoot" class="item-editor-stackable-details">
-        <ui:Label name="StackableSectionTitle" text="食材堆叠配置" class="item-editor-section-title" />
+        <ui:Label name="StackableSectionTitle" text="可堆叠物品配置" class="item-editor-section-title" />
         <uie:PropertyField name="MaxQuantityField" binding-path="maxQuantity" label="单种最大数量" class="item-editor-property-field" />
     </ui:VisualElement>
 </ui:UXML>

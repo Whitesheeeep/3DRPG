@@ -352,12 +352,12 @@ namespace RPG.ItemSystem.Editor
         /// <returns>新建的定义。</returns>
         internal ItemDefinition CreateDefinition(Type definitionType, ItemCategory requestedCategory, ItemDatabase database)
         {
-            if (definitionType != typeof(StackableItemDefinition) &&
-                definitionType != typeof(DevelopmentItemDefinition) &&
+            if (definitionType != typeof(DevelopmentItemDefinition) &&
+                definitionType != typeof(DevelopmentExperienceItemDefinition) &&
                 definitionType != typeof(FoodItemDefinition) &&
                 definitionType != typeof(WeaponDefinition) &&
                 definitionType != typeof(ArtifactDefinition))
-                throw new ArgumentException("只能创建养成道具、食材、料理、武器或圣遗物定义。", nameof(definitionType));
+                throw new ArgumentException("只能创建养成道具、养成经验道具、食物、武器或圣遗物定义。", nameof(definitionType));
             if (database == null) throw new InvalidOperationException("创建物品前必须选择 ItemDatabase。");
             ItemCategory category = ResolveCreationCategory(definitionType, requestedCategory);
 
@@ -365,7 +365,8 @@ namespace RPG.ItemSystem.Editor
             string fileName = definitionType == typeof(WeaponDefinition) ? "NewWeapon" :
                 definitionType == typeof(ArtifactDefinition) ? "NewArtifact" :
                 definitionType == typeof(DevelopmentItemDefinition) ? "NewDevelopmentItem" :
-                definitionType == typeof(FoodItemDefinition) ? "NewFoodItem" : "NewIngredientItem";
+                definitionType == typeof(DevelopmentExperienceItemDefinition) ? "NewDevelopmentExperienceItem" :
+                "NewFoodItem";
             string assetPath = AssetDatabase.GenerateUniqueAssetPath($"{folder}/{fileName}.asset");
             ItemDefinition definition = null;
             UnityEngine.Object growthProfile = null;
@@ -407,7 +408,7 @@ namespace RPG.ItemSystem.Editor
                 SetString(serialized, "displayName", definition is WeaponDefinition ? "新武器" :
                     definition is ArtifactDefinition ? "新圣遗物" :
                     definition is DevelopmentItemDefinition ? "新养成道具" :
-                    definition is FoodItemDefinition ? "新料理" : "新食材");
+                    definition is DevelopmentExperienceItemDefinition ? "新养成经验道具" : "新食物");
                 SetEnum(serialized, "category", (int)category);
                 if (definition is WeaponDefinition)
                 {
@@ -419,7 +420,11 @@ namespace RPG.ItemSystem.Editor
                 }
                 else if (definition is DevelopmentItemDefinition)
                 {
-                    SetEnum(serialized, "developmentType", (int)DevelopmentItemType.CharacterExperience);
+                    SetEnum(serialized, "developmentTypes", (int)DevelopmentItemType.CharacterAscension);
+                }
+                else if (definition is DevelopmentExperienceItemDefinition)
+                {
+                    SetEnum(serialized, "experienceTypes", (int)DevelopmentExperienceItemType.Weapon);
                     SetInt(serialized, "experienceValue", 100);
                 }
                 // 先把新建 Profile 引用放入同一个 SerializedObject，再由 DefaultData 一次性应用全部默认字段。
@@ -653,15 +658,15 @@ namespace RPG.ItemSystem.Editor
                 if (requestedCategory != ItemCategory.DevelopmentItem) throw new InvalidOperationException("养成道具定义必须归入养成道具分类。");
                 return ItemCategory.DevelopmentItem;
             }
+            if (definitionType == typeof(DevelopmentExperienceItemDefinition))
+            {
+                if (requestedCategory != ItemCategory.DevelopmentExperienceItem) throw new InvalidOperationException("养成经验道具定义必须归入养成经验道具分类。");
+                return ItemCategory.DevelopmentExperienceItem;
+            }
             if (definitionType == typeof(FoodItemDefinition))
             {
-                if (requestedCategory != ItemCategory.Food) throw new InvalidOperationException("料理定义必须使用料理分类。");
+                if (requestedCategory != ItemCategory.Food) throw new InvalidOperationException("食物定义必须使用食物分类。");
                 return ItemCategory.Food;
-            }
-            if (definitionType == typeof(StackableItemDefinition))
-            {
-                if (requestedCategory != ItemCategory.Ingredient) throw new InvalidOperationException("食材定义必须使用食材分类。");
-                return ItemCategory.Ingredient;
             }
             throw new InvalidOperationException("未知可堆叠定义类型。");
         }
@@ -711,11 +716,11 @@ namespace RPG.ItemSystem.Editor
         {
             return category switch
             {
-                ItemCategory.DevelopmentItem => "material",
-                ItemCategory.Ingredient => "ingredient",
-                ItemCategory.Food => "food",
                 ItemCategory.Weapon => "weapon",
                 ItemCategory.Artifact => "artifact",
+                ItemCategory.DevelopmentExperienceItem => "experience_material",
+                ItemCategory.Food => "food",
+                ItemCategory.DevelopmentItem => "material",
                 _ => throw new ArgumentOutOfRangeException(nameof(category), category, "未知物品分类。")
             };
         }
@@ -727,11 +732,11 @@ namespace RPG.ItemSystem.Editor
         {
             return category switch
             {
-                ItemCategory.DevelopmentItem => "nextMaterialIdNumber",
-                ItemCategory.Ingredient => "nextIngredientIdNumber",
-                ItemCategory.Food => "nextFoodIdNumber",
                 ItemCategory.Weapon => "nextWeaponIdNumber",
                 ItemCategory.Artifact => "nextArtifactIdNumber",
+                ItemCategory.DevelopmentExperienceItem => "nextExperienceMaterialIdNumber",
+                ItemCategory.Food => "nextFoodIdNumber",
+                ItemCategory.DevelopmentItem => "nextMaterialIdNumber",
                 _ => throw new ArgumentOutOfRangeException(nameof(category), category, "未知物品分类。")
             };
         }

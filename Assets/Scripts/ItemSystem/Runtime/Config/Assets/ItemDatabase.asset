@@ -16,29 +16,21 @@ MonoBehaviour:
   - {fileID: 11400000, guid: d66c99f27e8540d45bcd3b973b2d4889, type: 2}
   - {fileID: 11400000, guid: 371829421fb4dbc4b97b9aa139de391b, type: 2}
   - {fileID: 11400000, guid: 1303ced24d9d700418fa5644e7dd934e, type: 2}
-  - {fileID: 11400000, guid: 32d6e344cc5d898469ba5bfdd7b7bfe3, type: 2}
   - {fileID: 11400000, guid: 766ed4bd2e34310428076c61553f6778, type: 2}
-  - {fileID: 11400000, guid: c722d73da1b0f734e8fdc82d7b4222e7, type: 2}
-  - {fileID: 11400000, guid: a0ec1c4f230acc24580d9835339ae9a4, type: 2}
-  - {fileID: 11400000, guid: 9103015d9fbdd9349b50370a3080f16e, type: 2}
   - {fileID: 11400000, guid: 4c42f5021fd346e468dfce5397bf702d, type: 2}
-  - {fileID: 11400000, guid: dfd8a90d1a4741c41931f9be4dbac9ef, type: 2}
-  - {fileID: 11400000, guid: 150e1c9a4626c404894014762e214c78, type: 2}
-  - {fileID: 11400000, guid: c2e94407c62cb3645b62e31b22883b93, type: 2}
   - {fileID: 11400000, guid: 669cc4e2c7af19f4e9b5ed3e9c747389, type: 2}
-  - {fileID: 11400000, guid: 0b948cf03cd17bb40ad388b43ef7e728, type: 2}
-  - {fileID: 11400000, guid: 3029039e19c4ead4bbd7756fdd828556, type: 2}
-  - {fileID: 11400000, guid: c659f84622255ea4b968d19052229613, type: 2}
-  - {fileID: 11400000, guid: 7fc10a6a4c26961438880defb1cf8579, type: 2}
+  - {fileID: 11400000, guid: d7fd4cfa86e628146b6dcd9034a95ba8, type: 2}
+  - {fileID: 11400000, guid: c2e94407c62cb3645b62e31b22883b93, type: 2}
+  - {fileID: 11400000, guid: fb993ad77455429dbeb9bb69be1724f1, type: 2}
   categoryDefaults:
-  - rid: 100000000000000001
-  - rid: 100000000000000002
-  - rid: 100000000000000003
   - rid: 100000000000000005
   - rid: 100000000000000006
+  - rid: 100000000000000002
+  - rid: 100000000000000003
+  - rid: 100000000000000001
   nextMaterialIdNumber: 14
-  nextIngredientIdNumber: 2
-  nextFoodIdNumber: 3
+  nextExperienceMaterialIdNumber: 9
+  nextFoodIdNumber: 4
   nextWeaponIdNumber: 4
   nextArtifactIdNumber: 4
   references:
@@ -48,23 +40,23 @@ MonoBehaviour:
       type: {class: StackableItemDefaultData, ns: RPG.ItemSystem, asm: Assembly-CSharp}
       data:
         defaultRarity: 1
-        defaultSortPriority: 100
-        category: 0
+        defaultSortPriority: 300
+        category: 4
         defaultMaxQuantity: 9999
     - rid: 100000000000000002
       type: {class: StackableItemDefaultData, ns: RPG.ItemSystem, asm: Assembly-CSharp}
       data:
         defaultRarity: 1
-        defaultSortPriority: 200
-        category: 1
+        defaultSortPriority: 100
+        category: 2
         defaultMaxQuantity: 9999
     - rid: 100000000000000003
       type: {class: StackableItemDefaultData, ns: RPG.ItemSystem, asm: Assembly-CSharp}
       data:
         defaultRarity: 2
-        defaultSortPriority: 300
-        category: 2
-        defaultMaxQuantity: 200
+        defaultSortPriority: 200
+        category: 3
+        defaultMaxQuantity: 9999
     - rid: 100000000000000005
       type: {class: WeaponItemDefaultData, ns: RPG.ItemSystem, asm: Assembly-CSharp}
       data:

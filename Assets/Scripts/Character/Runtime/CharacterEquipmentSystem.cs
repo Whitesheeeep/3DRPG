@@ -1,12 +1,11 @@
 using System;
 using RPG.ItemSystem;
-using RPG.SaveSystem;
 using UnityEngine;
 using WS_Modules.BusinessArchitecture;
 
 namespace RPG.Character
 {
-    /// <summary>编排角色获取、默认武器生成、合法换装与角色拥有存档注册。</summary>
+    /// <summary>编排角色获取、默认武器生成和合法换装。</summary>
     public sealed class CharacterEquipmentSystem : AbstractSystem
     {
         #region 依赖字段
@@ -14,19 +13,16 @@ namespace RPG.Character
         // 角色拥有状态与武器实例是两个独立 Manager；本 System 只负责跨业务原子顺序。
         private CharacterRosterManager characterRosterManager;
         private WeaponInventoryManager weaponInventoryManager;
-        private SaveManager saveManager;
 
         #endregion
 
         #region 生命周期
 
-        /// <summary>初始化角色装备编排，并先注册角色拥有存档模块。</summary>
+        /// <summary>初始化角色装备编排，并解析 Architecture 持有的业务 Manager。</summary>
         protected override void OnInit()
         {
             characterRosterManager = this.GetManager<CharacterRosterManager>();
-            weaponInventoryManager = WeaponInventoryManager.Instance;
-            saveManager = this.GetManager<SaveManager>();
-            saveManager.RegisterModule(new CharacterRosterSaveModule(characterRosterManager));
+            weaponInventoryManager = this.GetManager<WeaponInventoryManager>();
             Debug.Log("[CharacterEquipmentSystem] 角色获取与装备编排已初始化。 ");
         }
 
@@ -35,7 +31,6 @@ namespace RPG.Character
         {
             characterRosterManager = null;
             weaponInventoryManager = null;
-            saveManager = null;
             Debug.Log("[CharacterEquipmentSystem] 角色获取与装备编排已注销。 ");
         }
 
@@ -57,8 +52,10 @@ namespace RPG.Character
             if (!TryResolveDefaultWeapon(config, out ItemId defaultWeaponId, out CharacterAcquisitionStatus resolveStatus))
                 return Fail(resolveStatus, characterId, InventoryOperationStatus.UnknownDefinition);
 
+            // 已经拥有角色时，尝试修复默认武器；任何失败都不会占用容纳区容量。
             if (characterRosterManager.IsOwned(characterId))
             {
+                // 如果已经拥有角色但没有默认武器，则尝试生成一把默认武器；如果已经拥有默认武器，则直接返回现有实例。
                 if (weaponInventoryManager.TryGetEquippedWeapon(characterId, out WeaponInstance existingWeapon))
                     return new CharacterAcquisitionResult(
                         CharacterAcquisitionStatus.AlreadyOwned,

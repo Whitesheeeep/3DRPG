@@ -2,7 +2,6 @@
     <ui:Style src="project://database/Assets/Scripts/ItemSystem/Editor/Style/ItemDevelopmentDetails.uss" />
     <ui:VisualElement name="DevelopmentDetailsRoot" class="item-editor-development-details">
         <ui:Label text="养成道具配置" class="item-editor-section-title" />
-        <uie:PropertyField name="DevelopmentTypeField" binding-path="developmentType" label="养成用途" class="item-editor-property-field" />
-        <uie:PropertyField name="ExperienceValueField" binding-path="experienceValue" label="提供经验值" class="item-editor-property-field" />
+        <uie:PropertyField name="DevelopmentTypesField" binding-path="developmentTypes" label="养成用途" class="item-editor-property-field" />
     </ui:VisualElement>
 </ui:UXML>

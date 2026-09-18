@@ -78,7 +78,11 @@ namespace RPG.ItemSystem
         /// <summary>创建圣遗物实例存档模块。</summary>
         /// <param name="manager">圣遗物 Manager。</param>
         public ArtifactInventorySaveModule(ArtifactInventoryManager manager)
-            : base(new SaveModuleId("artifact-inventory"), 1, SaveMissingModulePolicy.Required)
+            : base(
+                new SaveModuleId("artifact-inventory"),
+                1,
+                SaveMissingModulePolicy.Required,
+                new[] { ItemDiscoverySaveModule.StableModuleId })
         {
             this.manager = manager ?? throw new ArgumentNullException(nameof(manager));
         }

@@ -105,7 +105,11 @@ namespace RPG.ItemSystem
                 new SaveModuleId("weapon-inventory"),
                 1,
                 SaveMissingModulePolicy.Required,
-                new[] { new SaveModuleId("character-roster") })
+                new[]
+                {
+                    CharacterRosterSaveModule.StableModuleId,
+                    ItemDiscoverySaveModule.StableModuleId
+                })
         {
             this.manager = manager ?? throw new ArgumentNullException(nameof(manager));
             this.characterRosterManager = characterRosterManager ??

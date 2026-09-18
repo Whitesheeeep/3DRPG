@@ -25,7 +25,6 @@ namespace RPG.ItemSystem.Editor
         private ItemDefinition selectedDefinition;
         private string search = string.Empty;
         private string category = "全部类型";
-        private string kind = "全部定义";
         private string sortField = "默认排序优先级";
         private string sortDirection = "降序";
         private bool disposed;
@@ -48,15 +47,12 @@ namespace RPG.ItemSystem.Editor
             bakedResultService = new BakedResultEditorService();
             database = service.ResolveDatabase();
             search = ItemConfigEditorSession.Search;
-            category = ItemConfigEditorSession.Category == "养成素材"
-                ? "养成道具"
-                : ItemConfigEditorSession.Category;
+            category = NormalizeCategoryFilter(ItemConfigEditorSession.Category);
             sortField = ItemConfigEditorSession.SortField;
             sortDirection = ItemConfigEditorSession.SortDirection;
             view.DatabaseChanged += OnDatabaseChanged;
             view.SearchChanged += OnSearchChanged;
             view.CategoryChanged += OnCategoryChanged;
-            view.KindChanged += OnKindChanged;
             view.SortFieldChanged += OnSortFieldChanged;
             view.SortDirectionChanged += OnSortDirectionChanged;
             view.DefinitionSelected += OnDefinitionSelected;
@@ -81,7 +77,7 @@ namespace RPG.ItemSystem.Editor
             EditorApplication.projectChanged += OnProjectChanged;
             view.SetDatabase(database);
             view.SetSearch(search);
-            view.SetFilters(category, kind);
+            view.SetFilters(category);
             view.SetSorting(sortField, sortDirection);
             RefreshDefinitions();
         }
@@ -124,7 +120,6 @@ namespace RPG.ItemSystem.Editor
             view.DatabaseChanged -= OnDatabaseChanged;
             view.SearchChanged -= OnSearchChanged;
             view.CategoryChanged -= OnCategoryChanged;
-            view.KindChanged -= OnKindChanged;
             view.SortFieldChanged -= OnSortFieldChanged;
             view.SortDirectionChanged -= OnSortDirectionChanged;
             view.DefinitionSelected -= OnDefinitionSelected;
@@ -186,11 +181,6 @@ namespace RPG.ItemSystem.Editor
             string displayName = definition.DisplayName ?? string.Empty;
             if (!string.IsNullOrWhiteSpace(search) && displayName.IndexOf(search, StringComparison.OrdinalIgnoreCase) < 0 && definition.ItemId.ToString().IndexOf(search, StringComparison.OrdinalIgnoreCase) < 0) return false;
             if (category != "全部类型" && ItemConfigEditorPresentation.GetCategoryText(definition.Category) != category) return false;
-            if (kind == "食材定义" && definition.GetType() != typeof(StackableItemDefinition)) return false;
-            if (kind == "料理定义" && definition is not FoodItemDefinition) return false;
-            if (kind == "养成道具定义" && definition is not DevelopmentItemDefinition) return false;
-            if (kind == "武器定义" && definition is not WeaponDefinition) return false;
-            if (kind == "圣遗物定义" && definition is not ArtifactDefinition) return false;
             return true;
         }
 
@@ -212,9 +202,7 @@ namespace RPG.ItemSystem.Editor
                     return AddStableNameTie(SortText(definitions, ItemConfigEditorPresentation.GetDefinitionKindText, descending));
                 case "养成用途":
                     return AddStableNameTie(SortText(definitions,
-                        definition => definition is DevelopmentItemDefinition development
-                            ? ItemConfigEditorPresentation.GetDevelopmentTypeText(development.DevelopmentType)
-                            : string.Empty,
+                        definition => ItemConfigEditorPresentation.GetDevelopmentUsageText(definition),
                         descending));
                 case "稳定物品标识":
                     return SortText(definitions, definition => definition.ItemId.ToString(), descending);
@@ -364,14 +352,6 @@ namespace RPG.ItemSystem.Editor
             RefreshDefinitions();
         }
 
-        /// <summary>更新定义类型筛选。</summary>
-        /// <param name="value">定义类型文本。</param>
-        private void OnKindChanged(string value)
-        {
-            kind = value ?? "全部定义";
-            RefreshDefinitions();
-        }
-
         /// <summary>更新列表排序字段并刷新当前筛选结果。</summary>
         /// <param name="value">排序字段中文名称。</param>
         private void OnSortFieldChanged(string value)
@@ -396,10 +376,10 @@ namespace RPG.ItemSystem.Editor
         {
             Type definitionType = category switch
             {
-                ItemCategory.DevelopmentItem => typeof(DevelopmentItemDefinition),
+                ItemCategory.DevelopmentExperienceItem => typeof(DevelopmentExperienceItemDefinition),
                 ItemCategory.Food => typeof(FoodItemDefinition),
-                ItemCategory.Ingredient => typeof(StackableItemDefinition),
-                _ => throw new InvalidOperationException("可堆叠物品只能创建养成道具、食材或料理定义。")
+                ItemCategory.DevelopmentItem => typeof(DevelopmentItemDefinition),
+                _ => throw new InvalidOperationException("可堆叠物品只能创建养成经验道具、食物或养成道具定义。")
             };
             CreateDefinition(definitionType, category);
         }
@@ -762,6 +742,26 @@ namespace RPG.ItemSystem.Editor
         #endregion
 
         #region 内部辅助
+
+        /// <summary>将编辑器会话中的旧分类筛选值迁移到当前分类集合。</summary>
+        /// <param name="persistedCategory">会话保存的分类文本。</param>
+        /// <returns>当前下拉框可识别的分类文本；未知值回退到全部类型。</returns>
+        private static string NormalizeCategoryFilter(string persistedCategory)
+        {
+            if (persistedCategory == "养成素材") return "养成道具";
+            switch (persistedCategory)
+            {
+                case "武器":
+                case "圣遗物":
+                case "养成经验道具":
+                case "食物":
+                case "养成道具":
+                case "全部类型":
+                    return persistedCategory;
+                default:
+                    return "全部类型";
+            }
+        }
 
         #endregion
     }

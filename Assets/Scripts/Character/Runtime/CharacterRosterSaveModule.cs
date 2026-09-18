@@ -38,6 +38,9 @@ namespace RPG.Character
     /// <summary>将角色拥有 Manager 状态接入 SaveSystem。</summary>
     public sealed class CharacterRosterSaveModule : SaveModule<CharacterRosterSaveSnapshot>
     {
+        /// <summary>角色拥有存档模块的稳定标识。</summary>
+        public static readonly SaveModuleId StableModuleId = new SaveModuleId("character-roster");
+
         #region 依赖字段
 
         private readonly CharacterRosterManager manager;
@@ -50,7 +53,7 @@ namespace RPG.Character
         /// <param name="manager">角色拥有状态 Manager。</param>
         public CharacterRosterSaveModule(CharacterRosterManager manager)
             : base(
-                new SaveModuleId("character-roster"),
+                StableModuleId,
                 1,
                 SaveMissingModulePolicy.CreateDefault)
         {

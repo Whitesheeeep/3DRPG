@@ -31,15 +31,24 @@ namespace WS_Modules.UIModule
         [SerializeField] private Button deleteButton;
         [SerializeField] private Button detailsButton;
         [SerializeField, Required] private BagGridView gridView;
-        [SerializeField, Required] private BagDetailShellView detailShellView;
-        [SerializeField, Required] private WeaponBagDetailView weaponDetailView;
+        [SerializeField, Required] private BagDetailView detailView;
 
         #endregion
 
         #region 动态图集配置
 
         [SerializeField, WSAddressableKey("UISpriteAtlas")]
-        private List<string> dynamicAtlasAddresses = new() { "WeaponIcons", "CharacterSideIcons" };
+        private List<string> dynamicAtlasAddresses = new()
+        {
+            "WeaponIcons",
+            "CharacterSideIcons",
+            "Artifacts_00",
+            "Artifacts_01",
+            "Artifacts_02",
+            "ItemIcons_DevelopmentMaterial",
+            "ItemIcons_Food",
+            "ItemIcons_FoodMaterial"
+        };
         [SerializeField, MinValue(0f)] private float atlasReleaseDelaySeconds = 30f;
 
         #endregion
@@ -48,11 +57,11 @@ namespace WS_Modules.UIModule
 
         [SerializeField] private List<ItemCategory> categoryOrder = new()
         {
-            ItemCategory.DevelopmentItem,
             ItemCategory.Weapon,
-            ItemCategory.Ingredient,
             ItemCategory.Artifact,
-            ItemCategory.Food
+            ItemCategory.DevelopmentExperienceItem,
+            ItemCategory.Food,
+            ItemCategory.DevelopmentItem
         };
 
         #endregion
@@ -92,11 +101,8 @@ namespace WS_Modules.UIModule
         /// <summary>获取虚拟网格 View。</summary>
         public BagGridView GridView => gridView;
 
-        /// <summary>获取共用详情外壳。</summary>
-        public BagDetailShellView DetailShellView => detailShellView;
-
-        /// <summary>获取武器详情内容 View。</summary>
-        public WeaponBagDetailView WeaponDetailView => weaponDetailView;
+        /// <summary>获取所有分类共用的详情 View。</summary>
+        public BagDetailView DetailView => detailView;
 
         /// <summary>获取动态图集地址配置。</summary>
         public IReadOnlyList<string> DynamicAtlasAddresses => dynamicAtlasAddresses;
@@ -122,8 +128,7 @@ namespace WS_Modules.UIModule
                 if (categoryButtons[index] == null)
                     throw new InvalidOperationException($"[BagWindowDataComponent] 分类按钮索引 {index} 未绑定。");
             if (gridView == null) throw new InvalidOperationException("[BagWindowDataComponent] 未绑定 BagGridView。");
-            if (detailShellView == null) throw new InvalidOperationException("[BagWindowDataComponent] 未绑定 BagDetailShellView。");
-            if (weaponDetailView == null) throw new InvalidOperationException("[BagWindowDataComponent] 未绑定 WeaponBagDetailView。");
+            if (detailView == null) throw new InvalidOperationException("[BagWindowDataComponent] 未绑定 BagDetailView。");
             if (dynamicAtlasAddresses == null) throw new InvalidOperationException("[BagWindowDataComponent] 动态图集地址列表为空。");
         }
 

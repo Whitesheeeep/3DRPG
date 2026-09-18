@@ -1,21 +1,51 @@
 using System;
 using System.Collections.Generic;
+using RPG.RedDotSystemNS;
+using RPG.SaveSystem;
+using UnityEngine;
+using WS_Modules.BusinessArchitecture;
 using WS_Modules.CustomEventSystem;
 using WSEventSystem = WS_Modules.CustomEventSystem.EventSystem;
 
 namespace RPG.ItemSystem
 {
     /// <summary>管理独立圣遗物实例、容量、锁定和基础成长状态。</summary>
-    public sealed class ArtifactInventoryManager : EquipmentInstanceManagerBase<ArtifactInventoryManager, ArtifactInstance>
+    public sealed class ArtifactInventoryManager : EquipmentInstanceManagerBase<ArtifactInstance>
     {
         #region 静态配置与构造
 
         private static ArtifactInventorySettings settings;
         private static bool configured;
 
-        /// <summary>创建圣遗物实例 Manager。</summary>
-        private ArtifactInventoryManager() : base(GetConfiguredCapacity())
+        #endregion
+
+        #region 依赖字段
+
+        private readonly SaveManager saveManager;
+        private readonly ItemDiscoveryManager itemDiscoveryManager;
+        private readonly RedDotSystem redDotSystem;
+        private readonly RedDotKey artifactNewRedDotKey;
+
+        /// <summary>获取圣遗物容量配置是否已经注入。</summary>
+        public static bool IsConfigured => configured && settings != null;
+
+        /// <summary>创建由 GameArchitecture 持有的圣遗物实例 Manager。</summary>
+        /// <param name="saveManager">用于注册圣遗物存档模块的 Manager。</param>
+        /// <param name="itemDiscoveryManager">用于记录首次发现 Definition 的 Manager。</param>
+        /// <param name="redDotSystem">统一红点运行时系统。</param>
+        /// <param name="artifactNewRedDotKey">圣遗物 New 红点叶节点。</param>
+        public ArtifactInventoryManager(
+            SaveManager saveManager,
+            ItemDiscoveryManager itemDiscoveryManager,
+            RedDotSystem redDotSystem,
+            RedDotKey artifactNewRedDotKey) : base(GetConfiguredCapacity())
         {
+            this.saveManager = saveManager ?? throw new ArgumentNullException(nameof(saveManager));
+            this.itemDiscoveryManager = itemDiscoveryManager ??
+                                        throw new ArgumentNullException(nameof(itemDiscoveryManager));
+            this.redDotSystem = redDotSystem ?? throw new ArgumentNullException(nameof(redDotSystem));
+            this.artifactNewRedDotKey = artifactNewRedDotKey ??
+                                        throw new ArgumentNullException(nameof(artifactNewRedDotKey));
         }
 
         /// <summary>静态注入圣遗物容量配置。</summary>
@@ -38,6 +68,24 @@ namespace RPG.ItemSystem
         {
             if (!configured || settings == null) throw new InvalidOperationException("[ArtifactInventoryManager] 尚未注入圣遗物容量配置。");
             return settings.Capacity;
+        }
+
+        #endregion
+
+        #region 架构生命周期
+
+        /// <summary>注册圣遗物存档模块。</summary>
+        protected override void OnInit()
+        {
+            saveManager.RegisterModule(new ArtifactInventorySaveModule(this));
+            Debug.Log("[ArtifactInventoryManager] 已注册圣遗物存档模块。");
+        }
+
+        /// <summary>注销时清空圣遗物运行时状态。</summary>
+        protected override void OnDeinit()
+        {
+            ClearInstances();
+            Debug.Log("[ArtifactInventoryManager] 已清理圣遗物运行时状态。");
         }
 
         #endregion
@@ -81,8 +129,14 @@ namespace RPG.ItemSystem
                 created.Add(instance);
             }
 
-            // 所有实例写入后再标记 Definition，保证 Added 事件的订阅方读取到完整状态。
-            for (int index = 0; index < created.Count; index++) MarkDefinitionNew(created[index].DefinitionId);
+            // 先完成全部实例写入，再按 Definition 记录永久发现状态；同批次同名圣遗物只会产生一次当前 New。
+            for (int index = 0; index < created.Count; index++)
+            {
+                ItemId definitionId = created[index].DefinitionId;
+                if (itemDiscoveryManager.MarkDiscovered(definitionId)) MarkDefinitionNew(definitionId);
+            }
+
+            RefreshNewRedDotCount();
 
             for (int index = 0; index < created.Count; index++) PublishChange(EquipmentInstanceChangeType.Added, created[index]);
             return new EquipmentBatchAddResult<ArtifactInstance>(InventoryOperationStatus.Succeeded, created);
@@ -116,6 +170,8 @@ namespace RPG.ItemSystem
             for (int index = 0; index < removed.Count; index++)
                 RemoveDefinitionNewIfUnused(removed[index].DefinitionId);
 
+            RefreshNewRedDotCount();
+
             // 批量移除完成后再广播，保证订阅方读取到完整的圣遗物集合。
             for (int index = 0; index < removed.Count; index++)
                 PublishChange(EquipmentInstanceChangeType.Removed, removed[index]);
@@ -145,9 +201,6 @@ namespace RPG.ItemSystem
             return new EquipmentOperationResult(InventoryOperationStatus.Succeeded);
         }
 
-        /// <summary>清空圣遗物运行时状态。</summary>
-        internal void ClearRuntimeState() => ClearInstances();
-
         /// <summary>用已经验证的圣遗物实例替换运行时状态。</summary>
         /// <param name="restoredInstances">圣遗物实例。</param>
         /// <param name="restoredNewDefinitionIds">圣遗物 Definition New 标识。</param>
@@ -155,7 +208,11 @@ namespace RPG.ItemSystem
         internal void RestoreState(
             IReadOnlyList<ArtifactInstance> restoredInstances,
             IReadOnlyList<ItemId> restoredNewDefinitionIds,
-            long nextSequence) => ReplaceInstances(restoredInstances, restoredNewDefinitionIds, nextSequence);
+            long nextSequence)
+        {
+            ReplaceInstances(restoredInstances, restoredNewDefinitionIds, nextSequence);
+            RefreshNewRedDotCount();
+        }
 
         /// <summary>发布圣遗物背包恢复事件。</summary>
         internal void PublishRestored() => WSEventSystem.EventTrigger_Type(typeof(ArtifactInventoryRestoredEvent), new ArtifactInventoryRestoredEvent());
@@ -182,6 +239,12 @@ namespace RPG.ItemSystem
             WSEventSystem.EventTrigger_Type(
                 typeof(ArtifactDefinitionNewStateChangedEvent),
                 new ArtifactDefinitionNewStateChangedEvent(definitionId, isNew));
+
+        /// <summary>将圣遗物 Definition New 数量写入统一红点系统。</summary>
+        protected override void RefreshNewRedDotCount()
+        {
+            redDotSystem.SetSelfValue(artifactNewRedDotKey, GetNewDefinitionIds().Count);
+        }
 
         #endregion
 

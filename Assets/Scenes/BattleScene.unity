@@ -1035,38 +1035,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
-      propertyPath: bindings.Array.size
-      value: 15
-      objectReference: {fileID: 0}
-    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
-      propertyPath: bindings.Array.data[8].action
-      value: 
-      objectReference: {fileID: -1641466239674093629, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
-      propertyPath: bindings.Array.data[9].action
-      value: 
-      objectReference: {fileID: -8172520714770766036, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
-      propertyPath: bindings.Array.data[10].action
-      value: 
-      objectReference: {fileID: -8642184972703864746, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
-      propertyPath: bindings.Array.data[11].action
-      value: 
-      objectReference: {fileID: -2665493838394134933, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
-      propertyPath: bindings.Array.data[12].action
-      value: 
-      objectReference: {fileID: -7471211009204490832, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
-      propertyPath: bindings.Array.data[13].action
-      value: 
-      objectReference: {fileID: 6962443320683872922, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
-    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
-      propertyPath: bindings.Array.data[14].action
-      value: 
-      objectReference: {fileID: -1744970950929049424, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
     - target: {fileID: 5482557129118236183, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
       propertyPath: m_IsActive
       value: 1
@@ -1574,13 +1542,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   testWeapon: {fileID: 11400000, guid: d66c99f27e8540d45bcd3b973b2d4889, type: 2}
+  testArtifact: {fileID: 11400000, guid: 1303ced24d9d700418fa5644e7dd934e, type: 2}
+  testFood: {fileID: 11400000, guid: c2e94407c62cb3645b62e31b22883b93, type: 2}
   testEnhancementMaterials:
   - {fileID: 11400000, guid: 4c42f5021fd346e468dfce5397bf702d, type: 2}
   - {fileID: 11400000, guid: 669cc4e2c7af19f4e9b5ed3e9c747389, type: 2}
+  testArtifactExperienceMaterial: {fileID: 11400000, guid: fb993ad77455429dbeb9bb69be1724f1, type: 2}
   testAscensionMaterial: {fileID: 11400000, guid: 0b948cf03cd17bb40ad388b43ef7e728, type: 2}
   batchQuantity: 8
+  artifactQuantity: 3
+  foodQuantity: 5
   enhancementMaterialQuantity: 20
+  artifactExperienceMaterialQuantity: 20
   ascensionMaterialQuantity: 3
+  testMolaAmount: 100000
   targetLevel: 20
   targetExperience: 0
   targetAscensionRank: 0

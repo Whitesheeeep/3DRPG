@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using RPG.SaveSystem;
 using UnityEngine;
 using WS_Modules.BusinessArchitecture;
 using WS_Modules.CustomEventSystem;
@@ -17,11 +18,29 @@ namespace RPG.Character
 
         #endregion
 
+        #region 依赖字段
+
+        private readonly SaveManager saveManager;
+
+        #endregion
+
+        #region 构造
+
+        /// <summary>创建由 GameArchitecture 持有的角色拥有 Manager。</summary>
+        /// <param name="saveManager">用于注册角色拥有存档模块的 Manager。</param>
+        public CharacterRosterManager(SaveManager saveManager)
+        {
+            this.saveManager = saveManager ?? throw new ArgumentNullException(nameof(saveManager));
+        }
+
+        #endregion
+
         #region 生命周期
 
         /// <summary>初始化角色拥有状态 Manager。</summary>
         protected override void OnInit()
         {
+            saveManager.RegisterModule(new CharacterRosterSaveModule(this));
             Debug.Log("[CharacterRosterManager] 角色拥有状态已初始化。 ");
         }
 

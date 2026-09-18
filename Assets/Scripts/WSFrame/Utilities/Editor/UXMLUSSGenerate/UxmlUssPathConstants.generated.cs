@@ -48,6 +48,8 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsScriptsCharacterEditorStyleCharacterConfigListRow = "Assets/Scripts/Character/Editor/Style/CharacterConfigListRow.uxml";
             /// <summary>资源路径：Assets/Scripts/Character/Editor/Style/CharacterConfigSummary.uxml</summary>
             public const string AssetsScriptsCharacterEditorStyleCharacterConfigSummary = "Assets/Scripts/Character/Editor/Style/CharacterConfigSummary.uxml";
+            /// <summary>资源路径：Assets/Scripts/Character/Editor/Style/CharacterGrowthDetails.uxml</summary>
+            public const string AssetsScriptsCharacterEditorStyleCharacterGrowthDetails = "Assets/Scripts/Character/Editor/Style/CharacterGrowthDetails.uxml";
             /// <summary>资源路径：Assets/Scripts/DialogueSystem/Editor/Style/DialogueGraphEditorWindow.uxml</summary>
             public const string AssetsScriptsDialogueSystemEditorStyleDialogueGraphEditorWindow = "Assets/Scripts/DialogueSystem/Editor/Style/DialogueGraphEditorWindow.uxml";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemArtifactDetails.uxml</summary>
@@ -62,12 +64,16 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsScriptsItemSystemEditorStyleItemDefinitionSummary = "Assets/Scripts/ItemSystem/Editor/Style/ItemDefinitionSummary.uxml";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemDevelopmentDetails.uxml</summary>
             public const string AssetsScriptsItemSystemEditorStyleItemDevelopmentDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemDevelopmentDetails.uxml";
+            /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemDevelopmentExperienceDetails.uxml</summary>
+            public const string AssetsScriptsItemSystemEditorStyleItemDevelopmentExperienceDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemDevelopmentExperienceDetails.uxml";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemFoodDetails.uxml</summary>
             public const string AssetsScriptsItemSystemEditorStyleItemFoodDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemFoodDetails.uxml";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemStackableDetails.uxml</summary>
             public const string AssetsScriptsItemSystemEditorStyleItemStackableDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemStackableDetails.uxml";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemWeaponDetails.uxml</summary>
             public const string AssetsScriptsItemSystemEditorStyleItemWeaponDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemWeaponDetails.uxml";
+            /// <summary>资源路径：Assets/Scripts/RedDotSystem/Editor/RedDotEditorWindow.uxml</summary>
+            public const string AssetsScriptsRedDotSystemEditorRedDotEditorWindow = "Assets/Scripts/RedDotSystem/Editor/RedDotEditorWindow.uxml";
             /// <summary>资源路径：Assets/Scripts/SaveSystem/Editor/SaveJsonViewerWindow.uxml</summary>
             public const string AssetsScriptsSaveSystemEditorSaveJsonViewerWindow = "Assets/Scripts/SaveSystem/Editor/SaveJsonViewerWindow.uxml";
             /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/EditorWindowStyle/SkillTimelineEditorWindow.uxml</summary>
@@ -122,6 +128,8 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsScriptsCharacterEditorStyleCharacterConfigListRow = "Assets/Scripts/Character/Editor/Style/CharacterConfigListRow.uss";
             /// <summary>资源路径：Assets/Scripts/Character/Editor/Style/CharacterConfigSummary.uss</summary>
             public const string AssetsScriptsCharacterEditorStyleCharacterConfigSummary = "Assets/Scripts/Character/Editor/Style/CharacterConfigSummary.uss";
+            /// <summary>资源路径：Assets/Scripts/Character/Editor/Style/CharacterGrowthDetails.uss</summary>
+            public const string AssetsScriptsCharacterEditorStyleCharacterGrowthDetails = "Assets/Scripts/Character/Editor/Style/CharacterGrowthDetails.uss";
             /// <summary>资源路径：Assets/Scripts/DialogueSystem/Editor/Style/DialogueGraphEditor.uss</summary>
             public const string AssetsScriptsDialogueSystemEditorStyleDialogueGraphEditor = "Assets/Scripts/DialogueSystem/Editor/Style/DialogueGraphEditor.uss";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemArtifactDetails.uss</summary>
@@ -142,6 +150,8 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsScriptsItemSystemEditorStyleItemStackableDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemStackableDetails.uss";
             /// <summary>资源路径：Assets/Scripts/ItemSystem/Editor/Style/ItemWeaponDetails.uss</summary>
             public const string AssetsScriptsItemSystemEditorStyleItemWeaponDetails = "Assets/Scripts/ItemSystem/Editor/Style/ItemWeaponDetails.uss";
+            /// <summary>资源路径：Assets/Scripts/RedDotSystem/Editor/RedDotEditorWindow.uss</summary>
+            public const string AssetsScriptsRedDotSystemEditorRedDotEditorWindow = "Assets/Scripts/RedDotSystem/Editor/RedDotEditorWindow.uss";
             /// <summary>资源路径：Assets/Scripts/SaveSystem/Editor/SaveJsonViewerWindow.uss</summary>
             public const string AssetsScriptsSaveSystemEditorSaveJsonViewerWindow = "Assets/Scripts/SaveSystem/Editor/SaveJsonViewerWindow.uss";
             /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/EditorWindowStyle/SkillTimelineEditorWindow.uss</summary>

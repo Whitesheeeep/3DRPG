@@ -57,7 +57,11 @@ namespace RPG.ItemSystem
         /// <summary>创建可堆叠背包存档模块。</summary>
         /// <param name="manager">可堆叠背包 Manager。</param>
         public StackableInventorySaveModule(StackableInventoryManager manager)
-            : base(new SaveModuleId("stackable-inventory"), 1, SaveMissingModulePolicy.Required)
+            : base(
+                new SaveModuleId("stackable-inventory"),
+                1,
+                SaveMissingModulePolicy.Required,
+                new[] { ItemDiscoverySaveModule.StableModuleId })
         {
             this.manager = manager ?? throw new ArgumentNullException(nameof(manager));
         }

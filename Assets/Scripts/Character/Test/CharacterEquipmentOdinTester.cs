@@ -36,7 +36,7 @@ namespace RPG.Character
         {
             if (!TryGetSystem(out CharacterEquipmentSystem system)) return;
             CharacterRosterManager rosterManager = GameArchitecture.Interface.GetManager<CharacterRosterManager>();
-            WeaponInventoryManager weaponManager = WeaponInventoryManager.Instance;
+            WeaponInventoryManager weaponManager = GameArchitecture.Interface.GetManager<WeaponInventoryManager>();
             bool hasWeapon = system.TryGetEquippedWeapon(targetCharacterId, out WeaponInstance equippedWeapon);
             Debug.Log($"[CharacterEquipmentTester] owned={rosterManager.GetOwnedCharacterIds().Count}, " +
                       $"weaponTotal={weaponManager.TotalCount}, stored={weaponManager.StoredCount}/{weaponManager.Capacity}, " +
@@ -59,7 +59,8 @@ namespace RPG.Character
         public void EquipFirstStoredWeapon()
         {
             if (!TryGetSystem(out CharacterEquipmentSystem system)) return;
-            IReadOnlyList<WeaponInstance> storedInstances = WeaponInventoryManager.Instance.GetStoredInstances();
+            IReadOnlyList<WeaponInstance> storedInstances =
+                GameArchitecture.Interface.GetManager<WeaponInventoryManager>().GetStoredInstances();
             if (storedInstances.Count == 0)
             {
                 Debug.LogWarning("[CharacterEquipmentTester] 容纳区没有可装备武器。", this);

@@ -1,0 +1,341 @@
+.red-dot-editor-root {
+    flex-grow: 1;
+    padding: 8px;
+}
+
+.tab-toolbar {
+    flex-direction: row;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(70, 70, 70);
+    margin-bottom: 6px;
+}
+
+.tab-button {
+    min-width: 120px;
+}
+
+.tab-content {
+    flex-grow: 1;
+}
+
+.settings-toolbar {
+    flex-direction: column;
+    margin-bottom: 6px;
+}
+
+.settings-toolbar-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.settings-toolbar-row > Button,
+.node-command-toolbar > Button {
+    flex-shrink: 0;
+    margin-right: 6px;
+}
+
+.config-toolbar,
+.folder-toolbar {
+    width: 100%;
+}
+
+.config-field {
+    width: 320px;
+    min-width: 240px;
+    max-width: 360px;
+    flex-grow: 0;
+    flex-shrink: 1;
+    margin-right: 6px;
+}
+
+.folder-field {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 280px;
+    margin-right: 6px;
+}
+
+.node-command-toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 4px;
+    margin-bottom: 6px;
+    background-color: rgba(0, 0, 0, 0.14);
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(70, 70, 70);
+}
+
+.node-command-toolbar .name-field {
+    width: 180px;
+    min-width: 150px;
+    flex-shrink: 1;
+    margin-right: 6px;
+}
+
+.status-strip,
+.toolbar-row,
+.create-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.status-strip > Label {
+    margin-right: 18px;
+    -unity-font-style: bold;
+}
+
+.runtime-controls {
+    margin-top: 8px;
+    margin-bottom: 4px;
+}
+
+.grow-field {
+    flex-grow: 1;
+    margin-right: 6px;
+}
+
+.toolbar-row > Button {
+    margin-right: 6px;
+}
+
+.content-split {
+    flex-grow: 1;
+    margin-top: 4px;
+    border-top-width: 1px;
+    border-top-color: rgb(70, 70, 70);
+}
+
+.tree-panel,
+.detail-panel {
+    flex-grow: 1;
+    padding: 8px;
+}
+
+.tree-panel {
+    min-width: 280px;
+}
+
+.detail-panel {
+    min-width: 340px;
+    background-color: rgba(0, 0, 0, 0.08);
+    border-left-width: 1px;
+    border-left-color: rgb(70, 70, 70);
+}
+
+.panel-title {
+    -unity-font-style: bold;
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.node-tree {
+    flex-grow: 1;
+}
+
+.red-dot-tree-row {
+    flex-direction: row;
+    align-items: center;
+    height: 24px;
+    padding-left: 4px;
+    padding-right: 4px;
+    border-top-width: 0;
+    border-bottom-width: 0;
+}
+
+.red-dot-tree-row #KeyLabel {
+    min-width: 130px;
+    flex-grow: 1;
+}
+
+.red-dot-tree-row #ValueLabel,
+.red-dot-tree-row #SelfLabel,
+.red-dot-tree-row #TotalLabel,
+.red-dot-tree-row #OverrideLabel {
+    width: 84px;
+}
+
+.red-dot-tree-row #DirtyLabel {
+    width: 42px;
+    color: rgb(255, 190, 70);
+}
+
+.debug-leaf-row #KeyLabel {
+    color: rgb(105, 190, 255);
+}
+
+.red-dot-tree-row--drag-source {
+    opacity: 0.62;
+    background-color: rgba(90, 169, 255, 0.16);
+}
+
+.red-dot-tree-row--drop-before {
+    border-top-width: 2px;
+    border-top-color: rgb(90, 169, 255);
+}
+
+.red-dot-tree-row--drop-inside {
+    border-left-width: 2px;
+    border-left-color: rgb(90, 169, 255);
+    border-right-width: 2px;
+    border-right-color: rgb(90, 169, 255);
+    border-top-width: 2px;
+    border-top-color: rgb(90, 169, 255);
+    border-bottom-width: 2px;
+    border-bottom-color: rgb(90, 169, 255);
+    background-color: rgba(55, 115, 180, 0.45);
+}
+
+.red-dot-tree-row--drop-after {
+    border-bottom-width: 2px;
+    border-bottom-color: rgb(90, 169, 255);
+}
+
+.node-tree--drop-root {
+    border-left-width: 2px;
+    border-left-color: rgb(90, 169, 255);
+    border-right-width: 2px;
+    border-right-color: rgb(90, 169, 255);
+    border-top-width: 2px;
+    border-top-color: rgb(90, 169, 255);
+    border-bottom-width: 2px;
+    border-bottom-color: rgb(90, 169, 255);
+    background-color: rgba(55, 115, 180, 0.22);
+}
+
+.detail-context {
+    white-space: normal;
+    margin-bottom: 8px;
+    color: rgb(190, 190, 190);
+}
+
+.detail-content {
+    flex-grow: 1;
+    min-height: 0;
+}
+
+.detail-card {
+    margin-bottom: 8px;
+    padding: 8px;
+    background-color: rgba(0, 0, 0, 0.16);
+    border-left-width: 1px;
+    border-left-color: rgb(64, 64, 64);
+    border-right-width: 1px;
+    border-right-color: rgb(64, 64, 64);
+    border-top-width: 1px;
+    border-top-color: rgb(64, 64, 64);
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(64, 64, 64);
+}
+
+.detail-section-title {
+    -unity-font-style: bold;
+    margin-bottom: 6px;
+    color: rgb(225, 225, 225);
+}
+
+.detail-content .unity-base-field__label {
+    width: 110px;
+    min-width: 110px;
+    flex-shrink: 0;
+}
+
+.detail-content .unity-base-field__input {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.detail-readonly-field {
+    margin-bottom: 4px;
+}
+
+.derived-path-error {
+    margin-top: 2px;
+    margin-bottom: 6px;
+}
+
+.detail-row {
+    flex-direction: row;
+    align-items: center;
+    min-height: 22px;
+    margin-bottom: 2px;
+}
+
+.detail-key {
+    width: 110px;
+    min-width: 110px;
+    margin-right: 6px;
+    color: rgb(170, 170, 170);
+}
+
+.detail-value {
+    flex-grow: 1;
+    white-space: normal;
+    color: rgb(220, 220, 220);
+}
+
+.detail-actions-card {
+    padding-bottom: 2px;
+}
+
+.detail-actions-row {
+    flex-wrap: wrap;
+}
+
+.detail-empty-state {
+    margin-bottom: 8px;
+}
+
+.detail-label {
+    white-space: normal;
+    margin-bottom: 8px;
+}
+
+.selected-leaf-controls {
+    margin-top: 12px;
+}
+
+.selected-leaf-controls > Button,
+.selected-leaf-controls > IntegerField {
+    margin-bottom: 5px;
+}
+
+.danger-button {
+    color: rgb(255, 235, 235);
+    background-color: rgb(125, 42, 42);
+    border-left-color: rgb(185, 75, 75);
+    border-right-color: rgb(185, 75, 75);
+    border-top-color: rgb(185, 75, 75);
+    border-bottom-color: rgb(185, 75, 75);
+}
+
+.danger-button:hover {
+    background-color: rgb(155, 52, 52);
+}
+
+.danger-button:active {
+    background-color: rgb(95, 30, 30);
+}
+
+.danger-button:disabled {
+    color: rgba(255, 225, 225, 0.45);
+    background-color: rgba(125, 42, 42, 0.35);
+    border-left-color: rgba(185, 75, 75, 0.35);
+    border-right-color: rgba(185, 75, 75, 0.35);
+    border-top-color: rgba(185, 75, 75, 0.35);
+    border-bottom-color: rgba(185, 75, 75, 0.35);
+}
+
+.footer-status {
+    min-height: 24px;
+    padding: 5px;
+    margin-top: 5px;
+    background-color: rgba(0, 0, 0, 0.18);
+}
+
+.status-error {
+    color: rgb(255, 120, 120);
+}

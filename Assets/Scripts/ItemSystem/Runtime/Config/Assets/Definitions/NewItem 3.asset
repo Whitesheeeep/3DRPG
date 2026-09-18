@@ -9,14 +9,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5e8a1c3d7f9b42a6b0d4e2f7c1a93568, type: 3}
+  m_Script: {fileID: 11500000, guid: c4c037a89b1949bfa1f7d9f090542a47, type: 3}
   m_Name: NewItem 3
   m_EditorClassIdentifier: 
   itemId:
-    value: ingredient_0001
-  displayName: "\u65B0\u7269\u54C1"
+    value: food_0003
+  displayName: "\u65B0\u98DF\u7269"
   description: 
-  category: 1
+  category: 3
   rarity: 1
   sortPriority: 200
   iconAddress: 
@@ -24,3 +24,4 @@ MonoBehaviour:
   worldPrefabAddress: 
   editorPreviewIcon: {fileID: 0}
   maxQuantity: 9999
+  useEffects: []

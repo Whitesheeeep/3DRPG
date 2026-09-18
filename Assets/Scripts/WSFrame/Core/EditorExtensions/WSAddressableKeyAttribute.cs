@@ -10,6 +10,8 @@ namespace WS_Modules
     /// Multiple label filter arguments are also combined as OR alternatives.
     /// For example, "GroupA|GroupB" selects either group and "Item&amp;Rare|Equipment"
     /// selects entries with both Item and Rare, or with Equipment.
+    /// The editor drawer also exposes an ObjectField; selecting an Addressable object there
+    /// writes its Address back to the serialized string field.
     /// </summary>
     [AttributeUsage(AttributeTargets.Field)]
     public sealed class WSAddressableKeyAttribute : PropertyAttribute

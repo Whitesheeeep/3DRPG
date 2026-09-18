@@ -1,16 +1,14 @@
 using System;
 using System.Collections.Generic;
-using WS_Modules.Singleton;
+using WS_Modules.BusinessArchitecture;
 
 namespace RPG.ItemSystem
 {
     /// <summary>
     /// 武器与圣遗物 Manager 共享的实例存储、容量和通用状态操作。
     /// </summary>
-    /// <typeparam name="TManager">具体 Manager 类型。</typeparam>
     /// <typeparam name="TInstance">具体装备实例类型。</typeparam>
-    public abstract class EquipmentInstanceManagerBase<TManager, TInstance> : SingletonBase<TManager>
-        where TManager : EquipmentInstanceManagerBase<TManager, TInstance>
+    public abstract class EquipmentInstanceManagerBase<TInstance> : AbstractManager
         where TInstance : EquipmentInstance
     {
         #region 字段与生命周期
@@ -23,7 +21,7 @@ namespace RPG.ItemSystem
         private readonly int capacity;
         private long nextAcquisitionSequence = 1;
 
-        /// <summary>创建装备实例 Manager 的公共存储部分。</summary>
+        /// <summary>创建由 GameArchitecture 持有的装备实例 Manager 公共存储部分。</summary>
         /// <param name="capacity">该装备类型的最大实例数。</param>
         /// <exception cref="ArgumentOutOfRangeException">容量不是正数时抛出。</exception>
         protected EquipmentInstanceManagerBase(int capacity)
@@ -111,6 +109,8 @@ namespace RPG.ItemSystem
                 return new EquipmentOperationResult(InventoryOperationStatus.Succeeded);
             }
 
+            // 先同步统一 RedDotSystem 的业务 Count，再广播领域事件，确保观察者读取到一致状态。
+            RefreshNewRedDotCount();
             // Definition 状态变化不伪造实例 Updated 事件，由具体 Manager 发布领域事件。
             PublishDefinitionNewStateChanged(current.DefinitionId, false);
             return new EquipmentOperationResult(InventoryOperationStatus.Succeeded);
@@ -194,6 +194,9 @@ namespace RPG.ItemSystem
         /// <param name="definitionId">发生变化的 Definition。</param>
         /// <param name="isNew">变化后的 New 状态。</param>
         protected abstract void PublishDefinitionNewStateChanged(ItemId definitionId, bool isNew);
+
+        /// <summary>刷新具体装备类型对应的 New 红点 Count。</summary>
+        protected abstract void RefreshNewRedDotCount();
 
         /// <summary>标记一个 Definition 为新获得。</summary>
         /// <param name="definitionId">Definition 标识。</param>
