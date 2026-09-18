@@ -8,11 +8,11 @@ using WSEventSystem = WS_Modules.CustomEventSystem.EventSystem;
 
 namespace RPG.Character
 {
-    /// <summary>持有玩家已经获得的角色标识，并为角色装备关系提供拥有事实。</summary>
+    /// <summary>持有玩家已经获得的角色标识，并为角色装备系统提供可信的拥有事实。</summary>
     /// <remarks>
     /// 角色拥有状态只保存稳定 CharacterId；场景中的 CharacterActor 仍由 CharacterManager 管理。
     /// 角色拥有状态的存档模块由 SaveManager 注册，在存档恢复时会调用 RestoreState() 恢复状态。
-    /// 角色拥有状态的变化事件由 PublishOwnershipChanged() 发布，确保在跨业务事务成功提交后再通知外部。
+    /// 新角色获得后的拥有变化事件由 AcquireCharacter() 在写入拥有事实后同步发布；事件只表达拥有变化，不承担武器事务回滚。
     /// </remarks>
     public sealed class CharacterRosterManager : AbstractManager
     {
@@ -78,43 +78,37 @@ namespace RPG.Character
 
         #endregion
 
-        #region 状态修改与存档
+        #region 角色获得与存档
 
-        /// <summary>写入一个新的角色拥有事实，等待跨业务事务成功后再发布变化事件。</summary>
-        /// <param name="characterId">待拥有的角色标识。</param>
-        /// <returns>本次确实新增拥有事实时返回 true。</returns>
-        /// <exception cref="ArgumentException">角色标识无效时抛出。</exception>
-        internal bool TryAddOwnedCharacter(CharacterId characterId)
+        /// <summary>获得一个角色并发布角色拥有变化事件。</summary>
+        /// <param name="characterId">待获得的角色稳定标识。</param>
+        /// <returns>角色获得结果；角色已经拥有时返回 AlreadyOwned，不会重复发布事件。</returns>
+        public CharacterAcquisitionResult AcquireCharacter(CharacterId characterId)
         {
-            if (!characterId.IsValid) throw new ArgumentException("角色标识无效。", nameof(characterId));
-            if (!ownedCharacterIds.Add(characterId)) return false;
+            if (!characterId.IsValid)
+                return Fail(CharacterAcquisitionStatus.InvalidCharacterId, characterId);
 
-            Debug.Log($"[CharacterRosterManager] 写入角色拥有事实，等待装备事务提交，character={characterId}, " +
+            if (!CharacterConfigManager.Instance.TryGetConfig(characterId, out CharacterConfig config))
+                return Fail(CharacterAcquisitionStatus.CharacterNotFound, characterId);
+
+            // 角色拥有入口只验证角色配置本身；默认武器的解析和创建由装备系统响应事件完成。
+            config.Validate();
+            if (!ownedCharacterIds.Add(characterId))
+            {
+                Debug.Log($"[CharacterRosterManager] 角色已经拥有，跳过重复获得事件，character={characterId}, " +
+                          $"ownedCount={ownedCharacterIds.Count}。 ");
+                return new CharacterAcquisitionResult(CharacterAcquisitionStatus.AlreadyOwned, characterId);
+            }
+
+            // 先写入角色拥有事实，再同步通知装备系统；自动装配失败时保留该拥有事实，供后续修复入口处理。
+            Debug.Log($"[CharacterRosterManager] 写入角色拥有事实，准备发布获得事件，character={characterId}, " +
                       $"ownedCount={ownedCharacterIds.Count}。 ");
-            return true;
-        }
-
-        /// <summary>发布已经与默认武器创建共同提交的角色拥有事件。</summary>
-        /// <param name="characterId">已经写入拥有集合的角色标识。</param>
-        /// <exception cref="InvalidOperationException">角色尚未写入拥有集合时抛出。</exception>
-        internal void PublishOwnershipChanged(CharacterId characterId)
-        {
-            if (!ownedCharacterIds.Contains(characterId))
-                throw new InvalidOperationException($"角色拥有事件不能发布未写入的角色：{characterId}。 ");
             WSEventSystem.EventTrigger_Type(
                 typeof(CharacterOwnershipChangedEvent),
                 new CharacterOwnershipChangedEvent(characterId, true));
-            Debug.Log($"[CharacterRosterManager] 提交角色拥有事件，character={characterId}, ownedCount={ownedCharacterIds.Count}。 ");
-        }
-
-        /// <summary>回滚一个角色拥有事实，不向外发布未完成获取事件。</summary>
-        /// <param name="characterId">待移除的角色标识。</param>
-        /// <returns>本次确实移除拥有事实时返回 true。</returns>
-        internal bool RemoveOwnedCharacter(CharacterId characterId)
-        {
-            if (!ownedCharacterIds.Remove(characterId)) return false;
-            Debug.Log($"[CharacterRosterManager] 回滚角色拥有事实，character={characterId}, ownedCount={ownedCharacterIds.Count}。 ");
-            return true;
+            Debug.Log($"[CharacterRosterManager] 完成角色获得并发布拥有事件，character={characterId}, " +
+                      $"ownedCount={ownedCharacterIds.Count}。 ");
+            return new CharacterAcquisitionResult(CharacterAcquisitionStatus.Succeeded, characterId);
         }
 
         /// <summary>用已完成校验的角色拥有列表替换当前状态。</summary>
@@ -148,6 +142,60 @@ namespace RPG.Character
         }
 
         #endregion
+
+        #region 内部辅助
+
+        /// <summary>记录角色获得失败并构造不携带武器数据的结果。</summary>
+        /// <param name="status">角色获得失败状态。</param>
+        /// <param name="characterId">相关角色标识。</param>
+        /// <returns>角色获得失败结果。</returns>
+        private static CharacterAcquisitionResult Fail(
+            CharacterAcquisitionStatus status,
+            CharacterId characterId)
+        {
+            Debug.LogWarning($"[CharacterRosterManager] 角色获得失败，character={characterId}, status={status}。 ");
+            return new CharacterAcquisitionResult(status, characterId);
+        }
+
+        #endregion
+    }
+
+    /// <summary>角色拥有入口的结果状态。</summary>
+    public enum CharacterAcquisitionStatus
+    {
+        /// <summary>本次成功新增角色拥有事实。</summary>
+        Succeeded = 0,
+        /// <summary>角色已经拥有，不会重复发布获得事件。</summary>
+        AlreadyOwned,
+        /// <summary>角色标识无效。</summary>
+        InvalidCharacterId,
+        /// <summary>角色配置不存在。</summary>
+        CharacterNotFound
+    }
+
+    /// <summary>角色拥有入口的不可变结果。</summary>
+    public readonly struct CharacterAcquisitionResult
+    {
+        /// <summary>创建角色拥有结果。</summary>
+        /// <param name="status">角色获得状态。</param>
+        /// <param name="characterId">相关角色标识。</param>
+        public CharacterAcquisitionResult(
+            CharacterAcquisitionStatus status,
+            CharacterId characterId)
+        {
+            Status = status;
+            CharacterId = characterId;
+        }
+
+        /// <summary>获取角色获得状态。</summary>
+        public CharacterAcquisitionStatus Status { get; }
+
+        /// <summary>获取相关角色标识。</summary>
+        public CharacterId CharacterId { get; }
+
+        /// <summary>判断角色已经拥有或本次成功新增。</summary>
+        public bool Succeeded => Status == CharacterAcquisitionStatus.Succeeded ||
+                                  Status == CharacterAcquisitionStatus.AlreadyOwned;
     }
 
     /// <summary>单个角色拥有状态变化事件。</summary>

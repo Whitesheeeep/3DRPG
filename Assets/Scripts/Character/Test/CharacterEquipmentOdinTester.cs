@@ -7,8 +7,8 @@ using UnityEngine;
 
 namespace RPG.Character
 {
-    /// <summary>通过 Odin Inspector 手动验证角色获取、默认武器与武器双分区容量契约。</summary>
-    [InfoBox("依赖 GameArchitectureStartup、CharacterDatabaseConfigProvider、ItemDatabaseConfigProvider 和 WeaponInventorySettingsProvider 已完成初始化；按钮只调用正式角色与武器业务 API。")]
+    /// <summary>通过 Odin Inspector 手动验证角色获得、角色武器保障与武器双分区容量契约。</summary>
+    [InfoBox("依赖 GameArchitectureStartup、CharacterDatabaseConfigProvider、ItemDatabaseConfigProvider 和 WeaponInventorySettingsProvider 已完成初始化；按钮只调用正式角色拥有与角色武器业务 API。")]
     public sealed class CharacterEquipmentOdinTester : MonoBehaviour
     {
         #region 测试参数
@@ -19,14 +19,32 @@ namespace RPG.Character
 
         #region 手动操作
 
-        /// <summary>通过正式角色获取入口生成角色及其装备缓存区默认武器。</summary>
-        [Button("获取角色并生成默认武器")]
+        /// <summary>通过角色拥有入口获得目标角色，并观察同步拥有事件是否完成武器自动装配。</summary>
+        [Button("获取角色")]
         public void AcquireTargetCharacter()
         {
             if (!TryGetSystem(out CharacterEquipmentSystem system)) return;
-            CharacterAcquisitionResult result = system.AcquireCharacter(targetCharacterId);
+            CharacterRosterManager rosterManager = GameArchitecture.Interface.GetManager<CharacterRosterManager>();
+            CharacterAcquisitionResult result = rosterManager.AcquireCharacter(targetCharacterId);
+            bool hasWeapon = system.TryGetEquippedWeapon(targetCharacterId, out WeaponInstance equippedWeapon);
             Debug.Log($"[CharacterEquipmentTester] acquire status={result.Status}, character={targetCharacterId}, " +
-                      $"weapon={result.Weapon?.InstanceId.ToString() ?? "<none>"}, weaponStatus={result.WeaponStatus}。", this);
+                      $"targetWeapon={equippedWeapon?.InstanceId.ToString() ?? "<none>"}, " +
+                      $"targetHasWeapon={hasWeapon}。", this);
+            LogPartitionSnapshot();
+        }
+
+        /// <summary>显式获取或补齐目标角色武器，验证已有武器优先和装备缓存区容量契约。</summary>
+        [Button("获取或补齐目标角色武器")]
+        public void ResolveTargetWeapon()
+        {
+            if (!TryGetSystem(out CharacterEquipmentSystem system)) return;
+            WeaponInventoryManager weaponManager = GameArchitecture.Interface.GetManager<WeaponInventoryManager>();
+            int storedCountBefore = weaponManager.StoredCount;
+            CharacterWeaponResolutionResult result = system.GetOrCreateEquippedWeapon(targetCharacterId);
+            Debug.Log($"[CharacterEquipmentTester] resolve status={result.Status}, character={targetCharacterId}, " +
+                      $"weapon={result.Weapon?.InstanceId.ToString() ?? "<none>"}, " +
+                      $"weaponStatus={result.WeaponStatus}, storedBefore={storedCountBefore}, " +
+                      $"storedAfter={weaponManager.StoredCount}。", this);
             LogPartitionSnapshot();
         }
 
