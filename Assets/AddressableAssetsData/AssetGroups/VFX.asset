@@ -10,15 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
-  m_Name: Default Local Group
+  m_Name: VFX
   m_EditorClassIdentifier: 
-  m_GroupName: Default Local Group
+  m_GroupName: VFX
   m_Data:
     m_SerializedData: []
-  m_GUID: 9bbcb585ef8eb2c40a92e3a52cbb3dcc
+  m_GUID: 5e2b8cf990885b04fb60aae0d93aff9c
   m_SerializeEntries:
-  - m_GUID: f7cd217d74b5764469dfe3b43be8eb8c
-    m_Address: Weapon/剑
+  - m_GUID: d7870df6d8473e544a4e4429bf82f49d
+    m_Address: VFX/Sword_Slash_1
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -26,5 +26,5 @@ MonoBehaviour:
   m_Settings: {fileID: 11400000, guid: cf483ba42ae65ea478a5243d9f39d4df, type: 2}
   m_SchemaSet:
     m_Schemas:
-    - {fileID: 11400000, guid: e00092599d7147842b09a530adba6177, type: 2}
-    - {fileID: 11400000, guid: e536465ec8069cb4e9fc2c50ff3ec784, type: 2}
+    - {fileID: 11400000, guid: 08de4fc8d93a29e4c97f847d5a548d5d, type: 2}
+    - {fileID: 11400000, guid: 90c66ca23cde95b4c9f08053813b049a, type: 2}

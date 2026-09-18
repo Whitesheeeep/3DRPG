@@ -9,6 +9,11 @@ using WSEventSystem = WS_Modules.CustomEventSystem.EventSystem;
 namespace RPG.Character
 {
     /// <summary>持有玩家已经获得的角色标识，并为角色装备关系提供拥有事实。</summary>
+    /// <remarks>
+    /// 角色拥有状态只保存稳定 CharacterId；场景中的 CharacterActor 仍由 CharacterManager 管理。
+    /// 角色拥有状态的存档模块由 SaveManager 注册，在存档恢复时会调用 RestoreState() 恢复状态。
+    /// 角色拥有状态的变化事件由 PublishOwnershipChanged() 发布，确保在跨业务事务成功提交后再通知外部。
+    /// </remarks>
     public sealed class CharacterRosterManager : AbstractManager
     {
         #region 状态字段

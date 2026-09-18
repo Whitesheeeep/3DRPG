@@ -106,12 +106,12 @@ MonoBehaviour:
     allowedTransitions: 0
   - id: 16de0862f97243df8634ced46e0cf09b
     startFrame: 16
-    durationFrames: 25
+    durationFrames: 12
     phase: 2
     allowedTransitions: 0
   - id: b17ef7d8e68848359ef02770f71fbcf0
-    startFrame: 41
-    durationFrames: 9
+    startFrame: 28
+    durationFrames: 22
     phase: 3
     allowedTransitions: 7
 --- !u!114 &11400000
@@ -155,7 +155,7 @@ MonoBehaviour:
   editorLocked: 0
   clips:
   - id: e10711ea585c4ea8abf8f23b3bff3755
-    prefab: {fileID: 1872147318604286, guid: a12faec44d474a728ecd901dd28e5573, type: 3}
+    prefab: {fileID: 43362610964436467, guid: d7870df6d8473e544a4e4429bf82f49d, type: 3}
     markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
     startFrame: 16
     durationFrames: 24

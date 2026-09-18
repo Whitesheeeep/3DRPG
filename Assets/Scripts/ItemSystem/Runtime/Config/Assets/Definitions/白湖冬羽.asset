@@ -33,6 +33,13 @@ MonoBehaviour:
   refinementEffects:
   - {fileID: 11400000, guid: 2d868042d8cf3ef4e9ea08b3c5b61671, type: 2}
   ascensionStages:
+  - requiredLevel: 20
+    maxLevelAfter: 40
+    cost:
+      itemCosts: []
+      currencyCosts:
+      - currencyId: 1
+        amount: 45000
   - requiredLevel: 40
     maxLevelAfter: 50
     cost:
@@ -49,13 +56,6 @@ MonoBehaviour:
         quantity: 1
       currencyCosts:
       - currencyId: 0
-        amount: 45000
-  - requiredLevel: 20
-    maxLevelAfter: 40
-    cost:
-      itemCosts: []
-      currencyCosts:
-      - currencyId: 1
         amount: 45000
   - requiredLevel: 60
     maxLevelAfter: 70
