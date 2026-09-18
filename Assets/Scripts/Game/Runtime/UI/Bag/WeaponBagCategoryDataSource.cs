@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using RPG.Character;
+using RPG.Game.UI.WeaponDevelopment;
 using RPG.ItemSystem;
 using WS_Modules.GAS.AttributeSystem;
 using WS_Modules.GAS.GameplayEffect;
@@ -11,12 +11,21 @@ namespace RPG.Game.UI.Bag
     /// <summary>将 WeaponInventoryManager 转换为背包武器列表和详情快照。</summary>
     public sealed class WeaponBagCategoryDataSource : IBagCategoryDataSource
     {
+        #region 依赖字段
+
+        private readonly WeaponInventoryManager manager;
         private readonly Func<string, string, UnityEngine.Sprite> spriteResolver;
 
+        #endregion
+
         /// <summary>创建武器分类数据源。</summary>
+        /// <param name="manager">由 GameArchitecture 持有的武器 Manager。</param>
         /// <param name="spriteResolver">按 Atlas Address 和 SpriteName 查找 Sprite 的函数。</param>
-        public WeaponBagCategoryDataSource(Func<string, string, UnityEngine.Sprite> spriteResolver)
+        public WeaponBagCategoryDataSource(
+            WeaponInventoryManager manager,
+            Func<string, string, UnityEngine.Sprite> spriteResolver)
         {
+            this.manager = manager ?? throw new ArgumentNullException(nameof(manager));
             this.spriteResolver = spriteResolver ?? throw new ArgumentNullException(nameof(spriteResolver));
         }
 
@@ -24,12 +33,15 @@ namespace RPG.Game.UI.Bag
         public ItemCategory Category => ItemCategory.Weapon;
 
         /// <inheritdoc />
+        public string PrimarySortLabel => "等级";
+
+        /// <inheritdoc />
         public IReadOnlyList<BagItemViewData> BuildEntries(BagSortMode sortMode, BagSortDirection sortDirection)
         {
             // 背包窗口可能在库存或物品数据库注入前预加载；此时保持空列表，避免预加载阶段抛出配置异常。
             if (!WeaponInventoryManager.IsConfigured || !ItemManager.Instance.IsConfigured)
                 return Array.Empty<BagItemViewData>();
-            IReadOnlyList<WeaponInstance> instances = WeaponInventoryManager.Instance.GetInstances();
+            IReadOnlyList<WeaponInstance> instances = manager.GetInstances();
             var values = new List<WeaponEntry>(instances.Count);
             for (int index = 0; index < instances.Count; index++)
             {
@@ -61,7 +73,7 @@ namespace RPG.Game.UI.Bag
                 }
 
                 // Definition New 是业务级状态；列表投影只让当前排序结果中的首个实例显示图标。
-                bool showNew = WeaponInventoryManager.Instance.IsDefinitionNew(value.Instance.DefinitionId) &&
+                bool showNew = manager.IsDefinitionNew(value.Instance.DefinitionId) &&
                     displayedNewDefinitionIds.Add(value.Instance.DefinitionId);
 
                 result.Add(new BagItemViewData(
@@ -87,7 +99,7 @@ namespace RPG.Game.UI.Bag
             if (!WeaponInventoryManager.IsConfigured || !ItemManager.Instance.IsConfigured) return false;
             if (entryKey.Category != ItemCategory.Weapon ||
                 !TryParseInstanceId(entryKey.Value, out EquipmentInstanceId instanceId) ||
-                !WeaponInventoryManager.Instance.TryGetInstance(instanceId, out WeaponInstance instance) ||
+                !manager.TryGetInstance(instanceId, out WeaponInstance instance) ||
                 !ItemManager.Instance.TryGetDefinition(instance.DefinitionId, out ItemDefinition definition) ||
                 !(definition is WeaponDefinition weapon))
             {
@@ -114,15 +126,16 @@ namespace RPG.Game.UI.Bag
                 weapon.DisplayName,
                 (int)weapon.Rarity,
                 icon,
-                ownerText,
-                ownerIcon,
-                weapon.Description,
                 weapon.WeaponType.ToString(),
                 $"Lv.{instance.Level}/{weapon.MaxLevel}",
                 $"精炼 {instance.RefinementRank}",
-                attributes as string[] ?? new List<string>(attributes).ToArray(),
-                instance.IsLocked,
-                instance.IsEquipped);
+                attributes,
+                weapon.Description,
+                ownerText,
+                ownerIcon,
+                instance.IsEquipped && ownerIcon != null,
+                true,
+                true);
             return true;
         }
 
@@ -132,7 +145,7 @@ namespace RPG.Game.UI.Bag
             int primary;
             switch (mode)
             {
-                case BagSortMode.Level:
+                case BagSortMode.PrimaryValue:
                     primary = left.Instance.Level.CompareTo(right.Instance.Level);
                     break;
                 case BagSortMode.AcquisitionSequence:
@@ -251,25 +264,8 @@ namespace RPG.Game.UI.Bag
         /// <summary>按 Modifier 类型格式化一个武器详情属性值。</summary>
         /// <param name="value">已完成聚合的属性值。</param>
         /// <returns>适合详情面板显示的数值文本。</returns>
-        private static string FormatAttributeValue(AttributeValue value)
-        {
-            if (value.Type == AttributeModifierType.Add &&
-                value.Value >= 0f &&
-                value.Value <= 1f)
-            {
-                // Add 数值落在闭区间 [0, 1] 时按归一化百分比显示，避免绑定某个具体 Attribute。
-                return value.Value.ToString("0.##%", CultureInfo.InvariantCulture);
-            }
-
-            if (value.Type == AttributeModifierType.Multiply)
-            {
-                // GAS 的 Multiply 以 1 为中性倍率，因此详情显示相对增益而不是原始倍率。
-                float relativePercentage = value.Value - 1f;
-                return relativePercentage.ToString("+0.##%;-0.##%;0%", CultureInfo.InvariantCulture);
-            }
-
-            return value.Value.ToString("0.###", CultureInfo.InvariantCulture);
-        }
+        private static string FormatAttributeValue(AttributeValue value) =>
+            WeaponAttributeTextFormatter.Format(value.Type, value.Value);
 
         /// <summary>按 Address 和 SpriteName 解析一个图标；缺失时返回空。</summary>
         private void SpriteParts(string address, string spriteName, out UnityEngine.Sprite sprite)

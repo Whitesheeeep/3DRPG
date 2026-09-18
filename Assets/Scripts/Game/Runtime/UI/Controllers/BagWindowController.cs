@@ -9,13 +9,14 @@ using RPG.Game.UI.WeaponDevelopment;
 using RPG.ItemSystem;
 using UnityEngine;
 using UnityEngine.Events;
+using WS_Modules.BusinessArchitecture;
 using WS_Modules.CustomEventSystem;
 using WS_Modules.UIModule;
 
 namespace RPG.Game.UI.Controllers
 {
     /// <summary>
-    /// 背包窗口根节点控制器，负责分类状态、武器数据源、虚拟网格和详情请求。
+    /// 背包窗口根节点控制器，负责五类数据源、分类状态、虚拟网格和详情请求。
     /// 它不轮询输入，也不直接修改武器库存。
     /// </summary>
     [DisallowMultipleComponent]
@@ -25,12 +26,20 @@ namespace RPG.Game.UI.Controllers
         private BagWindowDataComponent data;
         private BagBrowseStateModel stateModel;
         private WindowSpriteAtlasLeaseService spriteAtlasLeaseService;
+        private WeaponInventoryManager weaponInventoryManager;
+        private ArtifactInventoryManager artifactInventoryManager;
+        private StackableInventoryManager stackableInventoryManager;
         private readonly Dictionary<ItemCategory, IBagCategoryDataSource> dataSourceByCategoryMap = new();
         // 每个分类按钮的对应回调，便于 Dispose 时注销。
         private readonly List<UnityAction> categoryButtonActions = new();
         private IUnRegister weaponChangedUnregister;
         private IUnRegister weaponRestoredUnregister;
         private IUnRegister weaponDefinitionNewChangedUnregister;
+        private IUnRegister artifactChangedUnregister;
+        private IUnRegister artifactRestoredUnregister;
+        private IUnRegister artifactDefinitionNewChangedUnregister;
+        private IUnRegister stackableChangedUnregister;
+        private IUnRegister stackableRestoredUnregister;
         #endregion
 
         #region 状态字段
@@ -56,6 +65,10 @@ namespace RPG.Game.UI.Controllers
 
             data = windowData ?? throw new ArgumentNullException(nameof(windowData));
             data.ValidateConfiguration();
+            IArchitecture architecture = GameArchitecture.Interface;
+            weaponInventoryManager = architecture.GetManager<WeaponInventoryManager>();
+            artifactInventoryManager = architecture.GetManager<ArtifactInventoryManager>();
+            stackableInventoryManager = architecture.GetManager<StackableInventoryManager>();
             spriteAtlasLeaseService = new WindowSpriteAtlasLeaseService(
                 data.DynamicAtlasAddresses,
                 data.AtlasReleaseDelaySeconds);
@@ -72,6 +85,16 @@ namespace RPG.Game.UI.Controllers
                 typeof(WeaponInventoryRestoredEvent), HandleWeaponRestored);
             weaponDefinitionNewChangedUnregister = EventSystem.Register_Type<WeaponDefinitionNewStateChangedEvent>(
                 typeof(WeaponDefinitionNewStateChangedEvent), HandleWeaponDefinitionNewStateChanged);
+            artifactChangedUnregister = EventSystem.Register_Type<ArtifactInstanceChangedEvent>(
+                typeof(ArtifactInstanceChangedEvent), HandleArtifactChanged);
+            artifactRestoredUnregister = EventSystem.Register_Type<ArtifactInventoryRestoredEvent>(
+                typeof(ArtifactInventoryRestoredEvent), HandleArtifactRestored);
+            artifactDefinitionNewChangedUnregister = EventSystem.Register_Type<ArtifactDefinitionNewStateChangedEvent>(
+                typeof(ArtifactDefinitionNewStateChangedEvent), HandleArtifactDefinitionNewStateChanged);
+            stackableChangedUnregister = EventSystem.Register_Type<StackableItemChangedEvent>(
+                typeof(StackableItemChangedEvent), HandleStackableChanged);
+            stackableRestoredUnregister = EventSystem.Register_Type<StackableInventoryRestoredEvent>(
+                typeof(StackableInventoryRestoredEvent), HandleStackableRestored);
             initialized = true;
         }
 
@@ -92,6 +115,11 @@ namespace RPG.Game.UI.Controllers
             weaponChangedUnregister?.UnRegister();
             weaponRestoredUnregister?.UnRegister();
             weaponDefinitionNewChangedUnregister?.UnRegister();
+            artifactChangedUnregister?.UnRegister();
+            artifactRestoredUnregister?.UnRegister();
+            artifactDefinitionNewChangedUnregister?.UnRegister();
+            stackableChangedUnregister?.UnRegister();
+            stackableRestoredUnregister?.UnRegister();
             for (int index = 0; data != null && index < categoryButtonActions.Count; index++)
             {
                 if (index < data.CategoryButtons.Count && data.CategoryButtons[index] != null)
@@ -106,6 +134,9 @@ namespace RPG.Game.UI.Controllers
             data?.DetailsButton?.onClick.RemoveListener(SubmitDetailsRequest);
             data?.SortDropdown?.onValueChanged.RemoveListener(HandleSortDropdownChanged);
             categoryButtonActions.Clear();
+            weaponInventoryManager = null;
+            artifactInventoryManager = null;
+            stackableInventoryManager = null;
             data?.GridView?.SetInteractable(false);
             data?.GridView?.Bind(Array.Empty<BagItemViewData>(), null);
             spriteAtlasLeaseService?.Dispose();
@@ -162,21 +193,31 @@ namespace RPG.Game.UI.Controllers
         #endregion
 
         #region 分类与排序
-        /// <summary>建立五个分类的数据源，武器使用真实库存，其余分类保留未开放占位。</summary>
+
+        /// <summary>建立五个分类的真实数据源，并让所有分类共享同一网格和详情 View。</summary>
         private void BuildDataSources()
         {
             dataSourceByCategoryMap.Clear();
             dataSourceByCategoryMap.Add(ItemCategory.Weapon,
-                new WeaponBagCategoryDataSource(ResolveSprite));
-            ItemCategory[] categories =
-            {
-                ItemCategory.Artifact,
-                ItemCategory.DevelopmentExperienceItem,
-                ItemCategory.Food,
-                ItemCategory.DevelopmentItem
-            };
-            for (int index = 0; index < categories.Length; index++)
-                dataSourceByCategoryMap[categories[index]] = new UnavailableBagCategoryDataSource(categories[index]);
+                new WeaponBagCategoryDataSource(weaponInventoryManager, ResolveSprite));
+            dataSourceByCategoryMap.Add(ItemCategory.Artifact,
+                new ArtifactBagCategoryDataSource(artifactInventoryManager, ResolveSprite));
+            dataSourceByCategoryMap.Add(ItemCategory.DevelopmentExperienceItem,
+                new StackableBagCategoryDataSource(
+                    ItemCategory.DevelopmentExperienceItem,
+                    stackableInventoryManager,
+                    ResolveSprite));
+            dataSourceByCategoryMap.Add(ItemCategory.Food,
+                new StackableBagCategoryDataSource(
+                    ItemCategory.Food,
+                    stackableInventoryManager,
+                    ResolveSprite));
+            dataSourceByCategoryMap.Add(ItemCategory.DevelopmentItem,
+                new StackableBagCategoryDataSource(
+                    ItemCategory.DevelopmentItem,
+                    stackableInventoryManager,
+                    ResolveSprite));
+            Debug.Log("[BagWindowController] 已注册武器、圣遗物、养成经验道具、食物和养成道具五个分类数据源。", this);
         }
 
         /// <summary>注册分类、箭头、排序、详情、删除和关闭按钮的纯请求回调。</summary>
@@ -200,9 +241,20 @@ namespace RPG.Game.UI.Controllers
             if (data.SortDropdown != null)
             {
                 data.SortDropdown.ClearOptions();
-                data.SortDropdown.AddOptions(new List<string> { "品质", "等级", "获得顺序" });
+                RefreshSortOptions();
                 data.SortDropdown.onValueChanged.AddListener(HandleSortDropdownChanged);
             }
+        }
+
+        /// <summary>根据当前分类刷新排序下拉框文案并保留当前选项下标。</summary>
+        private void RefreshSortOptions()
+        {
+            if (data.SortDropdown == null || !dataSourceByCategoryMap.TryGetValue(
+                    stateModel.CurrentCategory, out IBagCategoryDataSource source)) return;
+            int selectedValue = Mathf.Clamp((int)stateModel.SortMode, 0, 2);
+            data.SortDropdown.ClearOptions();
+            data.SortDropdown.AddOptions(new List<string> { "品质", source.PrimarySortLabel, "获得顺序" });
+            data.SortDropdown.SetValueWithoutNotify(selectedValue);
         }
 
         /// <summary>切换到序列化分类顺序中的指定下标。</summary>
@@ -218,11 +270,18 @@ namespace RPG.Game.UI.Controllers
         /// <summary>切换到当前分类后一个分类。</summary>
         private void SelectNextCategory() => SelectCategoryOffset(1);
 
-        /// <summary>按作者配置的分类顺序移动，不在首尾循环。</summary>
+        /// <summary>按作者配置的分类顺序循环移动；越过首尾时回到另一端。</summary>
         private void SelectCategoryOffset(int offset)
         {
             int index = IndexOfCategory(stateModel.CurrentCategory);
-            if (index >= 0) SelectCategoryAt(index + offset);
+            int categoryCount = data.CategoryOrder.Count;
+            if (index < 0 || categoryCount <= 1) return;
+
+            // 通过归一化取模处理负数偏移，保证上一页从第一个分类回到最后一个分类。
+            int nextIndex = (index + offset) % categoryCount;
+            if (nextIndex < 0) nextIndex += categoryCount;
+            Debug.Log($"[BagWindowController] 循环切换背包分类，from={stateModel.CurrentCategory}，to={data.CategoryOrder[nextIndex]}。", this);
+            SelectCategoryAt(nextIndex);
         }
 
         /// <summary>处理排序下拉框改变并保留稳定条目选择。</summary>
@@ -267,6 +326,7 @@ namespace RPG.Game.UI.Controllers
         /// <param name="category">新的分类。</param>
         private void HandleCategoryChanged(ItemCategory category)
         {
+            RefreshSortOptions();
             RefreshCurrentCategory(true);
         }
 
@@ -285,13 +345,13 @@ namespace RPG.Game.UI.Controllers
             return false;
         }
 
-        /// <summary>刷新左右分类箭头的禁用状态。</summary>
+        /// <summary>刷新左右分类箭头的状态；存在多个分类时两侧都允许循环翻页。</summary>
         private void UpdateArrowState()
         {
             int index = IndexOfCategory(stateModel.CurrentCategory);
-            if (data.PreviousCategoryButton != null) data.PreviousCategoryButton.interactable = index > 0;
-            if (data.NextCategoryButton != null)
-                data.NextCategoryButton.interactable = index >= 0 && index < data.CategoryOrder.Count - 1;
+            bool canCycle = index >= 0 && data.CategoryOrder.Count > 1;
+            if (data.PreviousCategoryButton != null) data.PreviousCategoryButton.interactable = canCycle;
+            if (data.NextCategoryButton != null) data.NextCategoryButton.interactable = canCycle;
         }
 
         /// <summary>查找当前分类在作者顺序中的位置。</summary>
@@ -311,7 +371,12 @@ namespace RPG.Game.UI.Controllers
             stateModel.SetSelection(entryKey);
             if (entryKey.Category == ItemCategory.Weapon &&
                 TryParseInstanceId(entryKey.Value, out EquipmentInstanceId instanceId))
-                WeaponInventoryManager.Instance.AcknowledgeNew(instanceId);
+                weaponInventoryManager.AcknowledgeNew(instanceId);
+            else if (entryKey.Category == ItemCategory.Artifact &&
+                     TryParseInstanceId(entryKey.Value, out EquipmentInstanceId artifactInstanceId))
+                artifactInventoryManager.AcknowledgeNew(artifactInstanceId);
+            else if (entryKey.Category != ItemCategory.Artifact)
+                AcknowledgeStackable(entryKey);
         }
 
         /// <summary>提交 BagWindow 关闭 Command，由统一 Esc 栈和按钮共用。</summary>
@@ -333,25 +398,29 @@ namespace RPG.Game.UI.Controllers
         /// <summary>提交详情请求，不在背包 View 中直接打开其他窗口。</summary>
         private void SubmitDetailsRequest()
         {
-            if (!stateModel.SelectedEntryKey.HasValue || stateModel.CurrentCategory != ItemCategory.Weapon ||
-                !TryParseInstanceId(stateModel.SelectedEntryKey.Value.Value,
-                    out EquipmentInstanceId instanceId)) return;
-            OpenWeaponDevelopmentAsync(instanceId).Forget(HandleAsyncException);
+            if (!stateModel.SelectedEntryKey.HasValue ||
+                (stateModel.CurrentCategory != ItemCategory.Weapon && stateModel.CurrentCategory != ItemCategory.Artifact) ||
+                !TryParseInstanceId(stateModel.SelectedEntryKey.Value.Value, out EquipmentInstanceId instanceId)) return;
+
+            EquipmentDevelopmentOpenContext context = stateModel.CurrentCategory == ItemCategory.Weapon
+                ? EquipmentDevelopmentOpenContext.ForWeapon(instanceId)
+                : EquipmentDevelopmentOpenContext.ForArtifact(instanceId);
+            OpenEquipmentDevelopmentAsync(context).Forget(HandleAsyncException);
         }
 
-        /// <summary>直接打开武器培养窗口并传入当前实例上下文。</summary>
-        /// <param name="instanceId">目标武器实例。</param>
-        private async UniTask OpenWeaponDevelopmentAsync(EquipmentInstanceId instanceId)
+        /// <summary>直接打开统一装备培养窗口并传入当前实例上下文。</summary>
+        /// <param name="context">目标装备实例上下文。</param>
+        private async UniTask OpenEquipmentDevelopmentAsync(EquipmentDevelopmentOpenContext context)
         {
             if (!UIManager.Instance.IsInitialized)
-                throw new InvalidOperationException("UIManager 尚未初始化，无法打开武器培养窗口。");
-            WeaponDevelopmentWindow window = await UIManager.Instance.PopUpWindowAsync<WeaponDevelopmentWindow,
-                WeaponDevelopmentOpenContext>(new WeaponDevelopmentOpenContext(instanceId));
+                throw new InvalidOperationException("UIManager 尚未初始化，无法打开装备培养窗口。");
+            EquipmentDevelopmentWindow window = await UIManager.Instance.PopUpWindowAsync<EquipmentDevelopmentWindow,
+                EquipmentDevelopmentOpenContext>(context);
             if (window == null || !window.Visible)
-                throw new InvalidOperationException("武器培养窗口打开请求未返回可见窗口。");
+                throw new InvalidOperationException("装备培养窗口打开请求未返回可见窗口。");
         }
 
-        /// <summary>处理选择变化并刷新右侧共用详情外壳与武器内容。</summary>
+        /// <summary>处理选择变化并刷新右侧所有分类共用详情 View。</summary>
         private void HandleSelectionChanged(BagEntryKey? key)
         {
             // 状态模型是选择的唯一来源；每次详情刷新同时把选择投影到当前可见格子。
@@ -360,17 +429,15 @@ namespace RPG.Game.UI.Controllers
                     out IBagCategoryDataSource source) ||
                 !source.TryBuildDetails(key.Value, out BagDetailViewData details))
             {
-                data.DetailShellView?.Clear();
-                data.WeaponDetailView?.Clear();
+                data.DetailView?.Clear();
                 if (data.DeleteButton != null) data.DeleteButton.interactable = false;
                 if (data.DetailsButton != null) data.DetailsButton.interactable = false;
                 return;
             }
 
-            data.DetailShellView?.Bind(details);
-            if (key.Value.Category == ItemCategory.Weapon) data.WeaponDetailView?.Bind(details);
-            if (data.DeleteButton != null) data.DeleteButton.interactable = true;
-            if (data.DetailsButton != null) data.DetailsButton.interactable = true;
+            data.DetailView?.Bind(details);
+            if (data.DeleteButton != null) data.DeleteButton.interactable = details.ShowDeleteAction;
+            if (data.DetailsButton != null) data.DetailsButton.interactable = details.ShowDetailsAction;
         }
         #endregion
 
@@ -381,8 +448,7 @@ namespace RPG.Game.UI.Controllers
             if (disposed) return;
             currentEntries = Array.Empty<BagItemViewData>();
             data.GridView?.Bind(Array.Empty<BagItemViewData>(), null);
-            data.DetailShellView?.Clear();
-            data.WeaponDetailView?.Clear();
+            data.DetailView?.Clear();
         }
 
         /// <summary>启动动态图集并在完成后刷新当前可见分类的 Sprite 引用。</summary>
@@ -444,6 +510,56 @@ namespace RPG.Game.UI.Controllers
         private void HandleWeaponDefinitionNewStateChanged(WeaponDefinitionNewStateChangedEvent _)
         {
             if (!disposed && stateModel.CurrentCategory == ItemCategory.Weapon) RefreshCurrentCategory(false);
+        }
+
+        /// <summary>圣遗物实例变化后刷新当前圣遗物分类。</summary>
+        /// <param name="change">圣遗物变化事件。</param>
+        private void HandleArtifactChanged(ArtifactInstanceChangedEvent change)
+        {
+            if (!disposed && stateModel.CurrentCategory == ItemCategory.Artifact) RefreshCurrentCategory(false);
+        }
+
+        /// <summary>圣遗物存档恢复后刷新当前分类。</summary>
+        /// <param name="_">圣遗物恢复事件。</param>
+        private void HandleArtifactRestored(ArtifactInventoryRestoredEvent _)
+        {
+            if (!disposed && stateModel.CurrentCategory == ItemCategory.Artifact) RefreshCurrentCategory(false);
+        }
+
+        /// <summary>圣遗物 New 状态变化后刷新当前分类。</summary>
+        /// <param name="_">圣遗物 New 变化事件。</param>
+        private void HandleArtifactDefinitionNewStateChanged(ArtifactDefinitionNewStateChangedEvent _)
+        {
+            if (!disposed && stateModel.CurrentCategory == ItemCategory.Artifact) RefreshCurrentCategory(false);
+        }
+
+        /// <summary>可堆叠数量或 New 状态变化后按分类刷新。</summary>
+        /// <param name="change">可堆叠变化事件。</param>
+        private void HandleStackableChanged(StackableItemChangedEvent change)
+        {
+            if (disposed || !dataSourceByCategoryMap.TryGetValue(stateModel.CurrentCategory,
+                    out IBagCategoryDataSource source) || source.Category == ItemCategory.Weapon || source.Category == ItemCategory.Artifact)
+                return;
+            if (ItemManager.Instance.TryGetDefinition(change.ItemId, out ItemDefinition definition) &&
+                definition.Category == stateModel.CurrentCategory)
+                RefreshCurrentCategory(false);
+        }
+
+        /// <summary>可堆叠库存恢复后刷新当前分类。</summary>
+        /// <param name="_">可堆叠恢复事件。</param>
+        private void HandleStackableRestored(StackableInventoryRestoredEvent _)
+        {
+            if (!disposed && stateModel.CurrentCategory != ItemCategory.Weapon &&
+                stateModel.CurrentCategory != ItemCategory.Artifact)
+                RefreshCurrentCategory(false);
+        }
+
+        /// <summary>确认当前可堆叠条目的 New 提示。</summary>
+        /// <param name="entryKey">可堆叠条目标识。</param>
+        private void AcknowledgeStackable(BagEntryKey entryKey)
+        {
+            if (!ItemId.TryCreate(entryKey.Value, out ItemId itemId)) return;
+            stackableInventoryManager.AcknowledgeNew(itemId);
         }
 
         /// <summary>将稳定实例字符串解析为 EquipmentInstanceId。</summary>

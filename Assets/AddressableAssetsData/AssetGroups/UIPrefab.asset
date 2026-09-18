@@ -43,7 +43,7 @@ MonoBehaviour:
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1c3be6c35dbf4a4fa6d4a0a0cd5c52bc
-    m_Address: WeaponDevelopmentWindow
+    m_Address: EquipmentDevelopmentWindow
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0

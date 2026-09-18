@@ -41,8 +41,8 @@ namespace RPG.Game.UI.Bag
     {
         /// <summary>按物品品质排序。</summary>
         Quality,
-        /// <summary>按装备等级或物品等级排序。</summary>
-        Level,
+        /// <summary>按当前分类的主数值排序；装备使用等级，可堆叠物品使用数量。</summary>
+        PrimaryValue,
         /// <summary>按获得顺序排序。</summary>
         AcquisitionSequence
     }
@@ -148,38 +148,54 @@ namespace RPG.Game.UI.Bag
         public bool IsEquipped { get; }
     }
 
-    /// <summary>供共用详情外壳和分类详情 View 使用的只读详情数据。</summary>
+    /// <summary>供所有背包分类共用详情 View 使用的只读详情数据。</summary>
     public sealed class BagDetailViewData
     {
         /// <summary>创建背包详情显示数据。</summary>
+        /// <param name="entryKey">稳定条目标识。</param>
+        /// <param name="displayName">物品名称。</param>
+        /// <param name="rarity">物品品质。</param>
+        /// <param name="icon">物品主图。</param>
+        /// <param name="categoryText">分类文本。</param>
+        /// <param name="primaryText">主信息文本。</param>
+        /// <param name="secondaryText">次信息文本。</param>
+        /// <param name="detailLines">分类详情行。</param>
+        /// <param name="description">物品描述。</param>
+        /// <param name="ownerText">装备者文本。</param>
+        /// <param name="ownerIcon">装备者图标。</param>
+        /// <param name="showOwner">是否显示装备者区域。</param>
+        /// <param name="showDeleteAction">是否显示删除操作。</param>
+        /// <param name="showDetailsAction">是否显示详情/培养操作。</param>
         public BagDetailViewData(
             BagEntryKey entryKey,
             string displayName,
             int rarity,
             Sprite icon,
+            string categoryText,
+            string primaryText,
+            string secondaryText,
+            IReadOnlyList<string> detailLines,
+            string description,
             string ownerText,
             Sprite ownerIcon,
-            string description,
-            string categoryLabel,
-            string levelText,
-            string refinementText,
-            string[] attributes,
-            bool isLocked,
-            bool isEquipped)
+            bool showOwner,
+            bool showDeleteAction,
+            bool showDetailsAction)
         {
             EntryKey = entryKey;
             DisplayName = displayName ?? string.Empty;
             Rarity = rarity;
             Icon = icon;
+            CategoryText = categoryText ?? string.Empty;
+            PrimaryText = primaryText ?? string.Empty;
+            SecondaryText = secondaryText ?? string.Empty;
+            DetailLines = detailLines ?? Array.Empty<string>();
+            Description = description ?? string.Empty;
             OwnerText = ownerText ?? string.Empty;
             OwnerIcon = ownerIcon;
-            Description = description ?? string.Empty;
-            CategoryLabel = categoryLabel ?? string.Empty;
-            LevelText = levelText ?? string.Empty;
-            RefinementText = refinementText ?? string.Empty;
-            Attributes = attributes ?? Array.Empty<string>();
-            IsLocked = isLocked;
-            IsEquipped = isEquipped;
+            ShowOwner = showOwner;
+            ShowDeleteAction = showDeleteAction;
+            ShowDetailsAction = showDetailsAction;
         }
 
         /// <summary>获取稳定条目标识。</summary>
@@ -190,23 +206,25 @@ namespace RPG.Game.UI.Bag
         public int Rarity { get; }
         /// <summary>获取主图。</summary>
         public Sprite Icon { get; }
+        /// <summary>获取分类名称。</summary>
+        public string CategoryText { get; }
+        /// <summary>获取主信息。</summary>
+        public string PrimaryText { get; }
+        /// <summary>获取次信息。</summary>
+        public string SecondaryText { get; }
+        /// <summary>获取分类详情行。</summary>
+        public IReadOnlyList<string> DetailLines { get; }
+        /// <summary>获取描述。</summary>
+        public string Description { get; }
         /// <summary>获取装备者名称。</summary>
         public string OwnerText { get; }
         /// <summary>获取装备者头像。</summary>
         public Sprite OwnerIcon { get; }
-        /// <summary>获取描述。</summary>
-        public string Description { get; }
-        /// <summary>获取分类标签。</summary>
-        public string CategoryLabel { get; }
-        /// <summary>获取等级文本。</summary>
-        public string LevelText { get; }
-        /// <summary>获取精炼文本。</summary>
-        public string RefinementText { get; }
-        /// <summary>获取最多两个属性展示文本。</summary>
-        public IReadOnlyList<string> Attributes { get; }
-        /// <summary>获取锁定状态。</summary>
-        public bool IsLocked { get; }
-        /// <summary>获取装备状态。</summary>
-        public bool IsEquipped { get; }
+        /// <summary>获取是否显示装备者区域。</summary>
+        public bool ShowOwner { get; }
+        /// <summary>获取是否允许删除操作。</summary>
+        public bool ShowDeleteAction { get; }
+        /// <summary>获取是否允许详情/培养操作。</summary>
+        public bool ShowDetailsAction { get; }
     }
 }

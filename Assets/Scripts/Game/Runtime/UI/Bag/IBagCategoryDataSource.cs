@@ -9,6 +9,9 @@ namespace RPG.Game.UI.Bag
         /// <summary>获取该数据源对应的顶层分类。</summary>
         ItemCategory Category { get; }
 
+        /// <summary>获取第二排序项的当前分类文案。</summary>
+        string PrimarySortLabel { get; }
+
         /// <summary>按当前排序设置生成列表快照。</summary>
         /// <param name="sortMode">排序字段。</param>
         /// <param name="sortDirection">排序方向。</param>

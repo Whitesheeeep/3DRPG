@@ -7,6 +7,9 @@
 任务产品需求的下一阶段扩展（任务链、线性阶段、导航、资源冲突和双领奖策略）统一记录在
 [`TaskSystem_Requirements.md`](TaskSystem_Requirements.md)。本文档继续作为任务、红点和存档当前实现基础的架构说明；两份文档冲突时，本文档描述已落地行为，新文档描述目标需求。
 
+红点核心的独立实现、Bag 五类节点、Editor 节点设置页、Runtime Debugger 和 UGUI 徽标详见
+[`RedDotSystem_Architecture.md`](../RedDotSystem/RedDotSystem_Architecture.md)。本文档只保留任务系统与红点/存档之间的边界和任务红点规划。
+
 ## 1. 设计目标
 
 本设计同时规划三个相互协作但保持独立边界的业务系统：
@@ -272,28 +275,48 @@ flowchart LR
 
 ### 4.1 通用能力
 
-红点系统为独立的全局通用树，不只服务任务 UI：
+红点系统为独立的全局通用树，不只服务任务 UI。节点结构由静态 Asset 配置，运行时只保存数值和缓存：
 
-- 节点使用不可变、类型化 `RedDotKey` 标识。
-- 禁止业务代码散落裸字符串路径。
+- 每个节点都是独立的 `RedDotKey` ScriptableObject Asset，身份由 Asset 引用/GUID 决定。
+- `RedDotConfig` 只保存本配置拥有的节点引用；Children 由节点的 `Parent` 反向组装，不重复序列化。
+- `RedDotConfigProvider` 由 ConfigInstaller 执行 `RedDotSystem.Config = config`，`RedDotSystem.OnInit()` 再读取静态配置组装私有 `RedDotRuntimeNode` 树。
+- `RedDotBusinessConfigProvider` 是所有业务节点映射配置的统一入口，按具体 `RedDotBusinessConfig` 类型建立索引；当前 Bag 配置只供背包 Manager 写入，不被 UI 读取。
 - 节点值为非负整数；UI 使用 `value > 0` 显示普通红点，也可显示具体数字。
-- 父节点默认对子节点计数求和。
-- 数据源收到业务事件后只标记相关叶节点为脏。
-- 同帧末统一重新计算脏节点及祖先节点。
-- 只有最终值实际变化时才发送通知。
-- UI 绑定时先查询当前值，再订阅变化；解绑时释放 `IUnRegister`。
+- 节点的 `SelfValue` 可由业务直接设置，父节点也允许拥有自身值；`TotalValue = EffectiveSelfValue + 直接子节点 TotalValue 之和`。
+- Editor Debugger 的 Override 只覆盖当前节点的自身值，不修改业务值、Config Asset 或存档。
+- 任意已注册节点值变化后自动 Mark Dirty，同帧末统一重新计算脏节点及祖先节点。
+- 只有最终 `TotalValue` 实际变化时才发送通知。
+- UI 绑定时注册具体节点变化并立即查询当前值；解绑时释放 `IUnRegister`。
+- 指定节点订阅由 `EventCenterModule<RedDotKey>` 按 Asset 引用路由，避免运行时 UI 接收无关节点变化。
+- 全局观察者通过 BusinessArchitecture 的 `SendEvent(RedDotValueChangedEvent)` 接入 WSFrame Type 事件中心，不另建全局 EventBus。
 
 ```mermaid
 flowchart LR
-    BusinessEvent["业务事实事件"] --> Source["IRedDotSource"]
-    Source --> Dirty["MarkDirty(RedDotKey)"]
-    Dirty --> Batch["帧末批处理"]
-    Batch --> Leaf["重算叶节点"]
-    Leaf --> Parent["向上聚合父节点"]
-    Parent --> Changed{"最终值变化？"}
-    Changed -->|是| Notify["通知订阅 UI"]
+    Keys["RedDotKey Assets"] --> Config["RedDotConfig 节点清单"]
+    Provider["ConfigInstaller / RedDotConfigProvider"] --> Static["RedDotSystem.Config 静态字段"]
+    BusinessProvider["RedDotBusinessConfigProvider"] --> BusinessConfig["Bag / Task / Mail 业务节点映射"]
+    Config --> Init["RedDotSystem.OnInit 组装 RedDotRuntimeNode"]
+    Static --> Init
+    Business["业务 SetSelfValue"] --> Dirty["MarkDirty"]
+    BusinessConfig --> Business
+    Debug["Debugger Override"] --> Dirty
+    Init --> Dirty
+    Dirty --> Batch["LastPostLateUpdate Flush"]
+    Batch --> Total["重算节点和祖先 TotalValue"]
+    Total --> Changed{"最终值变化？"}
+    Changed -->|是| Directed["EventCenterModule<RedDotKey>"]
+    Directed --> Global["SendEvent(RedDotValueChangedEvent)"]
     Changed -->|否| End["结束"]
 ```
+
+当前阶段已经提供静态配置核心、`Tools/RPG/Red Dot Editor` 以及两个页签：
+
+- `节点设置` 负责选择/新建 `RedDotConfig`、创建独立节点 Asset、改名、Parent 迁移、排序和直接删除；拖拽与 Parent ObjectField 共用同一套树校验。删除节点会移入系统回收站，不扫描外部业务引用，也不弹确认框。
+- `Runtime Debugger` 只在 Play Mode 连接 `GameArchitecture`，显示实际注入 Config，并可对任意节点设置临时自身值 Override、Mark Dirty 和 Flush；Edit Mode 不访问或初始化业务架构。
+- `RedDotSystem` 通过 UniTask `LastPostLateUpdate` 合并同帧脏标记，按运行时树后代到根节点的顺序通知。
+- Debug Override 只存在于当前 Play Mode 内存，不修改业务 `SelfValue`、节点 Asset、Config 或存档。
+- 背包五类 New 叶节点已经由 `WeaponInventoryManager`、`ArtifactInventoryManager` 和 `StackableInventoryManager` 通过 `SetSelfValue` 接入；任务、邮件和技能等其他业务仍需各自的适配器。
+- HUD 与 Bag 页签中的 `RedDotUGUIBadge` 直接挂在 Prefab 上并手动引用 `RedDotKey` Asset；UI 不访问 `RedDotBusinessConfigProvider`。正式 Badge 默认只显示 `UI_Img_Red.png` 图标，`showValue` 与可选 `TMP_Text` 仅用于需要数字的页面。
 
 ### 4.2 业务状态与未读提示
 
@@ -310,7 +333,7 @@ flowchart LR
 - 打开任务总窗口、切换页签或红点组件自行刷新都不能隐式清除未读。
 - 任务领取完成时确保从未读集合删除。
 
-### 4.3 建议的任务红点节点
+### 4.3 任务红点规划（尚未接入正式 Config）
 
 ```text
 Task
@@ -321,6 +344,7 @@ Task
 
 - `New/{Category}`：对应分类下 `UnreadTaskIds` 的数量。
 - 分类和具体任务的关系由任务红点数据源查询任务系统，不由红点核心理解。
+- 上述 `Task` 节点是任务系统的目标结构，不代表当前 `RedDotConfig.asset` 已经包含任务节点；任务适配器接入前不要在运行时写入不存在的节点。正式接入时新增 `TaskRedDotConfig : RedDotBusinessConfig`，把 Asset 加入 `RedDotBusinessConfigProvider` 即可，不需要新增红点系统或 UI 业务配置桥接。
 
 
 ## 5. 存档系统架构
@@ -578,7 +602,7 @@ sequenceDiagram
 
 ## 11. 当前实现与后续文件范围
 
-任务模型基础层已落在以下目录；具体玩法 Handler、红点数据源、UI 以及新需求文档中的阶段/导航/占用能力仍按业务系统逐步增加：
+任务模型基础层已落在以下目录；任务玩法 Handler、任务红点适配器以及新需求文档中的阶段/导航/占用能力仍按业务系统逐步增加。红点核心和 Bag 接入已经落地，详细说明见独立文档：
 
 ```text
 Assets/Scripts/TaskSystem/
@@ -595,8 +619,13 @@ Assets/Scripts/TaskSystem/
 
 Assets/Scripts/RedDotSystem/
 ├─ Runtime/Core
-├─ Runtime/Sources
-└─ Tests
+├─ Runtime/Config
+│  └─ Assets/Nodes
+├─ Runtime/UI
+└─ Editor
+   ├─ NodeSettings
+   ├─ Debugger
+   └─ Settings
 
 Assets/Scripts/SaveSystem/
 ├─ Runtime/Core

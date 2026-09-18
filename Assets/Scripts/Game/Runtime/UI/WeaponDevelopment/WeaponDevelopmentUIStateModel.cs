@@ -12,7 +12,7 @@ namespace RPG.Game.UI.WeaponDevelopment
         private readonly HashSet<EquipmentInstanceId> selectedMaterialIds = new();
         // key：武器强化素材 ItemId；value：本次培养会话选择的堆叠数量。
         private readonly Dictionary<ItemId, int> selectedQuantityByItemIdMap = new();
-        private WeaponDevelopmentPage currentPage = WeaponDevelopmentPage.Growth;
+        private EquipmentDevelopmentPage currentPage = EquipmentDevelopmentPage.Growth;
         private bool selectionPanelVisible;
 
         #endregion
@@ -23,7 +23,7 @@ namespace RPG.Game.UI.WeaponDevelopment
         public event Action Changed;
 
         /// <summary>获取当前页面。</summary>
-        public WeaponDevelopmentPage CurrentPage => currentPage;
+        public EquipmentDevelopmentPage CurrentPage => currentPage;
 
         /// <summary>获取选择面板是否展开。</summary>
         public bool SelectionPanelVisible => selectionPanelVisible;
@@ -40,7 +40,7 @@ namespace RPG.Game.UI.WeaponDevelopment
 
         /// <summary>切换当前页面并关闭选择面板。</summary>
         /// <param name="page">目标页面。</param>
-        public void SetPage(WeaponDevelopmentPage page)
+        public void SetPage(EquipmentDevelopmentPage page)
         {
             currentPage = page;
             selectionPanelVisible = false;
@@ -101,10 +101,18 @@ namespace RPG.Game.UI.WeaponDevelopment
             Changed?.Invoke();
         }
 
+        /// <summary>清空当前会话内已经选择的精炼武器。</summary>
+        public void ClearRefinementMaterials()
+        {
+            if (selectedMaterialIds.Count == 0) return;
+            selectedMaterialIds.Clear();
+            Changed?.Invoke();
+        }
+
         /// <summary>清空页面临时选择并恢复成长页。</summary>
         public void Reset()
         {
-            currentPage = WeaponDevelopmentPage.Growth;
+            currentPage = EquipmentDevelopmentPage.Growth;
             selectionPanelVisible = false;
             selectedMaterialIds.Clear();
             selectedQuantityByItemIdMap.Clear();

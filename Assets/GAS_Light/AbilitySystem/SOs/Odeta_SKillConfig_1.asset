@@ -101,9 +101,14 @@ MonoBehaviour:
   clips:
   - id: 1469fc76e6ba4ec7b0258ad93a9500bf
     startFrame: 0
-    durationFrames: 19
+    durationFrames: 16
+    phase: 2
+    canBeInterrupted: 0
+  - id: b4e81d7ab3f14849a1db4c77b9766f77
+    startFrame: 16
+    durationFrames: 43
     phase: 3
-    canBeInterrupted: 1
+    canBeInterrupted: 0
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0

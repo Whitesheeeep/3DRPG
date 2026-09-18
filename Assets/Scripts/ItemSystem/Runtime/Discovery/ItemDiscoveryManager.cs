@@ -1,15 +1,22 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using WS_Modules.Singleton;
+using RPG.SaveSystem;
+using WS_Modules.BusinessArchitecture;
 
 namespace RPG.ItemSystem
 {
     /// <summary>
     /// 永久记录玩家历史上已经获得过的 ItemDefinition，不承担当前 New 提示的生命周期。
     /// </summary>
-    public sealed class ItemDiscoveryManager : SingletonBase<ItemDiscoveryManager>
+    public sealed class ItemDiscoveryManager : AbstractManager
     {
+        #region 依赖字段
+
+        private readonly SaveManager saveManager;
+
+        #endregion
+
         #region 状态字段
 
         // key：已解锁的 ItemDefinition 标识；集合不会因消耗、删除或确认 New 而回退。
@@ -17,11 +24,31 @@ namespace RPG.ItemSystem
 
         #endregion
 
-        #region 生命周期
+        #region 构造与生命周期
 
-        /// <summary>创建空的物品发现状态；实例由 SingletonBase 延迟创建。</summary>
-        private ItemDiscoveryManager()
+        /// <summary>创建由 GameArchitecture 持有的物品发现状态 Manager。</summary>
+        /// <param name="saveManager">用于注册发现状态存档模块的 Manager。</param>
+        public ItemDiscoveryManager(SaveManager saveManager)
         {
+            this.saveManager = saveManager ?? throw new ArgumentNullException(nameof(saveManager));
+        }
+
+        #endregion
+
+        #region 架构生命周期
+
+        /// <summary>注册物品发现存档模块。</summary>
+        protected override void OnInit()
+        {
+            saveManager.RegisterModule(new ItemDiscoverySaveModule(this));
+            Debug.Log("[ItemDiscoveryManager] 已注册物品发现存档模块。");
+        }
+
+        /// <summary>注销时清空物品发现运行时集合。</summary>
+        protected override void OnDeinit()
+        {
+            ClearRuntimeState();
+            Debug.Log("[ItemDiscoveryManager] 已清理物品发现运行时状态。");
         }
 
         #endregion

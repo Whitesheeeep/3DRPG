@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9f5d641e0db4e3ab2aa5db419f1e6c2, type: 3}
+  m_Name: RedDotConfig
+  m_EditorClassIdentifier: 
+  nodeKeys:
+  - {fileID: 11400000, guid: 704166503e8a4fad96452e8dfa7863ab, type: 2}
+  - {fileID: 11400000, guid: 80af41e6f9d14aa4b2338c14cdebec7a, type: 2}
+  - {fileID: 11400000, guid: 3a504356c41d4c9686a6882b3ac049ad, type: 2}
+  - {fileID: 11400000, guid: e0debf6101474c808665eb0c1ca31aa2, type: 2}
+  - {fileID: 11400000, guid: c7947fceaf394037aa7f7fbd93eb0514, type: 2}
+  - {fileID: 11400000, guid: d51cb7d4658f4772b7c36117222817f5, type: 2}
+  - {fileID: 11400000, guid: 15749a0b945d49dfb94ffc245cefa6a7, type: 2}
+  - {fileID: 11400000, guid: 14705d78bc6645b2b88b0f58ced054d5, type: 2}
+  - {fileID: 11400000, guid: de4dbedda55d44ab9b09985a02ecdce5, type: 2}
+  - {fileID: 11400000, guid: 9c707c5deac64bea8dd3ad816e564833, type: 2}
+  - {fileID: 11400000, guid: e18abd406ee6486ca2aaacf068571d8d, type: 2}

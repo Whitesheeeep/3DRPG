@@ -1,24 +1,51 @@
 using System;
 using System.Collections.Generic;
 using RPG.Character;
+using RPG.RedDotSystemNS;
+using RPG.SaveSystem;
+using UnityEngine;
+using WS_Modules.BusinessArchitecture;
 using WS_Modules.CustomEventSystem;
 using WSEventSystem = WS_Modules.CustomEventSystem.EventSystem;
 
 namespace RPG.ItemSystem
 {
     /// <summary>管理独立武器实例，提供容量、锁定和成长状态入口。</summary>
-    public sealed class WeaponInventoryManager : EquipmentInstanceManagerBase<WeaponInventoryManager, WeaponInstance>
+    public sealed class WeaponInventoryManager : EquipmentInstanceManagerBase<WeaponInstance>
     {
         #region 静态配置与构造
         private static WeaponInventorySettings settings;
         private static bool configured;
 
+        #endregion
+
+        #region 依赖字段
+
+        private readonly SaveManager saveManager;
+        private readonly ItemDiscoveryManager itemDiscoveryManager;
+        private readonly RedDotSystem redDotSystem;
+        private readonly RedDotKey weaponNewRedDotKey;
+
         /// <summary>获取武器库存容量配置是否已经注入。</summary>
         public static bool IsConfigured => configured && settings != null;
 
-        /// <summary>创建武器实例 Manager。</summary>
-        private WeaponInventoryManager() : base(GetConfiguredCapacity())
+        /// <summary>创建由 GameArchitecture 持有的武器实例 Manager。</summary>
+        /// <param name="saveManager">用于注册武器存档模块的 Manager。</param>
+        /// <param name="itemDiscoveryManager">用于记录首次发现 Definition 的 Manager。</param>
+        /// <param name="redDotSystem">统一红点运行时系统。</param>
+        /// <param name="weaponNewRedDotKey">武器 New 红点叶节点。</param>
+        public WeaponInventoryManager(
+            SaveManager saveManager,
+            ItemDiscoveryManager itemDiscoveryManager,
+            RedDotSystem redDotSystem,
+            RedDotKey weaponNewRedDotKey) : base(GetConfiguredCapacity())
         {
+            this.saveManager = saveManager ?? throw new ArgumentNullException(nameof(saveManager));
+            this.itemDiscoveryManager = itemDiscoveryManager ??
+                                        throw new ArgumentNullException(nameof(itemDiscoveryManager));
+            this.redDotSystem = redDotSystem ?? throw new ArgumentNullException(nameof(redDotSystem));
+            this.weaponNewRedDotKey = weaponNewRedDotKey ??
+                                      throw new ArgumentNullException(nameof(weaponNewRedDotKey));
         }
 
         /// <summary>静态注入武器容量配置。</summary>
@@ -43,6 +70,24 @@ namespace RPG.ItemSystem
                 throw new InvalidOperationException("[WeaponInventoryManager] 尚未注入武器容量配置。");
             return settings.Capacity;
         }
+        #endregion
+
+        #region 架构生命周期
+
+        /// <summary>注册武器存档模块。</summary>
+        protected override void OnInit()
+        {
+            saveManager.RegisterModule(new WeaponInventorySaveModule(this));
+            Debug.Log("[WeaponInventoryManager] 已注册武器存档模块。");
+        }
+
+        /// <summary>注销时清空武器运行时状态。</summary>
+        protected override void OnDeinit()
+        {
+            ClearInstances();
+            Debug.Log("[WeaponInventoryManager] 已清理武器运行时状态。");
+        }
+
         #endregion
 
         #region 添加与移除
@@ -96,8 +141,10 @@ namespace RPG.ItemSystem
             for (int index = 0; index < created.Count; index++)
             {
                 ItemId definitionId = created[index].DefinitionId;
-                if (ItemDiscoveryManager.Instance.MarkDiscovered(definitionId)) MarkDefinitionNew(definitionId);
+                if (itemDiscoveryManager.MarkDiscovered(definitionId)) MarkDefinitionNew(definitionId);
             }
+
+            RefreshNewRedDotCount();
 
             // 所有实例已经写入后才发布事件，订阅方读取 Manager 时能够拿到完整状态。
             for (int index = 0; index < created.Count; index++)
@@ -138,6 +185,8 @@ namespace RPG.ItemSystem
             for (int index = 0; index < removed.Count; index++)
                 RemoveDefinitionNewIfUnused(removed[index].DefinitionId);
 
+            RefreshNewRedDotCount();
+
             // 批量移除完成后再广播，保证订阅方读取到完整的武器集合。
             for (int index = 0; index < removed.Count; index++)
                 PublishChange(EquipmentInstanceChangeType.Removed, removed[index]);
@@ -174,9 +223,6 @@ namespace RPG.ItemSystem
             return new EquipmentOperationResult(InventoryOperationStatus.Succeeded);
         }
 
-        /// <summary>清空武器运行时状态。</summary>
-        internal void ClearRuntimeState() => ClearInstances();
-
         /// <summary>用已经验证的武器实例替换运行时状态。</summary>
         /// <param name="restoredInstances">武器实例。</param>
         /// <param name="restoredNewDefinitionIds">武器 Definition New 标识。</param>
@@ -184,7 +230,11 @@ namespace RPG.ItemSystem
         internal void RestoreState(
             IReadOnlyList<WeaponInstance> restoredInstances,
             IReadOnlyList<ItemId> restoredNewDefinitionIds,
-            long nextSequence) => ReplaceInstances(restoredInstances, restoredNewDefinitionIds, nextSequence);
+            long nextSequence)
+        {
+            ReplaceInstances(restoredInstances, restoredNewDefinitionIds, nextSequence);
+            RefreshNewRedDotCount();
+        }
 
         /// <summary>发布武器背包恢复事件。</summary>
         internal void PublishRestored() => WSEventSystem.EventTrigger_Type(typeof(WeaponInventoryRestoredEvent),
@@ -215,6 +265,12 @@ namespace RPG.ItemSystem
             WSEventSystem.EventTrigger_Type(
                 typeof(WeaponDefinitionNewStateChangedEvent),
                 new WeaponDefinitionNewStateChangedEvent(definitionId, isNew));
+
+        /// <summary>将武器 Definition New 数量写入统一红点系统。</summary>
+        protected override void RefreshNewRedDotCount()
+        {
+            redDotSystem.SetSelfValue(weaponNewRedDotKey, GetNewDefinitionIds().Count);
+        }
         #endregion
 
         #region 内部校验

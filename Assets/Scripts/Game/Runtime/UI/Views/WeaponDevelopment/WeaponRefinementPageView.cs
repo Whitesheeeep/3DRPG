@@ -34,6 +34,8 @@ namespace RPG.Game.UI.Views.WeaponDevelopment
 
         /// <summary>用户请求打开精炼材料选择面板。</summary>
         public event Action AddMaterialRequested;
+        /// <summary>用户请求执行精炼。</summary>
+        public event Action ActionRequested;
 
         #endregion
 
@@ -44,12 +46,14 @@ namespace RPG.Game.UI.Views.WeaponDevelopment
         {
             ValidateConfiguration();
             addMaterialButton.onClick.AddListener(HandleAddMaterialClicked);
+            actionButton.onClick.AddListener(HandleActionClicked);
         }
 
         /// <summary>移除添加材料按钮监听。</summary>
         private void OnDestroy()
         {
             if (addMaterialButton != null) addMaterialButton.onClick.RemoveListener(HandleAddMaterialClicked);
+            if (actionButton != null) actionButton.onClick.RemoveListener(HandleActionClicked);
         }
 
         /// <summary>校验精炼页面的 Rank、效果、材料、费用和按钮绑定。</summary>
@@ -99,6 +103,9 @@ namespace RPG.Game.UI.Views.WeaponDevelopment
 
         /// <summary>转发添加精炼材料意图。</summary>
         private void HandleAddMaterialClicked() => AddMaterialRequested?.Invoke();
+
+        /// <summary>转发精炼动作意图。</summary>
+        private void HandleActionClicked() => ActionRequested?.Invoke();
 
         #endregion
     }

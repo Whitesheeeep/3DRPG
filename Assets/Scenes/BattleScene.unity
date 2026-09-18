@@ -1542,13 +1542,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   testWeapon: {fileID: 11400000, guid: d66c99f27e8540d45bcd3b973b2d4889, type: 2}
+  testArtifact: {fileID: 11400000, guid: 1303ced24d9d700418fa5644e7dd934e, type: 2}
+  testFood: {fileID: 11400000, guid: c2e94407c62cb3645b62e31b22883b93, type: 2}
   testEnhancementMaterials:
   - {fileID: 11400000, guid: 4c42f5021fd346e468dfce5397bf702d, type: 2}
   - {fileID: 11400000, guid: 669cc4e2c7af19f4e9b5ed3e9c747389, type: 2}
+  testArtifactExperienceMaterial: {fileID: 11400000, guid: fb993ad77455429dbeb9bb69be1724f1, type: 2}
   testAscensionMaterial: {fileID: 11400000, guid: 0b948cf03cd17bb40ad388b43ef7e728, type: 2}
   batchQuantity: 8
+  artifactQuantity: 3
+  foodQuantity: 5
   enhancementMaterialQuantity: 20
+  artifactExperienceMaterialQuantity: 20
   ascensionMaterialQuantity: 3
+  testMolaAmount: 100000
   targetLevel: 20
   targetExperience: 0
   targetAscensionRank: 0

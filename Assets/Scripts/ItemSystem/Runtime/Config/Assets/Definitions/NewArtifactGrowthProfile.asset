@@ -19,20 +19,20 @@ MonoBehaviour:
     - serializedVersion: 3
       time: 0
       value: 0
-      inSlope: 0
-      outSlope: 13523.75
-      tangentMode: 0
+      inSlope: 526.3158
+      outSlope: 526.3158
+      tangentMode: 34
       weightedMode: 0
       inWeight: 0
-      outWeight: 0
+      outWeight: 0.33333334
     - serializedVersion: 3
       time: 20
-      value: 270475
-      inSlope: 13523.75
-      outSlope: 0
-      tangentMode: 0
+      value: 10000
+      inSlope: 526.3158
+      outSlope: 526.3158
+      tangentMode: 34
       weightedMode: 0
-      inWeight: 0
+      inWeight: 0.33333334
       outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
@@ -51,7 +51,7 @@ MonoBehaviour:
       outWeight: 0
     - serializedVersion: 3
       time: 20
-      value: 0
+      value: 1000
       inSlope: 0
       outSlope: 0
       tangentMode: 0
@@ -65,85 +65,85 @@ MonoBehaviour:
   bakedProgressions:
   - level: 0
     cumulativeExperience: 0
-    nextExperience: 13524
+    nextExperience: 522
     currencyCost: 0
   - level: 1
-    cumulativeExperience: 13524
-    nextExperience: 13524
-    currencyCost: 0
+    cumulativeExperience: 522
+    nextExperience: 516
+    currencyCost: 7
   - level: 2
-    cumulativeExperience: 27048
-    nextExperience: 13523
-    currencyCost: 0
+    cumulativeExperience: 1038
+    nextExperience: 509
+    currencyCost: 28
   - level: 3
-    cumulativeExperience: 40571
-    nextExperience: 13524
-    currencyCost: 0
+    cumulativeExperience: 1547
+    nextExperience: 504
+    currencyCost: 61
   - level: 4
-    cumulativeExperience: 54095
-    nextExperience: 13524
-    currencyCost: 0
+    cumulativeExperience: 2051
+    nextExperience: 498
+    currencyCost: 104
   - level: 5
-    cumulativeExperience: 67619
-    nextExperience: 13523
-    currencyCost: 0
+    cumulativeExperience: 2549
+    nextExperience: 495
+    currencyCost: 156
   - level: 6
-    cumulativeExperience: 81142
-    nextExperience: 13524
-    currencyCost: 0
+    cumulativeExperience: 3044
+    nextExperience: 492
+    currencyCost: 216
   - level: 7
-    cumulativeExperience: 94666
-    nextExperience: 13524
-    currencyCost: 0
+    cumulativeExperience: 3536
+    nextExperience: 489
+    currencyCost: 282
   - level: 8
-    cumulativeExperience: 108190
-    nextExperience: 13524
-    currencyCost: 0
+    cumulativeExperience: 4025
+    nextExperience: 488
+    currencyCost: 352
   - level: 9
-    cumulativeExperience: 121714
-    nextExperience: 13524
-    currencyCost: 0
+    cumulativeExperience: 4513
+    nextExperience: 487
+    currencyCost: 425
   - level: 10
-    cumulativeExperience: 135238
-    nextExperience: 13523
-    currencyCost: 0
+    cumulativeExperience: 5000
+    nextExperience: 487
+    currencyCost: 500
   - level: 11
-    cumulativeExperience: 148761
-    nextExperience: 13524
-    currencyCost: 0
+    cumulativeExperience: 5487
+    nextExperience: 488
+    currencyCost: 575
   - level: 12
-    cumulativeExperience: 162285
-    nextExperience: 13524
-    currencyCost: 0
+    cumulativeExperience: 5975
+    nextExperience: 489
+    currencyCost: 648
   - level: 13
-    cumulativeExperience: 175809
-    nextExperience: 13523
-    currencyCost: 0
+    cumulativeExperience: 6464
+    nextExperience: 492
+    currencyCost: 718
   - level: 14
-    cumulativeExperience: 189332
-    nextExperience: 13524
-    currencyCost: 0
+    cumulativeExperience: 6956
+    nextExperience: 495
+    currencyCost: 784
   - level: 15
-    cumulativeExperience: 202856
-    nextExperience: 13524
-    currencyCost: 0
+    cumulativeExperience: 7451
+    nextExperience: 498
+    currencyCost: 844
   - level: 16
-    cumulativeExperience: 216380
-    nextExperience: 13524
-    currencyCost: 0
+    cumulativeExperience: 7949
+    nextExperience: 504
+    currencyCost: 896
   - level: 17
-    cumulativeExperience: 229904
-    nextExperience: 13524
-    currencyCost: 0
+    cumulativeExperience: 8453
+    nextExperience: 509
+    currencyCost: 939
   - level: 18
-    cumulativeExperience: 243428
-    nextExperience: 13523
-    currencyCost: 0
+    cumulativeExperience: 8962
+    nextExperience: 516
+    currencyCost: 972
   - level: 19
-    cumulativeExperience: 256951
-    nextExperience: 13524
-    currencyCost: 0
+    cumulativeExperience: 9478
+    nextExperience: 522
+    currencyCost: 993
   - level: 20
-    cumulativeExperience: 270475
+    cumulativeExperience: 10000
     nextExperience: 0
     currencyCost: 0

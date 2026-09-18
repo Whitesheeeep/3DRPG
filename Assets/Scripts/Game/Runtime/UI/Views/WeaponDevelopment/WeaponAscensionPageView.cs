@@ -30,6 +30,13 @@ namespace RPG.Game.UI.Views.WeaponDevelopment
 
         #endregion
 
+        #region 事件
+
+        /// <summary>用户请求执行突破。</summary>
+        public event Action ActionRequested;
+
+        #endregion
+
         #region 生命周期与校验
 
         /// <summary>校验突破页面内部的显式绑定并准备星星 Image。</summary>
@@ -40,6 +47,7 @@ namespace RPG.Game.UI.Views.WeaponDevelopment
             nextRankStars.type = Image.Type.Tiled;
             currentRankStars.raycastTarget = false;
             nextRankStars.raycastTarget = false;
+            actionButton.onClick.AddListener(HandleActionClicked);
         }
 
         /// <summary>校验突破页面的星星、文本、按钮和横向材料列表。</summary>
@@ -50,6 +58,12 @@ namespace RPG.Game.UI.Views.WeaponDevelopment
                 requiredMaterialsView == null || actionButton == null || actionLabelText == null)
                 throw new InvalidOperationException("[WeaponAscensionPageView] 突破页面存在未绑定控件。");
             requiredMaterialsView.ValidateConfiguration();
+        }
+
+        /// <summary>移除突破按钮监听。</summary>
+        private void OnDestroy()
+        {
+            if (actionButton != null) actionButton.onClick.RemoveListener(HandleActionClicked);
         }
 
         #endregion
@@ -86,6 +100,9 @@ namespace RPG.Game.UI.Views.WeaponDevelopment
             rectTransform.sizeDelta = new Vector2(Mathf.Max(0, rank) * starTileWidth, rectTransform.sizeDelta.y);
             starImage.enabled = rank > 0;
         }
+
+        /// <summary>转发突破动作意图。</summary>
+        private void HandleActionClicked() => ActionRequested?.Invoke();
 
         #endregion
     }

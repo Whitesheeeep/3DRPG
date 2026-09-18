@@ -61,22 +61,22 @@ namespace RPG.Game.UI.Escape
     }
 
     /// <summary>请求通过 UIManager 关闭武器培养窗口。</summary>
-    public sealed class CloseWeaponDevelopmentWindowCommand : AbstractCommand
+    public sealed class CloseEquipmentDevelopmentWindowCommand : AbstractCommand
     {
         /// <summary>执行武器培养窗口隐藏流程。</summary>
         protected override void OnExecute()
         {
-            UIManager.Instance.HideWindowAsync<WeaponDevelopmentWindow>().Forget();
+            UIManager.Instance.HideWindowAsync<EquipmentDevelopmentWindow>().Forget();
         }
     }
 
-    /// <summary>请求收起武器培养窗口中的物品选择面板。</summary>
-    public sealed class CloseWeaponSelectionPanelCommand : AbstractCommand
+    /// <summary>请求收起统一装备培养窗口中的物品选择面板。</summary>
+    public sealed class CloseEquipmentSelectionPanelCommand : AbstractCommand
     {
         /// <summary>调用当前培养窗口的面板关闭意图。</summary>
         protected override void OnExecute()
         {
-            if (UIManager.Instance.TryGetWindow<WeaponDevelopmentWindow>(out WeaponDevelopmentWindow window))
+            if (UIManager.Instance.TryGetWindow<EquipmentDevelopmentWindow>(out EquipmentDevelopmentWindow window))
                 window.CloseSelectionPanelFromCommand();
         }
     }

@@ -17,12 +17,12 @@ MonoBehaviour:
   displayName: "\u6B66\u5668\u7ECF\u9A8C\u7D20\u6750\uFF08\u5927\uFF09"
   description: 
   category: 2
-  rarity: 1
+  rarity: 5
   sortPriority: 100
-  iconAddress: 
-  iconSpriteName: 
+  iconAddress: ItemIcons_DevelopmentMaterial
+  iconSpriteName: UI_ItemIcon_104124
   worldPrefabAddress: 
-  editorPreviewIcon: {fileID: 0}
+  editorPreviewIcon: {fileID: 21300000, guid: 0d3ef1b01e1535c4a927eb7cad356a39, type: 3}
   maxQuantity: 9999
   experienceTypes: 2
   experienceValue: 5000

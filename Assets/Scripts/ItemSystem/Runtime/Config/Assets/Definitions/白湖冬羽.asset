@@ -33,35 +33,29 @@ MonoBehaviour:
   refinementEffects:
   - {fileID: 11400000, guid: 2d868042d8cf3ef4e9ea08b3c5b61671, type: 2}
   ascensionStages:
-  - requiredLevel: 20
-    maxLevelAfter: 40
-    cost:
-      itemCosts:
-      - itemId:
-          value: material_0010
-        quantity: 1
-      currencyCosts:
-      - currencyId: 0
-        amount: 45000
   - requiredLevel: 40
     maxLevelAfter: 50
     cost:
-      itemCosts:
-      - itemId:
-          value: material_0010
-        quantity: 1
+      itemCosts: []
       currencyCosts:
-      - currencyId: 0
+      - currencyId: 1
         amount: 45000
   - requiredLevel: 50
     maxLevelAfter: 60
     cost:
       itemCosts:
       - itemId:
-          value: material_0010
+          value: 
         quantity: 1
       currencyCosts:
       - currencyId: 0
+        amount: 45000
+  - requiredLevel: 20
+    maxLevelAfter: 40
+    cost:
+      itemCosts: []
+      currencyCosts:
+      - currencyId: 1
         amount: 45000
   - requiredLevel: 60
     maxLevelAfter: 70
@@ -101,7 +95,7 @@ MonoBehaviour:
     cost:
       itemCosts:
       - itemId:
-          value:
+          value: 
         quantity: 0
       currencyCosts:
       - currencyId: 1
@@ -111,7 +105,7 @@ MonoBehaviour:
     cost:
       itemCosts:
       - itemId:
-          value:
+          value: 
         quantity: 0
       currencyCosts:
       - currencyId: 1
@@ -121,7 +115,7 @@ MonoBehaviour:
     cost:
       itemCosts:
       - itemId:
-          value:
+          value: 
         quantity: 0
       currencyCosts:
       - currencyId: 0
@@ -131,7 +125,7 @@ MonoBehaviour:
     cost:
       itemCosts:
       - itemId:
-          value:
+          value: 
         quantity: 0
       currencyCosts:
       - currencyId: 0

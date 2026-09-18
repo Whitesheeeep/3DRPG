@@ -3,6 +3,7 @@ using RPG.Game.UI.Bag;
 using UnityEngine;
 using WS_Modules.CustomEventSystem;
 using WS_Modules.LogModule;
+using WS_Modules.UIModule;
 
 namespace RPG.Game.UI.Controllers
 {
@@ -25,6 +26,13 @@ namespace RPG.Game.UI.Controllers
         public void Initialize()
         {
             if (initialized) return;
+            HUDWindowDataComponent data = GetComponent<HUDWindowDataComponent>();
+            if (data == null)
+                throw new InvalidOperationException("[HUDWindowController] HUD 根节点缺少 HUDWindowDataComponent。");
+            if (data.BagButton == null)
+                throw new InvalidOperationException("[HUDWindowController] HUDWindowDataComponent 未绑定 BagButton。");
+
+            // 红点徽标已经作为 HUD Prefab 的静态子节点绑定，Controller 只校验自身窗口数据。
             initialized = true;
             WSLog.Log("[HUDWindowController] HUD 面板 MVC 初始化完成。");
         }
