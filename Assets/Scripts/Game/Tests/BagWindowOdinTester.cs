@@ -234,7 +234,8 @@ namespace RPG.Game.Tests
             IReadOnlyList<WeaponInstance> instances = manager.GetInstances();
             IReadOnlyList<ItemId> newDefinitionIds = manager.GetNewDefinitionIds();
             Debug.Log(
-                $"[BagWindowTest] inventory count={manager.Count}/{manager.Capacity}, tracked={createdInstanceIds.Count}, " +
+                $"[BagWindowTest] inventory total={manager.TotalCount}, stored={manager.StoredCount}/{manager.Capacity}, " +
+                $"equipped={manager.EquippedCount}, tracked={createdInstanceIds.Count}, " +
                 $"newDefinitions={newDefinitionIds.Count} [{string.Join(", ", newDefinitionIds)}]。", this);
             for (int index = 0; index < instances.Count; index++)
             {

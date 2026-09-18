@@ -22,4 +22,8 @@ MonoBehaviour:
     defaultGravity: 9.81
     defaultMaxLevel: 90
     defaultMaxAscensionRank: 6
+    defaultWeapons:
+    - weaponType: 0
+      weaponDefinitionId:
+        value: weapon_0003
   nextCharacterIdNumber: 4

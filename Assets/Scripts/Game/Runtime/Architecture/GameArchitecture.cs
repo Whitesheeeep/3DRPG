@@ -1,5 +1,6 @@
 using System.IO;
 using RPG.CurrencySystem;
+using RPG.Character;
 using RPG.DialogueSystemModule;
 using RPG.ItemSystem;
 using RPG.SaveSystem;
@@ -38,11 +39,14 @@ namespace RPG.Game
                 storage,
                 serializerRegistry,
                 snapshotTypeRegistry));
+            // 角色拥有 Manager 先于装备存档 System 注册，确保武器恢复时能够依赖角色拥有事实。
+            RegisterManager(new CharacterRosterManager());
 
             // TaskManager 由 WSFrame ConfigInstaller 注入 TaskDatabase；
             // TaskProgressSystem 只协调任务实例运行时，并在初始化时注册 TaskSaveModule。
             RegisterSystem(new TaskProgressSystem(new TaskObjectiveHandlerRegistry()));
             RegisterSystem(new DialogueSystem());
+            RegisterSystem(new CharacterEquipmentSystem());
             RegisterSystem(new StackableInventorySystem());
             RegisterSystem(new WeaponInventorySystem());
             RegisterSystem(new ArtifactInventorySystem());
@@ -53,6 +57,7 @@ namespace RPG.Game
             // 它们对应的 SaveModule 由各自 System 在 OnInit 中注册到 SaveManager。
             TaskSaveModule taskSaveModule = new TaskSaveModule(TaskManager.Instance);
             snapshotTypeRegistry.Register<TaskSaveSnapshot>(taskSaveModule.ModuleId, taskSaveModule.CurrentVersion);
+            snapshotTypeRegistry.Register<CharacterRosterSaveSnapshot>(new SaveModuleId("character-roster"), 1);
             snapshotTypeRegistry.Register<StackableInventorySaveSnapshot>(new SaveModuleId("stackable-inventory"), 1);
             snapshotTypeRegistry.Register<WeaponInventorySaveSnapshot>(new SaveModuleId("weapon-inventory"), 1);
             snapshotTypeRegistry.Register<ArtifactInventorySaveSnapshot>(new SaveModuleId("artifact-inventory"), 1);

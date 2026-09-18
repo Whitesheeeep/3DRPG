@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using RPG.ItemSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
@@ -8,6 +10,31 @@ using UnityEditor;
 
 namespace RPG.Character
 {
+    /// <summary>描述一个武器类型对应的角色默认武器 Definition。</summary>
+    [Serializable]
+    public sealed class CharacterDefaultWeaponData
+    {
+        [SerializeField, LabelText("武器类型")] private WeaponType weaponType = WeaponType.Sword;
+        [SerializeField, LabelText("默认武器 Definition")] private ItemId weaponDefinitionId = new ItemId("weapon_0003");
+
+        /// <summary>获取该映射覆盖的武器类型。</summary>
+        public WeaponType WeaponType => weaponType;
+
+        /// <summary>获取该类型使用的默认武器 Definition 标识。</summary>
+        public ItemId WeaponDefinitionId => weaponDefinitionId;
+
+        /// <summary>校验默认武器映射本身的稳定字段。</summary>
+        /// <param name="index">该映射在数据库列表中的下标。</param>
+        /// <exception cref="InvalidOperationException">映射包含非法类型或 Definition 标识时抛出。</exception>
+        internal void Validate(int index)
+        {
+            if (!Enum.IsDefined(typeof(WeaponType), weaponType))
+                throw new InvalidOperationException($"角色默认武器映射第 {index} 项的武器类型无效。");
+            if (!weaponDefinitionId.IsValid)
+                throw new InvalidOperationException($"角色默认武器映射第 {index} 项缺少武器 Definition 标识。");
+        }
+    }
+
     /// <summary>角色数据库复用的稳定通用默认字段。</summary>
     [Serializable]
     public sealed class CharacterDefaultData
@@ -20,6 +47,7 @@ namespace RPG.Character
         [SerializeField, MinValue(0f), LabelText("默认重力")] private float defaultGravity = 9.81f;
         [SerializeField, MinValue(1), LabelText("默认最大等级")] private int defaultMaxLevel = 90;
         [SerializeField, MinValue(0), LabelText("默认最大突破阶数")] private int defaultMaxAscensionRank = 6;
+        [SerializeField, LabelText("武器类型默认 Definition")] private List<CharacterDefaultWeaponData> defaultWeapons = new();
 
         #endregion
 
@@ -43,6 +71,9 @@ namespace RPG.Character
         /// <summary>获取默认最大突破阶数。</summary>
         public int DefaultMaxAscensionRank => defaultMaxAscensionRank;
 
+        /// <summary>获取武器类型到默认武器 Definition 的配置列表。</summary>
+        public IReadOnlyList<CharacterDefaultWeaponData> DefaultWeapons => defaultWeapons;
+
         #endregion
 
         #region 校验
@@ -61,6 +92,39 @@ namespace RPG.Character
                 throw new InvalidOperationException("角色默认重力必须是非负有限值。");
             if (defaultMaxLevel < 1) throw new InvalidOperationException("角色默认最大等级必须大于零。");
             if (defaultMaxAscensionRank < 0) throw new InvalidOperationException("角色默认最大突破阶数不能为负数。");
+            if (defaultWeapons == null || defaultWeapons.Count == 0)
+                throw new InvalidOperationException("角色默认武器映射不能为空。");
+
+            var configuredWeaponTypes = new HashSet<WeaponType>();
+            for (int index = 0; index < defaultWeapons.Count; index++)
+            {
+                CharacterDefaultWeaponData mapping = defaultWeapons[index];
+                if (mapping == null)
+                    throw new InvalidOperationException($"角色默认武器映射第 {index} 项为空。");
+                mapping.Validate(index);
+                if (!configuredWeaponTypes.Add(mapping.WeaponType))
+                    throw new InvalidOperationException($"角色默认武器映射重复配置武器类型：{mapping.WeaponType}。");
+            }
+        }
+
+        /// <summary>按武器类型尝试获取默认武器 Definition。</summary>
+        /// <param name="weaponType">待查询的武器类型。</param>
+        /// <param name="definitionId">找到的默认武器 Definition 标识。</param>
+        /// <returns>存在对应映射时返回 true。</returns>
+        public bool TryGetDefaultWeaponDefinitionId(WeaponType weaponType, out ItemId definitionId)
+        {
+            for (int index = 0; index < defaultWeapons.Count; index++)
+            {
+                CharacterDefaultWeaponData mapping = defaultWeapons[index];
+                if (mapping != null && mapping.WeaponType == weaponType)
+                {
+                    definitionId = mapping.WeaponDefinitionId;
+                    return true;
+                }
+            }
+
+            definitionId = default;
+            return false;
         }
 
         #endregion

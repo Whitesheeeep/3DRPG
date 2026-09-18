@@ -88,14 +88,28 @@ namespace RPG.ItemSystem
     /// <summary>将 WeaponInventoryManager 状态接入 SaveSystem。</summary>
     public sealed class WeaponInventorySaveModule : SaveModule<WeaponInventorySaveSnapshot>
     {
+        #region 依赖字段
+
         private readonly WeaponInventoryManager manager;
+        private readonly CharacterRosterManager characterRosterManager;
+
+        #endregion
 
         /// <summary>创建武器实例存档模块。</summary>
         /// <param name="manager">武器 Manager。</param>
-        public WeaponInventorySaveModule(WeaponInventoryManager manager)
-            : base(new SaveModuleId("weapon-inventory"), 1, SaveMissingModulePolicy.Required)
+        /// <param name="characterRosterManager">用于验证装备关系的角色拥有 Manager。</param>
+        public WeaponInventorySaveModule(
+            WeaponInventoryManager manager,
+            CharacterRosterManager characterRosterManager)
+            : base(
+                new SaveModuleId("weapon-inventory"),
+                1,
+                SaveMissingModulePolicy.Required,
+                new[] { new SaveModuleId("character-roster") })
         {
             this.manager = manager ?? throw new ArgumentNullException(nameof(manager));
+            this.characterRosterManager = characterRosterManager ??
+                throw new ArgumentNullException(nameof(characterRosterManager));
         }
 
         /// <summary>采集武器实例状态。</summary>
@@ -131,15 +145,29 @@ namespace RPG.ItemSystem
         {
             if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
             snapshot.ValidateShape();
-            if (snapshot.Instances.Count > manager.Capacity) throw new InvalidOperationException("武器背包快照超过容量。");
+            int storedCount = 0;
+            var equippedCharacterIds = new HashSet<CharacterId>();
             for (int index = 0; index < snapshot.Instances.Count; index++)
             {
                 WeaponInventorySaveEntry entry = snapshot.Instances[index];
+                if (string.IsNullOrEmpty(entry.EquippedCharacterId))
+                {
+                    storedCount++;
+                }
+                else
+                {
+                    CharacterId equippedCharacterId = new CharacterId(entry.EquippedCharacterId);
+                    if (!equippedCharacterIds.Add(equippedCharacterId))
+                        throw new InvalidOperationException($"武器快照为角色重复保存装备：{equippedCharacterId}。 ");
+                }
+
                 if (!ItemId.TryCreate(entry.DefinitionId, out ItemId definitionId) || !ItemManager.Instance.TryGetDefinition(definitionId, out ItemDefinition definition) || !(definition is WeaponDefinition weapon))
                     throw new InvalidOperationException($"武器快照引用了无效定义：{entry.DefinitionId}。");
                 if (entry.Level > weapon.MaxLevel || entry.AscensionRank > weapon.MaxAscensionRank || entry.RefinementRank > weapon.MaxRefinementRank)
                     throw new InvalidOperationException($"武器实例 {entry.InstanceId} 的成长状态超出定义上限。");
             }
+            if (storedCount > manager.Capacity)
+                throw new InvalidOperationException($"武器背包快照容纳区超过容量：{storedCount}/{manager.Capacity}。 ");
         }
 
         /// <summary>恢复已验证的武器实例。</summary>
@@ -150,6 +178,9 @@ namespace RPG.ItemSystem
             for (int index = 0; index < snapshot.Instances.Count; index++)
             {
                 WeaponInventorySaveEntry entry = snapshot.Instances[index];
+                if (!string.IsNullOrEmpty(entry.EquippedCharacterId) &&
+                    !characterRosterManager.IsOwned(new CharacterId(entry.EquippedCharacterId)))
+                    throw new InvalidOperationException($"武器快照实例 {entry.InstanceId} 装备到了未拥有角色：{entry.EquippedCharacterId}。 ");
                 instances.Add(new WeaponInstance(new EquipmentInstanceId(entry.InstanceId), new ItemId(entry.DefinitionId), entry.Level,
                     entry.CurrentExperience, entry.AscensionRank, entry.RefinementRank, entry.IsLocked, entry.AcquisitionSequence,
                     new CharacterId(entry.EquippedCharacterId ?? string.Empty)));

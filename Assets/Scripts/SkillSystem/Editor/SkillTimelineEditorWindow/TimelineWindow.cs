@@ -92,15 +92,18 @@ namespace RPG.SkillSystem.Editor
             view = new EditorView(rootVisualElement, editorConfig, modules);
             view.Bind(viewModel);
             viewModel.SelectionActivated += OnTimelineSelectionActivated;
+            viewModel.ConfigChanged += OnConfigChanged;
             viewModel.InspectorChanged += OnInspectorChanged;
 
-            // 首次双击资产时 CreateGUI 可能晚于打开入口，因此在组合完成后再消费待打开配置。
-            if (pendingConfig != null)
+            // 双击入口传入的配置优先；普通重建则恢复项目设置中上次保存的选择。
+            SkillConfig configToOpen = pendingConfig != null
+                ? pendingConfig
+                : EditorSettings.instance.SelectedSkillConfig;
+            if (configToOpen != null)
             {
-                SkillConfig config = pendingConfig;
-                pendingConfig = null;
-                viewModel.OpenConfig(config);
+                viewModel.OpenConfig(configToOpen);
             }
+            pendingConfig = null;
 
             // Inspector Editor 可能跨本次内部组合重建继续存活，因此完成绑定后必须主动读取新组合。
             NativeInspectorChanged?.Invoke();
@@ -126,6 +129,7 @@ namespace RPG.SkillSystem.Editor
             if (viewModel != null)
             {
                 viewModel.SelectionActivated -= OnTimelineSelectionActivated;
+                viewModel.ConfigChanged -= OnConfigChanged;
                 viewModel.InspectorChanged -= OnInspectorChanged;
             }
             view?.Unbind();
@@ -146,6 +150,14 @@ namespace RPG.SkillSystem.Editor
         private void OnTimelineSelectionActivated()
         {
             if (SelectedData != null) Selection.activeObject = this;
+        }
+
+        /// <summary>
+        /// 当前 SkillConfig 发生切换时，将选择身份持久化到项目级编辑器设置。
+        /// </summary>
+        private void OnConfigChanged()
+        {
+            EditorSettings.instance.SetSelectedSkillConfig(viewModel.CurrentConfig);
         }
 
         // 将 ViewModel 的稳定 Inspector 刷新事件转发给 Unity 原生 Inspector。

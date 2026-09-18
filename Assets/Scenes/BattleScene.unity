@@ -1036,6 +1036,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
+      propertyPath: bindings.Array.size
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 3408626327944978715, guid: b5b9ad4d059eacb4aa7e577d60bdf29c, type: 3}
       propertyPath: bindings.Array.data[8].action
       value: 
       objectReference: {fileID: -1641466239674093629, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}

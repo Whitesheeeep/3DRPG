@@ -21,6 +21,8 @@ MonoBehaviour:
   sideIconSpriteName: Odetta_Side
   avatarAddress: Characters
   avatarSpriteName: "\u5965\u9EDB\u5854_11162"
+  allowedWeaponTypes: 1
+  defaultWeaponType: 0
   maxLevel: 90
   maxAscensionRank: 6
   growthProfile: {fileID: 11400000, guid: c77a8b9c0d1e2f3a4b5c6d7e8f901234, type: 2}

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using RPG.ItemSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using WS_Modules;
@@ -37,6 +38,10 @@ namespace RPG.Character
         private string avatarAddress = CharacterAssetAddresses.AvatarAtlas;
         [SerializeField, LabelText("角色头像 Sprite 名称")]
         private string avatarSpriteName;
+        [SerializeField, EnumToggleButtons, LabelText("允许装备的武器类型")]
+        private WeaponTypeFlags allowedWeaponTypes = WeaponTypeFlags.Sword;
+        [SerializeField, LabelText("默认武器类型")]
+        private WeaponType defaultWeaponType = WeaponType.Sword;
         [SerializeField, MinValue(1), LabelText("最大等级")]
         private int maxLevel = 90;
         [SerializeField, MinValue(0), LabelText("最大突破阶数")]
@@ -79,6 +84,10 @@ namespace RPG.Character
         public string AvatarAddress => avatarAddress;
         /// <summary>获取角色头像图集内的 Sprite 名称。</summary>
         public string AvatarSpriteName => avatarSpriteName;
+        /// <summary>获取角色允许装备的武器类型位掩码。</summary>
+        public WeaponTypeFlags AllowedWeaponTypes => allowedWeaponTypes;
+        /// <summary>获取新角色生成默认武器时使用的武器类型。</summary>
+        public WeaponType DefaultWeaponType => defaultWeaponType;
         /// <summary>获取角色最大等级。</summary>
         public int MaxLevel => maxLevel;
         /// <summary>获取角色最大突破阶数。</summary>
@@ -95,6 +104,11 @@ namespace RPG.Character
         public float Gravity => gravity;
         /// <summary>获取角色 Locomotion 状态过渡配置。</summary>
         public PlayerFSMTransition LocomotionTransition => locomotionTransition;
+
+        /// <summary>判断当前角色是否允许装备指定类型的武器。</summary>
+        /// <param name="weaponType">待检查的武器类型。</param>
+        /// <returns>角色允许该类型时返回 true。</returns>
+        public bool AllowsWeaponType(WeaponType weaponType) => allowedWeaponTypes.Includes(weaponType);
 
 #if UNITY_EDITOR
         /// <summary>获取 Editor 预览用侧面头像。</summary>
@@ -125,6 +139,13 @@ namespace RPG.Character
                 throw new InvalidOperationException($"CharacterConfig '{name}' 未配置 AvatarAddress。");
             if (string.IsNullOrWhiteSpace(avatarSpriteName))
                 throw new InvalidOperationException($"CharacterConfig '{name}' 未配置 AvatarSpriteName。");
+            if (allowedWeaponTypes == WeaponTypeFlags.None ||
+                (allowedWeaponTypes & ~WeaponTypeFlags.All) != WeaponTypeFlags.None)
+                throw new InvalidOperationException($"CharacterConfig '{name}' 的 AllowedWeaponTypes 无效。");
+            if (!Enum.IsDefined(typeof(WeaponType), defaultWeaponType))
+                throw new InvalidOperationException($"CharacterConfig '{name}' 的 DefaultWeaponType 无效。");
+            if (!allowedWeaponTypes.Includes(defaultWeaponType))
+                throw new InvalidOperationException($"CharacterConfig '{name}' 的默认武器类型未包含在允许装备的武器类型中。");
             if (maxLevel < 1)
                 throw new InvalidOperationException($"CharacterConfig '{name}' 的最大等级必须大于零。");
             if (maxAscensionRank < 0)

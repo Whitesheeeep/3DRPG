@@ -21,6 +21,8 @@ MonoBehaviour:
   sideIconSpriteName: Rusk_Side
   avatarAddress: Characters
   avatarSpriteName: Rusk_Protrait
+  allowedWeaponTypes: 1
+  defaultWeaponType: 0
   maxLevel: 90
   maxAscensionRank: 6
   growthProfile: {fileID: 11400000, guid: d88b9cad1e2f3a4b5c6d7e8f90123456, type: 2}

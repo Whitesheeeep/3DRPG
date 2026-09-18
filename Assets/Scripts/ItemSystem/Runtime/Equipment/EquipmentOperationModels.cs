@@ -41,7 +41,13 @@ namespace RPG.ItemSystem
         /// <summary>整数运算溢出。</summary>
         ArithmeticOverflow,
         /// <summary>实例已经装备到角色，不能直接移除。</summary>
-        InstanceEquipped
+        InstanceEquipped,
+        /// <summary>目标角色已经拥有另一把装备中的武器。</summary>
+        CharacterAlreadyHasWeapon,
+        /// <summary>武器类型不在角色允许装备的位掩码中。</summary>
+        WeaponTypeNotAllowed,
+        /// <summary>目标角色尚未写入角色拥有状态。</summary>
+        CharacterNotOwned
     }
 
     /// <summary>一个物品标识和数量。</summary>

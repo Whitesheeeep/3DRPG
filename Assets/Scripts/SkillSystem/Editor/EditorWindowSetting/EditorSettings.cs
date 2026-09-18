@@ -12,6 +12,7 @@ namespace RPG.SkillSystem.Editor
     internal sealed class EditorSettings : ScriptableSingleton<EditorSettings>
     {
         [SerializeField] private string previewSceneGuid = string.Empty;
+        [SerializeField] private string selectedSkillConfigGuid = string.Empty;
         [SerializeField] private string previewActorGlobalObjectId = string.Empty;
         [SerializeField] private string gameplayCameraPrefabGuid = string.Empty;
         [SerializeField] private bool previewCameraModifier;
@@ -22,6 +23,18 @@ namespace RPG.SkillSystem.Editor
             {
                 string path = AssetDatabase.GUIDToAssetPath(previewSceneGuid);
                 return string.IsNullOrEmpty(path) ? null : AssetDatabase.LoadAssetAtPath<SceneAsset>(path);
+            }
+        }
+
+        /// <summary>
+        /// 读取上次在技能时间轴编辑器中选择的 SkillConfig 资产。
+        /// </summary>
+        public SkillConfig SelectedSkillConfig
+        {
+            get
+            {
+                string path = AssetDatabase.GUIDToAssetPath(selectedSkillConfigGuid);
+                return string.IsNullOrEmpty(path) ? null : AssetDatabase.LoadAssetAtPath<SkillConfig>(path);
             }
         }
 
@@ -65,6 +78,24 @@ namespace RPG.SkillSystem.Editor
             string path = scene != null ? AssetDatabase.GetAssetPath(scene) : string.Empty;
             previewSceneGuid = string.IsNullOrEmpty(path) ? string.Empty : AssetDatabase.AssetPathToGUID(path);
             Save(true);
+        }
+
+        /// <summary>
+        /// 保存技能时间轴当前选择的 SkillConfig 资产 GUID；传入空值时清除历史选择。
+        /// </summary>
+        /// <param name="config">需要记住的技能配置；为空表示不保留技能选择。</param>
+        public void SetSelectedSkillConfig(SkillConfig config)
+        {
+            // 以资源路径换取 GUID，保证移动资源后仍沿用 Unity 资产的稳定身份。
+            string path = config != null ? AssetDatabase.GetAssetPath(config) : string.Empty;
+            string nextGuid = string.IsNullOrEmpty(path) ? string.Empty : AssetDatabase.AssetPathToGUID(path);
+            // 选择未变化时不重复写入 ProjectSettings，避免普通刷新造成无意义的保存。
+            if (selectedSkillConfigGuid == nextGuid) return;
+
+            selectedSkillConfigGuid = nextGuid;
+            // 与测试场景设置共用 ScriptableSingleton 的项目级保存机制。
+            Save(true);
+            Debug.Log($"[SkillTimelineEditorSettings] 已保存技能选择：{(config != null ? config.name : "无")}");
         }
 
         /// <summary>

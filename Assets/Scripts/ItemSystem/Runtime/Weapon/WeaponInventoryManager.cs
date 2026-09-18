@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using RPG.Character;
+using UnityEngine;
 using WS_Modules.CustomEventSystem;
 using WSEventSystem = WS_Modules.CustomEventSystem.EventSystem;
 
@@ -9,12 +10,29 @@ namespace RPG.ItemSystem
     /// <summary>管理独立武器实例，提供容量、锁定和成长状态入口。</summary>
     public sealed class WeaponInventoryManager : EquipmentInstanceManagerBase<WeaponInventoryManager, WeaponInstance>
     {
-        #region 静态配置与构造
+        #region 静态配置
+
         private static WeaponInventorySettings settings;
         private static bool configured;
 
         /// <summary>获取武器库存容量配置是否已经注入。</summary>
         public static bool IsConfigured => configured && settings != null;
+
+        #endregion
+
+        #region 分区索引字段
+
+        // key：CharacterId；value：当前装备到该角色的武器实例 ID。
+        private readonly Dictionary<CharacterId, EquipmentInstanceId> weaponInstanceIdByCharacterIdMap =
+            new Dictionary<CharacterId, EquipmentInstanceId>();
+        // 容纳区只索引未装备武器；装备缓存区不进入该集合，因此不占用 Capacity。
+        private readonly HashSet<EquipmentInstanceId> storedWeaponInstanceIds =
+            new HashSet<EquipmentInstanceId>();
+
+
+        #endregion
+
+        #region 构造与配置
 
         /// <summary>创建武器实例 Manager。</summary>
         private WeaponInventoryManager() : base(GetConfiguredCapacity())
@@ -33,6 +51,7 @@ namespace RPG.ItemSystem
                 throw new InvalidOperationException("[WeaponInventoryManager] 已注入其他容量配置，不能静默覆盖。");
             settings = inventorySettings;
             configured = true;
+            Debug.Log($"[WeaponInventoryManager] 完成容量配置，storageCapacity={inventorySettings.Capacity}。 ");
         }
 
         /// <summary>读取首次创建实例所需的容量。</summary>
@@ -43,6 +62,56 @@ namespace RPG.ItemSystem
                 throw new InvalidOperationException("[WeaponInventoryManager] 尚未注入武器容量配置。");
             return settings.Capacity;
         }
+
+        #endregion
+
+        #region 分区统计与查询
+
+        /// <summary>获取全部武器实例数量；该数量包含容纳区和装备缓存区。</summary>
+        public int TotalCount => instances.Count;
+
+        /// <summary>获取容纳区中的未装备武器数量；该数量参与 Capacity 限制。</summary>
+        public int StoredCount => storedWeaponInstanceIds.Count;
+
+        /// <summary>获取装备缓存区中的武器数量；该数量不参与 Capacity 限制。</summary>
+        public int EquippedCount => weaponInstanceIdByCharacterIdMap.Count;
+
+        /// <summary>获取容纳区剩余可用容量。</summary>
+        public int RemainingStorageCapacity => Capacity - StoredCount;
+
+        /// <summary>获取容纳区武器的稳定时点副本。</summary>
+        /// <returns>只包含未装备武器的实例列表。</returns>
+        public IReadOnlyList<WeaponInstance> GetStoredInstances()
+        {
+            var result = new List<WeaponInstance>(storedWeaponInstanceIds.Count);
+            foreach (EquipmentInstanceId instanceId in storedWeaponInstanceIds)
+            {
+                if (!instances.TryGetValue(instanceId, out WeaponInstance instance))
+                    throw new InvalidOperationException($"[WeaponInventoryManager] 容纳区索引缺少武器实例：{instanceId}。 ");
+                result.Add(instance);
+            }
+
+            result.Sort((left, right) => left.AcquisitionSequence.CompareTo(right.AcquisitionSequence));
+            return result;
+        }
+
+        /// <summary>按角色标识查询装备缓存区中的武器。</summary>
+        /// <param name="characterId">目标角色标识。</param>
+        /// <param name="instance">找到的装备武器。</param>
+        /// <returns>角色存在装备武器时返回 true。</returns>
+        public bool TryGetEquippedWeapon(CharacterId characterId, out WeaponInstance instance)
+        {
+            if (!weaponInstanceIdByCharacterIdMap.TryGetValue(characterId, out EquipmentInstanceId instanceId))
+            {
+                instance = null;
+                return false;
+            }
+
+            if (!instances.TryGetValue(instanceId, out instance))
+                throw new InvalidOperationException($"[WeaponInventoryManager] 装备缓存索引缺少武器实例：{instanceId}。 ");
+            return true;
+        }
+
         #endregion
 
         #region 添加与移除
@@ -66,7 +135,7 @@ namespace RPG.ItemSystem
             if (definitionIds == null || definitionIds.Count == 0)
                 return new EquipmentBatchAddResult<WeaponInstance>(InventoryOperationStatus.InvalidQuantity,
                     Array.Empty<WeaponInstance>());
-            if (definitionIds.Count > Capacity - Count)
+            if (definitionIds.Count > RemainingStorageCapacity)
                 return new EquipmentBatchAddResult<WeaponInstance>(InventoryOperationStatus.CapacityExceeded,
                     Array.Empty<WeaponInstance>());
 
@@ -81,7 +150,7 @@ namespace RPG.ItemSystem
                         Array.Empty<WeaponInstance>());
             }
 
-            //
+            // 先创建实例并写入容纳区索引，再统一发布事件，保证观察者看到的是完整分区状态。
             var created = new List<WeaponInstance>(definitionIds.Count);
             for (int index = 0; index < definitionIds.Count; index++)
             {
@@ -89,6 +158,7 @@ namespace RPG.ItemSystem
                     EquipmentInstanceId.Create(), definitionIds[index], 1, 0, 0, 1,
                     false, TakeAcquisitionSequence(), default(CharacterId));
                 instances.Add(instance.InstanceId, instance);
+                storedWeaponInstanceIds.Add(instance.InstanceId);
                 created.Add(instance);
             }
 
@@ -98,7 +168,104 @@ namespace RPG.ItemSystem
             // 所有实例已经写入后才发布事件，订阅方读取 Manager 时能够拿到完整状态。
             for (int index = 0; index < created.Count; index++)
                 PublishChange(EquipmentInstanceChangeType.Added, created[index]);
+            Debug.Log($"[WeaponInventoryManager] 添加容纳区武器，added={created.Count}, stored={StoredCount}/{Capacity}, equipped={EquippedCount}。 ");
             return new EquipmentBatchAddResult<WeaponInstance>(InventoryOperationStatus.Succeeded, created);
+        }
+
+        /// <summary>直接创建一把已装备到指定角色的武器，绕过容纳区容量。</summary>
+        /// <param name="definitionId">武器 Definition 标识。</param>
+        /// <param name="characterId">目标角色标识。</param>
+        /// <returns>添加结果。</returns>
+        internal EquipmentAddResult<WeaponInstance> AddEquippedWeapon(ItemId definitionId, CharacterId characterId)
+        {
+            if (!characterId.IsValid)
+                return new EquipmentAddResult<WeaponInstance>(InventoryOperationStatus.InvalidQuantity, null);
+            if (weaponInstanceIdByCharacterIdMap.ContainsKey(characterId))
+                return new EquipmentAddResult<WeaponInstance>(InventoryOperationStatus.CharacterAlreadyHasWeapon, null);
+            if (!definitionId.IsValid || !TryGetDefinition(definitionId, out ItemDefinition definition))
+                return new EquipmentAddResult<WeaponInstance>(InventoryOperationStatus.UnknownDefinition, null);
+            if (!(definition is WeaponDefinition))
+                return new EquipmentAddResult<WeaponInstance>(InventoryOperationStatus.DefinitionTypeMismatch, null);
+
+            WeaponInstance instance = new WeaponInstance(
+                EquipmentInstanceId.Create(), definitionId, 1, 0, 0, 1,
+                false, TakeAcquisitionSequence(), characterId);
+            instances.Add(instance.InstanceId, instance);
+            weaponInstanceIdByCharacterIdMap.Add(characterId, instance.InstanceId);
+            MarkDefinitionNew(instance.DefinitionId);
+            PublishChange(EquipmentInstanceChangeType.Added, instance);
+            Debug.Log($"[WeaponInventoryManager] 添加装备缓存武器，character={characterId}, instance={instance.InstanceId}, " +
+                      $"stored={StoredCount}/{Capacity}, equipped={EquippedCount}。 ");
+            return new EquipmentAddResult<WeaponInstance>(InventoryOperationStatus.Succeeded, instance);
+        }
+
+        /// <summary>把容纳区武器装备到角色；目标已有武器时执行不增加容纳区数量的换装。</summary>
+        /// <param name="instanceId">待装备武器实例。</param>
+        /// <param name="characterId">目标角色标识。</param>
+        /// <returns>操作结果。</returns>
+        internal EquipmentOperationResult EquipWeapon(EquipmentInstanceId instanceId, CharacterId characterId)
+        {
+            if (!characterId.IsValid)
+                return new EquipmentOperationResult(InventoryOperationStatus.InvalidQuantity);
+            if (!instances.TryGetValue(instanceId, out WeaponInstance current))
+                return new EquipmentOperationResult(InventoryOperationStatus.InstanceNotFound);
+            if (current.IsEquipped)
+                return current.EquippedCharacterId == characterId
+                    ? new EquipmentOperationResult(InventoryOperationStatus.Succeeded)
+                    : new EquipmentOperationResult(InventoryOperationStatus.InstanceEquipped);
+            if (!storedWeaponInstanceIds.Contains(instanceId))
+                throw new InvalidOperationException($"[WeaponInventoryManager] 未装备武器未进入容纳区索引：{instanceId}。 ");
+
+            WeaponInstance previous = null;
+            if (weaponInstanceIdByCharacterIdMap.TryGetValue(characterId, out EquipmentInstanceId previousInstanceId))
+            {
+                if (!instances.TryGetValue(previousInstanceId, out previous) || !previous.IsEquipped ||
+                    previous.EquippedCharacterId != characterId || storedWeaponInstanceIds.Contains(previousInstanceId))
+                    throw new InvalidOperationException($"[WeaponInventoryManager] 角色装备缓存索引状态无效：character={characterId}。 ");
+            }
+
+            // 先完整更新两个分区索引，再广播 Updated，订阅方在回调中读取到的是一致状态。
+            storedWeaponInstanceIds.Remove(instanceId);
+            if (previous != null) storedWeaponInstanceIds.Add(previous.InstanceId);
+            weaponInstanceIdByCharacterIdMap[characterId] = instanceId;
+            if (previous != null)
+            {
+                WeaponInstance storedPrevious = CopyWithEquipment(previous, default(CharacterId));
+                instances[previous.InstanceId] = storedPrevious;
+                previous = storedPrevious;
+            }
+
+            WeaponInstance equipped = CopyWithEquipment(current, characterId);
+            instances[instanceId] = equipped;
+            if (previous != null) PublishChange(EquipmentInstanceChangeType.Updated, previous);
+            PublishChange(EquipmentInstanceChangeType.Updated, equipped);
+            Debug.Log($"[WeaponInventoryManager] 完成武器装备，character={characterId}, instance={instanceId}, " +
+                      $"replaced={(previous != null)}, stored={StoredCount}/{Capacity}。 ");
+            return new EquipmentOperationResult(InventoryOperationStatus.Succeeded);
+        }
+
+        /// <summary>把角色当前武器移回容纳区；容纳区已满时保持装备状态不变。</summary>
+        /// <param name="characterId">目标角色标识。</param>
+        /// <returns>操作结果。</returns>
+        internal EquipmentOperationResult UnequipWeapon(CharacterId characterId)
+        {
+            if (!characterId.IsValid)
+                return new EquipmentOperationResult(InventoryOperationStatus.InvalidQuantity);
+            if (!weaponInstanceIdByCharacterIdMap.TryGetValue(characterId, out EquipmentInstanceId instanceId))
+                return new EquipmentOperationResult(InventoryOperationStatus.InstanceNotFound);
+            if (StoredCount >= Capacity)
+                return new EquipmentOperationResult(InventoryOperationStatus.CapacityExceeded);
+            if (!instances.TryGetValue(instanceId, out WeaponInstance current) || !current.IsEquipped)
+                throw new InvalidOperationException($"[WeaponInventoryManager] 角色装备缓存索引缺少有效实例：character={characterId}。 ");
+
+            WeaponInstance stored = CopyWithEquipment(current, default(CharacterId));
+            weaponInstanceIdByCharacterIdMap.Remove(characterId);
+            storedWeaponInstanceIds.Add(instanceId);
+            instances[instanceId] = stored;
+            PublishChange(EquipmentInstanceChangeType.Updated, stored);
+            Debug.Log($"[WeaponInventoryManager] 完成武器卸下，character={characterId}, instance={instanceId}, " +
+                      $"stored={StoredCount}/{Capacity}, equipped={EquippedCount}。 ");
+            return new EquipmentOperationResult(InventoryOperationStatus.Succeeded);
         }
 
         /// <summary>移除一把未锁定武器。</summary>
@@ -129,6 +296,8 @@ namespace RPG.ItemSystem
             for (int index = 0; index < removed.Count; index++)
             {
                 instances.Remove(removed[index].InstanceId);
+                if (!storedWeaponInstanceIds.Remove(removed[index].InstanceId))
+                    throw new InvalidOperationException($"[WeaponInventoryManager] 待移除武器未进入容纳区索引：{removed[index].InstanceId}。 ");
             }
 
             for (int index = 0; index < removed.Count; index++)
@@ -138,6 +307,7 @@ namespace RPG.ItemSystem
             for (int index = 0; index < removed.Count; index++)
                 PublishChange(EquipmentInstanceChangeType.Removed, removed[index]);
 
+            Debug.Log($"[WeaponInventoryManager] 移除容纳区武器，removed={removed.Count}, stored={StoredCount}/{Capacity}, equipped={EquippedCount}。 ");
             return new EquipmentOperationResult(InventoryOperationStatus.Succeeded);
         }
         #endregion
@@ -170,8 +340,16 @@ namespace RPG.ItemSystem
             return new EquipmentOperationResult(InventoryOperationStatus.Succeeded);
         }
 
-        /// <summary>清空武器运行时状态。</summary>
-        internal void ClearRuntimeState() => ClearInstances();
+        /// <summary>清空武器运行时状态，包括容纳区与装备缓存区索引。</summary>
+        internal void ClearRuntimeState()
+        {
+            int previousTotalCount = TotalCount;
+            storedWeaponInstanceIds.Clear();
+            weaponInstanceIdByCharacterIdMap.Clear();
+            ClearInstances();
+            if (previousTotalCount > 0)
+                Debug.Log($"[WeaponInventoryManager] 清空武器运行时状态，previousTotal={previousTotalCount}。 ");
+        }
 
         /// <summary>用已经验证的武器实例替换运行时状态。</summary>
         /// <param name="restoredInstances">武器实例。</param>
@@ -180,7 +358,20 @@ namespace RPG.ItemSystem
         internal void RestoreState(
             IReadOnlyList<WeaponInstance> restoredInstances,
             IReadOnlyList<ItemId> restoredNewDefinitionIds,
-            long nextSequence) => ReplaceInstances(restoredInstances, restoredNewDefinitionIds, nextSequence);
+            long nextSequence)
+        {
+            BuildIndexes(restoredInstances,
+                out HashSet<EquipmentInstanceId> restoredStoredInstanceIds,
+                out Dictionary<CharacterId, EquipmentInstanceId> restoredWeaponInstanceIdByCharacterIdMap);
+            ReplaceInstances(restoredInstances, restoredNewDefinitionIds, nextSequence);
+            storedWeaponInstanceIds.Clear();
+            foreach (EquipmentInstanceId instanceId in restoredStoredInstanceIds)
+                storedWeaponInstanceIds.Add(instanceId);
+            weaponInstanceIdByCharacterIdMap.Clear();
+            foreach (KeyValuePair<CharacterId, EquipmentInstanceId> pair in restoredWeaponInstanceIdByCharacterIdMap)
+                weaponInstanceIdByCharacterIdMap.Add(pair.Key, pair.Value);
+            Debug.Log($"[WeaponInventoryManager] 恢复武器分区，total={TotalCount}, stored={StoredCount}/{Capacity}, equipped={EquippedCount}。 ");
+        }
 
         /// <summary>发布武器背包恢复事件。</summary>
         internal void PublishRestored() => WSEventSystem.EventTrigger_Type(typeof(WeaponInventoryRestoredEvent),
@@ -214,6 +405,47 @@ namespace RPG.ItemSystem
         #endregion
 
         #region 内部校验
+        /// <summary>复制武器并只替换装备角色，不改变培养和锁定状态。</summary>
+        /// <param name="source">原武器实例。</param>
+        /// <param name="equippedCharacterId">新的装备角色；无效值表示回到容纳区。</param>
+        /// <returns>替换装备关系后的武器实例。</returns>
+        private static WeaponInstance CopyWithEquipment(WeaponInstance source, CharacterId equippedCharacterId) =>
+            new WeaponInstance(source.InstanceId, source.DefinitionId, source.Level, source.CurrentExperience,
+                source.AscensionRank, source.RefinementRank, source.IsLocked, source.AcquisitionSequence,
+                equippedCharacterId);
+
+        /// <summary>从恢复实例集合重建容纳区与装备缓存区索引。</summary>
+        /// <param name="sourceInstances">待恢复的武器实例集合。</param>
+        /// <param name="storedInstanceIds">恢复出的容纳区实例 ID 集合。</param>
+        /// <param name="equippedInstanceIdByCharacterIdMap">恢复出的角色到武器实例 ID 映射。</param>
+        private void BuildIndexes(
+            IReadOnlyList<WeaponInstance> sourceInstances,
+            out HashSet<EquipmentInstanceId> storedInstanceIds,
+            out Dictionary<CharacterId, EquipmentInstanceId> equippedInstanceIdByCharacterIdMap)
+        {
+            if (sourceInstances == null) throw new ArgumentNullException(nameof(sourceInstances));
+            storedInstanceIds = new HashSet<EquipmentInstanceId>();
+            equippedInstanceIdByCharacterIdMap = new Dictionary<CharacterId, EquipmentInstanceId>();
+            for (int index = 0; index < sourceInstances.Count; index++)
+            {
+                WeaponInstance instance = sourceInstances[index];
+                if (instance == null || !instance.InstanceId.IsValid)
+                    throw new InvalidOperationException("武器恢复集合包含无效实例。 ");
+                if (instance.IsEquipped)
+                {
+                    if (!equippedInstanceIdByCharacterIdMap.TryAdd(instance.EquippedCharacterId, instance.InstanceId))
+                        throw new InvalidOperationException($"武器恢复集合为角色重复装备：{instance.EquippedCharacterId}。 ");
+                }
+                else
+                {
+                    storedInstanceIds.Add(instance.InstanceId);
+                }
+            }
+
+            if (storedInstanceIds.Count > Capacity)
+                throw new InvalidOperationException($"武器恢复集合的容纳区数量超过容量：{storedInstanceIds.Count}/{Capacity}。 ");
+        }
+
         /// <summary>查询武器 Definition。</summary>
         /// <param name="definitionId">定义标识。</param>
         /// <returns>武器定义。</returns>

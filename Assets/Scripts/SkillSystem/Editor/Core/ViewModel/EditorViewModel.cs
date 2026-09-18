@@ -30,6 +30,8 @@ namespace RPG.SkillSystem.Editor
         public event Action TimelineChanged;
         public event Action SelectionChanged;
         public event Action SelectionActivated;
+        /// <summary>当前编辑文档引用的 SkillConfig 发生切换时触发。</summary>
+        public event Action ConfigChanged;
         public event Action PlayheadChanged;
         public event Action PlaybackChanged;
         public event Action InspectorChanged;
@@ -105,6 +107,7 @@ namespace RPG.SkillSystem.Editor
             TimelineChanged = null;
             SelectionChanged = null;
             SelectionActivated = null;
+            ConfigChanged = null;
             PlayheadChanged = null;
             PlaybackChanged = null;
             InspectorChanged = null;
@@ -121,6 +124,8 @@ namespace RPG.SkillSystem.Editor
             SynchronizeAttackDetectionSelection();
             playback.SetSkillConfig(document.CurrentConfig);
             playback.SetApplyRootMotion(IsRootMotion);
+            // 先通知窗口持久化配置身份，再刷新依赖当前配置的界面状态。
+            ConfigChanged?.Invoke();
             TimelineChanged?.Invoke();
             SelectionChanged?.Invoke();
             InspectorChanged?.Invoke();

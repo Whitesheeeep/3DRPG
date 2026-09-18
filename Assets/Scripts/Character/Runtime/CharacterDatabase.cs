@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using RPG.ItemSystem;
 using UnityEngine;
 
 namespace RPG.Character
@@ -22,6 +23,17 @@ namespace RPG.Character
 
         /// <summary>获取角色配置编辑器使用的通用默认数据。</summary>
         public CharacterDefaultData DefaultData => defaultData ??= new CharacterDefaultData();
+
+        #endregion
+
+        #region 默认武器查询
+
+        /// <summary>按武器类型查询新角色使用的默认武器 Definition。</summary>
+        /// <param name="weaponType">角色默认武器类型。</param>
+        /// <param name="definitionId">找到的默认武器 Definition 标识。</param>
+        /// <returns>数据库配置了对应默认武器时返回 true。</returns>
+        public bool TryGetDefaultWeaponDefinitionId(WeaponType weaponType, out ItemId definitionId) =>
+            DefaultData.TryGetDefaultWeaponDefinitionId(weaponType, out definitionId);
 
         #endregion
 

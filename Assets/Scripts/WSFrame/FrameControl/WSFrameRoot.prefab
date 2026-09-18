@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 3217963146180904393}
   - component: {fileID: 3217963146180904394}
   - component: {fileID: 5751766266737932486}
+  - component: {fileID: 5751766266737932487}
   m_Layer: 0
   m_Name: WSFrameRoot
   m_TagString: Untagged
@@ -71,3 +72,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a3025d0fb63669c45a89e0048868eebc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &5751766266737932487
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8242590249179799947}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1f2e0b8e86c4d03ab5ad14b4f83c416, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  profile: {fileID: 11400000, guid: d41acd2134c34cac8adf77b2e11dadac, type: 2}

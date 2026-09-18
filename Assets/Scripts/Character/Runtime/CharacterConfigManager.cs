@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using RPG.ItemSystem;
 using WS_Modules.Singleton;
 
 namespace RPG.Character
@@ -55,6 +56,16 @@ namespace RPG.Character
         {
             EnsureDatabase();
             return database.GetRequiredConfig(characterId);
+        }
+
+        /// <summary>按武器类型查询新角色使用的默认武器 Definition。</summary>
+        /// <param name="weaponType">角色默认武器类型。</param>
+        /// <param name="definitionId">找到的默认武器 Definition 标识。</param>
+        /// <returns>数据库配置了对应默认武器时返回 true。</returns>
+        public bool TryGetDefaultWeaponDefinitionId(WeaponType weaponType, out ItemId definitionId)
+        {
+            EnsureDatabase();
+            return database.TryGetDefaultWeaponDefinitionId(weaponType, out definitionId);
         }
 
         /// <summary>确保配置数据库已经注入。</summary>

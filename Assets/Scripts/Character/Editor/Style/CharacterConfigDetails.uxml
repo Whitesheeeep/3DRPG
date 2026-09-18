@@ -6,6 +6,9 @@
         <uie:PropertyField name="RarityField" binding-path="rarity" label="稀有度" class="config-editor-property-field character-config-property-field" />
         <uie:PropertyField name="CharacterIdField" binding-path="characterId" label="角色标识" class="config-editor-property-field character-config-property-field" />
         <uie:PropertyField name="PrefabAddressField" binding-path="prefabAddress" label="角色 Prefab 地址" class="config-editor-property-field character-config-property-field" />
+        <ui:Label text="武器配置" class="config-editor-section-title character-config-section-title" />
+        <uie:PropertyField name="AllowedWeaponTypesField" binding-path="allowedWeaponTypes" label="允许装备的武器类型" class="config-editor-property-field character-config-property-field" />
+        <uie:PropertyField name="DefaultWeaponTypeField" binding-path="defaultWeaponType" label="默认武器类型" class="config-editor-property-field character-config-property-field" />
         <ui:Label text="角色图片" class="config-editor-section-title character-config-section-title" />
         <ui:VisualElement name="SideIconRow" class="character-config-preview-row">
             <ui:VisualElement class="character-config-preview-frame">
