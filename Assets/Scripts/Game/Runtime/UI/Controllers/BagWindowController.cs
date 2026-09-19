@@ -7,6 +7,7 @@ using RPG.Game.UI.Services;
 using RPG.Game.UI.Views.Bag;
 using RPG.Game.UI.WeaponDevelopment;
 using RPG.ItemSystem;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using WS_Modules.BusinessArchitecture;
@@ -65,6 +66,7 @@ namespace RPG.Game.UI.Controllers
 
             data = windowData ?? throw new ArgumentNullException(nameof(windowData));
             data.ValidateConfiguration();
+            data.BagIcon.raycastTarget = false;
             IArchitecture architecture = GameArchitecture.Interface;
             weaponInventoryManager = architecture.GetManager<WeaponInventoryManager>();
             artifactInventoryManager = architecture.GetManager<ArtifactInventoryManager>();
@@ -300,6 +302,7 @@ namespace RPG.Game.UI.Controllers
                     out IBagCategoryDataSource source))
                 return;
             currentEntries = source.BuildEntries(stateModel.SortMode, stateModel.SortDirection);
+            RefreshCapacityDisplay();
             if (resetScroll) data.GridView?.ScrollToTop();
             data.GridView?.Bind(currentEntries, HandleEntrySelected);
             if (currentEntries.Count == 0)
@@ -352,6 +355,28 @@ namespace RPG.Game.UI.Controllers
             bool canCycle = index >= 0 && data.CategoryOrder.Count > 1;
             if (data.PreviousCategoryButton != null) data.PreviousCategoryButton.interactable = canCycle;
             if (data.NextCategoryButton != null) data.NextCategoryButton.interactable = canCycle;
+        }
+
+        /// <summary>刷新武器和圣遗物的容纳区容量；可堆叠分类没有统一容量时隐藏文本。</summary>
+        private void RefreshCapacityDisplay()
+        {
+            TMP_Text upperLimitCountText = data.UpperLimitCountText;
+            if (upperLimitCountText == null) return;
+
+            switch (stateModel.CurrentCategory)
+            {
+                case ItemCategory.Weapon:
+                    upperLimitCountText.gameObject.SetActive(true);
+                    upperLimitCountText.text = $"上限：{weaponInventoryManager.StoredCount:N0} / {weaponInventoryManager.Capacity:N0}";
+                    break;
+                case ItemCategory.Artifact:
+                    upperLimitCountText.gameObject.SetActive(true);
+                    upperLimitCountText.text = $"上限：{artifactInventoryManager.Count:N0} / {artifactInventoryManager.Capacity:N0}";
+                    break;
+                default:
+                    upperLimitCountText.gameObject.SetActive(false);
+                    break;
+            }
         }
 
         /// <summary>查找当前分类在作者顺序中的位置。</summary>

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using RPG.CurrencySystem;
+using RPG.Game.Runtime.EquipmentDevelopment;
 using RPG.ItemSystem;
 using UnityEngine;
 
@@ -9,6 +10,8 @@ namespace RPG.Game.Runtime.ArtifactDevelopment
     /// <summary>在圣遗物培养窗口会话期间负责预览和提交一次圣遗物升级。</summary>
     public sealed class ArtifactDevelopmentService
     {
+        private const int MaxSelectedExperienceMaterialCount = 99;
+
         #region 依赖字段
 
         private readonly ArtifactInventoryManager artifactInventoryManager;
@@ -47,23 +50,12 @@ namespace RPG.Game.Runtime.ArtifactDevelopment
             if (!TryGetProgression(definition, instance.Level, out BakedArtifactLevelProgression current) ||
                 !TryGetProgression(definition, definition.MaxLevel, out BakedArtifactLevelProgression cap)) return false;
 
-            long selectedExperience = 0L;
-            if (selectedQuantityByItemIdMap != null)
-            {
-                foreach (KeyValuePair<ItemId, int> pair in selectedQuantityByItemIdMap)
-                {
-                    if (!TryValidateMaterial(pair.Key, pair.Value, out DevelopmentExperienceItemDefinition material))
-                    {
-                        projection = default;
-                        return false;
-                    }
-
-                    selectedExperience = checked(selectedExperience + (long)pair.Value * material.ExperienceValue);
-                }
-            }
+            if (!TryBuildConsumptionPlan(instance, definition, selectedQuantityByItemIdMap,
+                    out EnhancementMaterialConsumptionPlan consumptionPlan)) return false;
 
             long totalExperience = Math.Min((long)cap.CumulativeExperience,
-                (long)current.CumulativeExperience + instance.CurrentExperience + Math.Max(0L, selectedExperience));
+                (long)current.CumulativeExperience + instance.CurrentExperience +
+                Math.Max(0L, consumptionPlan.ConsumedExperience));
             int projectedLevel = instance.Level;
             while (projectedLevel < definition.MaxLevel &&
                    TryGetProgression(definition, projectedLevel, out BakedArtifactLevelProgression progression) &&
@@ -107,13 +99,13 @@ namespace RPG.Game.Runtime.ArtifactDevelopment
             if (projection.Level == instance.Level && projection.CurrentExperience == instance.CurrentExperience)
                 return Failure(ArtifactDevelopmentOperationStatus.InvalidSelection, "选择的经验没有产生等级变化。");
 
-            var materialCosts = new List<ItemQuantity>(selectedQuantityByItemIdMap.Count);
-            foreach (KeyValuePair<ItemId, int> pair in selectedQuantityByItemIdMap)
-            {
-                if (!TryValidateMaterial(pair.Key, pair.Value, out _))
-                    return Failure(ArtifactDevelopmentOperationStatus.InvalidSelection, $"经验素材选择无效：{pair.Key}。");
+            if (!TryBuildConsumptionPlan(instance, definition, selectedQuantityByItemIdMap,
+                    out EnhancementMaterialConsumptionPlan consumptionPlan))
+                return Failure(ArtifactDevelopmentOperationStatus.InvalidSelection, "经验素材选择无效。");
+
+            var materialCosts = new List<ItemQuantity>(consumptionPlan.ConsumedQuantityByItemIdMap.Count);
+            foreach (KeyValuePair<ItemId, int> pair in consumptionPlan.ConsumedQuantityByItemIdMap)
                 materialCosts.Add(new ItemQuantity(pair.Key, pair.Value));
-            }
 
             if (projection.CurrencyCost > int.MaxValue)
                 return Failure(ArtifactDevelopmentOperationStatus.InvalidConfiguration, "圣遗物升级货币消耗超出货币 API 范围。");
@@ -133,13 +125,54 @@ namespace RPG.Game.Runtime.ArtifactDevelopment
             if (!updateResult.Succeeded)
                 return Failure(ArtifactDevelopmentOperationStatus.ManagerRejected, $"圣遗物进度更新失败：{updateResult.Status}。");
 
-            Debug.Log($"[ArtifactDevelopmentService] 圣遗物升级成功：Instance={instanceId}，Level={projection.Level}，Experience={projection.CurrentExperience}。");
+            Debug.Log(
+                $"[ArtifactDevelopmentService] 圣遗物升级成功：Instance={instanceId}，Level={projection.Level}，" +
+                $"Experience={projection.CurrentExperience}，Consumed={consumptionPlan.ConsumedQuantityByItemIdMap.Count}种，" +
+                $"Retained={consumptionPlan.RetainedQuantityByItemIdMap.Count}种，" +
+                $"Overflow={consumptionPlan.OverflowExperience}。 ");
             return new ArtifactDevelopmentOperationResult(ArtifactDevelopmentOperationStatus.Succeeded, string.Empty);
         }
 
         #endregion
 
         #region 校验辅助
+
+        /// <summary>校验玩家选择并构建圣遗物实际消耗的有界背包规划。</summary>
+        /// <param name="instance">目标圣遗物实例。</param>
+        /// <param name="definition">目标圣遗物定义。</param>
+        /// <param name="selectedQuantityByItemIdMap">玩家选择数量。</param>
+        /// <param name="consumptionPlan">实际消耗规划。</param>
+        /// <returns>选择有效且规划成功时返回 true。</returns>
+        private bool TryBuildConsumptionPlan(ArtifactInstance instance, ArtifactDefinition definition,
+            IReadOnlyDictionary<ItemId, int> selectedQuantityByItemIdMap,
+            out EnhancementMaterialConsumptionPlan consumptionPlan)
+        {
+            consumptionPlan = null;
+            if (selectedQuantityByItemIdMap == null) return false;
+
+            var selections = new List<EnhancementMaterialSelection>(selectedQuantityByItemIdMap.Count);
+            long selectedMaterialCount = 0L;
+            foreach (KeyValuePair<ItemId, int> pair in selectedQuantityByItemIdMap)
+            {
+                if (!TryValidateMaterial(pair.Key, pair.Value, out DevelopmentExperienceItemDefinition material))
+                    return false;
+                if (pair.Value > MaxSelectedExperienceMaterialCount ||
+                    selectedMaterialCount > MaxSelectedExperienceMaterialCount - pair.Value)
+                    return false;
+                selectedMaterialCount += pair.Value;
+                if (stackableInventoryManager.GetQuantity(pair.Key) < pair.Value)
+                    return false;
+                selections.Add(new EnhancementMaterialSelection(pair.Key, pair.Value, material.ExperienceValue));
+            }
+
+            if (!TryGetProgression(definition, instance.Level, out BakedArtifactLevelProgression current) ||
+                !TryGetProgression(definition, definition.MaxLevel, out BakedArtifactLevelProgression cap)) return false;
+            long requiredExperience = Math.Max(0L,
+                (long)cap.CumulativeExperience - current.CumulativeExperience - instance.CurrentExperience);
+            consumptionPlan = EnhancementMaterialConsumptionPlanner.Build(
+                requiredExperience, selections, MaxSelectedExperienceMaterialCount);
+            return true;
+        }
 
         /// <summary>查询圣遗物目标及其 Definition。</summary>
         /// <param name="instanceId">目标实例。</param>

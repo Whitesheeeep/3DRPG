@@ -10,6 +10,7 @@ using RPG.Game.UI.Views.Common;
 using RPG.Game.UI.Views.WeaponDevelopment;
 using RPG.Game.UI.WeaponDevelopment;
 using RPG.Game.Runtime.ArtifactDevelopment;
+using RPG.Game.Runtime.EquipmentDevelopment;
 using RPG.Game.Runtime.WeaponDevelopment;
 using RPG.ItemSystem;
 using UnityEngine;
@@ -60,6 +61,8 @@ namespace RPG.Game.UI.Controllers
         private bool developmentOperationRunning;
         private EscCommandRegistration selectionEscRegistration;
         private EquipmentGrowthMode currentGrowthMode = EquipmentGrowthMode.ConfigurationUnavailable;
+        private const int MaxSelectedExperienceMaterialCount = 99;
+        private bool selectionLimitLogIssued;
 
         #endregion
 
@@ -200,6 +203,7 @@ namespace RPG.Game.UI.Controllers
             selectionPanel?.HideImmediateAndReset();
             UnregisterSelectionEscCommand();
             stateModel.Reset();
+            selectionLimitLogIssued = false;
             if (windowShown)
             {
                 // UIManager 复用已可见窗口时不会再次触发完整 Show 生命周期，因此这里主动重建服务并刷新新目标。
@@ -354,12 +358,12 @@ namespace RPG.Game.UI.Controllers
         {
             if (stateModel.CurrentPage != EquipmentDevelopmentPage.Growth || currentGrowthMode != EquipmentGrowthMode.Enhancement)
                 return;
-            bool hasCapacity = targetKind == EquipmentDevelopmentTargetKind.Artifact
-                ? HasArtifactEnhancementCapacity()
-                : HasEnhancementCapacity();
-            if (!hasCapacity)
+            bool hasCandidates = targetKind == EquipmentDevelopmentTargetKind.Artifact
+                ? HasArtifactEnhancementCandidates()
+                : HasEnhancementCandidates();
+            if (!hasCandidates && !HasSelectedEnhancementMaterials())
             {
-                Debug.Log("[EquipmentDevelopment] 当前阶段经验已满，忽略打开强化素材面板。", this);
+                Debug.Log("[EquipmentDevelopment] 没有可选择的强化素材，忽略打开素材面板。", this);
                 return;
             }
             stateModel.SetSelectionPanelVisible(true);
@@ -449,20 +453,16 @@ namespace RPG.Game.UI.Controllers
             int delta;
             if (intent.Direction == BagItemQuantityDirection.Increase)
             {
-                // 将输入步长限制在当前阶段剩余经验可容纳的素材数量内；达到等级上限后不再触发状态变更。
-                if (!TryGetTarget(out WeaponDefinition targetDefinition, out WeaponInstance targetInstance)) return;
-                long remainingExperience = GetRequiredExperienceToCap(targetDefinition, targetInstance, out _)
-                    - GetSelectedEnhancementExperience();
-                if (remainingExperience <= 0L)
+                int selectedTotal = GetSelectedEnhancementMaterialCount();
+                int availableSlots = MaxSelectedExperienceMaterialCount - selectedTotal;
+                if (availableSlots <= 0)
                 {
-                    Debug.Log($"[WeaponDevelopment] 已达到当前等级上限，忽略强化素材增加：Item={itemId}。", this);
+                    LogSelectionLimitReachedOnce();
                     return;
                 }
 
-                long maxAdditional = (remainingExperience + definition.ExperienceValue - 1L) /
-                                     definition.ExperienceValue;
                 int availableQuantity = Math.Max(0, ownedQuantity - previousQuantity);
-                delta = (int)Math.Min(Math.Min((long)Math.Max(1, intent.Step), maxAdditional), availableQuantity);
+                delta = Math.Min(Math.Min(Math.Max(1, intent.Step), availableQuantity), availableSlots);
                 if (delta <= 0) return;
             }
             else
@@ -471,6 +471,7 @@ namespace RPG.Game.UI.Controllers
             }
 
             stateModel.AdjustEnhancementMaterial(itemId, delta, ownedQuantity);
+            selectionLimitLogIssued = false;
             // 长按会以更大步长重复回调；只记录单步意图，避免高频输入淹没 Console。
             if (intent.Step == 1)
                 Debug.Log(
@@ -496,26 +497,31 @@ namespace RPG.Game.UI.Controllers
             }
             else
             {
-                int upperBound = Math.Min(ownedQuantity, previousQuantity + Math.Max(1, intent.Step));
-                for (int candidate = upperBound; candidate > previousQuantity; candidate--)
+                int availableSlots = MaxSelectedExperienceMaterialCount - GetSelectedEnhancementMaterialCount();
+                if (availableSlots <= 0)
                 {
-                    var candidateMap = new Dictionary<ItemId, int>(stateModel.SelectedEnhancementQuantities)
-                    {
-                        [itemId] = candidate
-                    };
-                    if (artifactDevelopmentService.TryProject(targetInstanceId, candidateMap,
-                            out ArtifactDevelopmentProjection projection) &&
-                        artifactInventoryManager.TryGetInstance(targetInstanceId, out ArtifactInstance instance) &&
-                        (projection.Level != instance.Level || projection.CurrentExperience != instance.CurrentExperience))
-                    {
-                        nextQuantity = candidate;
-                        break;
-                    }
+                    LogSelectionLimitReachedOnce();
+                    return;
                 }
+
+                int availableQuantity = Math.Max(0, ownedQuantity - previousQuantity);
+                int delta = Math.Min(Math.Min(Math.Max(1, intent.Step), availableQuantity), availableSlots);
+                nextQuantity = previousQuantity + delta;
             }
 
             stateModel.AdjustEnhancementMaterial(itemId, nextQuantity - previousQuantity, ownedQuantity);
+            selectionLimitLogIssued = false;
             Debug.Log($"[EquipmentDevelopment] 调整圣遗物经验素材：Item={itemId}，Quantity={nextQuantity}。", this);
+        }
+
+        /// <summary>只在一次连续输入首次触及 99 本上限时记录日志。</summary>
+        private void LogSelectionLimitReachedOnce()
+        {
+            if (selectionLimitLogIssued) return;
+            selectionLimitLogIssued = true;
+            Debug.Log(
+                $"[EquipmentDevelopment] 已达到单次素材选择上限：{MaxSelectedExperienceMaterialCount}本，仍可减少已选素材。",
+                this);
         }
 
         /// <summary>按圣遗物当前等级上限自动选择经验素材。</summary>
@@ -525,13 +531,10 @@ namespace RPG.Game.UI.Controllers
                 !ItemManager.Instance.TryGetDefinition(instance.DefinitionId, out ItemDefinition item) ||
                 !(item is ArtifactDefinition definition)) return;
             long requiredExperience = GetArtifactRequiredExperienceToCap(definition, instance);
-            long selectedExperience = GetSelectedArtifactExperience();
-            long remaining = requiredExperience - selectedExperience;
-            if (remaining <= 0L) return;
 
             IReadOnlyList<StackableInventoryEntry> inventory =
                 stackableInventoryManager.GetDevelopmentExperienceItems(DevelopmentExperienceItemType.Artifact);
-            var candidates = new List<EnhancementMaterialCandidate>();
+            var selections = new List<EnhancementMaterialSelection>(inventory.Count);
             for (int index = 0; index < inventory.Count; index++)
             {
                 StackableInventoryEntry entry = inventory[index];
@@ -540,28 +543,20 @@ namespace RPG.Game.UI.Controllers
                     !(materialItem is DevelopmentExperienceItemDefinition material) ||
                     !material.SupportsExperienceType(DevelopmentExperienceItemType.Artifact) ||
                     material.ExperienceValue <= 0) continue;
-                candidates.Add(new EnhancementMaterialCandidate(entry.ItemId, entry.Quantity, material.ExperienceValue));
+                selections.Add(new EnhancementMaterialSelection(entry.ItemId,
+                    Math.Min(entry.Quantity, MaxSelectedExperienceMaterialCount), material.ExperienceValue));
             }
 
-            candidates.Sort((left, right) =>
-            {
-                int result = left.ExperienceValue.CompareTo(right.ExperienceValue);
-                return result != 0 ? result : left.ItemId.CompareTo(right.ItemId);
-            });
-            var selectedQuantityByItemIdMap = new Dictionary<ItemId, int>(stateModel.SelectedEnhancementQuantities);
-            for (int index = 0; index < candidates.Count && remaining > 0L; index++)
-            {
-                EnhancementMaterialCandidate candidate = candidates[index];
-                int selected = selectedQuantityByItemIdMap.TryGetValue(candidate.ItemId, out int current) ? current : 0;
-                int count = (int)Math.Min(candidate.Quantity - selected,
-                    (remaining + candidate.ExperienceValue - 1L) / candidate.ExperienceValue);
-                if (count <= 0) continue;
-                selectedQuantityByItemIdMap[candidate.ItemId] = selected + count;
-                remaining -= (long)count * candidate.ExperienceValue;
-            }
-
+            var selectedQuantityByItemIdMap = new Dictionary<ItemId, int>();
+            EnhancementMaterialConsumptionPlan plan =
+                EnhancementMaterialConsumptionPlanner.Build(
+                    requiredExperience, selections, MaxSelectedExperienceMaterialCount);
+            foreach (KeyValuePair<ItemId, int> pair in plan.ConsumedQuantityByItemIdMap)
+                selectedQuantityByItemIdMap[pair.Key] = pair.Value;
             stateModel.ReplaceEnhancementMaterials(selectedQuantityByItemIdMap);
-            Debug.Log($"[EquipmentDevelopment] 自动添加圣遗物经验素材：种类={selectedQuantityByItemIdMap.Count}。", this);
+            selectionLimitLogIssued = false;
+            Debug.Log($"[EquipmentDevelopment] 自动添加圣遗物经验素材：种类={selectedQuantityByItemIdMap.Count}，" +
+                      $"经验={plan.ConsumedExperience}，Overflow={plan.OverflowExperience}。", this);
         }
 
         /// <summary>提交圣遗物升级并在成功后清空当前临时素材。</summary>
@@ -602,52 +597,30 @@ namespace RPG.Game.UI.Controllers
             }
             if (!TryGetTarget(out WeaponDefinition definition, out WeaponInstance instance)) return;
             long requiredExperience = GetRequiredExperienceToCap(definition, instance, out _);
-            if (requiredExperience <= 0) return;
 
             IReadOnlyList<StackableInventoryEntry> inventory =
                 stackableInventoryManager.GetDevelopmentExperienceItems(DevelopmentExperienceItemType.Weapon);
-            var candidates = new List<EnhancementMaterialCandidate>();
+            var selections = new List<EnhancementMaterialSelection>(inventory.Count);
             for (int index = 0; index < inventory.Count; index++)
             {
                 StackableInventoryEntry entry = inventory[index];
                 if (entry == null || entry.Quantity <= 0 ||
                     !ItemManager.Instance.TryGetDefinition(entry.ItemId, out ItemDefinition item) ||
                     !(item is DevelopmentExperienceItemDefinition material) || material.ExperienceValue <= 0) continue;
-                candidates.Add(new EnhancementMaterialCandidate(entry.ItemId, entry.Quantity, material.ExperienceValue));
+                selections.Add(new EnhancementMaterialSelection(entry.ItemId,
+                    Math.Min(entry.Quantity, MaxSelectedExperienceMaterialCount), material.ExperienceValue));
             }
 
-            candidates.Sort((left, right) =>
-            {
-                int result = left.ExperienceValue.CompareTo(right.ExperienceValue);
-                return result != 0 ? result : left.ItemId.CompareTo(right.ItemId);
-            });
-
-            // key：素材 ItemId；value：本次升级会话准备消耗的数量。
             var selectedQuantityByItemIdMap = new Dictionary<ItemId, int>();
-            long remaining = requiredExperience;
-            for (int index = 0; index < candidates.Count; index++)
-            {
-                EnhancementMaterialCandidate candidate = candidates[index];
-                long count = Math.Min((long)candidate.Quantity, remaining / candidate.ExperienceValue);
-                if (count <= 0) continue;
-                selectedQuantityByItemIdMap[candidate.ItemId] = (int)count;
-                remaining -= count * candidate.ExperienceValue;
-            }
-
-            if (remaining > 0)
-            {
-                for (int index = 0; index < candidates.Count; index++)
-                {
-                    EnhancementMaterialCandidate candidate = candidates[index];
-                    int selected = selectedQuantityByItemIdMap.TryGetValue(candidate.ItemId, out int current) ? current : 0;
-                    if (selected >= candidate.Quantity) continue;
-                    selectedQuantityByItemIdMap[candidate.ItemId] = selected + 1;
-                    break;
-                }
-            }
-
+            EnhancementMaterialConsumptionPlan plan =
+                EnhancementMaterialConsumptionPlanner.Build(
+                    requiredExperience, selections, MaxSelectedExperienceMaterialCount);
+            foreach (KeyValuePair<ItemId, int> pair in plan.ConsumedQuantityByItemIdMap)
+                selectedQuantityByItemIdMap[pair.Key] = pair.Value;
             stateModel.ReplaceEnhancementMaterials(selectedQuantityByItemIdMap);
-            Debug.Log($"[WeaponDevelopment] 自动添加强化素材：种类={selectedQuantityByItemIdMap.Count}，目标经验={requiredExperience}。", this);
+            selectionLimitLogIssued = false;
+            Debug.Log($"[EquipmentDevelopment] 自动添加武器经验素材：种类={selectedQuantityByItemIdMap.Count}，" +
+                      $"经验={plan.ConsumedExperience}，Overflow={plan.OverflowExperience}。", this);
         }
 
         /// <summary>处理升级页的确认操作，并在成功后清理本次临时选择。</summary>
@@ -848,8 +821,8 @@ namespace RPG.Game.UI.Controllers
             int projectedExperience = validProjection ? projection.CurrentExperience : instance.CurrentExperience;
             int projectedNextExperience = validProjection ? projection.NextExperience : 0;
             float progress = validProjection ? projection.Progress : 0f;
-            bool hasCapacity = mode == EquipmentGrowthMode.Enhancement && HasArtifactEnhancementCapacity();
             bool hasCandidates = HasArtifactEnhancementCandidates();
+            bool hasSelectedMaterials = HasSelectedEnhancementMaterials();
             bool canEnhance = mode == EquipmentGrowthMode.Enhancement && selectedExperience > 0L &&
                               validProjection &&
                               (projectedLevel != instance.Level || projectedExperience != instance.CurrentExperience) &&
@@ -864,7 +837,8 @@ namespace RPG.Game.UI.Controllers
                 projectedExperience, projectedNextExperience, progress, previewLines, selectedMaterials,
                 currencyOwned, validProjection ? projection.CurrencyCost : 0L,
                 canEnhance, mode == EquipmentGrowthMode.MaxLevel ? "已满级" : "升级",
-                hasCandidates && hasCapacity, hasCandidates && hasCapacity);
+                mode == EquipmentGrowthMode.Enhancement && (hasCandidates || hasSelectedMaterials),
+                mode == EquipmentGrowthMode.Enhancement && hasCandidates);
             return new EquipmentDevelopmentViewData(EquipmentDevelopmentPage.Growth,
                 mode == EquipmentGrowthMode.Enhancement ? "升级" :
                 mode == EquipmentGrowthMode.MaxLevel ? "已满级" : "培养",
@@ -901,16 +875,11 @@ namespace RPG.Game.UI.Controllers
         /// <returns>所选经验总量。</returns>
         private long GetSelectedArtifactExperience()
         {
-            long total = 0L;
-            foreach (KeyValuePair<ItemId, int> pair in stateModel.SelectedEnhancementQuantities)
-            {
-                if (ItemManager.Instance.TryGetDefinition(pair.Key, out ItemDefinition item) &&
-                    item is DevelopmentExperienceItemDefinition definition &&
-                    definition.SupportsExperienceType(DevelopmentExperienceItemType.Artifact))
-                    total += (long)Math.Max(0, pair.Value) * definition.ExperienceValue;
-            }
-
-            return total;
+            if (!artifactInventoryManager.TryGetInstance(targetInstanceId, out ArtifactInstance instance) ||
+                !ItemManager.Instance.TryGetDefinition(instance.DefinitionId, out ItemDefinition item) ||
+                !(item is ArtifactDefinition definition)) return 0L;
+            return BuildSelectedConsumptionPlan(DevelopmentExperienceItemType.Artifact,
+                GetArtifactRequiredExperienceToCap(definition, instance)).ConsumedExperience;
         }
 
         /// <summary>判断是否存在可用于圣遗物升级的经验道具。</summary>
@@ -929,25 +898,6 @@ namespace RPG.Game.UI.Controllers
             }
 
             return false;
-        }
-
-        /// <summary>判断圣遗物当前等级是否仍能容纳一个经验道具。</summary>
-        /// <returns>仍有可加入空间时返回 true。</returns>
-        private bool HasArtifactEnhancementCapacity()
-        {
-            if (!artifactDevelopmentService.TryProject(targetInstanceId,
-                    stateModel.SelectedEnhancementQuantities, out ArtifactDevelopmentProjection projection)) return false;
-            if (!artifactInventoryManager.TryGetInstance(targetInstanceId, out ArtifactInstance instance)) return false;
-            return projection.Level < GetArtifactMaxLevel(instance) || projection.NextExperience > projection.CurrentExperience;
-        }
-
-        /// <summary>获取目标圣遗物的最大等级，用于容量判断。</summary>
-        /// <param name="instance">目标实例。</param>
-        /// <returns>最大等级；查询失败时返回当前等级。</returns>
-        private static int GetArtifactMaxLevel(ArtifactInstance instance)
-        {
-            return ItemManager.Instance.TryGetDefinition(instance.DefinitionId, out ItemDefinition item) &&
-                   item is ArtifactDefinition definition ? definition.MaxLevel : instance.Level;
         }
 
         /// <summary>计算圣遗物从当前进度到最大等级还需要的经验。</summary>
@@ -1025,7 +975,6 @@ namespace RPG.Game.UI.Controllers
         private EquipmentDevelopmentViewData BuildEnhancementData(WeaponDefinition definition, WeaponInstance instance,
             IReadOnlyList<string> detailsLines, int currentCap)
         {
-            long requiredExperience = GetRequiredExperienceToCap(definition, instance, out _);
             long selectedExperience = GetSelectedEnhancementExperience();
             BuildProjectedProgress(definition.GrowthProfile, instance, currentCap, selectedExperience,
                 out int projectedLevel, out int projectedExperience, out int projectedNextExperience,
@@ -1035,7 +984,7 @@ namespace RPG.Game.UI.Controllers
                     instance.AscensionRank, instance.RefinementRank)));
             IReadOnlyList<BagItemViewData> selectedMaterials = BuildSelectedEnhancementEntries();
             bool hasCandidates = HasEnhancementCandidates();
-            bool hasCapacity = HasEnhancementCapacity();
+            bool hasSelectedMaterials = HasSelectedEnhancementMaterials();
             long currencyOwned = CurrencyManager.Instance.GetBalance(CurrencyId.Mola);
             float progress = projectedNextExperience <= 0
                 ? (projectedLevel >= currentCap ? 1f : 0f)
@@ -1047,7 +996,7 @@ namespace RPG.Game.UI.Controllers
                 "武器升级", "使用武器经验素材提升等级", instance.Level, projectedLevel,
                 selectedExperience, projectedExperience, projectedNextExperience, progress,
                 previewLines, selectedMaterials, currencyOwned, projectedCost, canEnhance, "升级",
-                hasCandidates && hasCapacity, hasCandidates && hasCapacity);
+                hasCandidates || hasSelectedMaterials, hasCandidates);
             return new EquipmentDevelopmentViewData(EquipmentDevelopmentPage.Growth, "升级",
                 EquipmentGrowthMode.Enhancement, enhancement, null, null);
         }
@@ -1056,15 +1005,16 @@ namespace RPG.Game.UI.Controllers
         private EquipmentDevelopmentViewData BuildAscensionData(WeaponDefinition definition, WeaponInstance instance,
             IReadOnlyList<string> detailsLines, int currentCap, WeaponAscensionStage nextStage)
         {
-            var lines = new List<string>(detailsLines) { "突破属性增量暂未配置" };
+            IReadOnlyList<string> lines = detailsLines;
             IReadOnlyList<BagItemViewData> requiredMaterials = BuildRequiredAscensionEntries(nextStage.Cost);
-            string status = BuildCostSummary(nextStage.Cost);
+            long currencyOwned = CurrencyManager.Instance.GetBalance(CurrencyId.Mola);
+            long currencyCost = GetCurrencyCost(nextStage.Cost, CurrencyId.Mola);
             bool canAscend = instance.Level >= nextStage.RequiredLevel &&
                              CanAffordGrowthCost(nextStage.Cost, DevelopmentItemType.WeaponAscension);
-            var ascension = new WeaponAscensionViewData(EquipmentGrowthMode.Ascension, "武器突破",
+            var ascension = new WeaponAscensionViewData(EquipmentGrowthMode.Ascension,
                 "达到当前等级上限后解锁下一阶段", instance.AscensionRank, instance.AscensionRank + 1,
                 instance.Level, currentCap, nextStage.MaxLevelAfter, true, lines, requiredMaterials,
-                status, canAscend, "突破");
+                currencyOwned, currencyCost, canAscend, "突破");
             return new EquipmentDevelopmentViewData(EquipmentDevelopmentPage.Growth, "突破",
                 EquipmentGrowthMode.Ascension, null, ascension, null);
         }
@@ -1073,9 +1023,9 @@ namespace RPG.Game.UI.Controllers
         private static EquipmentDevelopmentViewData BuildMaxLevelData(WeaponInstance instance,
             IReadOnlyList<string> detailsLines)
         {
-            var ascension = new WeaponAscensionViewData(EquipmentGrowthMode.MaxLevel, "武器已满级",
+            var ascension = new WeaponAscensionViewData(EquipmentGrowthMode.MaxLevel,
                 "当前 Definition 没有更高等级", instance.AscensionRank, 0, instance.Level, instance.Level,
-                instance.Level, false, detailsLines, Array.Empty<BagItemViewData>(), "无需继续升级", false, "已满级");
+                instance.Level, false, detailsLines, Array.Empty<BagItemViewData>(), 0L, 0L, false, "已满级");
             return new EquipmentDevelopmentViewData(EquipmentDevelopmentPage.Growth, "已满级",
                 EquipmentGrowthMode.MaxLevel, null, ascension, null);
         }
@@ -1084,11 +1034,10 @@ namespace RPG.Game.UI.Controllers
         private static EquipmentDevelopmentViewData BuildUnavailableGrowthData(WeaponInstance instance,
             IReadOnlyList<string> detailsLines, int currentCap)
         {
-            string capText = currentCap > 0 ? $"当前阶段上限：{currentCap}" : "无法推导当前阶段上限";
-            var ascension = new WeaponAscensionViewData(EquipmentGrowthMode.ConfigurationUnavailable, "成长配置不可用",
+            var ascension = new WeaponAscensionViewData(EquipmentGrowthMode.ConfigurationUnavailable,
                 "请补齐突破阶段配置", instance.AscensionRank, 0, instance.Level, currentCap, currentCap,
-                false, detailsLines, Array.Empty<BagItemViewData>(), $"无法安全预览升级或突破；{capText}", false,
-                "配置不可用");
+                false, detailsLines, Array.Empty<BagItemViewData>(), 0L, 0L, false,
+                    "配置不可用");
             return new EquipmentDevelopmentViewData(EquipmentDevelopmentPage.Growth, "培养",
                 EquipmentGrowthMode.ConfigurationUnavailable, null, ascension, null);
         }
@@ -1189,10 +1138,46 @@ namespace RPG.Game.UI.Controllers
             {
                 string current = currentLines != null && index < currentLines.Count ? currentLines[index] : "—";
                 string preview = previewLines != null && index < previewLines.Count ? previewLines[index] : "—";
-                lines.Add(current == preview ? current : $"{current} → {preview}");
+                lines.Add(current == preview ? current : BuildComparisonLine(current, preview));
             }
 
             return lines;
+        }
+
+        /// <summary>构建属性前后对比行，并仅将提升后的数值标记为金色。</summary>
+        /// <param name="current">当前属性文本。</param>
+        /// <param name="preview">预计属性文本。</param>
+        /// <returns>带富文本颜色标记的属性对比行。</returns>
+        private static string BuildComparisonLine(string current, string preview)
+        {
+            int currentSeparator = FindAttributeSeparator(current);
+            int previewSeparator = FindAttributeSeparator(preview);
+            if (currentSeparator >= 0 && previewSeparator >= 0)
+            {
+                string currentLabel = current.Substring(0, currentSeparator).Trim();
+                string previewLabel = preview.Substring(0, previewSeparator).Trim();
+                if (string.Equals(currentLabel, previewLabel, StringComparison.Ordinal))
+                {
+                    string currentValue = current.Substring(currentSeparator + 1).Trim();
+                    string previewValue = preview.Substring(previewSeparator + 1).Trim();
+                    return $"{currentLabel}: {currentValue} → <color=#FBB000>{previewValue}</color>";
+                }
+            }
+
+            return $"{current} → <color=#FBB000>{preview}</color>";
+        }
+
+        /// <summary>查找属性名称与数值之间的中英文冒号分隔符。</summary>
+        /// <param name="value">待解析的属性文本。</param>
+        /// <returns>分隔符索引；不存在时返回负数。</returns>
+        private static int FindAttributeSeparator(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return -1;
+            int asciiSeparator = value.IndexOf(':');
+            int fullWidthSeparator = value.IndexOf('：');
+            if (asciiSeparator < 0) return fullWidthSeparator;
+            if (fullWidthSeparator < 0) return asciiSeparator;
+            return Math.Min(asciiSeparator, fullWidthSeparator);
         }
 
         /// <summary>获取当前等级下一等级所需的烘焙经验。</summary>
@@ -1382,15 +1367,9 @@ namespace RPG.Game.UI.Controllers
         /// <returns>所选经验总量。</returns>
         private long GetSelectedEnhancementExperience()
         {
-            long total = 0L;
-            foreach (KeyValuePair<ItemId, int> pair in stateModel.SelectedEnhancementQuantities)
-            {
-                if (!ItemManager.Instance.TryGetDefinition(pair.Key, out ItemDefinition item) ||
-                    !(item is DevelopmentExperienceItemDefinition definition)) continue;
-                total += (long)pair.Value * definition.ExperienceValue;
-            }
-
-            return total;
+            if (!TryGetTarget(out WeaponDefinition definition, out WeaponInstance instance)) return 0L;
+            return BuildSelectedConsumptionPlan(DevelopmentExperienceItemType.Weapon,
+                GetRequiredExperienceToCap(definition, instance, out _)).ConsumedExperience;
         }
 
         /// <summary>判断当前背包是否存在可选择的武器强化素材。</summary>
@@ -1411,14 +1390,41 @@ namespace RPG.Game.UI.Controllers
             return false;
         }
 
-        /// <summary>判断当前阶段是否仍能容纳至少一个经验素材。</summary>
-        /// <returns>仍有可加入经验空间时返回 true。</returns>
-        private bool HasEnhancementCapacity()
+        /// <summary>判断当前培养会话是否已有至少一本经验素材选择。</summary>
+        /// <returns>存在正数量选择时返回 true。</returns>
+        private bool HasSelectedEnhancementMaterials()
         {
-            if (!TryGetTarget(out WeaponDefinition definition, out WeaponInstance instance)) return false;
-            long remainingExperience = GetRequiredExperienceToCap(definition, instance, out _) -
-                                       GetSelectedEnhancementExperience();
-            return remainingExperience > 0L;
+            return GetSelectedEnhancementMaterialCount() > 0;
+        }
+
+        /// <summary>汇总当前培养会话已选择的经验素材本数。</summary>
+        /// <returns>已选素材总本数。</returns>
+        private int GetSelectedEnhancementMaterialCount()
+        {
+            int total = 0;
+            foreach (KeyValuePair<ItemId, int> pair in stateModel.SelectedEnhancementQuantities)
+                total = Math.Min(MaxSelectedExperienceMaterialCount, total + Math.Max(0, pair.Value));
+            return total;
+        }
+
+        /// <summary>按培养对象为当前选择构建实际消耗规划。</summary>
+        /// <param name="requestedType">经验素材支持的培养对象。</param>
+        /// <param name="requiredExperience">目标还需经验。</param>
+        /// <returns>当前选择的有界背包规划。</returns>
+        private EnhancementMaterialConsumptionPlan BuildSelectedConsumptionPlan(
+            DevelopmentExperienceItemType requestedType, long requiredExperience)
+        {
+            var selections = new List<EnhancementMaterialSelection>(stateModel.SelectedEnhancementQuantities.Count);
+            foreach (KeyValuePair<ItemId, int> pair in stateModel.SelectedEnhancementQuantities)
+            {
+                if (pair.Value <= 0 || !ItemManager.Instance.TryGetDefinition(pair.Key, out ItemDefinition item) ||
+                    !(item is DevelopmentExperienceItemDefinition definition) ||
+                    !definition.SupportsExperienceType(requestedType)) continue;
+                selections.Add(new EnhancementMaterialSelection(pair.Key, pair.Value, definition.ExperienceValue));
+            }
+
+            return EnhancementMaterialConsumptionPlanner.Build(
+                requiredExperience, selections, MaxSelectedExperienceMaterialCount);
         }
 
         /// <summary>从静态 GE 贡献聚合同一属性并生成最多两条属性文本。</summary>
@@ -1495,28 +1501,6 @@ namespace RPG.Game.UI.Controllers
             }
         }
 
-        /// <summary>追加成本名称和真实拥有数量；无效配置显示为未配置。</summary>
-        private void AppendCostLines(List<string> lines, GrowthCost cost)
-        {
-            if (cost == null || (cost.ItemCosts.Count == 0 && cost.CurrencyCosts.Count == 0))
-            {
-                lines.Add("消耗：暂未配置");
-                return;
-            }
-
-            for (int index = 0; index < cost.ItemCosts.Count; index++)
-            {
-                ItemCostEntry itemCost = cost.ItemCosts[index];
-                lines.Add($"素材 {itemCost.ItemId}：{stackableInventoryManager.GetQuantity(itemCost.ItemId)}/{itemCost.Quantity}");
-            }
-
-            for (int index = 0; index < cost.CurrencyCosts.Count; index++)
-            {
-                CurrencyCostEntry currencyCost = cost.CurrencyCosts[index];
-                lines.Add($"货币 {currencyCost.CurrencyId}：{CurrencyManager.Instance.GetBalance(currencyCost.CurrencyId)}/{currencyCost.Amount}");
-            }
-        }
-
         /// <summary>读取成长消耗中的指定货币金额；未配置时返回零。</summary>
         /// <param name="cost">成长消耗配置。</param>
         /// <param name="currencyId">要读取的货币标识。</param>
@@ -1532,19 +1516,6 @@ namespace RPG.Game.UI.Controllers
             }
 
             return total;
-        }
-
-        /// <summary>将成长成本格式化为独立状态文本，避免成本与页面摘要占用同一文本区域。</summary>
-        /// <param name="cost">待格式化的成长成本。</param>
-        /// <returns>成本摘要或未配置提示。</returns>
-        private string BuildCostSummary(GrowthCost cost)
-        {
-            if (cost == null || (cost.ItemCosts.Count == 0 && cost.CurrencyCosts.Count == 0))
-                return "消耗：暂未配置";
-
-            var lines = new List<string>();
-            AppendCostLines(lines, cost);
-            return string.Join("；", lines);
         }
 
         /// <summary>按正式养成道具用途检查突破成本是否已满足。</summary>
@@ -1824,30 +1795,6 @@ namespace RPG.Game.UI.Controllers
         #endregion
 
         #region 内部展示类型
-
-        /// <summary>保存自动添加强化素材所需的库存数量与单位经验。</summary>
-        private readonly struct EnhancementMaterialCandidate
-        {
-            /// <summary>创建强化素材候选项。</summary>
-            /// <param name="itemId">素材标识。</param>
-            /// <param name="quantity">库存数量。</param>
-            /// <param name="experienceValue">每个素材提供的经验值。</param>
-            public EnhancementMaterialCandidate(ItemId itemId, int quantity, int experienceValue)
-            {
-                ItemId = itemId;
-                Quantity = quantity;
-                ExperienceValue = experienceValue;
-            }
-
-            /// <summary>素材标识。</summary>
-            public ItemId ItemId { get; }
-
-            /// <summary>可用库存数量。</summary>
-            public int Quantity { get; }
-
-            /// <summary>单个素材提供的经验值。</summary>
-            public int ExperienceValue { get; }
-        }
 
         /// <summary>保存同一 GameplayAttribute 聚合后的展示值。</summary>
         private readonly struct AttributeDisplayValue

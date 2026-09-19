@@ -89,7 +89,6 @@ namespace RPG.Game.UI.WeaponDevelopment
     {
         /// <summary>创建突破页面展示数据。</summary>
         /// <param name="mode">当前成长状态。</param>
-        /// <param name="title">页面标题。</param>
         /// <param name="subtitle">页面副标题。</param>
         /// <param name="currentRank">当前突破阶数。</param>
         /// <param name="nextRank">下一突破阶数。</param>
@@ -99,16 +98,17 @@ namespace RPG.Game.UI.WeaponDevelopment
         /// <param name="showNextStage">是否显示下一阶段比较。</param>
         /// <param name="lines">属性与状态行。</param>
         /// <param name="requiredMaterials">突破所需素材。</param>
-        /// <param name="statusText">底部状态文本。</param>
+        /// <param name="currencyOwned">当前拥有的摩拉。</param>
+        /// <param name="currencyCost">本次突破需要的摩拉。</param>
         /// <param name="actionInteractable">突破按钮是否可交互。</param>
         /// <param name="actionLabel">突破按钮文案。</param>
-        public WeaponAscensionViewData(EquipmentGrowthMode mode, string title, string subtitle, int currentRank,
+        public WeaponAscensionViewData(EquipmentGrowthMode mode, string subtitle, int currentRank,
             int nextRank, int currentLevel, int currentCap, int nextCap, bool showNextStage,
-            IReadOnlyList<string> lines, IReadOnlyList<BagItemViewData> requiredMaterials, string statusText,
+            IReadOnlyList<string> lines, IReadOnlyList<BagItemViewData> requiredMaterials,
+            long currencyOwned, long currencyCost,
             bool actionInteractable, string actionLabel)
         {
             Mode = mode;
-            Title = title ?? string.Empty;
             Subtitle = subtitle ?? string.Empty;
             CurrentRank = Math.Max(0, currentRank);
             NextRank = Math.Max(0, nextRank);
@@ -118,15 +118,14 @@ namespace RPG.Game.UI.WeaponDevelopment
             ShowNextStage = showNextStage;
             Lines = lines ?? Array.Empty<string>();
             RequiredMaterials = requiredMaterials ?? Array.Empty<BagItemViewData>();
-            StatusText = statusText ?? string.Empty;
+            CurrencyOwned = currencyOwned;
+            CurrencyCost = currencyCost;
             ActionInteractable = actionInteractable;
             ActionLabel = actionLabel ?? string.Empty;
         }
 
         /// <summary>当前成长状态。</summary>
         public EquipmentGrowthMode Mode { get; }
-        /// <summary>页面标题。</summary>
-        public string Title { get; }
         /// <summary>页面副标题。</summary>
         public string Subtitle { get; }
         /// <summary>当前突破阶数。</summary>
@@ -145,8 +144,10 @@ namespace RPG.Game.UI.WeaponDevelopment
         public IReadOnlyList<string> Lines { get; }
         /// <summary>突破所需素材。</summary>
         public IReadOnlyList<BagItemViewData> RequiredMaterials { get; }
-        /// <summary>页面状态文本。</summary>
-        public string StatusText { get; }
+        /// <summary>当前拥有的摩拉。</summary>
+        public long CurrencyOwned { get; }
+        /// <summary>本次突破需要的摩拉。</summary>
+        public long CurrencyCost { get; }
         /// <summary>突破按钮是否可交互。</summary>
         public bool ActionInteractable { get; }
         /// <summary>突破按钮文案。</summary>

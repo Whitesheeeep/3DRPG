@@ -11,22 +11,24 @@ namespace RPG.Game.UI.Views.WeaponDevelopment
 {
     /// <summary>突破页面的阶数星星、等级上限、属性和所需素材表现。</summary>
     [DisallowMultipleComponent]
-    [InfoBox("依赖突破页面 Root 内的两组 Tiled 星星、等级文本、属性文本、状态文本、按钮和横向素材列表。")]
+    [InfoBox("依赖突破页面 Root 内的两组 Tiled 星星、当前与下一等级文本、箭头、属性文本、独立摩拉费用组、按钮和横向素材列表。")]
     public sealed class WeaponAscensionPageView : MonoBehaviour
     {
         #region 依赖字段
 
-        [SerializeField] private TMP_Text titleText;
         [SerializeField] private TMP_Text subtitleText;
-        [SerializeField] private TMP_Text levelComparisonText;
+        [SerializeField] private TMP_Text currentLevelText;
+        [SerializeField] private TMP_Text nextLevelText;
         [SerializeField] private TMP_Text linesText;
-        [SerializeField] private TMP_Text statusText;
+        [SerializeField] private GameObject currencyCostRoot;
+        [SerializeField] private TMP_Text currencyCostText;
         [SerializeField] private Image currentRankStars;
+        [SerializeField] private Image nextStageArrow;
         [SerializeField] private Image nextRankStars;
         [SerializeField] private HorizontalBagItemListView requiredMaterialsView;
         [SerializeField] private Button actionButton;
         [SerializeField] private TMP_Text actionLabelText;
-        [SerializeField, MinValue(1f)] private float starTileWidth = 8f;
+        [SerializeField, MinValue(1f)] private float starTileWidth = 17.6f;
 
         #endregion
 
@@ -47,15 +49,17 @@ namespace RPG.Game.UI.Views.WeaponDevelopment
             nextRankStars.type = Image.Type.Tiled;
             currentRankStars.raycastTarget = false;
             nextRankStars.raycastTarget = false;
+            nextStageArrow.raycastTarget = false;
             actionButton.onClick.AddListener(HandleActionClicked);
         }
 
         /// <summary>校验突破页面的星星、文本、按钮和横向材料列表。</summary>
         public void ValidateConfiguration()
         {
-            if (titleText == null || subtitleText == null || levelComparisonText == null || linesText == null ||
-                statusText == null || currentRankStars == null || nextRankStars == null ||
-                requiredMaterialsView == null || actionButton == null || actionLabelText == null)
+            if (subtitleText == null || currentLevelText == null || nextLevelText == null || linesText == null ||
+                currencyCostRoot == null || currencyCostText == null || currentRankStars == null ||
+                nextStageArrow == null || nextRankStars == null || requiredMaterialsView == null ||
+                actionButton == null || actionLabelText == null)
                 throw new InvalidOperationException("[WeaponAscensionPageView] 突破页面存在未绑定控件。");
             requiredMaterialsView.ValidateConfiguration();
         }
@@ -75,18 +79,23 @@ namespace RPG.Game.UI.Views.WeaponDevelopment
         public void Bind(WeaponAscensionViewData data)
         {
             if (data == null) throw new ArgumentNullException(nameof(data));
-            titleText.text = data.Title;
             subtitleText.text = data.Subtitle;
-            levelComparisonText.text = data.ShowNextStage
-                ? $"Lv.{data.CurrentLevel}/{data.CurrentCap}  →  Lv.{data.CurrentLevel}/{data.NextCap}"
-                : $"Lv.{data.CurrentLevel}/{data.CurrentCap}";
+            currentLevelText.text = $"Lv.{data.CurrentLevel}/{data.CurrentCap}";
+            nextLevelText.text = $"Lv.{data.CurrentLevel}/{data.NextCap}";
+            nextLevelText.color = new Color32(0xFB, 0xB0, 0x00, 0xFF);
+            nextLevelText.gameObject.SetActive(data.ShowNextStage);
+            nextStageArrow.gameObject.SetActive(data.ShowNextStage);
             linesText.text = string.Join("\n", data.Lines);
-            statusText.text = data.StatusText;
+            currencyCostRoot.SetActive(data.ShowNextStage);
+            currencyCostText.text = data.CurrencyCost.ToString("N0");
+            currencyCostText.color = data.CurrencyCost > data.CurrencyOwned
+                ? new Color32(0xE3, 0x6B, 0x6B, 0xFF)
+                : Color.white;
             actionButton.interactable = data.ActionInteractable;
             actionLabelText.text = data.ActionLabel;
 
             SetStars(currentRankStars, data.CurrentRank);
-            SetStars(nextRankStars, data.NextRank);
+            SetStars(nextRankStars, data.ShowNextStage ? data.NextRank : 0);
             requiredMaterialsView.gameObject.SetActive(data.ShowNextStage);
             requiredMaterialsView.Bind(data.ShowNextStage ? data.RequiredMaterials : Array.Empty<BagItemViewData>());
         }

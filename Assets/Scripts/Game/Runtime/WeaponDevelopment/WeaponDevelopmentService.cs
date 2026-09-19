@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using RPG.CurrencySystem;
+using RPG.Game.Runtime.EquipmentDevelopment;
 using RPG.ItemSystem;
+using UnityEngine;
 
 namespace RPG.Game.Runtime.WeaponDevelopment
 {
@@ -10,6 +12,8 @@ namespace RPG.Game.Runtime.WeaponDevelopment
     /// </summary>
     public sealed class WeaponDevelopmentService
     {
+        private const int MaxSelectedExperienceMaterialCount = 99;
+
         #region 依赖字段
 
         private readonly WeaponInventoryManager weaponInventoryManager;
@@ -52,8 +56,8 @@ namespace RPG.Game.Runtime.WeaponDevelopment
                 return WeaponDevelopmentOperationResult.Failure(
                     WeaponDevelopmentOperationStatus.InvalidConfiguration, "无法解析武器当前阶段等级上限。");
 
-            long selectedExperience = 0L;
-            var itemQuantities = new List<ItemQuantity>(selectedQuantityByItemIdMap.Count);
+            var selections = new List<EnhancementMaterialSelection>(selectedQuantityByItemIdMap.Count);
+            long selectedMaterialCount = 0L;
             foreach (KeyValuePair<ItemId, int> pair in selectedQuantityByItemIdMap)
             {
                 if (pair.Value <= 0 || !ItemManager.Instance.TryGetDefinition(pair.Key, out ItemDefinition item) ||
@@ -66,21 +70,25 @@ namespace RPG.Game.Runtime.WeaponDevelopment
                     return WeaponDevelopmentOperationResult.Failure(
                         WeaponDevelopmentOperationStatus.InsufficientMaterials,
                         $"经验素材数量不足：{pair.Key}。");
-
-                try
-                {
-                    selectedExperience = checked(selectedExperience + (long)pair.Value * experience.ExperienceValue);
-                }
-                catch (OverflowException)
-                {
+                if (pair.Value > MaxSelectedExperienceMaterialCount ||
+                    selectedMaterialCount > MaxSelectedExperienceMaterialCount - pair.Value)
                     return WeaponDevelopmentOperationResult.Failure(
-                        WeaponDevelopmentOperationStatus.InvalidSelection, "经验总量超出可计算范围。");
-                }
+                        WeaponDevelopmentOperationStatus.InvalidSelection,
+                        $"单次最多选择 {MaxSelectedExperienceMaterialCount} 本经验素材。");
 
-                itemQuantities.Add(new ItemQuantity(pair.Key, pair.Value));
+                selectedMaterialCount += pair.Value;
+                selections.Add(new EnhancementMaterialSelection(pair.Key, pair.Value, experience.ExperienceValue));
             }
 
-            if (!TryBuildProjectedProgress(definition, instance, currentCap, selectedExperience,
+            long requiredExperience = GetRequiredExperienceToCap(definition, instance, currentCap);
+            EnhancementMaterialConsumptionPlan consumptionPlan =
+                EnhancementMaterialConsumptionPlanner.Build(
+                    requiredExperience, selections, MaxSelectedExperienceMaterialCount);
+            if (consumptionPlan.ConsumedQuantityByItemIdMap.Count == 0)
+                return WeaponDevelopmentOperationResult.Failure(
+                    WeaponDevelopmentOperationStatus.InvalidSelection, "所选经验不足以产生等级进度变化。");
+
+            if (!TryBuildProjectedProgress(definition, instance, currentCap, consumptionPlan.ConsumedExperience,
                     out int projectedLevel, out int projectedExperience, out long currencyCost) ||
                 projectedLevel == instance.Level && projectedExperience == instance.CurrentExperience)
                 return WeaponDevelopmentOperationResult.Failure(
@@ -93,7 +101,11 @@ namespace RPG.Game.Runtime.WeaponDevelopment
                 return WeaponDevelopmentOperationResult.Failure(
                     WeaponDevelopmentOperationStatus.InsufficientCurrency, "摩拉余额不足。");
 
-            // 所有输入已完成校验后再依次提交，避免正常单线程 UI 流程出现中间状态失败。
+            var itemQuantities = new List<ItemQuantity>(consumptionPlan.ConsumedQuantityByItemIdMap.Count);
+            foreach (KeyValuePair<ItemId, int> pair in consumptionPlan.ConsumedQuantityByItemIdMap)
+                itemQuantities.Add(new ItemQuantity(pair.Key, pair.Value));
+
+            // 所有输入已完成校验后只扣除规划器选出的素材；保留素材从未离开库存，因此无需二次返还。
             StackableItemOperationResult materialResult = stackableInventoryManager.ConsumeItems(itemQuantities);
             if (!materialResult.Succeeded)
                 return WeaponDevelopmentOperationResult.Failure(
@@ -108,6 +120,11 @@ namespace RPG.Game.Runtime.WeaponDevelopment
             if (!updateResult.Succeeded)
                 return WeaponDevelopmentOperationResult.Failure(
                     WeaponDevelopmentOperationStatus.ManagerRejected, $"更新武器进度失败：{updateResult.Status}。");
+            Debug.Log(
+                $"[WeaponDevelopmentService] 完成强化：Instance={instanceId}，" +
+                $"Selected={selectedQuantityByItemIdMap.Count}种，Consumed={consumptionPlan.ConsumedQuantityByItemIdMap.Count}种，" +
+                $"Retained={consumptionPlan.RetainedQuantityByItemIdMap.Count}种，" +
+                $"ConsumedExperience={consumptionPlan.ConsumedExperience}，Overflow={consumptionPlan.OverflowExperience}。 ");
             return WeaponDevelopmentOperationResult.Success();
         }
 
@@ -426,6 +443,20 @@ namespace RPG.Game.Runtime.WeaponDevelopment
             }
 
             return true;
+        }
+
+        /// <summary>计算武器从当前进度到当前阶段上限所需的绝对经验。</summary>
+        /// <param name="definition">武器定义。</param>
+        /// <param name="instance">武器实例。</param>
+        /// <param name="currentCap">当前阶段等级上限。</param>
+        /// <returns>还需经验；配置无效时返回零。</returns>
+        private static long GetRequiredExperienceToCap(WeaponDefinition definition, WeaponInstance instance,
+            int currentCap)
+        {
+            BakedWeaponLevelProgression current = GetProgression(definition.GrowthProfile, instance.Level);
+            BakedWeaponLevelProgression cap = GetProgression(definition.GrowthProfile, currentCap);
+            if (current == null || cap == null) return 0L;
+            return Math.Max(0L, (long)cap.CumulativeExperience - current.CumulativeExperience - instance.CurrentExperience);
         }
 
         /// <summary>解析当前突破阶段的等级上限和下一阶段。</summary>
