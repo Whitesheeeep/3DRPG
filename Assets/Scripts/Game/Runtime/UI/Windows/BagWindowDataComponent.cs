@@ -22,6 +22,8 @@ namespace WS_Modules.UIModule
 
         [SerializeField] private bool isFullWindow = true;
         [SerializeField] private bool doAnimation = true;
+        [SerializeField, Required] private Image bagIcon;
+        [SerializeField, Required] private TMP_Text upperLimitCountText;
         [SerializeField, Required] private Button[] categoryButtons = Array.Empty<Button>();
         [SerializeField] private Button previousCategoryButton;
         [SerializeField] private Button nextCategoryButton;
@@ -70,6 +72,12 @@ namespace WS_Modules.UIModule
 
         /// <summary>获取窗口是否应作为全屏窗口参与 UI 层级切换。</summary>
         public bool IsFullWindow => isFullWindow;
+
+        /// <summary>获取顶栏静态背包图标。</summary>
+        public Image BagIcon => bagIcon;
+
+        /// <summary>获取顶栏容量文本。</summary>
+        public TMP_Text UpperLimitCountText => upperLimitCountText;
 
         /// <summary>获取窗口是否启用 WindowBase 的默认过渡动画。</summary>
         public bool DoAnimation => doAnimation;
@@ -124,6 +132,9 @@ namespace WS_Modules.UIModule
         {
             if (categoryButtons == null || categoryButtons.Length == 0)
                 throw new InvalidOperationException("[BagWindowDataComponent] 未绑定分类按钮。");
+            if (bagIcon == null) throw new InvalidOperationException("[BagWindowDataComponent] 未绑定 BagIcon。");
+            if (upperLimitCountText == null)
+                throw new InvalidOperationException("[BagWindowDataComponent] 未绑定 UpperLimitCount。");
             for (int index = 0; index < categoryButtons.Length; index++)
                 if (categoryButtons[index] == null)
                     throw new InvalidOperationException($"[BagWindowDataComponent] 分类按钮索引 {index} 未绑定。");

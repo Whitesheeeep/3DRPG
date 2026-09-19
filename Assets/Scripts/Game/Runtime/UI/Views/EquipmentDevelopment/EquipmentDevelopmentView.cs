@@ -68,6 +68,7 @@ namespace RPG.Game.UI.Views.WeaponDevelopment
             closeButton.onClick.AddListener(HandleCloseClicked);
             weaponPreviewViewportView.Clear();
             artifactPreviewImage.sprite = null;
+            artifactPreviewImage.enabled = false;
             artifactPreviewImage.preserveAspect = true;
             artifactPreviewImage.raycastTarget = false;
         }
@@ -139,9 +140,13 @@ namespace RPG.Game.UI.Views.WeaponDevelopment
 
             artifactMode = targetKind == EquipmentDevelopmentTargetKind.Artifact;
             currentGrowthMode = data.GrowthMode;
-            weaponPreviewViewportView.gameObject.SetActive(!artifactMode);
+            // WeaponPreviewArea 同时承载 RawImage 和圣遗物 Image；保持父节点激活，避免圣遗物模式把自己的图标一起隐藏。
+            weaponPreviewViewportView.gameObject.SetActive(true);
+            if (artifactMode)
+                weaponPreviewViewportView.Clear();
             artifactPreviewImage.gameObject.SetActive(artifactMode);
             artifactPreviewImage.sprite = artifactMode ? artifactSprite : null;
+            artifactPreviewImage.enabled = artifactMode && artifactSprite != null;
             refinementTabView.gameObject.SetActive(!artifactMode);
             // 成长入口文案始终来自目标装备的成长状态；精炼页不能覆盖左侧成长入口。
             growthTabView.SetLabel(data.GrowthTabLabel);
