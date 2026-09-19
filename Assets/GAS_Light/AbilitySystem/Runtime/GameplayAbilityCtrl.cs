@@ -162,7 +162,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             AdvanceRuntimes(runtime => runtime.LateTick(deltaTime));
         }
 
-        /// <summary>推进当前 Controller 的 Active Runtime 动画根运动阶段。</summary>
+        /// <summary>推进当前 Controller 的 Active Runtime 动画根运动阶段。</summary>1
         public void UpdateAnimationMove(Vector3 deltaPosition, Quaternion deltaRotation) =>
             AdvanceRuntimes(runtime => runtime.UpdateAnimationMove(deltaPosition, deltaRotation));
         #endregion

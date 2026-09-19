@@ -14,6 +14,15 @@ namespace RPG.Markers
         /// <summary>获取最近一次完整重建与必需项校验是否成功。</summary>
         bool IsValid { get; }
 
+        /// <summary>
+        /// 获取当前 Provider 作用域内的全部 TransformMarker，供运行时重建和编辑器诊断共用。
+        /// </summary>
+        /// <param name="results">
+        /// 接收 Marker 的调用方列表；实现会先清空该列表，再写入包含未激活节点的当前作用域结果。
+        /// </param>
+        /// <exception cref="System.ArgumentNullException">当调用方传入空列表引用时抛出。</exception>
+        void GetMarkers(List<TransformMarker> results);
+
         /// <summary>重新收集当前作用域 Marker 并校验必需项。</summary>
         /// <returns>索引与必需项全部有效时返回 true。</returns>
         bool TryRebuild();

@@ -55,7 +55,29 @@ if (!markerProvider.TryGetMarker(targetKey, out Transform marker))
 }
 ```
 
-## 4. VFX 绑定
+## 4. Inspector Marker 浏览
+
+继承 `MarkerProviderBase` 并实现 `IMarkerProvider` 的 Provider Mono 组件，可以通过接口的 `GetMarkers(List<TransformMarker>)` 提供当前作用域的 Marker 快照。该方法只读取当前层级，不保存额外绑定列表，也不会修改运行时索引。
+
+```mermaid
+flowchart LR
+    A[具体 Provider] -->|继承| B[MarkerProviderBase]
+    A -->|实现契约| C[IMarkerProvider]
+    D[MarkerProviderBaseEditor] -->|CustomEditor 子类匹配| B
+    D -->|调用 GetMarkers| C
+    C --> E[Marker 快照]
+    E --> F[显示 Key 与相对层级路径]
+    E --> G[诊断空 Key 重复 Key 缺失必需项]
+    E --> H[Selection.activeGameObject + Ping]
+```
+
+Inspector 面板会包含当前 Provider 作用域中的未激活节点，并排除由嵌套 `IMarkerProvider` 接管的子树。每行的“选择”按钮会定位对应 Marker 的 GameObject；“重新扫描并校验”按钮显式调用 `TryRebuild()`，不会产生 Prefab 或场景序列化差异。
+
+`GetMarkers(...)` 与 `TryRebuild()` 共用同一套作用域收集规则，因此 Inspector 展示的 Marker 与运行时查询索引不会出现两套结果。需要自动获得通用面板的 Provider Mono 组件应继承 `MarkerProviderBase`；它只作为 Inspector 的统一入口，不保存额外 Marker 数据。运行时消费者仍然只依赖 `IMarkerProvider`，不需要依赖抽象基类。
+
+通用面板由 `[CustomEditor(typeof(MarkerProviderBase), true)]` 匹配基类及其派生类，并先调用 Odin Inspector 的默认绘制，再追加 Marker 浏览内容。若某个派生 Provider 声明更具体的 `CustomEditor`，该 Editor 应继承 `MarkerProviderBaseEditor`，以保留通用面板。
+
+## 5. VFX 绑定
 
 `VfxSkillClipConfig.MarkerKey`声明 VFX 使用的角色语义 Socket：
 
@@ -72,7 +94,7 @@ VfxSkillClipConfig.MarkerKey
 
 时间轴 VFX Inspector 仍为每个 Clip 单独显示“挂点”ObjectField。`FollowBinding`按当前帧跟随 Marker，`KeepWorldPosition`冻结 Clip 起始帧 Marker 世界矩阵。
 
-## 5. WeaponTrace 绑定
+## 6. WeaponTrace 绑定
 
 `WeaponTraceAttackDetectionData`只保存刀刃插值采样点数量，不保存 MarkerKey、武器引用或层级路径。
 
@@ -88,7 +110,7 @@ VfxSkillClipConfig.MarkerKey
 
 不同武器拥有不同 Provider，但使用相同语义 Key。运行时字典决定传给技能的是哪一个武器实例；SkillConfig 不参与武器选择。
 
-## 6. WeaponTrace Editor Preview
+## 7. WeaponTrace Editor Preview
 
 `EditorConfig`保存两个纯编辑器字段：
 
@@ -110,13 +132,13 @@ VfxSkillClipConfig.MarkerKey
 
 未激活武器不参与匹配。零个或多个匹配 Provider、Key 为空或相同、Root/Tip 指向同一 Transform 时，只跳过 WeaponTrace 并在状态栏报告；Animation、VFX、Audio 和普通体积检测继续工作。
 
-## 7. VFX 场景编辑代理
+## 8. VFX 场景编辑代理
 
 VFX 场景编辑继续使用不可保存的双代理结构：普通隐藏实例负责确定性预览，空 Transform 编辑代理负责局部 Transform 草稿。Inspector 提供“在场景中编辑”“选择编辑代理”“应用预览 Transform”和“取消场景编辑”。
 
 应用时将代理世界矩阵转换回冻结 Marker 空间，通过 Document 产生一条 Undo。播放、Scrub、切换上下文或关闭窗口时销毁未应用代理。
 
-## 8. 常见失败
+## 9. 常见失败
 
 - `根节点没有 MarkerProvider`：在需要公开 Socket 的角色或武器根添加 Provider。
 - `TransformMarker 没有 MarkerKey`：为节点配置语义 Key。
