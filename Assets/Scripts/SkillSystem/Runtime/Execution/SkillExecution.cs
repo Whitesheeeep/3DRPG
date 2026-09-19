@@ -114,6 +114,16 @@ namespace RPG.SkillSystem
         }
 
         /// <summary>
+        /// 将攻击区域调试绘制设置同步到本次执行独占的 Physics 服务。
+        /// </summary>
+        /// <param name="enabled">是否绘制攻击查询形状。</param>
+        /// <param name="duration">调试线框保留秒数；零表示当前帧。</param>
+        public void SetAttackDetectionDebug(bool enabled, float duration)
+        {
+            context.AttackDetectionServices.SetDebugDrawing(enabled, duration);
+        }
+
+        /// <summary>
         /// 在 LateUpdate 中按原顺序提交所有等待姿态稳定的帧。
         /// </summary>
         public void ProcessLateFrames()

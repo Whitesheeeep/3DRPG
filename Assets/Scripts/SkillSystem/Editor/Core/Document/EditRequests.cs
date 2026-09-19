@@ -222,17 +222,24 @@ namespace RPG.SkillSystem.Editor
         public int StartFrame { get; }
         public int DurationFrames { get; }
         public int SampleIntervalFrames { get; }
+        public int DetectionId { get; }
+        public MarkerKey MarkerKey { get; }
+        public AttackDetectionFollowMode FollowMode { get; }
         public AttackDetectionDataBase DetectionData { get; }
 
         /// <summary>
         /// 创建攻击检测编辑请求，并复制 managed reference 数据以隔离 Inspector 临时状态。
         /// </summary>
         public AttackDetectionEditRequest(int startFrame, int durationFrames,
-            int sampleIntervalFrames, AttackDetectionDataBase detectionData)
+            int sampleIntervalFrames, int detectionId, MarkerKey markerKey,
+            AttackDetectionFollowMode followMode, AttackDetectionDataBase detectionData)
         {
             StartFrame = startFrame;
             DurationFrames = durationFrames;
             SampleIntervalFrames = sampleIntervalFrames;
+            DetectionId = detectionId;
+            MarkerKey = markerKey;
+            FollowMode = followMode;
             DetectionData = AttackDetectionDataBase.Copy(detectionData);
         }
     }

@@ -235,6 +235,8 @@ FallLand 根据 `CurrentFallHeight` 在配置的 1h/2h/3h 动画中选择，Walk
 
 CombatSystem 不等待前一段普攻的 AbilityEnded。缓存 Primary 到达后立即向 GAS 尝试下一段；激活失败时冻结该 PressHandle 对应的段位且不确认输入，让 Cooldown、Cost、Tag 或能力阶段在原输入 Buffer 有效期内继续重试。成功后才推进索引并刷新一秒连段保留时间，最后一段循环回第一段。角色切到后台时清除该角色的连段运行时，但不取消 ASC Ability。
 
+普攻 Ability 使用 `Skill.NormalAttack.One`、`Skill.NormalAttack.Two` 等叶标签表示连段身份，并统一使用 `Skill.NormalAttack` 作为 `CancelTags`。`CharacterActionArbiter` 不先取消当前 GA；它只在转换窗口开放时把输入交给 `CharacterCombatSystem`，由 GAS 在候选 Ability 成功登记后按新 Ability 的 `CancelTags` 同步取消旧 Runtime。候选激活失败时旧技能、FullBody 占据和输入 Press 都保持不变。
+
 ## FullBody Action 覆盖与 Grounded Jump 打断
 
 FullBody Skill 不停用或重路由 Locomotion。Base FSM、环境检测、状态 Tag、重力和 Locomotion 运动请求持续推进；Skill 动画层与 Skill 优先级运动请求只在最终表现和运动通道上覆盖它们。技能退出后直接显露一直运行的 Base 状态，不强制进入 Idle。

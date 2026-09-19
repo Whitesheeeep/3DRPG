@@ -1379,7 +1379,7 @@ MonoBehaviour:
   selfChannelAbility: {fileID: 11400000, guid: b51db005f9ad4a3e800780ca1f834f79, type: 2}
   toggleAbility: {fileID: 11400000, guid: 0bcaf93a89b74feb82dd830fe0897150, type: 2}
   skillConfigAbility: {fileID: 11400000, guid: 5b1b22e4d2c647a09c12aac149412fd1, type: 2}
-  secondSkillConfigAbility: {fileID: 11400000, guid: 1dfbcd090c34444980cfa0b9bfbc68e3, type: 2}
+  secondSkillConfigAbility: {fileID: 11400000, guid: a5f4af29fcb07fc4db4c0235ea89f01b, type: 2}
   realCharacterAsc: {fileID: 1263738645}
   realCharacterHost: {fileID: 1263738643}
   testWorldOffset: {x: -3, y: 0, z: 0}

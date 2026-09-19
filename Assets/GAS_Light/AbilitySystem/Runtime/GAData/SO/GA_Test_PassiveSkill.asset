@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: GA_Test_PassiveSkill
   m_EditorClassIdentifier: 
   abilityId: 3
+  abilityName: 
+  icon: {fileID: 0}
   description: Editor validation fixture for a Passive Gameplay Ability.
   abilityTags: []
   cancelTags: []

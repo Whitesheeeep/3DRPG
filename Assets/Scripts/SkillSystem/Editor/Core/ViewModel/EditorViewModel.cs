@@ -169,7 +169,8 @@ namespace RPG.SkillSystem.Editor
         {
             if (SelectedItem is not AttackDetectionSkillClipConfig clip || clip.Id != commit.ClipId) return;
             EditItem(SelectedTrack, clip, new AttackDetectionEditRequest(
-                clip.StartFrame, clip.DurationFrames, clip.SampleIntervalFrames, commit.DetectionData));
+                clip.StartFrame, clip.DurationFrames, clip.SampleIntervalFrames, clip.DetectionId,
+                clip.MarkerKey, clip.FollowMode, commit.DetectionData));
         }
 
         // Scene Handle 只接收当前攻击检测 Item 的稳定 GUID。

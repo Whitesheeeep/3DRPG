@@ -1,6 +1,8 @@
 .attack-detection-clip-item {
     top: 9px;
     height: 36px;
+    flex-direction: row;
+    align-items: center;
     padding-left: 8px;
     padding-right: 8px;
     border-width: 1px;
@@ -9,6 +11,29 @@
     background-color: rgb(139, 72, 45);
     -unity-text-align: middle-left;
     overflow: hidden;
+    white-space: nowrap;
+}
+
+.attack-detection-id-badge {
+    flex-shrink: 0;
+    min-width: 22px;
+    min-height: 22px;
+    margin-right: 6px;
+    padding-left: 3px;
+    padding-right: 3px;
+    border-radius: 3px;
+    color: rgb(255, 255, 255);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    white-space: nowrap;
+}
+
+.attack-detection-type-label {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+    -unity-text-align: middle-left;
     white-space: nowrap;
 }
 

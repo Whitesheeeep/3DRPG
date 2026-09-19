@@ -23,35 +23,6 @@ MonoBehaviour:
     durationFrames: 23
     volume: 1
     pitch: 1
---- !u!114 &-850609102259527907
-MonoBehaviour:
-  m_ObjectHideFlags: 1
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5c66f40aed7845318090c664ad121de9, type: 3}
-  m_Name: "\u4E8B\u4EF6\u8F68\u9053"
-  m_EditorClassIdentifier: 
-  id: 45368da10bee44b2ab8686347c0eb3e6
-  muted: 0
-  displayName: "\u4E8B\u4EF6\u8F68\u9053"
-  editorLocked: 0
-  markers:
-  - id: 6919ef21779e4c3cae42e8c6ea10e9c5
-    frame: 16
-    eventKey: 
-    displayName: "\u4E8B\u4EF6"
-    valueType: 2
-    intValue: 0
-    stringValue: 
-    longValue: 0
-    boolValue: 0
-    doubleValue: 0
-    floatValue: 0
-    objectValue: {fileID: 0}
 --- !u!114 &-414775761684800504
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -71,8 +42,11 @@ MonoBehaviour:
   clips:
   - id: 14291d9299c44c48ad67fedf8c240e96
     startFrame: 16
-    durationFrames: 13
+    durationFrames: 7
     sampleIntervalFrames: 1
+    detectionId: 0
+    markerKey: {fileID: 0}
+    followMode: 0
     detectionData:
       rid: 2645455055986360320
   references:
@@ -104,14 +78,14 @@ MonoBehaviour:
     durationFrames: 16
     phase: 1
     allowedTransitions: 0
-  - id: 16de0862f97243df8634ced46e0cf09b
+  - id: ca130896ca01443ea397816f2d229ea3
     startFrame: 16
-    durationFrames: 12
+    durationFrames: 19
     phase: 2
     allowedTransitions: 0
   - id: b17ef7d8e68848359ef02770f71fbcf0
-    startFrame: 28
-    durationFrames: 22
+    startFrame: 35
+    durationFrames: 15
     phase: 3
     allowedTransitions: 7
 --- !u!114 &11400000
@@ -124,7 +98,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bf2d0fbc1a23bf1499d50e84ac66304b, type: 3}
-  m_Name: Odeta_SKillConfig_1
+  m_Name: Odeta_SKillConfig_3
   m_EditorClassIdentifier: 
   id: 11c77f7f583a4921ad1a107af6aa94d8
   frameRate: 30
@@ -136,7 +110,6 @@ MonoBehaviour:
   - {fileID: -414775761684800504}
   - {fileID: 4149497598512427746}
   - {fileID: -9124058035518590705}
-  - {fileID: -850609102259527907}
 --- !u!114 &4149497598512427746
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -182,7 +155,7 @@ MonoBehaviour:
   displayName: "\u52A8\u753B\u8F68\u9053"
   editorLocked: 0
   clips:
-  - id: 5a9223bf105048a1b9bae6f497e8c5ec
+  - id: 5a0b3f7ce0fa4fd8b02b8b2fffd32e66
     animationClip: {fileID: 4960409498807354063, guid: 506e94c4333125c42aa1194fcc9a92cd, type: 3}
     startFrame: 0
     durationFrames: 50

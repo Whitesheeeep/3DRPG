@@ -41,6 +41,10 @@ namespace RPG.SkillSystem.Editor
         private readonly EditorConfig config;
         private readonly Dictionary<Type, IAttackDetectionSceneDrawer> drawers = new();
         private readonly List<PreviewEntry> entries = new();
+        // key：KeepWorldPosition Clip；value：Clip 起始帧解析出的绑定世界矩阵。
+        private readonly Dictionary<AttackDetectionSkillClipConfig, Matrix4x4>
+            frozenBindingMatrixByClipMap = new();
+        private readonly HashSet<AttackDetectionSkillClipConfig> invalidBindingClips = new();
         private string selectedClipId = string.Empty;
         private string handleDraftClipId = string.Empty;
         private AttackDetectionDataBase handleDraftData;
@@ -97,6 +101,8 @@ namespace RPG.SkillSystem.Editor
         public void Invalidate()
         {
             ClearEntriesAndDraft();
+            frozenBindingMatrixByClipMap.Clear();
+            invalidBindingClips.Clear();
             SceneView.RepaintAll();
         }
 
@@ -124,11 +130,16 @@ namespace RPG.SkillSystem.Editor
 
                     bool isSampleFrame = (context.Frame - clip.StartFrame) %
                                          Mathf.Max(1, clip.SampleIntervalFrames) == 0;
+                    Matrix4x4 bindingMatrix = Matrix4x4.identity;
                     WeaponTraceSweepSegment? weaponSegment = drawer.RequiresWeaponTraceMarkers
                         ? BuildWeaponTrace(context, clip)
                         : null;
+                    if (!drawer.RequiresWeaponTraceMarkers &&
+                        !TryResolveBindingMatrix(context, clip, out bindingMatrix))
+                        continue;
+                    if (drawer.RequiresWeaponTraceMarkers) bindingMatrix = Matrix4x4.identity;
                     entries.Add(new PreviewEntry(clip, drawer, isSampleFrame,
-                        CreateDrawContext(context.Actor.RootTransform,
+                        CreateDrawContext(bindingMatrix,
                             config.AttackDetectionColor, weaponSegment)));
                 }
             }
@@ -151,6 +162,10 @@ namespace RPG.SkillSystem.Editor
         public void Clear()
         {
             ClearEntriesAndDraft();
+            frozenBindingMatrixByClipMap.Clear();
+            invalidBindingClips.Clear();
+            // Config 身份切换后旧 Clip ID 不再属于当前文档，必须解除 Scene Handle 选择关联。
+            selectedClipId = string.Empty;
             statusMessage = string.Empty;
             isPlaying = false;
             SceneView.RepaintAll();
@@ -215,7 +230,7 @@ namespace RPG.SkillSystem.Editor
                     : config.AttackDetectionColor;
                 if (!entry.IsSampleFrame) color.a *= config.AttackDetectionUnsampledAlpha;
                 AttackDetectionSceneDrawContext drawContext = CreateDrawContext(
-                    entry.Context.ActorRoot, color, entry.Context.WeaponSegment);
+                    entry.Context.BindingMatrix, color, entry.Context.WeaponSegment);
                 entry.Drawer.Draw(drawContext, displayData);
                 if (isPlaying || entry.Clip.Id != selectedClipId || !entry.Drawer.SupportsHandles ||
                     handleMode == AttackDetectionHandleMode.None)
@@ -248,14 +263,68 @@ namespace RPG.SkillSystem.Editor
             if (clip.Id == inspectorDraftClipId && inspectorDraftData != null) return inspectorDraftData;
             return clip.DetectionData;
         }
-        // 根据线框透明度继续乘以表面透明度，确保非采样帧的两层表现同步弱化。
-        private AttackDetectionSceneDrawContext CreateDrawContext(Transform actorRoot, Color color,
+        /// <summary>
+        /// 根据线框透明度继续乘以表面透明度，确保非采样帧的两层表现同步弱化。
+        /// </summary>
+        /// <param name="bindingMatrix">当前 Clip 的绑定世界矩阵。</param>
+        /// <param name="color">线框颜色。</param>
+        /// <param name="weaponSegment">WeaponTrace 的端点扫掠快照。</param>
+        /// <returns>供 Scene Drawer 使用的只读绘制上下文。</returns>
+        private AttackDetectionSceneDrawContext CreateDrawContext(Matrix4x4 bindingMatrix, Color color,
             WeaponTraceSweepSegment? weaponSegment)
         {
             Color fillColor = color;
             fillColor.a *= config.AttackDetectionFillAlpha;
-            return new AttackDetectionSceneDrawContext(actorRoot, color, fillColor,
+            return new AttackDetectionSceneDrawContext(bindingMatrix, color, fillColor,
                 config.AttackDetectionSurfaceSegments, weaponSegment);
+        }
+
+        /// <summary>
+        /// 解析普通攻击区域当前帧使用的绑定矩阵；固定世界位置时严格采样 Clip 起始帧。
+        /// </summary>
+        /// <param name="context">当前预览帧上下文。</param>
+        /// <param name="clip">需要解析绑定的攻击 Clip。</param>
+        /// <param name="bindingMatrix">成功时返回绘制和 Handle 使用的世界矩阵。</param>
+        /// <returns>绑定有效时返回 true。</returns>
+        private bool TryResolveBindingMatrix(in PreviewFrameContext context,
+            AttackDetectionSkillClipConfig clip, out Matrix4x4 bindingMatrix)
+        {
+            bindingMatrix = default;
+            if (clip.FollowMode == AttackDetectionFollowMode.KeepWorldPosition &&
+                frozenBindingMatrixByClipMap.TryGetValue(clip, out bindingMatrix))
+                return true;
+            if (invalidBindingClips.Contains(clip))
+            {
+                SetFirstStatus($"无法解析攻击检测 Clip '{clip.Id}' 的绑定 Marker。");
+                return false;
+            }
+
+            bool resolved = clip.FollowMode == AttackDetectionFollowMode.KeepWorldPosition
+                ? context.TryResolveBindingWorldMatrix(clip.MarkerKey, clip.StartFrame, out bindingMatrix)
+                : context.TryGetBindingTransform(clip.MarkerKey, out Transform binding) &&
+                  TryGetWorldMatrix(binding, out bindingMatrix);
+            if (!resolved)
+            {
+                invalidBindingClips.Add(clip);
+                SetFirstStatus($"无法解析攻击检测 Clip '{clip.Id}' 的绑定 Marker。");
+                return false;
+            }
+
+            if (clip.FollowMode == AttackDetectionFollowMode.KeepWorldPosition)
+                frozenBindingMatrixByClipMap[clip] = bindingMatrix;
+            return true;
+        }
+
+        /// <summary>
+        /// 读取绑定 Transform 的世界矩阵，避免 Scene Drawer 持有会继续变化的 Transform 引用。
+        /// </summary>
+        /// <param name="binding">当前预览角色副本中的绑定节点。</param>
+        /// <param name="bindingMatrix">成功时返回绑定节点的世界矩阵。</param>
+        /// <returns>绑定节点有效时返回 true。</returns>
+        private static bool TryGetWorldMatrix(Transform binding, out Matrix4x4 bindingMatrix)
+        {
+            bindingMatrix = binding != null ? binding.localToWorldMatrix : default;
+            return binding != null;
         }
 
         // 将 Unity Scene 工具映射为单一攻击检测编辑类别；View、Rect 等工具只保留线框。

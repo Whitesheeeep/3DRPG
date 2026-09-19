@@ -18,6 +18,8 @@ namespace RPG.SkillSystem
         private SkillExecution execution;
         private ulong nextExecutionId;
         private float playbackSpeed = 1f;
+        private bool drawAttackDetectionDebug;
+        private float attackDetectionDebugDuration;
         private bool initialized;
         private bool disposed;
 
@@ -57,6 +59,16 @@ namespace RPG.SkillSystem
         /// 获取当前技能按缩放后逻辑秒数计算的连续进度；空闲时返回零。
         /// </summary>
         public float NormalizedTime => execution?.NormalizedTime ?? 0f;
+
+        /// <summary>
+        /// 获取是否绘制运行时攻击检测查询形状。
+        /// </summary>
+        public bool DrawAttackDetectionDebug => drawAttackDetectionDebug;
+
+        /// <summary>
+        /// 获取运行时攻击检测调试线框的保留秒数；零表示当前帧。
+        /// </summary>
+        public float AttackDetectionDebugDuration => attackDetectionDebugDuration;
 
         #endregion
 
@@ -108,6 +120,25 @@ namespace RPG.SkillSystem
             execution?.SetPlaybackSpeed(value);
         }
 
+        /// <summary>
+        /// 设置后续及当前执行是否绘制攻击检测查询形状。
+        /// </summary>
+        /// <param name="enabled">是否启用调试绘制。</param>
+        /// <param name="duration">线框保留秒数；必须是有限非负数，零表示当前帧。</param>
+        /// <exception cref="ArgumentOutOfRangeException">持续时间不是有限非负数。</exception>
+        public void SetAttackDetectionDebug(bool enabled, float duration)
+        {
+            ThrowIfDisposed();
+            if (duration < 0f || float.IsNaN(duration) || float.IsInfinity(duration))
+                throw new ArgumentOutOfRangeException(nameof(duration), duration,
+                    "攻击检测调试绘制持续时间必须为有限非负数。");
+
+            drawAttackDetectionDebug = enabled;
+            attackDetectionDebugDuration = duration;
+            // 活动执行立即同步，后续执行则从 Module 保存的配置初始化。
+            execution?.SetAttackDetectionDebug(enabled, duration);
+        }
+
         /// <inheritdoc />
         public SkillStartResult TryPlay(in SkillPlayRequest request)
         {
@@ -127,6 +158,8 @@ namespace RPG.SkillSystem
                 PublishHit,
                 PublishActionPhaseChanged,
                 PublishProjectileSpawn);
+            context.AttackDetectionServices.SetDebugDrawing(
+                drawAttackDetectionDebug, attackDetectionDebugDuration);
             execution = new SkillExecution(context, playbackSpeed);
 
             // 必须先保存当前引用再处理第 0 帧，使帧零回调可以同步 Stop 或 Cancel。
@@ -184,7 +217,7 @@ namespace RPG.SkillSystem
         #region 事件与结束
 
         /// <summary>
-        /// 将完成过滤与 Clip 内去重的命中快照发送给当前 Module 监听者。
+        /// 将完成过滤与 Detection ID 去重的命中快照发送给当前 Module 监听者。
         /// </summary>
         /// <param name="args">本次命中的不可变运行时快照。</param>
         private void PublishHit(SkillHitEventArgs args)

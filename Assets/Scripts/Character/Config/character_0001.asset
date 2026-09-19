@@ -61,6 +61,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: fa050d1171257b24bbba13162066da88, type: 2}
   combatConfig:
     normalAttackAbilities:
+    - {fileID: 11400000, guid: a5f4af29fcb07fc4db4c0235ea89f01b, type: 2}
     - {fileID: 11400000, guid: 5b1b22e4d2c647a09c12aac149412fd1, type: 2}
     skillInputBindings: []
   gravity: 9.81

@@ -84,7 +84,7 @@ namespace RPG.SkillSystem.Editor
         #region 配置与采样
 
         /// <summary>
-        /// 切换技能配置并清除所有依赖旧内容的轨道缓存。
+        /// 切换技能配置；配置身份变化时先结束旧预览会话，再由后续第 0 帧采样创建干净上下文。
         /// </summary>
         public void SetSkillConfig(SkillConfig value)
         {
@@ -94,9 +94,11 @@ namespace RPG.SkillSystem.Editor
                 return;
             }
 
+            string oldConfigName = config != null ? config.name : "<none>";
+            string newConfigName = value != null ? value.name : "<none>";
+            ResetPreviewSession();
             config = value;
-            InvalidateContent();
-            if (config == null) Clear();
+            Debug.Log($"[SkillPreview] 切换 Config：{oldConfigName} -> {newConfigName}，旧预览会话已清理。");
         }
 
         /// <summary>
@@ -106,8 +108,7 @@ namespace RPG.SkillSystem.Editor
         {
             if (actorSource == actor) return;
             actorSource = actor;
-            ReleaseActor();
-            InvalidateContent();
+            ResetPreviewSession();
         }
 
         /// <summary>
@@ -180,9 +181,7 @@ namespace RPG.SkillSystem.Editor
         /// </summary>
         public void Clear()
         {
-            foreach (ITrackPreviewHandler handler in handlers)
-                handler?.Clear();
-            ReleaseActor();
+            ResetPreviewSession();
         }
 
         #endregion
@@ -327,28 +326,44 @@ namespace RPG.SkillSystem.Editor
             return result ?? throw new InvalidOperationException("Camera Modifier 模块没有注册草稿服务。");
         }
 
-        // 延迟创建预览角色，并保证创建失败不会阻止播放头继续工作。
+        /// <summary>
+        /// 延迟创建预览角色，并保证创建失败不会阻止播放头继续工作。
+        /// </summary>
+        /// <returns>角色副本可用时返回 true。</returns>
         private bool EnsureActor()
         {
             if (actorInstance != null && actorInstance.IsValid && actorInstance.Source == actorSource) return true;
-            ReleaseActor();
+            // actorInstance 仍存在但已经失效时才需要再次清理；切换 Config/角色和 Clear 已在释放前完成过一次。
+            if (actorInstance != null) ResetPreviewSession();
             if (!actorFactory.TryCreate(actorSource, out actorInstance, out string error))
             {
                 ReportStatus(error);
                 return false;
             }
 
-            InvalidateContent();
+            // 统一会话重置已经使动画 Root Motion 等派生缓存失效，新角色直接进入首次采样。
             return true;
         }
 
-        // 释放角色前先清理各轨道对旧角色生成的缓存或临时资源。
+        /// <summary>
+        /// 释放角色副本和 AnimancerGraph；轨道资源由 ResetPreviewSession 统一清理，避免重复 Clear。
+        /// </summary>
         private void ReleaseActor()
         {
-            foreach (ITrackPreviewHandler handler in handlers)
-                handler?.Clear();
             actorInstance?.Dispose();
             actorInstance = null;
+        }
+
+        /// <summary>
+        /// 清理一次预览会话持有的轨道资源、草稿、角色副本和 AnimancerGraph。
+        /// </summary>
+        private void ResetPreviewSession()
+        {
+            // 先释放 VFX、音频、Projectile、攻击草稿等引用角色节点的资源，再销毁角色 Graph。
+            foreach (ITrackPreviewHandler handler in handlers)
+                handler?.Clear();
+            ReleaseActor();
+            ReportStatus(string.Empty);
         }
 
         // 按模块顺序读取首个局部预览错误，使单个轨道 Clip 失败不会阻断其他 Handler。

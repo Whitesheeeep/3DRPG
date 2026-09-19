@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using RPG.Markers;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
@@ -28,6 +29,17 @@ namespace RPG.SkillSystem
         Capsule = 3,
         Sector = 4,
         WeaponTrace = 5
+    }
+
+    /// <summary>
+    /// 指定普通攻击检测区域相对绑定 Marker 的空间跟随策略。
+    /// </summary>
+    public enum AttackDetectionFollowMode
+    {
+        /// <summary>每次采样都读取绑定对象的当前世界矩阵。</summary>
+        FollowBinding = 0,
+        /// <summary>在 Clip 首次采样时冻结绑定对象的世界矩阵。</summary>
+        KeepWorldPosition = 1
     }
 
     /// <summary>
@@ -297,6 +309,9 @@ namespace RPG.SkillSystem
         [SerializeField, Min(0)] private int startFrame;
         [SerializeField, Min(1)] private int durationFrames = 1;
         [SerializeField, Min(1)] private int sampleIntervalFrames = 1;
+        [SerializeField, MinValue(0), LabelText("检测 ID")] private int detectionId;
+        [SerializeField, LabelText("挂点")] private MarkerKey markerKey;
+        [SerializeField, LabelText("跟随模式")] private AttackDetectionFollowMode followMode;
         [SerializeReference] private AttackDetectionDataBase detectionData =
             AttackDetectionDataBase.Create(AttackDetectionType.Box);
 
@@ -304,6 +319,26 @@ namespace RPG.SkillSystem
         public override int StartFrame => startFrame;
         public override int DurationFrames => durationFrames;
         public int SampleIntervalFrames => sampleIntervalFrames;
+        /// <summary>获取或设置本次技能执行内共享的攻击命中分组 ID。</summary>
+        public int DetectionId
+        {
+            get => detectionId;
+            set => detectionId = Mathf.Max(0, value);
+        }
+
+        /// <summary>获取或设置普通攻击区域使用的语义绑定 Marker。</summary>
+        public MarkerKey MarkerKey
+        {
+            get => markerKey;
+            set => markerKey = value;
+        }
+
+        /// <summary>获取或设置普通攻击区域相对绑定 Marker 的跟随策略。</summary>
+        public AttackDetectionFollowMode FollowMode
+        {
+            get => followMode;
+            set => followMode = value;
+        }
         public AttackDetectionDataBase DetectionData => detectionData;
         public AttackDetectionType DetectionType => detectionData?.Type ?? AttackDetectionType.None;
     }

@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: GA_Test_SkillConfig2
   m_EditorClassIdentifier: 
   abilityId: 9
+  abilityName: 
+  icon: {fileID: 0}
   description: GAS SkillRuntimeHost interruption fixture using Test_SkillConfig2.
   abilityTags:
   - id: 24

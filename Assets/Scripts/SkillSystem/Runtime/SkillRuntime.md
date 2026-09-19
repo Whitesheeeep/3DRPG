@@ -123,8 +123,9 @@ LayerMask 负责 Physics 层粗筛选；`ISkillAttackTargetFilter`负责阵营�
 ## Odin 手动测试
 
 GAS 集成基准使用现有 30 FPS、35 帧 `SkillConfig.asset`。ASC Tester 验证自然完成、End、Cancel、
-立即重播、命中 Effect 与命中点 Execute Cue。占用共享 Host 的主动技能统一配置
-`Ability.Action.Skill` 到 `AbilityTags` 与 `CancelTags`；配置第二个 SkillConfig GA 后可执行互相打断测试。
+立即重播、命中 Effect 与命中点 Execute Cue。占用共享 Host 的普通攻击使用
+`Skill.NormalAttack.One`、`Skill.NormalAttack.Two` 作为 AbilityTags，并统一使用
+`Skill.NormalAttack` 作为 CancelTag；配置第二个 SkillConfig GA 后可执行互相打断测试。
 
 阶段 Handler 会在普通逻辑帧中发布动作阶段与 `AllowedTransitions` 变化。该数据只属于具体 `SkillRuntime`，不再投影为 Source ASC 的 Phase 或 Interrupt GameplayTag。`PlaySkillConfigGameplayAbilityTask` 在时间轴成功启动后注册 FullBody 执行，并用该事件更新注册 Handle 的转换权限；Phase 名称本身不会写入 Blackboard。
 

@@ -28,6 +28,9 @@ namespace RPG.SkillSystem.Editor
         [SerializeField] private Transform weaponTip;
         [SerializeField] private LayerMask attackLayerMask = ~0;
         [SerializeField] private QueryTriggerInteraction triggerInteraction = QueryTriggerInteraction.UseGlobal;
+        [Title("攻击检测调试")]
+        [SerializeField] private bool drawAttackDetectionDebug;
+        [SerializeField, MinValue(0f)] private float attackDetectionDebugDuration;
 
         #endregion
 
@@ -68,6 +71,7 @@ namespace RPG.SkillSystem.Editor
             SkillActorContext actor = new(owner, origin, animationController, skillAnimationLayer, markerProvider);
             SkillAttackSettings attack = new(attackLayerMask, triggerInteraction);
             runner.Initialize(actor, attack);
+            runner.SetAttackDetectionDebug(drawAttackDetectionDebug, attackDetectionDebugDuration);
             Debug.Log($"[SkillRuntimeTest] Initialize owner={owner.name}, layer={skillAnimationLayer}", this);
         }
 
@@ -138,13 +142,13 @@ namespace RPG.SkillSystem.Editor
         #region 事件日志
 
         /// <summary>
-        /// 输出已经完成过滤和 Clip 内去重的命中事件。
+        /// 输出已经完成过滤和 Detection ID 去重的命中事件。
         /// </summary>
         /// <param name="args">命中事件快照。</param>
         private void OnHitDetected(SkillHitEventArgs args)
         {
             Debug.Log($"[SkillRuntimeTest] Hit execution={args.ExecutionId}, frame={args.Frame}, " +
-                      $"target={args.Target.name}, clip={args.Clip.Id}", args.Target);
+                      $"target={args.Target.name}, clip={args.Clip.Id}, detectionId={args.Clip.DetectionId}", args.Target);
         }
 
         /// <summary>

@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: GA_Test_SelfCast
   m_EditorClassIdentifier: 
   abilityId: 4
+  abilityName: 
+  icon: {fileID: 0}
   description: "\u4E00\u79D2\u8BFB\u6761\u5B8C\u6210\u540E\u5BF9\u81EA\u8EAB\u5E94\u7528\u4E00\u6B21
     Instant Effects\u3002"
   abilityTags:

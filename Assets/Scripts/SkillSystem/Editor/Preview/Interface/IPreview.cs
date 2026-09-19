@@ -24,7 +24,7 @@ namespace RPG.SkillSystem.Editor
         event Action<string> StatusChanged;
 
         /// <summary>
-        /// 切换预览使用的技能配置，并使依赖旧内容的轨道缓存失效。
+        /// 切换预览使用的技能配置；身份变化时必须先清理旧资源，再允许新配置采样。
         /// </summary>
         void SetSkillConfig(SkillConfig config);
         /// <summary>

@@ -347,6 +347,12 @@ namespace RPG.SkillSystem.Editor
                 {
                     item.FindPropertyRelative(DocumentFieldNames.SampleIntervalFrames).intValue =
                         Mathf.Max(1, attack.SampleIntervalFrames);
+                    item.FindPropertyRelative(DocumentFieldNames.DetectionId).intValue =
+                        Mathf.Max(0, attack.DetectionId);
+                    item.FindPropertyRelative(DocumentFieldNames.MarkerKey).objectReferenceValue =
+                        attack.MarkerKey;
+                    item.FindPropertyRelative(DocumentFieldNames.FollowMode).enumValueIndex =
+                        (int)attack.FollowMode;
                     item.FindPropertyRelative(DocumentFieldNames.DetectionData).managedReferenceValue =
                         AttackDetectionDataBase.Copy(attack.DetectionData);
                 });
@@ -361,6 +367,12 @@ namespace RPG.SkillSystem.Editor
         {
             destination.FindPropertyRelative(DocumentFieldNames.SampleIntervalFrames).intValue =
                 source.FindPropertyRelative(DocumentFieldNames.SampleIntervalFrames).intValue;
+            destination.FindPropertyRelative(DocumentFieldNames.DetectionId).intValue =
+                Mathf.Max(0, source.FindPropertyRelative(DocumentFieldNames.DetectionId).intValue);
+            destination.FindPropertyRelative(DocumentFieldNames.MarkerKey).objectReferenceValue =
+                source.FindPropertyRelative(DocumentFieldNames.MarkerKey).objectReferenceValue;
+            destination.FindPropertyRelative(DocumentFieldNames.FollowMode).enumValueIndex =
+                source.FindPropertyRelative(DocumentFieldNames.FollowMode).enumValueIndex;
             AttackDetectionDataBase sourceData = source
                 .FindPropertyRelative(DocumentFieldNames.DetectionData).managedReferenceValue
                 as AttackDetectionDataBase;
@@ -386,6 +398,10 @@ namespace RPG.SkillSystem.Editor
         protected override void InitializeSpecificFields(SerializedProperty item)
         {
             item.FindPropertyRelative(DocumentFieldNames.SampleIntervalFrames).intValue = 1;
+            item.FindPropertyRelative(DocumentFieldNames.DetectionId).intValue = 0;
+            item.FindPropertyRelative(DocumentFieldNames.MarkerKey).objectReferenceValue = null;
+            item.FindPropertyRelative(DocumentFieldNames.FollowMode).enumValueIndex =
+                (int)AttackDetectionFollowMode.FollowBinding;
             item.FindPropertyRelative(DocumentFieldNames.DetectionData).managedReferenceValue =
                 AttackDetectionDataBase.Create(AttackDetectionType.Box);
         }

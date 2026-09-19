@@ -34,34 +34,53 @@ namespace RPG.SkillSystem.Editor
             in AttackDetectionSceneDrawContext context, AttackDetectionDataBase data,
             AttackDetectionHandleMode mode);
 
-        // 把配置中的局部位置和旋转转换到当前帧角色根节点的世界空间。
-        protected static void ResolveWorldPose(Transform root, TData data,
+        /// <summary>
+        /// 把配置中的局部位置和旋转转换到当前绑定矩阵的世界空间。
+        /// </summary>
+        /// <param name="bindingMatrix">当前 Clip 的绑定世界矩阵。</param>
+        /// <param name="data">需要换算的局部体积配置。</param>
+        /// <param name="position">换算后的世界中心。</param>
+        /// <param name="rotation">换算后的世界旋转。</param>
+        protected static void ResolveWorldPose(Matrix4x4 bindingMatrix, TData data,
             out Vector3 position, out Quaternion rotation)
         {
-            position = root.TransformPoint(data.LocalPosition);
-            rotation = root.rotation * Quaternion.Euler(data.LocalEulerAngles);
+            position = bindingMatrix.MultiplyPoint3x4(data.LocalPosition);
+            rotation = bindingMatrix.rotation * Quaternion.Euler(data.LocalEulerAngles);
         }
 
-        // 仅绘制当前 Unity 工具对应的位置或旋转 Handle，并把结果转换回角色根局部空间。
-        protected static void DrawPoseHandle(Transform root, TData data, AttackDetectionHandleMode mode,
+        /// <summary>
+        /// 仅绘制当前 Unity 工具对应的位置或旋转 Handle，并把结果转换回绑定局部空间。
+        /// </summary>
+        /// <param name="bindingMatrix">当前 Clip 的绑定世界矩阵。</param>
+        /// <param name="data">当前局部体积配置。</param>
+        /// <param name="mode">本次 Handle 编辑类别。</param>
+        /// <param name="localPosition">读写局部位置。</param>
+        /// <param name="localEulerAngles">读写局部欧拉角。</param>
+        protected static void DrawPoseHandle(Matrix4x4 bindingMatrix, TData data,
+            AttackDetectionHandleMode mode,
             ref Vector3 localPosition, ref Vector3 localEulerAngles)
         {
-            ResolveWorldPose(root, data, out Vector3 worldPosition, out Quaternion worldRotation);
+            ResolveWorldPose(bindingMatrix, data, out Vector3 worldPosition, out Quaternion worldRotation);
             if (mode == AttackDetectionHandleMode.Position)
             {
                 worldPosition = Handles.PositionHandle(worldPosition, worldRotation);
-                localPosition = root.InverseTransformPoint(worldPosition);
+                localPosition = bindingMatrix.inverse.MultiplyPoint3x4(worldPosition);
             }
             else if (mode == AttackDetectionHandleMode.Rotation)
             {
                 worldRotation = Handles.RotationHandle(worldRotation, worldPosition);
-                localEulerAngles = (Quaternion.Inverse(root.rotation) * worldRotation).eulerAngles;
+                localEulerAngles = (Quaternion.Inverse(bindingMatrix.rotation) * worldRotation).eulerAngles;
             }
         }
 
-        // 使用角色根和检测局部姿态创建形状绘制矩阵。
-        protected static Matrix4x4 CreateShapeMatrix(Transform root, TData data) =>
-            root.localToWorldMatrix * Matrix4x4.TRS(
+        /// <summary>
+        /// 使用绑定矩阵和检测局部姿态创建形状绘制矩阵。
+        /// </summary>
+        /// <param name="bindingMatrix">当前 Clip 的绑定世界矩阵。</param>
+        /// <param name="data">当前局部体积配置。</param>
+        /// <returns>将体积局部空间转换到世界空间的矩阵。</returns>
+        protected static Matrix4x4 CreateShapeMatrix(Matrix4x4 bindingMatrix, TData data) =>
+            bindingMatrix * Matrix4x4.TRS(
                 data.LocalPosition, Quaternion.Euler(data.LocalEulerAngles), Vector3.one);
     }
 
@@ -81,7 +100,7 @@ namespace RPG.SkillSystem.Editor
             AttackDetectionDataBase data)
         {
             BoxAttackDetectionData box = (BoxAttackDetectionData)data;
-            Matrix4x4 matrix = CreateShapeMatrix(context.ActorRoot, box);
+            Matrix4x4 matrix = CreateShapeMatrix(context.BindingMatrix, box);
             using (new Handles.DrawingScope(context.FillColor, matrix))
                 AttackDetectionSolidGeometry.DrawBox(box.Size);
             using (new Handles.DrawingScope(context.Color, matrix))
@@ -98,11 +117,11 @@ namespace RPG.SkillSystem.Editor
             BoxAttackDetectionData box = (BoxAttackDetectionData)data;
             Vector3 position = box.LocalPosition;
             Vector3 rotation = box.LocalEulerAngles;
-            DrawPoseHandle(context.ActorRoot, box, mode, ref position, ref rotation);
+            DrawPoseHandle(context.BindingMatrix, box, mode, ref position, ref rotation);
             Vector3 size = box.Size;
             if (mode == AttackDetectionHandleMode.Shape)
             {
-                ResolveWorldPose(context.ActorRoot, box, out Vector3 worldPosition, out Quaternion worldRotation);
+                ResolveWorldPose(context.BindingMatrix, box, out Vector3 worldPosition, out Quaternion worldRotation);
                 size = Handles.ScaleHandle(size, worldPosition, worldRotation,
                     HandleUtility.GetHandleSize(worldPosition));
                 size = new Vector3(Mathf.Max(0.001f, Mathf.Abs(size.x)),
@@ -128,7 +147,7 @@ namespace RPG.SkillSystem.Editor
             AttackDetectionDataBase data)
         {
             SphereAttackDetectionData sphere = (SphereAttackDetectionData)data;
-            ResolveWorldPose(context.ActorRoot, sphere, out Vector3 position, out _);
+            ResolveWorldPose(context.BindingMatrix, sphere, out Vector3 position, out _);
             Matrix4x4 matrix = Matrix4x4.TRS(position, Quaternion.identity, Vector3.one);
             using (new Handles.DrawingScope(context.FillColor, matrix))
                 AttackDetectionSolidGeometry.DrawSphere(sphere.Radius, context.SurfaceSegments);
@@ -150,16 +169,16 @@ namespace RPG.SkillSystem.Editor
             SphereAttackDetectionData sphere = (SphereAttackDetectionData)data;
             Vector3 position = sphere.LocalPosition;
             float radius = sphere.Radius;
-            ResolveWorldPose(context.ActorRoot, sphere, out Vector3 worldPosition, out _);
+            ResolveWorldPose(context.BindingMatrix, sphere, out Vector3 worldPosition, out _);
             if (mode == AttackDetectionHandleMode.Position)
             {
-                worldPosition = Handles.PositionHandle(worldPosition, context.ActorRoot.rotation);
-                position = context.ActorRoot.InverseTransformPoint(worldPosition);
+                worldPosition = Handles.PositionHandle(worldPosition, context.BindingMatrix.rotation);
+                position = context.BindingMatrix.inverse.MultiplyPoint3x4(worldPosition);
             }
             else if (mode == AttackDetectionHandleMode.Shape)
             {
                 radius = Mathf.Max(0.001f, Handles.RadiusHandle(
-                    context.ActorRoot.rotation, worldPosition, radius));
+                    context.BindingMatrix.rotation, worldPosition, radius));
             }
             return new SphereAttackDetectionData(position, radius);
         }
@@ -181,7 +200,7 @@ namespace RPG.SkillSystem.Editor
             AttackDetectionDataBase data)
         {
             CapsuleAttackDetectionData capsule = (CapsuleAttackDetectionData)data;
-            Matrix4x4 matrix = CreateShapeMatrix(context.ActorRoot, capsule);
+            Matrix4x4 matrix = CreateShapeMatrix(context.BindingMatrix, capsule);
             using (new Handles.DrawingScope(context.FillColor, matrix))
                 AttackDetectionSolidGeometry.DrawCapsule(capsule.Radius, capsule.Height,
                     capsule.Axis, context.SurfaceSegments);
@@ -212,12 +231,12 @@ namespace RPG.SkillSystem.Editor
             CapsuleAttackDetectionData capsule = (CapsuleAttackDetectionData)data;
             Vector3 position = capsule.LocalPosition;
             Vector3 rotation = capsule.LocalEulerAngles;
-            DrawPoseHandle(context.ActorRoot, capsule, mode, ref position, ref rotation);
+            DrawPoseHandle(context.BindingMatrix, capsule, mode, ref position, ref rotation);
             float radius = capsule.Radius;
             float height = capsule.Height;
             if (mode == AttackDetectionHandleMode.Shape)
             {
-                ResolveWorldPose(context.ActorRoot, capsule, out Vector3 worldPosition,
+                ResolveWorldPose(context.BindingMatrix, capsule, out Vector3 worldPosition,
                     out Quaternion worldRotation);
                 radius = Mathf.Max(0.001f, Handles.RadiusHandle(
                     worldRotation, worldPosition, radius));
@@ -229,7 +248,9 @@ namespace RPG.SkillSystem.Editor
             return new CapsuleAttackDetectionData(position, rotation, radius, height, capsule.Axis);
         }
 
-        // 把配置轴向转换为局部单位向量。
+        /// <summary>把配置轴向转换为局部单位向量。</summary>
+        /// <param name="axis">胶囊配置轴向。</param>
+        /// <returns>对应的局部单位轴。</returns>
         private static Vector3 AxisVector(CapsuleAxis axis) => axis switch
         {
             CapsuleAxis.X => Vector3.right,
@@ -254,7 +275,7 @@ namespace RPG.SkillSystem.Editor
             AttackDetectionDataBase data)
         {
             SectorAttackDetectionData sector = (SectorAttackDetectionData)data;
-            Matrix4x4 matrix = CreateShapeMatrix(context.ActorRoot, sector);
+            Matrix4x4 matrix = CreateShapeMatrix(context.BindingMatrix, sector);
             using (new Handles.DrawingScope(context.FillColor, matrix))
                 AttackDetectionSolidGeometry.DrawSector(sector.InnerRadius, sector.OuterRadius,
                     sector.Angle, sector.Height, context.SurfaceSegments);
@@ -287,14 +308,14 @@ namespace RPG.SkillSystem.Editor
             SectorAttackDetectionData sector = (SectorAttackDetectionData)data;
             Vector3 position = sector.LocalPosition;
             Vector3 rotation = sector.LocalEulerAngles;
-            DrawPoseHandle(context.ActorRoot, sector, mode, ref position, ref rotation);
+            DrawPoseHandle(context.BindingMatrix, sector, mode, ref position, ref rotation);
             float inner = sector.InnerRadius;
             float outer = sector.OuterRadius;
             float angle = sector.Angle;
             float height = sector.Height;
             if (mode == AttackDetectionHandleMode.Shape)
             {
-                ResolveWorldPose(context.ActorRoot, sector, out Vector3 worldPosition,
+                ResolveWorldPose(context.BindingMatrix, sector, out Vector3 worldPosition,
                     out Quaternion worldRotation);
                 outer = Mathf.Max(0.001f, Handles.RadiusHandle(
                     worldRotation, worldPosition, outer));

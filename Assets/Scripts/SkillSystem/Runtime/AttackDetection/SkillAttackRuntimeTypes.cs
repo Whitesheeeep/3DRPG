@@ -66,7 +66,7 @@ namespace RPG.SkillSystem
     }
 
     /// <summary>
-    /// 描述一次已经通过 LayerMask、自身排除、业务过滤和 Clip 内去重的命中。
+    /// 描述一次已经通过 LayerMask、自身排除、业务过滤和 Detection ID 去重的命中。
     /// </summary>
     public readonly struct SkillHitEventArgs
     {
@@ -76,6 +76,7 @@ namespace RPG.SkillSystem
         public ulong ExecutionId { get; }
         public SkillConfig Config { get; }
         public GameObject Owner { get; }
+        /// <summary>真正首次命中并发布事件的 Clip；结算分组可通过其 DetectionId 查询。</summary>
         public AttackDetectionSkillClipConfig Clip { get; }
         public int Frame { get; }
         public GameObject Target { get; }

@@ -6,12 +6,6 @@ namespace WS_Modules.GAS.Generated
     /// <summary>由 Gameplay Tag 烘焙器生成的稳定标签常量。</summary>
     public static class GameplayTags
     {
-        /// <summary>Ability</summary>
-        public static readonly GameplayTag Tag_Ability = new GameplayTag(127);
-        /// <summary>Ability.Action</summary>
-        public static readonly GameplayTag Tag_Ability_Action = new GameplayTag(128);
-        /// <summary>Ability.Action.Skill</summary>
-        public static readonly GameplayTag Tag_Ability_Action_Skill = new GameplayTag(126);
         /// <summary>CueTest</summary>
         public static readonly GameplayTag Tag_CueTest = new GameplayTag(112);
         /// <summary>CueTest.Cue_Follow</summary>
@@ -62,6 +56,14 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_NewTag_NewTag1 = new GameplayTag(105);
         /// <summary>NewTag.NewTag1.NewTag6</summary>
         public static readonly GameplayTag Tag_NewTag_NewTag1_NewTag6 = new GameplayTag(106);
+        /// <summary>Skill</summary>
+        public static readonly GameplayTag Tag_Skill = new GameplayTag(126);
+        /// <summary>Skill.NormalAttack</summary>
+        public static readonly GameplayTag Tag_Skill_NormalAttack = new GameplayTag(164);
+        /// <summary>Skill.NormalAttack.One</summary>
+        public static readonly GameplayTag Tag_Skill_NormalAttack_One = new GameplayTag(165);
+        /// <summary>Skill.NormalAttack.Two</summary>
+        public static readonly GameplayTag Tag_Skill_NormalAttack_Two = new GameplayTag(166);
         /// <summary>State</summary>
         public static readonly GameplayTag Tag_State = new GameplayTag(129);
         /// <summary>State.Block</summary>
@@ -88,16 +90,16 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_State_Locomotion_RunStart = new GameplayTag(150);
         /// <summary>State.Locomotion.Stop</summary>
         public static readonly GameplayTag Tag_State_Locomotion_Stop = new GameplayTag(153);
+        /// <summary>State.Locomotion.Traversal</summary>
+        public static readonly GameplayTag Tag_State_Locomotion_Traversal = new GameplayTag(161);
+        /// <summary>State.Locomotion.Traversal.Mantle</summary>
+        public static readonly GameplayTag Tag_State_Locomotion_Traversal_Mantle = new GameplayTag(163);
+        /// <summary>State.Locomotion.Traversal.Vault</summary>
+        public static readonly GameplayTag Tag_State_Locomotion_Traversal_Vault = new GameplayTag(162);
         /// <summary>State.Locomotion.Walk</summary>
         public static readonly GameplayTag Tag_State_Locomotion_Walk = new GameplayTag(151);
         /// <summary>State.Locomotion.WalkStart</summary>
         public static readonly GameplayTag Tag_State_Locomotion_WalkStart = new GameplayTag(149);
-        /// <summary>State.Locomotion.Traversal</summary>
-        public static readonly GameplayTag Tag_State_Locomotion_Traversal = new GameplayTag(158);
-        /// <summary>State.Locomotion.Traversal.Vault</summary>
-        public static readonly GameplayTag Tag_State_Locomotion_Traversal_Vault = new GameplayTag(159);
-        /// <summary>State.Locomotion.Traversal.Mantle</summary>
-        public static readonly GameplayTag Tag_State_Locomotion_Traversal_Mantle = new GameplayTag(160);
         /// <summary>State.Skill</summary>
         public static readonly GameplayTag Tag_State_Skill = new GameplayTag(130);
         /// <summary>Test</summary>

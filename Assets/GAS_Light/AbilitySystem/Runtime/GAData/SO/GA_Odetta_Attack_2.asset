@@ -10,15 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 92a3fd70e0644c4da339c935362b3d99, type: 3}
-  m_Name: GA_Odetta_Attack_1
+  m_Name: GA_Odetta_Attack_2
   m_EditorClassIdentifier: 
-  abilityId: 8
-  abilityName: "\u5965\u9EDB\u5854\u666E\u653B1"
+  abilityId: 10
+  abilityName: "\u5965\u9EDB\u5854\u666E\u653B2"
   icon: {fileID: 0}
   description: GAS SkillRuntimeHost integration fixture using the existing 35-frame
     SkillConfig.
   abilityTags:
-  - id: 166
+  - id: 165
   cancelTags:
   - id: 164
   activationTagQuery:
@@ -38,4 +38,4 @@ MonoBehaviour:
     - rid: 8492673064478303488
       type: {class: PlaySkillConfigGameplayAbilityTaskConfig, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
-        skillConfig: {fileID: 11400000, guid: 202aa15b2413d8946b2ee3489ec52fd0, type: 2}
+        skillConfig: {fileID: 11400000, guid: fdd9cd894abf17948b6985c1c3d92ee2, type: 2}

@@ -58,7 +58,7 @@ namespace RPG.SkillSystem.Editor
         internal const string FadeDuration = "fadeDuration";
         /// <summary>特效内容引用的 Prefab Asset。</summary>
         internal const string Prefab = "prefab";
-        /// <summary>特效内容在角色层级中按语义解析的 MarkerKey；空值表示角色根节点。</summary>
+        /// <summary>特效或攻击检测内容按语义解析的 MarkerKey；空值表示角色根节点。</summary>
         internal const string MarkerKey = "markerKey";
         /// <summary>特效内容的局部位置。</summary>
         internal const string LocalPosition = "localPosition";
@@ -66,7 +66,7 @@ namespace RPG.SkillSystem.Editor
         internal const string LocalEulerAngles = "localEulerAngles";
         /// <summary>特效内容的局部缩放。</summary>
         internal const string LocalScale = "localScale";
-        /// <summary>特效内容的跟随策略。</summary>
+        /// <summary>特效或攻击检测内容的跟随策略。</summary>
         internal const string FollowMode = "followMode";
         /// <summary>特效内容到达结束帧后的停止策略。</summary>
         internal const string StopMode = "stopMode";
@@ -82,6 +82,8 @@ namespace RPG.SkillSystem.Editor
         internal const string AllowedTransitions = "allowedTransitions";
         /// <summary>攻击检测片段的采样间隔帧，最小为一帧。</summary>
         internal const string SampleIntervalFrames = "sampleIntervalFrames";
+        /// <summary>攻击检测片段在一次技能执行内共享的命中去重 ID。</summary>
+        internal const string DetectionId = "detectionId";
         /// <summary>攻击检测片段保存的局部多态检测参数。</summary>
         internal const string DetectionData = "detectionData";
         /// <summary>摄像机修饰片段保存的局部多态参数。</summary>

@@ -1,7 +1,9 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using RPG.SkillSystem.Editor;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace RPG.SkillSystem.Editor
@@ -45,7 +47,7 @@ namespace RPG.SkillSystem.Editor
             ActionPhaseSkillClipConfig actionPhase => GetActionPhaseDisplayName(actionPhase),
             AnimationSkillClipConfig animation => animation.AnimationClip != null
                 ? animation.AnimationClip.name : "Animation Clip",
-            AttackDetectionSkillClipConfig attack => $"{attack.DetectionType} Detection",
+            AttackDetectionSkillClipConfig attack => attack.DetectionType.ToString(),
             VfxSkillClipConfig vfx => vfx.Prefab != null ? vfx.Prefab.name : "VFX Clip",
             AudioSkillClipConfig audio => audio.AudioClip != null ? audio.AudioClip.name : "Audio Clip",
             CameraModifierSkillClipConfig modifier => modifier.ModifierType.ToString(),
@@ -179,6 +181,51 @@ namespace RPG.SkillSystem.Editor
             AttackDetectionSkillClipConfig item, VisualElement element,
             CoordinateMapper mapper) : base(track, item, element, mapper)
         {
+            // 攻击检测使用根 Label 承载两个可忽略命中测试的子标签，根元素仍负责选择、拖拽和 Resize。
+            if (Element is not Label rootLabel)
+                throw new InvalidOperationException("攻击检测 Clip 模板必须使用 Label 作为根元素。");
+
+            rootLabel.text = string.Empty;
+
+            Label idBadge = new(FormatDetectionId(item.DetectionId))
+            {
+                name = "DetectionIdBadge",
+                pickingMode = PickingMode.Ignore
+            };
+            idBadge.AddToClassList("attack-detection-id-badge");
+            idBadge.style.backgroundColor = ResolveDetectionIdColor(item.DetectionId);
+
+            Label typeLabel = new(item.DetectionType.ToString())
+            {
+                name = "DetectionTypeLabel",
+                pickingMode = PickingMode.Ignore
+            };
+            typeLabel.AddToClassList("attack-detection-type-label");
+
+            rootLabel.Add(idBadge);
+            rootLabel.Add(typeLabel);
+            Element.tooltip = $"攻击检测：{item.DetectionType}\n检测 ID：{item.DetectionId}";
+        }
+
+        /// <summary>
+        /// 将检测 ID 格式化为至少两位的编辑器显示文本，不截断更长的整数。
+        /// </summary>
+        /// <param name="detectionId">攻击检测配置中的分组 ID。</param>
+        /// <returns>至少两位的十进制 ID 文本。</returns>
+        private static string FormatDetectionId(int detectionId) =>
+            detectionId.ToString("D2", CultureInfo.InvariantCulture);
+
+        /// <summary>
+        /// 根据完整检测 ID 生成稳定的色相，使同一 ID 在不同 Clip 和轨道中保持相同颜色。
+        /// </summary>
+        /// <param name="detectionId">攻击检测配置中的分组 ID。</param>
+        /// <returns>用于 ID 色块背景的稳定颜色。</returns>
+        private static Color ResolveDetectionIdColor(int detectionId)
+        {
+            // 黄金分割色相让相邻 ID 尽量分散，同时不把颜色写入 SkillConfig。
+            const float goldenRatioConjugate = 0.61803398875f;
+            float hue = Mathf.Repeat(detectionId * goldenRatioConjugate, 1f);
+            return Color.HSVToRGB(hue, 0.68f, 0.78f);
         }
     }
 

@@ -151,6 +151,7 @@ namespace RPG.Character
                 return false;
             }
 
+            // 没有 Primary Press 或 Press 已被消费时清除冻结段位，下一帧会尝试新的 Press。
             if (!inputRequests.TryGetRequest(PlayerInputType.Primary, out IReadOnlyPlayerInputRequest request) ||
                 !request.HasBufferedPress)
             {

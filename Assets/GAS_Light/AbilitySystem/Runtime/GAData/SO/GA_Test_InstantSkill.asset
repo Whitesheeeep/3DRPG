@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: GA_Test_InstantSkill
   m_EditorClassIdentifier: 
   abilityId: 1
+  abilityName: 
+  icon: {fileID: 0}
   description: Editor validation fixture for an Instant Gameplay Ability.
   abilityTags: []
   cancelTags:

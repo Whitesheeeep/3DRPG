@@ -58,6 +58,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Sword Slash 1
       objectReference: {fileID: 0}
+    - target: {fileID: 1985817477992794, guid: a12faec44d474a728ecd901dd28e5573, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4600120975325910, guid: a12faec44d474a728ecd901dd28e5573, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -97,6 +101,22 @@ PrefabInstance:
     - target: {fileID: 4600120975325910, guid: a12faec44d474a728ecd901dd28e5573, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 198762584915839208, guid: a12faec44d474a728ecd901dd28e5573, type: 3}
+      propertyPath: InitialModule.startSize.scalar
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 198762584915839208, guid: a12faec44d474a728ecd901dd28e5573, type: 3}
+      propertyPath: InitialModule.startSize.minScalar
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 198861294839731928, guid: a12faec44d474a728ecd901dd28e5573, type: 3}
+      propertyPath: InitialModule.startSize.scalar
+      value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 198861294839731928, guid: a12faec44d474a728ecd901dd28e5573, type: 3}
+      propertyPath: InitialModule.startSize.minScalar
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 199119478002216748, guid: a12faec44d474a728ecd901dd28e5573, type: 3}
       propertyPath: m_Materials.Array.size

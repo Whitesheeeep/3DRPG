@@ -19902,6 +19902,8 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 55
   triggerInteraction: 0
+  drawAttackDetectionDebug: 1
+  attackDetectionDebugDuration: 6
 --- !u!114 &8544601749110623256
 MonoBehaviour:
   m_ObjectHideFlags: 0

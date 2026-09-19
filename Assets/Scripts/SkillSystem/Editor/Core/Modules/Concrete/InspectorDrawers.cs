@@ -400,22 +400,43 @@ namespace RPG.SkillSystem.Editor
             InspectorFieldCommitController fieldCommitController)
         {
             if (data is not AttackDetectionSkillClipConfig clip) return;
-            AddTitle(container, $"{clip.DetectionType} Detection");
+            AddTitle(container, $"{clip.DetectionType} · ID {clip.DetectionId}");
             IntegerField start = AddField(container,
                 new IntegerField("起始帧") { value = clip.StartFrame });
             IntegerField duration = AddField(container,
                 new IntegerField("持续帧") { value = clip.DurationFrames });
             IntegerField interval = AddField(container,
                 new IntegerField("采样间隔帧") { value = clip.SampleIntervalFrames });
+            IntegerField detectionId = AddField(container,
+                new IntegerField("检测 ID") { value = clip.DetectionId });
             EnumField type = AddField(container,
                 new EnumField("检测类型", clip.DetectionType));
+
+            ObjectField marker = null;
+            EnumField follow = null;
+            if (clip.DetectionType == AttackDetectionType.WeaponTrace)
+            {
+                container.Add(new Label("WeaponTrace 使用武器根部/尖端 Marker 自行跟随。"));
+            }
+            else
+            {
+                marker = AddField(container, new ObjectField("挂点")
+                {
+                    objectType = typeof(MarkerKey), allowSceneObjects = false, value = clip.MarkerKey
+                });
+                follow = AddField(container, new EnumField("跟随模式", clip.FollowMode));
+            }
 
             // 每次正式提交都携带完整独立快照，Document 继续负责事务与区间校验。
             void Submit(AttackDetectionDataBase detectionData)
             {
                 viewModel.ClearAttackDetectionInspectorDraft(clip);
                 viewModel.EditItem(viewModel.SelectedTrack, clip,
-                    new AttackDetectionEditRequest(start.value, duration.value, interval.value, detectionData));
+                    new AttackDetectionEditRequest(start.value, duration.value, interval.value,
+                        Mathf.Max(0, detectionId.value),
+                        marker != null ? marker.value as MarkerKey : clip.MarkerKey,
+                        follow != null ? (AttackDetectionFollowMode)follow.value : clip.FollowMode,
+                        detectionData));
             }
 
             // 连续输入仅替换 Scene View 草稿，不写入 Config。
@@ -425,8 +446,12 @@ namespace RPG.SkillSystem.Editor
             fieldCommitController.Bind(start, null, () => Submit(clip.DetectionData));
             fieldCommitController.Bind(duration, null, () => Submit(clip.DetectionData));
             fieldCommitController.Bind(interval, null, () => Submit(clip.DetectionData));
+            detectionId.isDelayed = true;
+            detectionId.RegisterValueChangedCallback(_ => Submit(clip.DetectionData));
             type.RegisterValueChangedCallback(evt =>
                 Submit(AttackDetectionDataBase.Create((AttackDetectionType)evt.newValue)));
+            if (marker != null) fieldCommitController.BindObjectField(marker, () => Submit(clip.DetectionData));
+            if (follow != null) follow.RegisterValueChangedCallback(_ => Submit(clip.DetectionData));
 
             if (clip.DetectionData == null)
             {

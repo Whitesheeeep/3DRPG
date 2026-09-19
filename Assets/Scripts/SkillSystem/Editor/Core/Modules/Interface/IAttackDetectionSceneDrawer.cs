@@ -37,21 +37,28 @@ namespace RPG.SkillSystem.Editor
     }
 
     /// <summary>
-    /// 提供一次攻击检测 Scene 绘制所需的角色空间、线框与表面颜色、曲面精度及可选单刃轨迹快照。
+    /// 提供一次攻击检测 Scene 绘制所需的绑定空间、线框与表面颜色、曲面精度及可选单刃轨迹快照。
     /// </summary>
     internal readonly struct AttackDetectionSceneDrawContext
     {
-        internal Transform ActorRoot { get; }
+        internal Matrix4x4 BindingMatrix { get; }
         internal Color Color { get; }
         internal Color FillColor { get; }
         internal int SurfaceSegments { get; }
         internal WeaponTraceSweepSegment? WeaponSegment { get; }
 
-        // 创建单个 Clip 的只读绘制上下文，线框与半透明表面共享同一帧姿态。
-        internal AttackDetectionSceneDrawContext(Transform actorRoot, Color color,
+        /// <summary>
+        /// 创建单个 Clip 的只读绘制上下文，线框与半透明表面共享同一帧绑定姿态。
+        /// </summary>
+        /// <param name="bindingMatrix">当前攻击区域绑定空间的世界矩阵。</param>
+        /// <param name="color">线框颜色。</param>
+        /// <param name="fillColor">半透明填充颜色。</param>
+        /// <param name="surfaceSegments">曲面离散精度。</param>
+        /// <param name="weaponSegment">WeaponTrace 的端点扫掠快照。</param>
+        internal AttackDetectionSceneDrawContext(Matrix4x4 bindingMatrix, Color color,
             Color fillColor, int surfaceSegments, WeaponTraceSweepSegment? weaponSegment)
         {
-            ActorRoot = actorRoot;
+            BindingMatrix = bindingMatrix;
             Color = color;
             FillColor = fillColor;
             SurfaceSegments = surfaceSegments;

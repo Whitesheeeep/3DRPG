@@ -38,9 +38,11 @@ GameplayAbilityData 只保存所有技能共用的作者配置：
 
 GameplayAbilitySpec 是 ASC 中长期存在的授予状态，保存 Handle、Data 和当前 Level。Runtime 激活时复制 Level 与 SetByCaller，之后修改 Spec Level 不影响已创建 Runtime。
 
-`AbilityTags` 表示 Ability 自身的分类身份，`CancelTags` 是一次成功激活发出的取消指令。两者都不写入 ASC Owner Tag 容器。任一实际 AbilityTag 可以匹配同名 CancelTag 或其祖先，例如 `Ability.Action.Cast.Recall` 可被 `Ability.Action.Cast` 取消，反向不匹配。`ActivationTagQuery.BanedTags` 仍只负责阻止当前 Owner 状态下的新激活。
+`AbilityTags` 表示 Ability 自身的分类身份，`CancelTags` 是一次成功激活发出的取消指令。两者都不写入 ASC Owner Tag 容器。任一实际 AbilityTag 可以匹配同名 CancelTag 或其祖先，例如 `Skill.NormalAttack.One` 可被 `Skill.NormalAttack` 取消，反向不匹配。`ActivationTagQuery.BanedTags` 仍只负责阻止当前 Owner 状态下的新激活。
 
 GA Editor 分别校验 `AbilityTags` 与 `CancelTags` 列表内部是否重复，但允许两组之间有意匹配。SkillConfig 主动作可配置同一公共 AbilityTag 与 CancelTag，让新 Runtime 在启动时间轴前取消旧 Runtime；Controller 明确排除新 Runtime 自身。
+
+普通攻击使用 `Skill.NormalAttack` 作为公共取消分类，具体连段使用 `Skill.NormalAttack.One`、`Skill.NormalAttack.Two` 等叶标签表达身份。新一段普攻的 `CancelTags` 只配置公共父标签，因此新增第三段或更多段时不需要回写既有普攻资源。角色 Action Arbiter 只负责把输入交给 GAS 尝试激活；只有候选 Ability 成功进入 GAS 激活事务后，ASC 才按新 Ability 的 `CancelTags` 取消旧 Runtime。
 
 ## 3. 激活事务与事件顺序
 

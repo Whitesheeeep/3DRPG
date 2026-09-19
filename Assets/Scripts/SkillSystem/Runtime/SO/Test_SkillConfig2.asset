@@ -157,6 +157,9 @@ MonoBehaviour:
     startFrame: 8
     durationFrames: 6
     sampleIntervalFrames: 1
+    detectionId: 0
+    markerKey: {fileID: 0}
+    followMode: 0
     detectionData:
       rid: 3428733855027953665
   references:

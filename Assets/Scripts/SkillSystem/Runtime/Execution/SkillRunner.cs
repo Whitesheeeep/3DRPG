@@ -14,7 +14,7 @@ namespace RPG.SkillSystem
         private readonly SkillRuntimeModule module = new();
 
         /// <summary>
-        /// 在 Module 完成目标过滤和 Clip 内去重后转发命中事件。
+        /// 在 Module 完成目标过滤和 Detection ID 去重后转发命中事件。
         /// </summary>
         public event Action<SkillHitEventArgs> HitDetected
         {
@@ -51,6 +51,10 @@ namespace RPG.SkillSystem
         public SkillTransitionMask AllowedTransitions => module.AllowedTransitions;
         /// <summary>获取当前技能通道的全局播放倍率。</summary>
         public float PlaybackSpeed => module.PlaybackSpeed;
+        /// <summary>获取是否绘制运行时攻击检测查询形状。</summary>
+        public bool DrawAttackDetectionDebug => module.DrawAttackDetectionDebug;
+        /// <summary>获取攻击检测调试线框保留秒数；零表示当前帧。</summary>
+        public float AttackDetectionDebugDuration => module.AttackDetectionDebugDuration;
 
         #endregion
 
@@ -119,6 +123,16 @@ namespace RPG.SkillSystem
         public void SetPlaybackSpeed(float playbackSpeed)
         {
             module.SetPlaybackSpeed(playbackSpeed);
+        }
+
+        /// <summary>
+        /// 设置当前及后续技能是否绘制攻击检测查询形状。
+        /// </summary>
+        /// <param name="enabled">是否启用调试绘制。</param>
+        /// <param name="duration">线框保留秒数；必须是有限非负数。</param>
+        public void SetAttackDetectionDebug(bool enabled, float duration)
+        {
+            module.SetAttackDetectionDebug(enabled, duration);
         }
 
         /// <summary>

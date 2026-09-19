@@ -59,7 +59,7 @@ namespace RPG.SkillSystem.Editor
         }
 
         /// <summary>
-        /// 切换播放控制器使用的配置并复位播放头。
+        /// 切换播放控制器使用的配置并复位播放头；Preview 会先清理旧 Config 会话，再采样新配置第 0 帧。
         /// </summary>
         public void SetSkillConfig(SkillConfig skillConfig)
         {

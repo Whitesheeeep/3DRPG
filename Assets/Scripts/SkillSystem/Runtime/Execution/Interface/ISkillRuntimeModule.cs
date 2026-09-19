@@ -11,7 +11,7 @@ namespace RPG.SkillSystem
         #region 事件
 
         /// <summary>
-        /// 在攻击检测完成目标过滤和单个 Clip 命中去重后触发。
+        /// 在攻击检测完成目标过滤和 Detection ID 命中去重后触发。
         /// </summary>
         event Action<SkillHitEventArgs> HitDetected;
 
@@ -55,6 +55,12 @@ namespace RPG.SkillSystem
         /// </summary>
         float PlaybackSpeed { get; }
 
+        /// <summary>获取是否绘制运行时攻击检测查询形状。</summary>
+        bool DrawAttackDetectionDebug { get; }
+
+        /// <summary>获取攻击检测调试线框保留秒数；零表示当前帧。</summary>
+        float AttackDetectionDebugDuration { get; }
+
         #endregion
 
         #region 配置与播放
@@ -84,6 +90,14 @@ namespace RPG.SkillSystem
         /// <param name="playbackSpeed">范围为 0 到 2；0 表示冻结当前技能时间轴。</param>
         /// <exception cref="ArgumentOutOfRangeException">倍率不是有限数值或超出有效范围。</exception>
         void SetPlaybackSpeed(float playbackSpeed);
+
+        /// <summary>
+        /// 设置当前及后续技能是否绘制攻击检测查询形状。
+        /// </summary>
+        /// <param name="enabled">是否启用调试绘制。</param>
+        /// <param name="duration">线框保留秒数；必须是有限非负数。</param>
+        /// <exception cref="ArgumentOutOfRangeException">持续时间不是有限非负数。</exception>
+        void SetAttackDetectionDebug(bool enabled, float duration);
 
         /// <summary>
         /// 尝试启动技能；已有活动执行时不会自动抢占。

@@ -825,6 +825,8 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         {
             GameplayAbilityHandle firstHandle = source.GiveAbility(skillConfigAbility, 1);
             GameplayAbilityHandle secondHandle = source.GiveAbility(secondSkillConfigAbility, 1);
+            Expect("SkillConfig 替换测试的 AbilityTag 与 CancelTag 层级匹配",
+                MatchesAnyAbilityTag(skillConfigAbility.AbilityTags, secondSkillConfigAbility.CancelTags));
             source.TryActivateAbility(firstHandle, out GameplayAbilityRuntime firstRuntime);
             Expect("旧 SkillConfig 已占用 Module", firstRuntime != null && skillRuntimeHost.IsPlaying);
             bool activated = source.TryActivateAbility(secondHandle, out GameplayAbilityRuntime secondRuntime);
@@ -841,6 +843,22 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             Expect("取消后 SkillRuntime 阶段恢复为空",
                 skillRuntimeHost.CurrentPhase == ActionPhaseType.None &&
                 skillRuntimeHost.AllowedTransitions == SkillTransitionMask.None);
+        }
+
+        /// <summary>按 GAS 的实际标签匹配方向判断新 Ability 是否可以取消旧 Ability。</summary>
+        /// <param name="abilityTags">旧 Ability 的实际身份标签。</param>
+        /// <param name="cancelTags">新 Ability 发出的取消查询标签。</param>
+        /// <returns>存在实际标签匹配取消查询或其祖先时返回 true。</returns>
+        private static bool MatchesAnyAbilityTag(
+            IReadOnlyList<GameplayTag> abilityTags,
+            IReadOnlyList<GameplayTag> cancelTags)
+        {
+            for (int abilityIndex = 0; abilityIndex < abilityTags.Count; abilityIndex++)
+            for (int cancelIndex = 0; cancelIndex < cancelTags.Count; cancelIndex++)
+                if (abilityTags[abilityIndex].MatchesTag(cancelTags[cancelIndex]))
+                    return true;
+
+            return false;
         }
 
         /// <summary>执行一次 Linear Projectile 发射，并记录池化 Rigidbody 的生成 Pose 与飞行轨迹。</summary>

@@ -1,6 +1,7 @@
 using System;
 using RPG.Character.Animation;
 using RPG.Markers;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace RPG.SkillSystem
@@ -13,7 +14,8 @@ namespace RPG.SkillSystem
 
         [SerializeField, Tooltip("技能检测与无挂点表现使用的空间基准；为空时使用当前 Transform。")]
         private Transform origin;
-        [SerializeField, Tooltip("角色技能动画播放器；无动画角色可以为空。")]
+        [SerializeField, InfoBox("AnimationController 通过当前对象及其子对象查找；缺失时仅适用于不需要技能动画的角色。"),
+         Tooltip("角色技能动画播放器；无动画角色可以为空。")]
         private AnimationController animationController;
         [SerializeField, Tooltip("角色语义挂点提供器；不使用挂点时可以为空。")]
         private MarkerProvider markerProvider;
@@ -23,6 +25,10 @@ namespace RPG.SkillSystem
         private LayerMask attackLayerMask = ~0;
         [SerializeField, Tooltip("攻击检测对 Trigger 的查询规则。")]
         private QueryTriggerInteraction triggerInteraction = QueryTriggerInteraction.UseGlobal;
+        [SerializeField, Tooltip("是否在运行时绘制攻击检测查询区域。")]
+        private bool drawAttackDetectionDebug;
+        [SerializeField, MinValue(0f), Tooltip("攻击检测调试线框保留秒数；0 表示当前帧。")]
+        private float attackDetectionDebugDuration;
 
         private readonly SkillRuntimeModule module = new();
         private ISkillAttackTargetFilter targetFilter;
@@ -40,6 +46,10 @@ namespace RPG.SkillSystem
         public SkillTransitionMask AllowedTransitions => module.AllowedTransitions;
         /// <summary>获取共享技能通道的全局播放倍率。</summary>
         public float PlaybackSpeed => module.PlaybackSpeed;
+        /// <summary>获取是否绘制运行时攻击检测查询形状。</summary>
+        public bool DrawAttackDetectionDebug => module.DrawAttackDetectionDebug;
+        /// <summary>获取攻击检测调试线框保留秒数；零表示当前帧。</summary>
+        public float AttackDetectionDebugDuration => module.AttackDetectionDebugDuration;
 
         #endregion
 
@@ -93,6 +103,7 @@ namespace RPG.SkillSystem
                 triggerInteraction,
                 targetFilter);
             module.Initialize(actor, attack);
+            module.SetAttackDetectionDebug(drawAttackDetectionDebug, attackDetectionDebugDuration);
             initialized = true;
         }
 
@@ -131,6 +142,20 @@ namespace RPG.SkillSystem
         public void SetPlaybackSpeed(float playbackSpeed)
         {
             module.SetPlaybackSpeed(playbackSpeed);
+        }
+
+        /// <summary>
+        /// 设置当前及后续技能是否绘制攻击检测查询形状。
+        /// </summary>
+        /// <param name="enabled">是否启用调试绘制。</param>
+        /// <param name="duration">线框保留秒数；必须是有限非负数。</param>
+        /// <exception cref="ArgumentOutOfRangeException">持续时间不是有限非负数。</exception>
+        public void SetAttackDetectionDebug(bool enabled, float duration)
+        {
+            // 先让 Module 完成参数校验并同步当前执行，校验失败时不污染 Host 的序列化配置。
+            module.SetAttackDetectionDebug(enabled, duration);
+            drawAttackDetectionDebug = enabled;
+            attackDetectionDebugDuration = duration;
         }
 
         /// <summary>使用当前角色上下文和武器节点尝试播放指定 SkillConfig。</summary>
