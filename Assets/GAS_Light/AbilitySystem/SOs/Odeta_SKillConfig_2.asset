@@ -20,10 +20,17 @@ MonoBehaviour:
   - id: ca142fd2b54148d58fe732d6fdd3a688
     animationClip: {fileID: -7029741437066087888, guid: 1051cdea693e0924781493a08587e37b, type: 3}
     startFrame: 0
-    durationFrames: 40
+    durationFrames: 19
+    sourceStartFrame: 0
+    playbackSpeed: 1.3
+    fadeDuration: 0.1
+  - id: e6c215e9df9b45068fe8d1d24243c204
+    animationClip: {fileID: 7400000, guid: d408ff4b131a9c448b3ab312838279da, type: 2}
+    startFrame: 19
+    durationFrames: 25
     sourceStartFrame: 0
     playbackSpeed: 1
-    fadeDuration: 0.1
+    fadeDuration: 0.25
 --- !u!114 &-8001245120463325863
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -45,27 +52,45 @@ MonoBehaviour:
     startFrame: 0
     durationFrames: 5
     phase: 1
-    allowedTransitions: 0
+    isCancelable: 0
+    runtimeTags: []
+    blockAbilityTags:
+    - id: 126
   - id: 166fd2aa91dd41a5aed8f1d0e0092f70
     startFrame: 5
-    durationFrames: 7
+    durationFrames: 14
     phase: 2
-    allowedTransitions: 0
+    isCancelable: 0
+    runtimeTags: []
+    blockAbilityTags:
+    - id: 126
   - id: fa23cb2edbeb4737b9abd5901e14b2e4
-    startFrame: 12
-    durationFrames: 20
-    phase: 3
-    allowedTransitions: 4
-  - id: 1d42c1748e3f441e8e69af32ac14ac63
-    startFrame: 32
-    durationFrames: 6
-    phase: 3
-    allowedTransitions: 6
-  - id: d9b1c8f730934634940d46a5c3e260f4
-    startFrame: 38
+    startFrame: 19
     durationFrames: 2
     phase: 3
-    allowedTransitions: 7
+    isCancelable: 1
+    runtimeTags:
+    - id: 170
+    blockAbilityTags: []
+  - id: 1d42c1748e3f441e8e69af32ac14ac63
+    startFrame: 21
+    durationFrames: 5
+    phase: 3
+    isCancelable: 1
+    runtimeTags:
+    - id: 170
+    - id: 171
+    blockAbilityTags: []
+  - id: d9b1c8f730934634940d46a5c3e260f4
+    startFrame: 26
+    durationFrames: 18
+    phase: 3
+    isCancelable: 1
+    runtimeTags:
+    - id: 170
+    - id: 171
+    - id: 172
+    blockAbilityTags: []
 --- !u!114 &-2923219891937096454
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -108,11 +133,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: 3fdf06c5f1124ce49114e27b44409db2
   frameRate: 30
-  durationFrames: 40
+  durationFrames: 44
   isRootMotion: 1
   tracks:
   - {fileID: -8001245120463325863}
   - {fileID: -8557849228502035232}
+  - {fileID: 7555450318552349043}
   - {fileID: 655874227340850245}
   - {fileID: -2923219891937096454}
   - {fileID: 4915892064011505429}
@@ -172,3 +198,27 @@ MonoBehaviour:
     durationFrames: 31
     volume: 1
     pitch: 1
+--- !u!114 &7555450318552349043
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e7d25faf1df4c8a8d184c88fdcb89d8, type: 3}
+  m_Name: "\u52A8\u753B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: b3be91b31c74461b8ecb2b1a38caa7eb
+  muted: 0
+  displayName: "\u52A8\u753B\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: 3fdf186e72cf4620b1c68e80fd2b0e2a
+    animationClip: {fileID: 4960409498807354063, guid: 506e94c4333125c42aa1194fcc9a92cd, type: 3}
+    startFrame: 2
+    durationFrames: 25
+    sourceStartFrame: 0
+    playbackSpeed: 1.3
+    fadeDuration: 0.1

@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using RPG.PlayerInputSystem;
+using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
+using WS_Modules.GAS.Generated;
 using WS_Modules.GAS.GameplayAbilitySystem;
+using WS_Modules.GAS.TAG;
 
 namespace RPG.Character
 {
@@ -12,7 +15,7 @@ namespace RPG.Character
         #region 常量与依赖字段
 
         /// <summary>一次普通攻击成功后保留下一段连段索引的缩放时间。</summary>
-        private const float NormalAttackComboRetentionDuration = 1f;
+        private const float NormalAttackComboRetentionDuration = 3f;
 
         // 依赖字段由 CharacterActor 在属性集初始化完成后注入，生命周期与该角色实例一致。
         private GameplayAbilitySystemComponent abilitySystemComponent;
@@ -105,14 +108,17 @@ namespace RPG.Character
 
         /// <summary>按技能优先、普通攻击随后顺序尝试执行一个 Ability Press。</summary>
         /// <param name="inputRequests">玩家输入请求缓冲区。</param>
+        /// <param name="useComboHandoff">是否把本次 Primary 普攻作为实时连段交接启动。</param>
         /// <returns>本帧有 Ability 成功激活并消费 Press 时返回 true。</returns>
         /// <exception cref="ArgumentNullException">输入缓冲为空时抛出。</exception>
         /// <exception cref="InvalidOperationException">系统尚未初始化时抛出。</exception>
-        internal bool TryExecuteAbilityInput(IPlayerInputRequestBuffer inputRequests)
+        internal bool TryExecuteAbilityInput(IPlayerInputRequestBuffer inputRequests,
+            bool useComboHandoff = false)
         {
             if (!initialized) throw new InvalidOperationException("CharacterCombatSystem 尚未初始化。");
             if (inputRequests == null) throw new ArgumentNullException(nameof(inputRequests));
-            return ProcessSkillInputRequests(inputRequests) || ProcessNormalAttackInput(inputRequests);
+            return ProcessSkillInputRequests(inputRequests) ||
+                   ProcessNormalAttackInput(inputRequests, useComboHandoff);
         }
 
         // 技能输入按配置顺序尝试激活，首个成功激活后立即返回 true 并消费 Press；未成功激活时不消费 Press。
@@ -142,8 +148,10 @@ namespace RPG.Character
 
         /// <summary>冻结当前 Primary Press 的目标段位，并尝试激活对应普通攻击。</summary>
         /// <param name="inputRequests">玩家输入请求缓冲区。</param>
+        /// <param name="useComboHandoff">是否从当前普通攻击的取消窗口实时交接。</param>
         /// <returns>本帧成功激活普通攻击时返回 true。</returns>
-        private bool ProcessNormalAttackInput(IPlayerInputRequestBuffer inputRequests)
+        private bool ProcessNormalAttackInput(IPlayerInputRequestBuffer inputRequests,
+            bool useComboHandoff)
         {
             if (normalAttackHandles.Count == 0)
             {
@@ -170,9 +178,21 @@ namespace RPG.Character
             }
 
             GameplayAbilityHandle handle = normalAttackHandles[pendingNormalAttackIndex];
-            if (!abilitySystemComponent.TryActivateAbility(handle, out _))
+            // key：SetByCaller Tag；value：本次 Ability 是否使用 FirstActivePhase 入口。
+            IReadOnlyDictionary<GameplayTag, float> activationDataByTagMap = useComboHandoff
+                ? new Dictionary<GameplayTag, float>
+                {
+                    // 现有 Skill.ActiveAbility 只作为一次性入口标记，不写入 ASC Owner Tags。
+                    [GameplayTags.Tag_Skill_ActiveAbility] = 1f
+                }
+                : null;
+            if (!abilitySystemComponent.TryActivateAbility(handle, activationDataByTagMap, out _))
                 return false;
 
+            if (useComboHandoff)
+                Debug.Log(
+                    $"[CharacterCombatSystem] 普攻连段实时交接成功，index={pendingNormalAttackIndex}，入口=FirstActivePhase。",
+                    abilitySystemComponent);
             inputRequests.TryConfirmConsumed(request.PressHandle);
             nextNormalAttackIndex = (pendingNormalAttackIndex + 1) % normalAttackHandles.Count;
             comboRetentionRemaining = NormalAttackComboRetentionDuration;

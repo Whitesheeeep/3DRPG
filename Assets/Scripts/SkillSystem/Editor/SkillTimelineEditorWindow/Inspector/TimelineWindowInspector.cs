@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 using WS_Modules.UIModule.Editor;
 
@@ -32,12 +33,16 @@ namespace RPG.SkillSystem.Editor
             return root;
         }
 
-        // 根据窗口当前直接 Config 引用选择模块 Drawer。
+        /// <summary>
+        /// 根据窗口当前直接 Config 引用选择模块 Drawer，并先解除上一轮原生绑定。
+        /// </summary>
         private void Refresh()
         {
             if (root == null || window == null) return;
             fieldCommitController?.Dispose();
             fieldCommitController = null;
+            // 先解除旧 Track SerializedObject 的原生绑定，再重建当前选择的 PropertyField。
+            root.Unbind();
             root.Clear();
             object data = window.SelectedData;
             if (data == null)
@@ -69,12 +74,15 @@ namespace RPG.SkillSystem.Editor
             drawer.Draw(root, data, window.ViewModel, fieldCommitController);
         }
 
-        // Inspector 被销毁或切换目标时注销窗口事件，避免重复刷新。
+        /// <summary>
+        /// Inspector 被销毁或切换目标时注销窗口事件并解除 SerializedObject 绑定。
+        /// </summary>
         private void OnDetached(DetachFromPanelEvent _)
         {
             if (window != null) window.NativeInspectorChanged -= Refresh;
             fieldCommitController?.Dispose();
             fieldCommitController = null;
+            root?.Unbind();
             window = null;
             root = null;
         }

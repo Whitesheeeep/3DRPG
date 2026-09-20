@@ -62,6 +62,27 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         internal bool UpdateRuntimeTagCount(GameplayTag tag, int delta) =>
             MutableTags.UpdateTagCount(tag, delta);
 
+        /// <summary>由 Ability Runtime 同步其专用 BlockAbilityTags 引用计数。</summary>
+        /// <param name="runtime">发起同步的 Runtime。</param>
+        /// <param name="tag">需要更新的阻断 AbilityTag。</param>
+        /// <param name="delta">正数增加、负数移除引用。</param>
+        /// <returns>当前 Runtime 属于本 ASC 且计数更新成功时返回 true。</returns>
+        internal bool UpdateAbilityBlockTagCount(
+            GameplayAbilityRuntime runtime,
+            GameplayTag tag,
+            int delta) =>
+            abilityController.UpdateRuntimeBlockTagCount(runtime, tag, delta);
+
+        /// <summary>由 Runtime 终态清理其全部专用 BlockAbilityTags 引用。</summary>
+        /// <param name="runtime">需要释放阻断贡献的 Runtime。</param>
+        internal void ReleaseAbilityBlockTags(GameplayAbilityRuntime runtime) =>
+            abilityController.ReleaseRuntimeBlockTags(runtime);
+
+        /// <summary>由 Runtime 动态 CancelTag 请求复用 Controller 的唯一匹配扫描。</summary>
+        /// <param name="runtime">发起扫描的 Active Runtime。</param>
+        internal void RequestCancelAbilitiesMatching(GameplayAbilityRuntime runtime) =>
+            abilityController.RequestCancelAbilitiesMatching(runtime);
+
         // Attribute 结算必须绕过只读门面，由 ASC 内部统一持有可变实例。
         internal GameplayAttributeContainer MutableAttributes { get; private set; }
 

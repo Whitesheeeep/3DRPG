@@ -122,6 +122,71 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1001 &171923343
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 3807815003984333218, guid: 80487ac97fa5b0643a608f804c1efed8, type: 3}
+      propertyPath: m_Name
+      value: "\u5965\u9EDB\u5854"
+      objectReference: {fileID: 0}
+    - target: {fileID: 4573191910542188333, guid: 80487ac97fa5b0643a608f804c1efed8, type: 3}
+      propertyPath: nextEdgeMaterial_Pass4
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 4573191910542188333, guid: 80487ac97fa5b0643a608f804c1efed8, type: 3}
+      propertyPath: nextEdgeMaterial_Pass8
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 8690159965217775205, guid: 80487ac97fa5b0643a608f804c1efed8, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8690159965217775205, guid: 80487ac97fa5b0643a608f804c1efed8, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8690159965217775205, guid: 80487ac97fa5b0643a608f804c1efed8, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8690159965217775205, guid: 80487ac97fa5b0643a608f804c1efed8, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8690159965217775205, guid: 80487ac97fa5b0643a608f804c1efed8, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8690159965217775205, guid: 80487ac97fa5b0643a608f804c1efed8, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8690159965217775205, guid: 80487ac97fa5b0643a608f804c1efed8, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8690159965217775205, guid: 80487ac97fa5b0643a608f804c1efed8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8690159965217775205, guid: 80487ac97fa5b0643a608f804c1efed8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8690159965217775205, guid: 80487ac97fa5b0643a608f804c1efed8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 80487ac97fa5b0643a608f804c1efed8, type: 3}
 --- !u!1 &249302648
 GameObject:
   m_ObjectHideFlags: 0
@@ -529,6 +594,36 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7535206280757991054, guid: f7cd217d74b5764469dfe3b43be8eb8c, type: 3}
   m_PrefabInstance: {fileID: 395654146}
   m_PrefabAsset: {fileID: 0}
+--- !u!21 &512984926
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: MMD4Mecanim/MMDLit-NEXTEdge-Pass4
+  m_Shader: {fileID: 4800000, guid: 684f8af9b4ff4bc459588db5b0f6275d, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: 2001
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _EdgeSize: 0.005
+    - _PostfixRenderQueue: 1
+    m_Colors:
+    - _EdgeColor: {r: 0.39999998, g: 1, b: 1, a: 1}
+  m_BuildTextureStacks: []
 --- !u!1 &997657069
 GameObject:
   m_ObjectHideFlags: 0
@@ -723,12 +818,15 @@ MonoBehaviour:
   markerProvider: {fileID: 0}
   config: {fileID: 11400000, guid: 335542837cf153a4aae423f0d0ffb3ee, type: 2}
   replacementConfig: {fileID: 0}
+  startMode: 0
   weaponRoot: {fileID: 0}
   weaponTip: {fileID: 0}
   attackLayerMask:
     serializedVersion: 2
     m_Bits: 55
   triggerInteraction: 0
+  drawAttackDetectionDebug: 0
+  attackDetectionDebugDuration: 0
 --- !u!114 &1368098592
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -741,6 +839,36 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01606c56eaec7b14a94a25039b58cee7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!21 &1683447402
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: MMD4Mecanim/MMDLit-NEXTEdge-Pass8
+  m_Shader: {fileID: 4800000, guid: ff1e1d0bbf6980244a107d25ff535f9a, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: 2001
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _EdgeSize: 0.005
+    - _PostfixRenderQueue: 1
+    m_Colors:
+    - _EdgeColor: {r: 0.39999998, g: 1, b: 1, a: 1}
+  m_BuildTextureStacks: []
 --- !u!1 &1730333831
 GameObject:
   m_ObjectHideFlags: 0
@@ -6705,3 +6833,4 @@ SceneRoots:
   - {fileID: 1730333835}
   - {fileID: 1368098589}
   - {fileID: 543450653084183775}
+  - {fileID: 171923343}

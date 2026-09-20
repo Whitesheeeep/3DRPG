@@ -137,11 +137,11 @@ Preview Handler 直接从 `SkillConfig.Tracks.OfType<TTrack>()` 读取对应 Tra
 当前整数帧
 → 在 ActionPhaseTrackConfig.Clips 中查找覆盖该帧的区间
 → 读取 ActionPhaseSkillClipConfig.Phase
-→ 读取 AllowedTransitions
+→ 读取 IsCancelable、RuntimeTags 和 BlockAbilityTags
 → 未来 FullBody Action Execution 与 Arbiter 决定候选转换
 ```
 
-阶段允许重复出现，编辑器只约束同轨区间不重叠。`AllowedTransitions` 只声明移动、跳跃或其他 Ability 可以在该窗口尝试转换，不直接取消当前技能，也不保证目标动作执行成功。Ability 仍通过 GAS `TryActivateAbility` 判断；该轨道不接受 Project 素材拖入，也不注册 Preview Handler。
+阶段允许重复出现，编辑器只约束同轨区间不重叠。`RuntimeTags` 只声明移动、跳跃或其他 Ability 是否可以在该窗口尝试转换，`BlockAbilityTags` 声明当前 Clip 阻止哪些候选 Ability；它们不直接取消当前技能，也不保证目标动作执行成功。Ability 仍通过 GAS `TryActivateAbility` 判断；该轨道不接受 Project 素材拖入，也不注册 Preview Handler。
 
 ## 5. Event Track 类型化事件
 

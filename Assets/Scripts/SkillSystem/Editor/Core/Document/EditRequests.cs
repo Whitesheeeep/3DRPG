@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using RPG.Markers;
 using UnityEngine;
+using WS_Modules.GAS.TAG;
 
 /**************************************
  * 时间轴编辑请求相关类型定义，每次请求编辑时处理，避免直接操作数据
@@ -120,14 +121,16 @@ namespace RPG.SkillSystem.Editor
         }
     }
     /// <summary>
-    /// 描述动作阶段片段 Inspector 提交的一次完整区间、阶段和转换窗口设置。
+    /// 描述动作阶段片段 Inspector 提交的一次完整区间和 Runtime 策略设置。
     /// </summary>
     internal readonly struct ActionPhaseEditRequest : IItemEditRequest
     {
         public int StartFrame { get; }
         public int DurationFrames { get; }
         public ActionPhaseType Phase { get; }
-        public SkillTransitionMask AllowedTransitions { get; }
+        public bool IsCancelable { get; }
+        public IReadOnlyList<GameplayTag> RuntimeTags { get; }
+        public IReadOnlyList<GameplayTag> BlockAbilityTags { get; }
 
         /// <summary>
         /// 创建并初始化动作阶段编辑请求。
@@ -135,14 +138,31 @@ namespace RPG.SkillSystem.Editor
         /// <param name="startFrame">半开区间起始帧。</param>
         /// <param name="durationFrames">区间持续帧数。</param>
         /// <param name="phase">动作阶段。</param>
-        /// <param name="allowedTransitions">当前阶段开放的外部转换窗口。</param>
+        /// <param name="isCancelable">当前阶段是否接受普通取消。</param>
+        /// <param name="runtimeTags">当前阶段贡献的 RuntimeTags。</param>
+        /// <param name="blockAbilityTags">当前阶段完整采用的阻断标签。</param>
         public ActionPhaseEditRequest(int startFrame, int durationFrames,
-            ActionPhaseType phase, SkillTransitionMask allowedTransitions)
+            ActionPhaseType phase, bool isCancelable,
+            IReadOnlyList<GameplayTag> runtimeTags,
+            IReadOnlyList<GameplayTag> blockAbilityTags)
         {
             StartFrame = startFrame;
             DurationFrames = durationFrames;
             Phase = phase;
-            AllowedTransitions = allowedTransitions;
+            IsCancelable = isCancelable;
+            RuntimeTags = CopyTags(runtimeTags);
+            BlockAbilityTags = CopyTags(blockAbilityTags);
+        }
+
+        /// <summary>复制编辑器控件提供的 RuntimeTag 数组，隔离 UI 草稿生命周期。</summary>
+        /// <param name="source">控件当前标签列表。</param>
+        /// <returns>稳定数组快照。</returns>
+        private static GameplayTag[] CopyTags(IReadOnlyList<GameplayTag> source)
+        {
+            if (source == null || source.Count == 0) return Array.Empty<GameplayTag>();
+            var copy = new GameplayTag[source.Count];
+            for (int i = 0; i < source.Count; i++) copy[i] = source[i];
+            return copy;
         }
     }
     /// <summary>

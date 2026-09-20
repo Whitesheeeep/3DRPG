@@ -18,6 +18,8 @@ MonoBehaviour:
   description: Test asynchronous Ability driven by a one second WaitDuration task.
   abilityTags: []
   cancelTags: []
+  blockAbilityTags: []
+  isCancelable: 1
   activationTagQuery:
     allTags: []
     anyTags: []

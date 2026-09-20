@@ -19,6 +19,8 @@ MonoBehaviour:
     ASC \u65F6\u7ED3\u7B97 Effects\u3002"
   abilityTags: []
   cancelTags: []
+  blockAbilityTags: []
+  isCancelable: 1
   activationTagQuery:
     allTags: []
     anyTags: []

@@ -15,7 +15,7 @@ namespace RPG.Character
     public sealed class CharacterDefaultWeaponData
     {
         [SerializeField, LabelText("武器类型")] private WeaponType weaponType = WeaponType.Sword;
-        [SerializeField, LabelText("默认武器 Definition")] private ItemId weaponDefinitionId = new ItemId("weapon_0003");
+        [SerializeField, LabelText("默认武器 Definition"), ItemIdDropdown] private ItemId weaponDefinitionId = new ItemId("weapon_0003");
 
         /// <summary>获取该映射覆盖的武器类型。</summary>
         public WeaponType WeaponType => weaponType;

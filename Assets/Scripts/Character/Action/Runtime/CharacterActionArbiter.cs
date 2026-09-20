@@ -4,6 +4,7 @@ using RPG.PlayerInputSystem;
 using RPG.SkillSystem;
 using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
+using WS_Modules.GAS.Generated;
 using WS_Modules.GAS.GameplayAbilitySystem;
 
 namespace RPG.Character
@@ -51,11 +52,8 @@ namespace RPG.Character
 
         /// <summary>登记当前角色唯一的 FullBody Skill Runtime。</summary>
         /// <param name="runtime">已经成功启动 SkillRuntimeHost 的 Ability Runtime。</param>
-        /// <param name="initialTransitions">当前动作阶段开放的转换窗口。</param>
         /// <returns>控制本次注册生命周期的 Handle。</returns>
-        public FullBodyActionHandle RegisterFullBodyAction(
-            GameplayAbilityRuntime runtime,
-            SkillTransitionMask initialTransitions)
+        public FullBodyActionHandle RegisterFullBodyAction(GameplayAbilityRuntime runtime)
         {
             if (disposed)
                 throw new ObjectDisposedException(nameof(CharacterActionArbiter));
@@ -68,11 +66,10 @@ namespace RPG.Character
             int registrationId = ++nextRegistrationId;
             currentFullBodyExecution = new FullBodySkillExecution(
                 registrationId,
-                runtime,
-                initialTransitions);
+                runtime);
             blackboard.IsFullBodyActionOccupied = true;
             Debug.Log(
-                $"[CharacterActionArbiter] 角色 '{owner.name}' 注册 FullBody Ability，ActivationId={runtime.ActivationId}，AllowedTransitions={initialTransitions}。",
+                $"[CharacterActionArbiter] 角色 '{owner.name}' 注册 FullBody Ability，ActivationId={runtime.ActivationId}，RuntimeTags={runtime.RuntimeTags.Count}。",
                 owner);
             return new FullBodyActionHandle(this, registrationId);
         }
@@ -90,44 +87,29 @@ namespace RPG.Character
             // 没有 FullBody 占据时，Ability 输入仍统一经过同一个执行入口；Jump 和 Move 留给 Locomotion。
             if (execution == null)
             {
-                abilityExecution.TryExecute(inputRequests);
+                abilityExecution.TryExecute(inputRequests, false);
                 return;
             }
 
-            if ((execution.AllowedTransitions & SkillTransitionMask.Ability) != 0 &&
-                abilityExecution.TryExecute(inputRequests))
+            if (execution.Runtime.RuntimeTags.HasTag(GameplayTags.Tag_Skill_Window_CancelBy_Ability) &&
+                abilityExecution.TryExecute(inputRequests,
+                    execution.Runtime.AbilityTags.HasTag(GameplayTags.Tag_Skill_NormalAttack)))
                 return;
 
             // Ability 激活可能同步替换 FullBody Runtime；后续候选必须使用刷新后的当前执行。
             execution = currentFullBodyExecution;
             if (execution == null)
                 return;
-            if ((execution.AllowedTransitions & SkillTransitionMask.Jump) != 0 &&
+            if (execution.Runtime.RuntimeTags.HasTag(GameplayTags.Tag_Skill_Window_CancelBy_Jump) &&
                 jumpExecution.TryExecute(inputRequests, execution))
                 return;
 
             // 同样，Jump 激活可能同步替换 FullBody Runtime；后续候选必须使用刷新后的当前执行。
             execution = currentFullBodyExecution;
             if (execution != null &&
-                (execution.AllowedTransitions & SkillTransitionMask.Move) != 0 &&
+                execution.Runtime.RuntimeTags.HasTag(GameplayTags.Tag_Skill_Window_CancelBy_Move) &&
                 blackboard.HasMovement)
                 moveExecution.TryExecute(execution);
-        }
-
-        /// <summary>更新仍属于当前注册记录的 Skill 转换窗口。</summary>
-        /// <param name="registrationId">Handle 保存的注册标识。</param>
-        /// <param name="allowedTransitions">新的转换权限组合。</param>
-        internal void UpdateAllowedTransitions(int registrationId, SkillTransitionMask allowedTransitions)
-        {
-            if (disposed || currentFullBodyExecution == null ||
-                currentFullBodyExecution.RegistrationId != registrationId ||
-                currentFullBodyExecution.AllowedTransitions == allowedTransitions)
-                return;
-
-            currentFullBodyExecution.UpdateAllowedTransitions(allowedTransitions);
-            Debug.Log(
-                $"[CharacterActionArbiter] 角色 '{owner.name}' 更新 FullBody 转换窗口，ActivationId={currentFullBodyExecution.ActivationId}，AllowedTransitions={allowedTransitions}。",
-                owner);
         }
 
         /// <summary>注销与 Handle 标识匹配的 FullBody 执行并归还 Blackboard 占据。</summary>

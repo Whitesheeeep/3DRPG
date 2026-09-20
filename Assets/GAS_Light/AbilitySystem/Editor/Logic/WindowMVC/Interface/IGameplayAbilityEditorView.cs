@@ -99,8 +99,11 @@ namespace WS_Modules.GAS.Editor
         void ShowError(string message);
         /// <summary>请求用户确认删除当前 GA。</summary>
         bool ConfirmDelete(GameplayAbilityData ability);
-        /// <summary>重命名失败后恢复指定资产的行内输入。</summary>
-        void RestoreRename(GameplayAbilityData ability, string attemptedName);
+        /// <summary>重命名失败后恢复指定资产的行内输入并显示非模态错误。</summary>
+        /// <param name="ability">重命名失败的 GA 资产。</param>
+        /// <param name="attemptedName">用户最后一次提交的名称。</param>
+        /// <param name="error">AssetDatabase 返回的失败原因。</param>
+        void RestoreRename(GameplayAbilityData ability, string attemptedName, string error);
     }
 }
 #endif

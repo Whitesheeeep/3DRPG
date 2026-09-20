@@ -1,9 +1,22 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using WS_Modules.GAS.GameplayAbilitySystem;
+using WS_Modules.GAS.TAG;
 
 namespace RPG.SkillSystem
 {
+    /// <summary>
+    /// 描述 SkillConfig 本次执行采用的时间轴入口语义。
+    /// </summary>
+    public enum SkillStartMode
+    {
+        /// <summary>从完整时间轴的第 0 帧进入，保留 Startup 表现。</summary>
+        TimelineStart = 0,
+        /// <summary>从最早 Active Phase 的起始帧进入，用于上一段普通攻击的实时交接。</summary>
+        FirstActivePhase = 1
+    }
+
     /// <summary>
     /// 标识一次技能执行结束的原因；外部状态机据此处理后续业务，动画处理器负责归还技能动画层。
     /// </summary>
@@ -48,7 +61,7 @@ namespace RPG.SkillSystem
     }
 
     /// <summary>
-    /// 保存一次 SkillExecution 在指定逻辑帧切换后的动作阶段与转换窗口快照。
+    /// 保存一次 SkillExecution 在指定逻辑帧切换后的动作阶段与 Runtime 策略快照。
     /// </summary>
     public readonly struct SkillActionPhaseChangedEventArgs
     {
@@ -56,26 +69,38 @@ namespace RPG.SkillSystem
         public SkillConfig Config { get; }
         public int Frame { get; }
         public ActionPhaseType Phase { get; }
-        public SkillTransitionMask AllowedTransitions { get; }
+        public bool HasPhasePolicy { get; }
+        public bool IsCancelable { get; }
+        public IReadOnlyList<GameplayTag> RuntimeTags { get; }
+        public IReadOnlyList<GameplayTag> BlockAbilityTags { get; }
 
         /// <summary>创建动作阶段变化事件快照。</summary>
         /// <param name="executionId">Module 内单调递增的执行标识。</param>
         /// <param name="config">本次执行使用的 SkillConfig。</param>
         /// <param name="frame">阶段状态生效的整数逻辑帧。</param>
         /// <param name="phase">当前动作阶段。</param>
-        /// <param name="allowedTransitions">当前阶段允许外部逻辑尝试的转换类型。</param>
+        /// <param name="hasPhasePolicy">当前是否存在覆盖策略的 Clip。</param>
+        /// <param name="isCancelable">当前 Phase 是否接受普通取消。</param>
+        /// <param name="runtimeTags">当前 Phase 贡献的 RuntimeTags 快照。</param>
+        /// <param name="blockAbilityTags">当前 Phase 使用的完整 BlockAbilityTags 快照。</param>
         public SkillActionPhaseChangedEventArgs(
             ulong executionId,
             SkillConfig config,
             int frame,
             ActionPhaseType phase,
-            SkillTransitionMask allowedTransitions)
+            bool hasPhasePolicy,
+            bool isCancelable,
+            IReadOnlyList<GameplayTag> runtimeTags,
+            IReadOnlyList<GameplayTag> blockAbilityTags)
         {
             ExecutionId = executionId;
             Config = config;
             Frame = frame;
             Phase = phase;
-            AllowedTransitions = allowedTransitions;
+            HasPhasePolicy = hasPhasePolicy;
+            IsCancelable = isCancelable;
+            RuntimeTags = runtimeTags ?? Array.Empty<GameplayTag>();
+            BlockAbilityTags = blockAbilityTags ?? Array.Empty<GameplayTag>();
         }
     }
 
@@ -125,6 +150,7 @@ namespace RPG.SkillSystem
         public SkillConfig Config { get; }
         public Transform WeaponRoot { get; }
         public Transform WeaponTip { get; }
+        public SkillStartMode StartMode { get; }
 
         /// <summary>
         /// 创建技能播放请求。
@@ -132,11 +158,14 @@ namespace RPG.SkillSystem
         /// <param name="config">本次执行使用的技能配置。</param>
         /// <param name="weaponRoot">当前武器刀根；非 WeaponTrace 技能可为空。</param>
         /// <param name="weaponTip">当前武器刀尖；非 WeaponTrace 技能可为空。</param>
-        public SkillPlayRequest(SkillConfig config, Transform weaponRoot = null, Transform weaponTip = null)
+        /// <param name="startMode">本次执行从第 0 帧还是最早 Active Phase 进入。</param>
+        public SkillPlayRequest(SkillConfig config, Transform weaponRoot = null, Transform weaponTip = null,
+            SkillStartMode startMode = SkillStartMode.TimelineStart)
         {
             Config = config;
             WeaponRoot = weaponRoot;
             WeaponTip = weaponTip;
+            StartMode = startMode;
         }
     }
 

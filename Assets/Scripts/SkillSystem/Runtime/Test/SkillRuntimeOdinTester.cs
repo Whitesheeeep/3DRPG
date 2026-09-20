@@ -24,6 +24,7 @@ namespace RPG.SkillSystem.Editor
         [Title("播放输入")]
         [SerializeField] private SkillConfig config;
         [SerializeField] private SkillConfig replacementConfig;
+        [SerializeField] private SkillStartMode startMode = SkillStartMode.TimelineStart;
         [SerializeField] private Transform weaponRoot;
         [SerializeField] private Transform weaponTip;
         [SerializeField] private LayerMask attackLayerMask = ~0;
@@ -81,9 +82,29 @@ namespace RPG.SkillSystem.Editor
         [Button("播放技能")]
         public void PlaySkill()
         {
-            SkillStartResult result = runner.TryPlay(new SkillPlayRequest(config, weaponRoot, weaponTip));
+            SkillStartResult result = runner.TryPlay(
+                new SkillPlayRequest(config, weaponRoot, weaponTip, startMode));
             Debug.Log($"[SkillRuntimeTest] Play succeeded={result.Succeeded}, message={result.Message}, " +
-                      $"config={(config != null ? config.name : "<null>")}", this);
+                      $"config={(config != null ? config.name : "<null>")}, startMode={startMode}, " +
+                      $"currentFrame={runner.CurrentFrame}", this);
+        }
+
+        /// <summary>
+        /// 从完整时间轴第 0 帧播放当前 SkillConfig，手动确认 Startup 会被保留。
+        /// </summary>
+        [Button("从第 0 帧播放")]
+        public void PlayFromTimelineStart()
+        {
+            PlayWithStartMode(SkillStartMode.TimelineStart);
+        }
+
+        /// <summary>
+        /// 从最早 Active Phase 播放当前 SkillConfig，手动确认入口帧与首个 LateTick 攻击检测。
+        /// </summary>
+        [Button("从最早 Active 播放")]
+        public void PlayFromFirstActivePhase()
+        {
+            PlayWithStartMode(SkillStartMode.FirstActivePhase);
         }
 
         /// <summary>
@@ -128,13 +149,29 @@ namespace RPG.SkillSystem.Editor
         }
 
         /// <summary>
-        /// 输出当前帧、动作阶段和转换窗口，供后续 Action Execution 接入前手动验证。
+        /// 使用指定入口模式播放当前配置，并输出解析后的首帧状态。
+        /// </summary>
+        /// <param name="requestedStartMode">需要验证的时间轴入口模式。</param>
+        private void PlayWithStartMode(SkillStartMode requestedStartMode)
+        {
+            SkillStartResult result = runner.TryPlay(
+                new SkillPlayRequest(config, weaponRoot, weaponTip, requestedStartMode));
+            Debug.Log(
+                $"[SkillRuntimeTest] StartMode={requestedStartMode}, succeeded={result.Succeeded}, " +
+                $"message={result.Message}, currentFrame={runner.CurrentFrame}, phase={runner.CurrentPhase}.",
+                this);
+        }
+
+        /// <summary>
+        /// 输出当前帧、动作阶段和 RuntimeTag 窗口，供 Action Arbiter 手动验证。
         /// </summary>
         [Button("打印运行状态")]
         public void PrintState()
         {
             Debug.Log($"[SkillRuntimeTest] playing={runner.IsPlaying}, frame={runner.CurrentFrame}, " +
-                      $"phase={runner.CurrentPhase}, allowedTransitions={runner.AllowedTransitions}", this);
+                      $"phase={runner.CurrentPhase}, hasPolicy={runner.HasCurrentPhasePolicy}, " +
+                      $"isCancelable={runner.CurrentPhaseIsCancelable}, runtimeTags={runner.CurrentPhaseRuntimeTags.Count}, " +
+                      $"blockTags={runner.CurrentPhaseBlockAbilityTags.Count}", this);
         }
 
         #endregion
@@ -162,14 +199,15 @@ namespace RPG.SkillSystem.Editor
         }
 
         /// <summary>
-        /// 输出 SkillRuntime 原生阶段事件，确认转换窗口不会被投影成 ASC GameplayTag。
+        /// 输出 SkillRuntime 原生阶段事件，确认 RuntimeTags 只属于单次执行。
         /// </summary>
         /// <param name="args">阶段与转换窗口快照。</param>
         private void OnActionPhaseChanged(SkillActionPhaseChangedEventArgs args)
         {
             Debug.Log($"[SkillRuntimeTest] PhaseChanged execution={args.ExecutionId}, " +
                       $"frame={args.Frame}, phase={args.Phase}, " +
-                      $"allowedTransitions={args.AllowedTransitions}", this);
+                      $"hasPolicy={args.HasPhasePolicy}, isCancelable={args.IsCancelable}, " +
+                      $"runtimeTags={args.RuntimeTags.Count}, blockTags={args.BlockAbilityTags.Count}", this);
         }
 
         #endregion

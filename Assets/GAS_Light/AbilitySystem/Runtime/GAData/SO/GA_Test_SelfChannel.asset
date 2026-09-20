@@ -19,6 +19,8 @@ MonoBehaviour:
     Instant Effects\uFF0C\u5E76\u5728\u542F\u52A8\u65F6\u7ACB\u5373\u6267\u884C\u9996\u8DF3\u3002"
   abilityTags: []
   cancelTags: []
+  blockAbilityTags: []
+  isCancelable: 1
   activationTagQuery:
     allTags: []
     anyTags: []

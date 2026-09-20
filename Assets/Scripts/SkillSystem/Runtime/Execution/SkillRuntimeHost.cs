@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using RPG.Character.Animation;
 using RPG.Markers;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using WS_Modules.GAS.TAG;
 
 namespace RPG.SkillSystem
 {
@@ -42,8 +44,14 @@ namespace RPG.SkillSystem
         public int CurrentFrame => module.CurrentFrame;
         /// <summary>获取当前动作阶段；空闲时为 None。</summary>
         public ActionPhaseType CurrentPhase => module.CurrentPhase;
-        /// <summary>获取当前阶段开放的外部转换窗口。</summary>
-        public SkillTransitionMask AllowedTransitions => module.AllowedTransitions;
+        /// <summary>获取当前是否存在覆盖策略的动作阶段 Clip。</summary>
+        public bool HasCurrentPhasePolicy => module.HasCurrentPhasePolicy;
+        /// <summary>获取当前动作阶段是否接受普通取消。</summary>
+        public bool CurrentPhaseIsCancelable => module.CurrentPhaseIsCancelable;
+        /// <summary>获取当前动作阶段的 RuntimeTags 快照。</summary>
+        public IReadOnlyList<GameplayTag> CurrentPhaseRuntimeTags => module.CurrentPhaseRuntimeTags;
+        /// <summary>获取当前动作阶段的完整 BlockAbilityTags 快照。</summary>
+        public IReadOnlyList<GameplayTag> CurrentPhaseBlockAbilityTags => module.CurrentPhaseBlockAbilityTags;
         /// <summary>获取共享技能通道的全局播放倍率。</summary>
         public float PlaybackSpeed => module.PlaybackSpeed;
         /// <summary>获取是否绘制运行时攻击检测查询形状。</summary>
@@ -160,11 +168,13 @@ namespace RPG.SkillSystem
 
         /// <summary>使用当前角色上下文和武器节点尝试播放指定 SkillConfig。</summary>
         /// <param name="config">本次播放的技能时间轴配置。</param>
+        /// <param name="startMode">从完整时间轴还是最早 Active Phase 进入。</param>
         /// <returns>Module 返回的成功状态或失败原因。</returns>
-        public SkillStartResult TryPlay(SkillConfig config)
+        public SkillStartResult TryPlay(SkillConfig config,
+            SkillStartMode startMode = SkillStartMode.TimelineStart)
         {
             if (!initialized) return SkillStartResult.Failure("SkillRuntimeHost 尚未完成 Awake 初始化。");
-            return module.TryPlay(new SkillPlayRequest(config, weaponRoot, weaponTip));
+            return module.TryPlay(new SkillPlayRequest(config, weaponRoot, weaponTip, startMode));
         }
 
         /// <summary>推进共享 Module 的普通时间轴阶段。</summary>

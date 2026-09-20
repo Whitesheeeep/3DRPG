@@ -250,14 +250,17 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         [Button("真实角色播放技能 2", ButtonSizes.Medium)]
         public void PlayRealCharacterSkill2() => ActivateRealCharacterSkill(realSecondSkillHandle, "Skill2");
 
-        /// <summary>输出真实角色当前时间轴帧、动作阶段与 SkillRuntime 转换窗口。</summary>
+        /// <summary>输出真实角色当前时间轴帧、动作阶段与 RuntimeTag 策略。</summary>
         [Button("输出真实角色技能状态")]
         public void LogRealCharacterSkillState()
         {
             if (!ValidateRealCharacterInputs()) return;
             Debug.Log($"[ASCTest][RealCharacter] Playing={realCharacterHost.IsPlaying}, " +
                       $"Frame={realCharacterHost.CurrentFrame}, Phase={realCharacterHost.CurrentPhase}, " +
-                      $"AllowedTransitions={realCharacterHost.AllowedTransitions}.", realCharacterAsc);
+                      $"HasPolicy={realCharacterHost.HasCurrentPhasePolicy}, " +
+                      $"IsCancelable={realCharacterHost.CurrentPhaseIsCancelable}, " +
+                      $"RuntimeTags={realCharacterHost.CurrentPhaseRuntimeTags.Count}, " +
+                      $"BlockTags={realCharacterHost.CurrentPhaseBlockAbilityTags.Count}.", realCharacterAsc);
         }
 
         /// <summary>取消真实角色全部 Ability、GE 与 SkillRuntime 执行，并重新导入测试 AttributeSet。</summary>
@@ -332,7 +335,8 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             Debug.Log($"[ASCTest][RealCharacter] {label} Activated={activated}, " +
                       $"Runtime={runtime?.State.ToString() ?? "null"}, " +
                       $"Frame={realCharacterHost.CurrentFrame}, Phase={realCharacterHost.CurrentPhase}, " +
-                      $"AllowedTransitions={realCharacterHost.AllowedTransitions}.", realCharacterAsc);
+                      $"HasPolicy={realCharacterHost.HasCurrentPhasePolicy}, " +
+                      $"RuntimeTags={realCharacterHost.CurrentPhaseRuntimeTags.Count}.", realCharacterAsc);
         }
 
         /// <summary>检查运行条件并初始化本轮汇总。</summary>
@@ -842,7 +846,8 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             source.TryCancelAbility(secondRuntime);
             Expect("取消后 SkillRuntime 阶段恢复为空",
                 skillRuntimeHost.CurrentPhase == ActionPhaseType.None &&
-                skillRuntimeHost.AllowedTransitions == SkillTransitionMask.None);
+                !skillRuntimeHost.HasCurrentPhasePolicy &&
+                skillRuntimeHost.CurrentPhaseRuntimeTags.Count == 0);
         }
 
         /// <summary>按 GAS 的实际标签匹配方向判断新 Ability 是否可以取消旧 Ability。</summary>

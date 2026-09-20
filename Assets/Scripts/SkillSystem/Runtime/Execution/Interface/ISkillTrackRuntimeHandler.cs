@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using WS_Modules.GAS.TAG;
+
 namespace RPG.SkillSystem
 {
     /// <summary>
@@ -43,6 +46,9 @@ namespace RPG.SkillSystem
     internal interface IActionPhaseRuntimeState
     {
         ActionPhaseType CurrentPhase { get; }
-        SkillTransitionMask AllowedTransitions { get; }
+        bool HasPhasePolicy { get; }
+        bool IsCancelable { get; }
+        IReadOnlyList<GameplayTag> RuntimeTags { get; }
+        IReadOnlyList<GameplayTag> BlockAbilityTags { get; }
     }
 }

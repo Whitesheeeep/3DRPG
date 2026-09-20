@@ -5,6 +5,8 @@ using System.Globalization;
 using RPG.SkillSystem.Editor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using WS_Modules.GAS.Generated;
+using WS_Modules.GAS.TAG;
 
 namespace RPG.SkillSystem.Editor
 {
@@ -57,7 +59,7 @@ namespace RPG.SkillSystem.Editor
             _ => item.GetType().Name
         };
 
-        // 将动作阶段枚举转换为紧凑中文标题，并显示已开放的转换窗口。
+        // 将动作阶段枚举转换为紧凑中文标题，并显示 RuntimeTag 转换窗口。
         private static string GetActionPhaseDisplayName(ActionPhaseSkillClipConfig item)
         {
             string phase = item.Phase switch
@@ -68,32 +70,26 @@ namespace RPG.SkillSystem.Editor
                 ActionPhaseType.Recovery => "后摇",
                 _ => item.Phase.ToString()
             };
-            string transitions = item.AllowedTransitions switch
-            {
-                SkillTransitionMask.None => string.Empty,
-                SkillTransitionMask.Move => "移",
-                SkillTransitionMask.Jump => "跳",
-                SkillTransitionMask.Ability => "技",
-                _ => string.Concat(
-                    item.AllowedTransitions.HasFlag(SkillTransitionMask.Move) ? "移/" : string.Empty,
-                    item.AllowedTransitions.HasFlag(SkillTransitionMask.Jump) ? "跳/" : string.Empty,
-                    item.AllowedTransitions.HasFlag(SkillTransitionMask.Ability) ? "技" : string.Empty).TrimEnd('/')
-            };
+            string transitions = GetActionPhaseTransitionDescription(item.RuntimeTags);
             return string.IsNullOrEmpty(transitions) ? phase : $"{phase} · {transitions}";
         }
 
         /// <summary>
-        /// 将转换窗口位标记转换为 Inspector 与时间轴 Tooltip 共用的完整中文描述。
+        /// 将 RuntimeTag 转换窗口转换为 Inspector 与时间轴 Tooltip 共用的完整中文描述。
         /// </summary>
-        /// <param name="transitions">当前动作阶段开放的转换窗口。</param>
+        /// <param name="transitions">当前动作阶段的 RuntimeTags。</param>
         /// <returns>转换窗口的中文名称；无权限时返回“无”。</returns>
-        protected static string GetActionPhaseTransitionDescription(SkillTransitionMask transitions)
+        protected static string GetActionPhaseTransitionDescription(IReadOnlyList<GameplayTag> transitions)
         {
-            if (transitions == SkillTransitionMask.None) return "无";
+            if (transitions == null || transitions.Count == 0) return string.Empty;
             List<string> names = new();
-            if (transitions.HasFlag(SkillTransitionMask.Move)) names.Add("移动");
-            if (transitions.HasFlag(SkillTransitionMask.Jump)) names.Add("跳跃");
-            if (transitions.HasFlag(SkillTransitionMask.Ability)) names.Add("其他 Ability");
+            for (int i = 0; i < transitions.Count; i++)
+            {
+                GameplayTag tag = transitions[i];
+                if (tag == GameplayTags.Tag_Skill_Window_CancelBy_Move) names.Add("移动");
+                else if (tag == GameplayTags.Tag_Skill_Window_CancelBy_Jump) names.Add("跳跃");
+                else if (tag == GameplayTags.Tag_Skill_Window_CancelBy_Ability) names.Add("其他 Ability");
+            }
             return string.Join("、", names);
         }
     }
@@ -151,7 +147,24 @@ namespace RPG.SkillSystem.Editor
             Element.tooltip = $"阶段：{GetDisplayName(item)}\n" +
                               $"起始帧：{item.StartFrame}\n" +
                               $"持续帧：{item.DurationFrames}\n" +
-                              $"允许转换：{GetActionPhaseTransitionDescription(item.AllowedTransitions)}";
+                              $"普通取消：{(item.IsCancelable ? "是" : "否")}\n" +
+                              $"Runtime 窗口：{GetActionPhaseTransitionDescription(item.RuntimeTags)}\n" +
+                              $"其他 RuntimeTag：{Math.Max(0, item.RuntimeTags.Count - CountWindowTags(item.RuntimeTags))}\n" +
+                              $"Block Tag 数量：{item.BlockAbilityTags.Count}";
+        }
+
+        /// <summary>统计动作阶段 RuntimeTags 中的标准转换窗口数量。</summary>
+        /// <param name="tags">当前阶段 RuntimeTags。</param>
+        /// <returns>标准窗口 Tag 数量。</returns>
+        private static int CountWindowTags(IReadOnlyList<GameplayTag> tags)
+        {
+            int count = 0;
+            for (int i = 0; i < tags.Count; i++)
+                if (tags[i] == GameplayTags.Tag_Skill_Window_CancelBy_Move ||
+                    tags[i] == GameplayTags.Tag_Skill_Window_CancelBy_Jump ||
+                    tags[i] == GameplayTags.Tag_Skill_Window_CancelBy_Ability)
+                    count++;
+            return count;
         }
     }
     /// <summary>

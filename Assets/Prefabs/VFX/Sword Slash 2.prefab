@@ -9820,7 +9820,7 @@ GameObject:
   - component: {fileID: 4775681412446352}
   - component: {fileID: 198412930389571108}
   - component: {fileID: 199199916559843444}
-  - component: {fileID: -1533923763809515071}
+  - component: {fileID: -2463685183060103080}
   m_Layer: 0
   m_Name: Sword Slash 2
   m_TagString: Untagged
@@ -14724,7 +14724,7 @@ ParticleSystemRenderer:
   m_MeshWeighting2: 1
   m_MeshWeighting3: 1
   m_MaskInteraction: 0
---- !u!114 &-1533923763809515071
+--- !u!114 &-2463685183060103080
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -14733,7 +14733,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1294101409476956}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c111a7fefea640488e604f5690c8e8e2, type: 3}
+  m_Script: {fileID: 11500000, guid: 326871ad64dd4a889673e10747ff46d9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   key: Sword Slash 2

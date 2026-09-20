@@ -61,7 +61,35 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  attributeGrowthCurves: []
+  attributeGrowthCurves:
+  - attribute:
+      id: 1
+      name: MaxHealth
+      displayName: "\u751F\u547D\u503C\u4E0A\u9650"
+    baseValueCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 1
+        value: 500
+        inSlope: 50.5618
+        outSlope: 50.5618
+        tangentMode: 34
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0.33333334
+      - serializedVersion: 3
+        time: 90
+        value: 5000
+        inSlope: 50.5618
+        outSlope: 50.5618
+        tangentMode: 34
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
   levelOverrides: []
   bakedLevelProgressions:
   - level: 1

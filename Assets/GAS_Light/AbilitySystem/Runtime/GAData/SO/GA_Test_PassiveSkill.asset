@@ -18,6 +18,8 @@ MonoBehaviour:
   description: Editor validation fixture for a Passive Gameplay Ability.
   abilityTags: []
   cancelTags: []
+  blockAbilityTags: []
+  isCancelable: 1
   activationTagQuery:
     allTags: []
     anyTags: []

@@ -46,24 +46,30 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_Intent_Interaction_Previous = new GameplayTag(143);
         /// <summary>Intent.WantInteract</summary>
         public static readonly GameplayTag Tag_Intent_WantInteract = new GameplayTag(139);
-        /// <summary>MyTag</summary>
-        public static readonly GameplayTag Tag_MyTag = new GameplayTag(102);
-        /// <summary>MyTag.的</summary>
-        public static readonly GameplayTag Tag_MyTag_的 = new GameplayTag(103);
-        /// <summary>NewTag</summary>
-        public static readonly GameplayTag Tag_NewTag = new GameplayTag(104);
-        /// <summary>NewTag.NewTag1</summary>
-        public static readonly GameplayTag Tag_NewTag_NewTag1 = new GameplayTag(105);
-        /// <summary>NewTag.NewTag1.NewTag6</summary>
-        public static readonly GameplayTag Tag_NewTag_NewTag1_NewTag6 = new GameplayTag(106);
         /// <summary>Skill</summary>
         public static readonly GameplayTag Tag_Skill = new GameplayTag(126);
+        /// <summary>Skill.ActiveAbility</summary>
+        public static readonly GameplayTag Tag_Skill_ActiveAbility = new GameplayTag(167);
         /// <summary>Skill.NormalAttack</summary>
         public static readonly GameplayTag Tag_Skill_NormalAttack = new GameplayTag(164);
+        /// <summary>Skill.NormalAttack.Four</summary>
+        public static readonly GameplayTag Tag_Skill_NormalAttack_Four = new GameplayTag(174);
         /// <summary>Skill.NormalAttack.One</summary>
         public static readonly GameplayTag Tag_Skill_NormalAttack_One = new GameplayTag(165);
+        /// <summary>Skill.NormalAttack.Three</summary>
+        public static readonly GameplayTag Tag_Skill_NormalAttack_Three = new GameplayTag(173);
         /// <summary>Skill.NormalAttack.Two</summary>
         public static readonly GameplayTag Tag_Skill_NormalAttack_Two = new GameplayTag(166);
+        /// <summary>Skill.Window</summary>
+        public static readonly GameplayTag Tag_Skill_Window = new GameplayTag(168);
+        /// <summary>Skill.Window.CancelBy</summary>
+        public static readonly GameplayTag Tag_Skill_Window_CancelBy = new GameplayTag(169);
+        /// <summary>Skill.Window.CancelBy.Ability</summary>
+        public static readonly GameplayTag Tag_Skill_Window_CancelBy_Ability = new GameplayTag(170);
+        /// <summary>Skill.Window.CancelBy.Jump</summary>
+        public static readonly GameplayTag Tag_Skill_Window_CancelBy_Jump = new GameplayTag(171);
+        /// <summary>Skill.Window.CancelBy.Move</summary>
+        public static readonly GameplayTag Tag_Skill_Window_CancelBy_Move = new GameplayTag(172);
         /// <summary>State</summary>
         public static readonly GameplayTag Tag_State = new GameplayTag(129);
         /// <summary>State.Block</summary>
@@ -102,15 +108,5 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_State_Locomotion_WalkStart = new GameplayTag(149);
         /// <summary>State.Skill</summary>
         public static readonly GameplayTag Tag_State_Skill = new GameplayTag(130);
-        /// <summary>Test</summary>
-        public static readonly GameplayTag Tag_Test = new GameplayTag(107);
-        /// <summary>Test.GE</summary>
-        public static readonly GameplayTag Tag_Test_GE = new GameplayTag(109);
-        /// <summary>Test.GE.Granted</summary>
-        public static readonly GameplayTag Tag_Test_GE_Granted = new GameplayTag(110);
-        /// <summary>Test.GE.Required</summary>
-        public static readonly GameplayTag Tag_Test_GE_Required = new GameplayTag(111);
-        /// <summary>Test.Test_SetByCaller</summary>
-        public static readonly GameplayTag Tag_Test_Test_SetByCaller = new GameplayTag(108);
     }
 }

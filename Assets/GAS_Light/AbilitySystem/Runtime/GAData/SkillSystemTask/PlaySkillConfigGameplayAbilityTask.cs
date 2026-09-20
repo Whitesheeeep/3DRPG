@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.GameplayAbilitySystem;
 using WS_Modules.GAS.GameplayCue;
+using WS_Modules.GAS.TAG;
 using RPG.Character;
 
 namespace RPG.SkillSystem
@@ -13,6 +15,8 @@ namespace RPG.SkillSystem
         #region 字段
 
         private readonly SkillConfig skillConfig;
+        private readonly SkillStartMode startMode;
+        private bool suppressNextAnimatorMotion;
         private ISkillRuntimeHost host;
         private bool subscribed;
         private IMotionDriver motionDriver;
@@ -24,15 +28,30 @@ namespace RPG.SkillSystem
 
         #region 构造
 
-        /// <summary>创建尚未占用角色 SkillRuntimeHost 的播放 Task。</summary>
+        /// <summary>
+        /// 创建采用默认完整时间轴入口的播放 Task，兼容旧的直接构造调用。
+        /// </summary>
         /// <param name="runtime">拥有该 Task 的异步 Runtime。</param>
         /// <param name="config">启动时需要播放的 SkillConfig。</param>
         public PlaySkillConfigGameplayAbilityTask(
             AsynchronousGameplayAbilityRuntime runtime,
             SkillConfig config)
+            : this(runtime, config, SkillStartMode.TimelineStart)
+        {
+        }
+
+        /// <summary>创建尚未占用角色 SkillRuntimeHost 的播放 Task。</summary>
+        /// <param name="runtime">拥有该 Task 的异步 Runtime。</param>
+        /// <param name="config">启动时需要播放的 SkillConfig。</param>
+        /// <param name="requestedStartMode">由 SetByCaller 快照解析出的时间轴入口模式。</param>
+        public PlaySkillConfigGameplayAbilityTask(
+            AsynchronousGameplayAbilityRuntime runtime,
+            SkillConfig config,
+            SkillStartMode requestedStartMode)
             : base(runtime)
         {
             skillConfig = config;
+            startMode = requestedStartMode;
         }
 
         #endregion
@@ -77,16 +96,30 @@ namespace RPG.SkillSystem
             Subscribe();
             try
             {
-                SkillStartResult result = host.TryPlay(skillConfig);
+                Debug.Log(
+                    $"[PlaySkillConfigGameplayAbilityTask] Ability '{Runtime.Data.name}' " +
+                    $"ActivationId={Runtime.ActivationId} 启动 SkillConfig '{skillConfig.name}'，" +
+                    $"StartMode={startMode}。",
+                    Runtime.SourceASC);
+                SkillStartResult result = host.TryPlay(skillConfig, startMode);
                 if (result.Succeeded)
                 {
+                    suppressNextAnimatorMotion = startMode == SkillStartMode.FirstActivePhase &&
+                                                  host.CurrentFrame > 0 && skillConfig.IsRootMotion;
                     // SkillRuntimeHost 已经成功取得表现层后再发布占据，避免播放失败留下虚假的 FullBody 状态。
                     fullBodyActionArbiter = skillOwner.FullBodyActionArbiter ??
                         throw new InvalidOperationException(
                             $"Ability '{Runtime.Data.name}' 的角色未绑定 FullBody Action Arbiter。");
                     fullBodyActionHandle = fullBodyActionArbiter.RegisterFullBodyAction(
-                        Runtime,
-                        host.AllowedTransitions);
+                        Runtime);
+                    // TryPlay 可能没有 ActionPhase Clip；注册后再次读取 Host 快照，确保初始策略一致。
+                    ApplyPhasePolicy(
+                        host.CurrentPhase,
+                        host.HasCurrentPhasePolicy,
+                        host.CurrentPhaseIsCancelable,
+                        host.CurrentPhaseRuntimeTags,
+                        host.CurrentPhaseBlockAbilityTags,
+                        host.CurrentFrame);
                     return;
                 }
 
@@ -145,6 +178,16 @@ namespace RPG.SkillSystem
         {
             // 非根运动技能仍可占据水平与旋转通道，但不能消费 Animator 增量；否则站桩技能会意外随动画移动。
             if (!skillConfig.IsRootMotion || motionHandle == null) return;
+            if (suppressNextAnimatorMotion)
+            {
+                // 非零帧 Seek 后 Animator 的第一份增量可能是从素材原点跳到入口的差值，必须丢弃一次。
+                suppressNextAnimatorMotion = false;
+                Debug.Log(
+                    $"[PlaySkillConfigGameplayAbilityTask] Ability '{Runtime.Data.name}' " +
+                    $"忽略 FirstActivePhase Seek 后的首个根运动增量。",
+                    Runtime.SourceASC);
+                return;
+            }
             motionDriver.SubmitAnimatorMotion(motionHandle,
                 new AnimatorMotionSubmission(deltaPosition, deltaRotation));
         }
@@ -165,15 +208,50 @@ namespace RPG.SkillSystem
             Complete();
         }
 
-        /// <summary>把 SkillRuntime 的原生 Phase 转换权限同步到当前 FullBody 注册。</summary>
-        /// <param name="args">已经去重发布的阶段与转换权限快照。</param>
+        /// <summary>把 SkillRuntime 的 Phase RuntimeTags、阻断快照和取消权限同步到当前 GA Runtime。</summary>
+        /// <param name="args">已经去重发布的阶段策略快照。</param>
         private void OnActionPhaseChanged(SkillActionPhaseChangedEventArgs args)
         {
             if (args.Config != skillConfig)
                 return;
 
-            // Phase 本身不进入 Blackboard；Handle 只把当前允许尝试的转换类型交给 Action Arbiter。
-            fullBodyActionHandle?.UpdateAllowedTransitions(args.AllowedTransitions);
+            ApplyPhasePolicy(
+                args.Phase,
+                args.HasPhasePolicy,
+                args.IsCancelable,
+                args.RuntimeTags,
+                args.BlockAbilityTags,
+                args.Frame);
+        }
+
+        /// <summary>把时间轴策略转换为 Runtime 专属容器并应用一次差量更新。</summary>
+        /// <param name="phase">当前动作阶段。</param>
+        /// <param name="hasPhasePolicy">是否存在 Clip 策略。</param>
+        /// <param name="isCancelable">当前阶段是否允许普通取消。</param>
+        /// <param name="runtimeTags">当前阶段 RuntimeTags。</param>
+        /// <param name="blockAbilityTags">当前阶段完整 BlockAbilityTags。</param>
+        /// <param name="frame">策略生效帧。</param>
+        private void ApplyPhasePolicy(
+            ActionPhaseType phase,
+            bool hasPhasePolicy,
+            bool isCancelable,
+            IReadOnlyList<GameplayTag> runtimeTags,
+            IReadOnlyList<GameplayTag> blockAbilityTags,
+            int frame)
+        {
+            var phaseRuntimeTags = new GameplayTagContainer();
+            for (int i = 0; i < runtimeTags.Count; i++) phaseRuntimeTags.AddTag(runtimeTags[i]);
+            var phaseBlockAbilityTags = new GameplayTagContainer();
+            for (int i = 0; i < blockAbilityTags.Count; i++) phaseBlockAbilityTags.AddTag(blockAbilityTags[i]);
+
+            Runtime.ApplyPhasePolicy(
+                phaseRuntimeTags,
+                phaseBlockAbilityTags,
+                isCancelable,
+                hasPhasePolicy);
+            Debug.Log(
+                $"[PlaySkillConfigGameplayAbilityTask] Ability '{Runtime.Data.name}' ActivationId={Runtime.ActivationId} 应用 Phase 策略，Phase={phase}，Frame={frame}，HasPolicy={hasPhasePolicy}，RuntimeTags={runtimeTags.Count}，BlockTags={blockAbilityTags.Count}，IsCancelable={isCancelable}。",
+                Runtime.SourceASC);
         }
 
         /// <summary>把 SkillSystem 去重后的命中映射为当前 GA 的 Effects 与 Execute Cue。</summary>

@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
+using WS_Modules.GAS.TAG;
 
 namespace RPG.SkillSystem
 {
@@ -46,9 +48,18 @@ namespace RPG.SkillSystem
         ActionPhaseType CurrentPhase { get; }
 
         /// <summary>
-        /// 获取当前动作阶段开放的外部转换窗口。
+        /// 获取当前是否存在覆盖策略的动作阶段 Clip。
         /// </summary>
-        SkillTransitionMask AllowedTransitions { get; }
+        bool HasCurrentPhasePolicy { get; }
+
+        /// <summary>获取当前动作阶段是否接受普通取消。</summary>
+        bool CurrentPhaseIsCancelable { get; }
+
+        /// <summary>获取当前动作阶段的 RuntimeTags 快照。</summary>
+        IReadOnlyList<GameplayTag> CurrentPhaseRuntimeTags { get; }
+
+        /// <summary>获取当前动作阶段的完整 BlockAbilityTags 快照。</summary>
+        IReadOnlyList<GameplayTag> CurrentPhaseBlockAbilityTags { get; }
 
         /// <summary>
         /// 获取当前通道的全局播放倍率；该值会保留到后续技能执行。
