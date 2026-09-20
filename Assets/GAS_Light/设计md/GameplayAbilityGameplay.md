@@ -483,7 +483,7 @@ ASC 默认在 `Update` 中先推进 GE、再推进 GA 普通阶段；`FixedUpdat
 
 SkillConfig 类型的异步 Task 从 `Runtime.SourceOwner` 获取 `ISkillRuntimeHost`。Host 为每个角色长期持有唯一
 
-SkillConfig 当前动作阶段只由具体 `SkillRuntime` 持有：阶段使用 `ActionPhaseType`，转换窗口使用 `SkillTransitionMask`。这些数据不再转换为 Source ASC 的 Phase 或 Interrupt GameplayTag。`PlaySkillConfigGameplayAbilityTask` 在 SkillRuntimeHost 播放成功后注册 FullBody 执行，并订阅 `ActionPhaseChanged`，只把最新 `AllowedTransitions` 更新到注册 Handle；Task 不选择转换候选，也不直接写 Blackboard。SkillExecution 结束时，AnimationRuntimeHandler 通过角色 `IAnimationPlayer.StopLayer` 立即停止技能动画层；结束后的 Locomotion 路由仍由外部系统决定。
+SkillConfig 当前动作阶段只由具体 `SkillRuntime` 持有：阶段使用 `ActionPhaseType`，转换窗口使用当前 Clip 的 `RuntimeTags`。这些数据不写入 Source ASC Owner Tags，也不改变 Ability 的身份标签。RuntimeTags 只由当前 ActionPhase 所有；相邻 Phase 切换按旧、新快照逐项差量 Add/Remove，共同标签保持连续，外部系统只读。`PlaySkillConfigGameplayAbilityTask` 在 SkillRuntimeHost 播放成功后注册 FullBody 执行，并订阅 `ActionPhaseChanged`，把当前 Phase 的 RuntimeTags、BlockAbilityTags 和 IsCancelable 策略同步到注册 Runtime；Task 不选择转换候选，也不直接写 Blackboard。SkillExecution 结束时，AnimationRuntimeHandler 通过角色 `IAnimationPlayer.StopLayer` 立即停止技能动画层；结束后的 Locomotion 路由仍由外部系统决定。
 `SkillRuntimeModule`，自身不实现 Unity 更新；当前 Running Task 在普通阶段调用 `Tick`，在延迟阶段
 调用 `LateTick`。GAS 通过 AbilityTags、CancelTags 与 Runtime 生命周期决定替换和打断，Module 只负责
 时间轴、轨道命中和资源清理。
@@ -498,11 +498,11 @@ sequenceDiagram
     participant FSM as Locomotion FSM
 
     Task->>Host: TryPlay 成功
-    Task->>Action: RegisterFullBodyAction(Runtime, Mask)
+    Task->>Action: RegisterFullBodyAction(Runtime)
     Action->>BB: IsFullBodyActionOccupied = true
     Host-->>Task: ActionPhaseChanged
-    Task->>Action: Handle.UpdateAllowedTransitions
-    Action->>ASC: 合法窗口中尝试 Ability 或取消当前 GA
+    Task->>Runtime: 应用 RuntimeTags / Block / IsCancelable
+    Action->>ASC: 读取窗口 RuntimeTag，合法时尝试 Ability 或取消当前 GA
     ASC-->>Task: Stop / Cancel / Complete
     Task->>Action: Handle.Dispose
     Action->>BB: IsFullBodyActionOccupied = false

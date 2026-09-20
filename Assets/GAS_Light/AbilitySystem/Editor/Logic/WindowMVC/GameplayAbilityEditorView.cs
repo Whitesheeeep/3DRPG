@@ -17,6 +17,7 @@ namespace WS_Modules.GAS.Editor
             "Assets/GAS_Light/AbilitySystem/Editor/Style/GameplayAbilityAssetRow.uxml";
         private const string HiddenClass = "is-hidden";
         private const string ValidationErrorClass = "has-validation-error";
+        private const string RenameErrorClass = "has-rename-error";
         private const string BakeErrorClass = "has-bake-error";
 
         private readonly VisualElement root;
@@ -44,6 +45,7 @@ namespace WS_Modules.GAS.Editor
         private VisualElement serializedObjectTracker;
         private GameplayAbilityData pendingRenameAbility;
         private string pendingRenameText;
+        private string pendingRenameError;
         private bool suppressSelection;
         private bool disposed;
         #endregion
@@ -124,6 +126,9 @@ namespace WS_Modules.GAS.Editor
             abilityList.itemsSource = null;
             displayedAbilities.Clear();
             boundAbility = null;
+            pendingRenameAbility = null;
+            pendingRenameText = null;
+            pendingRenameError = null;
         }
         #endregion
 
@@ -250,10 +255,11 @@ namespace WS_Modules.GAS.Editor
                 "Cancel");
 
         /// <inheritdoc />
-        public void RestoreRename(GameplayAbilityData ability, string attemptedName)
+        public void RestoreRename(GameplayAbilityData ability, string attemptedName, string error)
         {
             pendingRenameAbility = ability;
             pendingRenameText = attemptedName;
+            pendingRenameError = error;
             abilityList.RefreshItems();
         }
         #endregion
@@ -337,7 +343,9 @@ namespace WS_Modules.GAS.Editor
             return row;
         }
 
-        // 虚拟化绑定只替换当前 Ability 引用和显示状态。
+        /// <summary>将虚拟化行绑定到指定 Ability，并恢复待处理的重命名状态。</summary>
+        /// <param name="element">ListView 创建的行根元素。</param>
+        /// <param name="index">当前行在显示列表中的索引。</param>
         private void BindRow(VisualElement element, int index)
         {
             var state = (AbilityRowState)element.userData;
@@ -349,21 +357,25 @@ namespace WS_Modules.GAS.Editor
             state.Bind(ability, hasError);
             if (!ReferenceEquals(pendingRenameAbility, ability)) return;
             string text = pendingRenameText;
+            string error = pendingRenameError;
             pendingRenameAbility = null;
             pendingRenameText = null;
-            state.BeginRename(text);
+            pendingRenameError = null;
+            state.BeginRename(text, error, false);
         }
 
         // 行回收时取消输入状态，避免向新绑定资产提交旧值。
         private static void UnbindRow(VisualElement element, int index) =>
             ((AbilityRowState)element.userData).Unbind();
 
-        // 双击名称时同步选择并进入行内重命名。
+        /// <summary>双击名称时同步选择并进入普通行内重命名。</summary>
+        /// <param name="ability">需要重命名的 Ability 资产。</param>
+        /// <param name="state">目标行的状态封装。</param>
         private void BeginRowRename(GameplayAbilityData ability, AbilityRowState state)
         {
             int index = displayedAbilities.IndexOf(ability);
             if (index >= 0) abilityList.selectedIndex = index;
-            state.BeginRename(ability.name);
+            state.BeginRename(ability.name, null, true);
         }
 
         // 提交请求携带明确资产引用。
@@ -472,6 +484,8 @@ namespace WS_Modules.GAS.Editor
             propertyPath == "description" ||
             propertyPath == "abilityTags" ||
             propertyPath == "cancelTags" ||
+            propertyPath == "blockAbilityTags" ||
+            propertyPath == "isCancelable" ||
             propertyPath == "activationTagQuery" ||
             propertyPath == "costEffect" ||
             propertyPath == "cooldownEffect" ||
@@ -508,6 +522,7 @@ namespace WS_Modules.GAS.Editor
             private readonly Label pathLabel;
             private readonly Button pingButton;
             private GameplayAbilityData ability;
+            private string renameError;
             private bool renaming;
             private bool suppressFocusOut;
 
@@ -525,16 +540,28 @@ namespace WS_Modules.GAS.Editor
                 nameLabel.RegisterCallback<PointerDownEvent>(OnNamePointerDown);
                 renameField.RegisterCallback<KeyDownEvent>(OnRenameKeyDown);
                 renameField.RegisterCallback<FocusOutEvent>(OnRenameFocusOut);
+                renameField.RegisterValueChangedCallback(OnRenameValueChanged);
                 pingButton.clicked += OnPingClicked;
                 pingButton.RegisterCallback<PointerDownEvent>(StopPingPointer);
             }
 
-            // 绑定真实 GA 资产并重置虚拟化残留样式。
+            /// <summary>绑定真实 GA 资产并重置虚拟化行残留状态。</summary>
+            /// <param name="value">当前行对应的 Ability 资产。</param>
+            /// <param name="hasValidationError">当前资产是否存在校验错误。</param>
             internal void Bind(GameplayAbilityData value, bool hasValidationError)
             {
+                if (!ReferenceEquals(ability, value))
+                {
+                    // ListView 回收行时先隐藏旧资产的输入框，避免重命名状态泄漏到新绑定资产。
+                    suppressFocusOut = true;
+                    SetRenameVisible(false);
+                    suppressFocusOut = false;
+                    renameError = null;
+                }
+
                 ability = value;
                 nameLabel.text = FormatAbilityLabel(value);
-                pathLabel.text = AssetDatabase.GetAssetPath(value);
+                ApplyRenameErrorPresentation();
                 visualRoot.EnableInClassList(ValidationErrorClass, hasValidationError);
                 if (!renaming) SetRenameVisible(false);
             }
@@ -552,22 +579,28 @@ namespace WS_Modules.GAS.Editor
                     : $"{assetName} ({abilityName})";
             }
 
-            // 回收时取消编辑和错误背景。
+            /// <summary>回收虚拟化行时取消编辑并清除错误样式。</summary>
             internal void Unbind()
             {
                 suppressFocusOut = true;
                 SetRenameVisible(false);
                 suppressFocusOut = false;
+                ClearRenameError();
                 visualRoot.EnableInClassList(ValidationErrorClass, false);
                 ability = null;
             }
 
-            // 下一次 Panel 更新聚焦并全选行内输入。
-            internal void BeginRename(string value)
+            /// <summary>显示行内重命名输入，并按来源决定是否立即抢占焦点。</summary>
+            /// <param name="value">需要填入输入框的资产名称。</param>
+            /// <param name="error">失败恢复时显示的错误；正常开始编辑时为空。</param>
+            /// <param name="focus">是否在下一次 Panel 更新时聚焦并全选。</param>
+            internal void BeginRename(string value, string error, bool focus)
             {
                 if (ability == null) return;
                 renameField.SetValueWithoutNotify(value ?? ability.name);
+                SetRenameError(error);
                 SetRenameVisible(true);
+                if (!focus) return;
                 renameField.schedule.Execute(() =>
                 {
                     if (!renaming || renameField.panel == null) return;
@@ -606,6 +639,13 @@ namespace WS_Modules.GAS.Editor
                 if (renaming && !suppressFocusOut) CommitRename();
             }
 
+            /// <summary>用户开始修正失败名称时清除旧错误提示。</summary>
+            /// <param name="evt">输入框值变化事件。</param>
+            private void OnRenameValueChanged(ChangeEvent<string> evt)
+            {
+                if (renaming && !string.IsNullOrEmpty(renameError)) ClearRenameError();
+            }
+
             // 先退出编辑显示，再通知 Controller 刷新资产。
             private void CommitRename()
             {
@@ -617,12 +657,13 @@ namespace WS_Modules.GAS.Editor
                 if (target != null) owner.SubmitRename(target, value);
             }
 
-            // 取消只恢复 Label，不写入资产。
+            /// <summary>取消当前重命名并恢复资产名显示，不写入资产。</summary>
             private void CancelRename()
             {
                 suppressFocusOut = true;
                 SetRenameVisible(false);
                 suppressFocusOut = false;
+                ClearRenameError();
             }
 
             // 切换名称 Label 与输入框显示。
@@ -632,6 +673,29 @@ namespace WS_Modules.GAS.Editor
                 nameLabel.EnableInClassList(HiddenClass, visible);
                 renameField.EnableInClassList(HiddenClass, !visible);
             }
+
+            /// <summary>设置或清除重命名失败的行内错误显示。</summary>
+            /// <param name="error">AssetDatabase 返回的错误文本；为空时恢复资产路径。</param>
+            private void SetRenameError(string error)
+            {
+                renameError = string.IsNullOrWhiteSpace(error) ? null : error;
+                ApplyRenameErrorPresentation();
+            }
+
+            /// <summary>同步输入框和路径行的错误样式、Tooltip 与显示文本。</summary>
+            private void ApplyRenameErrorPresentation()
+            {
+                bool hasError = !string.IsNullOrEmpty(renameError);
+                string assetPath = ability == null ? string.Empty : AssetDatabase.GetAssetPath(ability);
+                pathLabel.text = hasError ? renameError : assetPath;
+                pathLabel.tooltip = hasError ? renameError : assetPath;
+                pathLabel.EnableInClassList(RenameErrorClass, hasError);
+                renameField.tooltip = hasError ? renameError : string.Empty;
+                renameField.EnableInClassList(RenameErrorClass, hasError);
+            }
+
+            /// <summary>清除当前行错误并恢复真实资产路径显示。</summary>
+            private void ClearRenameError() => SetRenameError(null);
 
             // Ping 当前绑定资产。
             private void OnPingClicked()

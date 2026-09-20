@@ -16,10 +16,19 @@ namespace RPG.Character
             combatSystem = sourceCombatSystem ?? throw new ArgumentNullException(nameof(sourceCombatSystem));
         }
 
-        /// <summary>尝试执行本帧第一个可激活的技能或普通攻击输入。</summary>
+        /// <summary>
+        /// 尝试执行输入，但不携带普通攻击实时交接标记。
+        /// </summary>
         /// <param name="inputRequests">当前玩家输入请求缓冲区。</param>
         /// <returns>存在 Ability 成功激活并消费 Press 时返回 true。</returns>
         internal bool TryExecute(IPlayerInputRequestBuffer inputRequests) =>
-            combatSystem.TryExecuteAbilityInput(inputRequests);
+            TryExecute(inputRequests, false);
+
+        /// <summary>尝试执行本帧第一个可激活的技能或普通攻击输入。</summary>
+        /// <param name="inputRequests">当前玩家输入请求缓冲区。</param>
+        /// <param name="useComboHandoff">是否将本次 Primary 普攻标记为实时连段交接。</param>
+        /// <returns>存在 Ability 成功激活并消费 Press 时返回 true。</returns>
+        internal bool TryExecute(IPlayerInputRequestBuffer inputRequests, bool useComboHandoff) =>
+            combatSystem.TryExecuteAbilityInput(inputRequests, useComboHandoff);
     }
 }

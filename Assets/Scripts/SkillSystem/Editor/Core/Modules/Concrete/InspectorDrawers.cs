@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using RPG.Markers;
+using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -207,7 +208,7 @@ namespace RPG.SkillSystem.Editor
     }
 
     /// <summary>
-    /// 绘制动作阶段区间、阶段类型与外部转换窗口设置。
+    /// 绘制动作阶段区间、阶段类型与 Runtime 策略设置。
     /// </summary>
     internal sealed class ActionPhaseInspectorDrawer : InspectorDrawer, IInspectorDrawer
     {
@@ -217,6 +218,7 @@ namespace RPG.SkillSystem.Editor
         /// <param name="container">Unity 原生 Inspector 中的字段容器。</param>
         /// <param name="data">当前选中的实际 Item 配置。</param>
         /// <param name="viewModel">负责提交语义编辑请求的窗口 ViewModel。</param>
+        /// <param name="fieldCommitController">负责其他 Inspector 输入提交生命周期的控制器。</param>
         public void Draw(VisualElement container, object data, EditorViewModel viewModel,
             InspectorFieldCommitController fieldCommitController)
         {
@@ -236,63 +238,82 @@ namespace RPG.SkillSystem.Editor
             PopupField<string> phase = AddField(container,
                 new PopupField<string>("动作阶段", phaseNames,
                     Mathf.Clamp((int)clip.Phase, 0, phaseNames.Count - 1)));
-            Toggle allowMove = AddField(container,
-                new Toggle("移动")
-                {
-                    value = clip.AllowedTransitions.HasFlag(SkillTransitionMask.Move)
-                });
-            Toggle allowJump = AddField(container,
-                new Toggle("跳跃")
-                {
-                    value = clip.AllowedTransitions.HasFlag(SkillTransitionMask.Jump)
-                });
-            Toggle allowAbility = AddField(container,
-                new Toggle("其他 Ability")
-                {
-                    value = clip.AllowedTransitions.HasFlag(SkillTransitionMask.Ability)
-                });
-            HelpBox transitionHelp = new(
-                "转换窗口只表示允许对应动作尝试转换；实际执行由后续 FullBody Action Execution 与 Arbiter 决定。Ability 仍通过 GAS TryActivateAbility 判断。",
-                HelpBoxMessageType.Info);
-            container.Add(transitionHelp);
-            VisualElement transitionActions = AddActionRow(container);
-            transitionActions.Add(new Button(() =>
+            Toggle isCancelable = AddField(container, new Toggle("允许普通取消")
             {
-                allowMove.SetValueWithoutNotify(true);
-                allowJump.SetValueWithoutNotify(true);
-                allowAbility.SetValueWithoutNotify(true);
-                Submit();
-            }) { text = "全部允许" });
-            transitionActions.Add(new Button(() =>
-            {
-                allowMove.SetValueWithoutNotify(false);
-                allowJump.SetValueWithoutNotify(false);
-                allowAbility.SetValueWithoutNotify(false);
-                Submit();
-            }) { text = "全部清空" });
+                value = clip.IsCancelable,
+                tooltip = "Runtime 终态清理仍可强制取消；窗口 Tag 与此项必须同时开启。"
+            });
 
-            SkillTransitionMask GetAllowedTransitions()
-            {
-                SkillTransitionMask transitions = SkillTransitionMask.None;
-                if (allowMove.value) transitions |= SkillTransitionMask.Move;
-                if (allowJump.value) transitions |= SkillTransitionMask.Jump;
-                if (allowAbility.value) transitions |= SkillTransitionMask.Ability;
-                return transitions;
-            }
-
-            // 每次离散修改或延迟输入完成时提交完整请求，避免 Inspector 逐字重建。
+            // 区间字段和枚举继续走 Document 事务；提交时直接读取 Clip 最新 Tag 数组，避免覆盖原生编辑。
             void Submit() => viewModel.EditItem(viewModel.SelectedTrack, clip,
                 new ActionPhaseEditRequest(start.value, duration.value,
-                    (ActionPhaseType)phase.index,
-                    GetAllowedTransitions()));
+                     (ActionPhaseType)phase.index,
+                     isCancelable.value, clip.RuntimeTags, clip.BlockAbilityTags));
+
+            DrawNativeTagProperties(container, viewModel, clip);
 
             start.RegisterValueChangedCallback(_ => Submit());
             duration.RegisterValueChangedCallback(_ => Submit());
             phase.RegisterValueChangedCallback(_ => Submit());
-            allowMove.RegisterValueChangedCallback(_ => Submit());
-            allowJump.RegisterValueChangedCallback(_ => Submit());
-            allowAbility.RegisterValueChangedCallback(_ => Submit());
+            isCancelable.RegisterValueChangedCallback(_ => Submit());
             AddItemActions(container, viewModel);
+        }
+
+        /// <summary>
+        /// 将两个 GameplayTag 数组绑定到真实 Track 子资产的 SerializedProperty。
+        /// </summary>
+        /// <param name="container">Inspector 根容器。</param>
+        /// <param name="viewModel">负责查找真实属性和刷新时间轴的窗口 ViewModel。</param>
+        /// <param name="clip">当前选中的动作阶段片段。</param>
+        private static void DrawNativeTagProperties(VisualElement container,
+            EditorViewModel viewModel, ActionPhaseSkillClipConfig clip)
+        {
+            if (!viewModel.TryGetSerializedItemProperty(viewModel.SelectedTrack, clip,
+                    out SerializedObject trackObject, out SerializedProperty itemProperty))
+            {
+                container.Add(new HelpBox("无法按 Item GUID 绑定动作阶段 Tag 数组。",
+                    HelpBoxMessageType.Warning));
+                return;
+            }
+
+            SerializedProperty runtimeTagsProperty = itemProperty.FindPropertyRelative(
+                DocumentFieldNames.RuntimeTags);
+            SerializedProperty blockAbilityTagsProperty = itemProperty.FindPropertyRelative(
+                DocumentFieldNames.BlockAbilityTags);
+            if (runtimeTagsProperty == null || blockAbilityTagsProperty == null)
+            {
+                container.Add(new HelpBox("动作阶段 Tag 数组字段不存在。", HelpBoxMessageType.Error));
+                return;
+            }
+
+            PropertyField runtimeTagsField = AddField(container,
+                new PropertyField(runtimeTagsProperty, "Runtime Tags"));
+            PropertyField blockAbilityTagsField = AddField(container,
+                new PropertyField(blockAbilityTagsProperty, "Block Ability Tags"));
+            runtimeTagsField.tooltip = "使用 Unity 原生数组编辑和现有 GameplayTag 层级选择器。";
+            blockAbilityTagsField.tooltip = "使用 Unity 原生数组编辑和现有 GameplayTag 层级选择器。";
+
+            bool bindingReady = false;
+            bool refreshQueued = false;
+            void NotifyTagChanged(SerializedProperty _)
+            {
+                if (!bindingReady || refreshQueued) return;
+                refreshQueued = true;
+                // 延迟到当前 PropertyField 完成 ApplyModifiedProperties 后刷新时间轴，避免重建下拉导致焦点丢失。
+                container.schedule.Execute(() =>
+                {
+                    refreshQueued = false;
+                    if (container.panel == null) return;
+                    viewModel.NotifyNativeItemPropertyChanged(viewModel.SelectedTrack, clip);
+                });
+            }
+
+            runtimeTagsField.Bind(trackObject);
+            blockAbilityTagsField.Bind(trackObject);
+            runtimeTagsField.TrackPropertyValue(runtimeTagsProperty, NotifyTagChanged);
+            blockAbilityTagsField.TrackPropertyValue(blockAbilityTagsProperty, NotifyTagChanged);
+            // 等原生绑定完成首轮同步后再开放变化通知，初始绑定本身不算用户修改。
+            container.schedule.Execute(() => bindingReady = true);
         }
 
         // 将运行时枚举映射为时间轴和 Inspector 共用的中文阶段名称。

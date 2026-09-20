@@ -1,7 +1,9 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using WS_Modules.GAS.TAG;
 
 namespace RPG.SkillSystem.Editor
 {
@@ -123,7 +125,7 @@ namespace RPG.SkillSystem.Editor
     }
 
     /// <summary>
-    /// 定义动作阶段轨道序列化结构，并处理阶段区间与打断设置。
+    /// 定义动作阶段轨道序列化结构，并处理阶段区间与 Runtime 策略设置。
     /// </summary>
     internal sealed class ActionPhaseDocumentHandler : TrackDocumentHandler
     {
@@ -147,7 +149,7 @@ namespace RPG.SkillSystem.Editor
             ItemsCreateResult.Failure("动作阶段轨道不支持从 Project 素材创建内容。");
 
         /// <summary>
-        /// 校验动作阶段编辑请求并提交半开帧区间、阶段类型和打断设置。
+        /// 校验动作阶段编辑请求并提交半开帧区间、阶段类型和 Runtime 策略。
         /// </summary>
         /// <param name="document">负责区间校验、Undo 和资产写入的 Document。</param>
         /// <param name="trackId">目标轨道稳定 GUID。</param>
@@ -164,13 +166,14 @@ namespace RPG.SkillSystem.Editor
                 {
                     item.FindPropertyRelative(DocumentFieldNames.ActionPhase).enumValueIndex =
                         (int)actionPhase.Phase;
-                    item.FindPropertyRelative(DocumentFieldNames.AllowedTransitions).intValue =
-                        (int)actionPhase.AllowedTransitions;
+                    item.FindPropertyRelative(DocumentFieldNames.IsCancelable).boolValue = actionPhase.IsCancelable;
+                    SetTagArray(item.FindPropertyRelative(DocumentFieldNames.RuntimeTags), actionPhase.RuntimeTags);
+                    SetTagArray(item.FindPropertyRelative(DocumentFieldNames.BlockAbilityTags), actionPhase.BlockAbilityTags);
                 });
         }
 
         /// <summary>
-        /// 复制动作阶段类型与转换窗口设置，供复制操作共用。
+        /// 复制动作阶段类型与 Runtime 策略，供复制操作共用。
         /// </summary>
         /// <param name="source">保持不变的源 Item。</param>
         /// <param name="destination">接收类型专用字段的新 Item。</param>
@@ -178,17 +181,43 @@ namespace RPG.SkillSystem.Editor
         {
             destination.FindPropertyRelative(DocumentFieldNames.ActionPhase).enumValueIndex =
                 source.FindPropertyRelative(DocumentFieldNames.ActionPhase).enumValueIndex;
-            destination.FindPropertyRelative(DocumentFieldNames.AllowedTransitions).intValue =
-                source.FindPropertyRelative(DocumentFieldNames.AllowedTransitions).intValue;
+            destination.FindPropertyRelative(DocumentFieldNames.IsCancelable).boolValue =
+                source.FindPropertyRelative(DocumentFieldNames.IsCancelable).boolValue;
+            CopyTagArray(source.FindPropertyRelative(DocumentFieldNames.RuntimeTags),
+                destination.FindPropertyRelative(DocumentFieldNames.RuntimeTags));
+            CopyTagArray(source.FindPropertyRelative(DocumentFieldNames.BlockAbilityTags),
+                destination.FindPropertyRelative(DocumentFieldNames.BlockAbilityTags));
         }
 
-        // 新建动作阶段默认为一帧前摇，转换窗口需要由设计者明确开启。
+        // 新建动作阶段默认为一帧前摇、不可取消且没有临时策略。
         protected override void InitializeSpecificFields(SerializedProperty item)
         {
             item.FindPropertyRelative(DocumentFieldNames.ActionPhase).enumValueIndex =
                 (int)ActionPhaseType.Startup;
-            item.FindPropertyRelative(DocumentFieldNames.AllowedTransitions).intValue =
-                (int)SkillTransitionMask.None;
+            item.FindPropertyRelative(DocumentFieldNames.IsCancelable).boolValue = false;
+            item.FindPropertyRelative(DocumentFieldNames.RuntimeTags).ClearArray();
+            item.FindPropertyRelative(DocumentFieldNames.BlockAbilityTags).ClearArray();
+        }
+
+        /// <summary>把编辑请求标签写入目标 SerializedProperty 数组。</summary>
+        /// <param name="property">目标 GameplayTag 数组属性。</param>
+        /// <param name="tags">请求中的稳定标签快照。</param>
+        private static void SetTagArray(SerializedProperty property, IReadOnlyList<GameplayTag> tags)
+        {
+            property.arraySize = tags?.Count ?? 0;
+            for (int index = 0; index < property.arraySize; index++)
+                property.GetArrayElementAtIndex(index).FindPropertyRelative("id").intValue = tags[index].Id;
+        }
+
+        /// <summary>复制两个 SerializedProperty 中的 GameplayTag 数组。</summary>
+        /// <param name="source">源 GameplayTag 数组。</param>
+        /// <param name="destination">目标 GameplayTag 数组。</param>
+        private static void CopyTagArray(SerializedProperty source, SerializedProperty destination)
+        {
+            destination.arraySize = source.arraySize;
+            for (int index = 0; index < source.arraySize; index++)
+                destination.GetArrayElementAtIndex(index).FindPropertyRelative("id").intValue =
+                    source.GetArrayElementAtIndex(index).FindPropertyRelative("id").intValue;
         }
     }
     /// <summary>

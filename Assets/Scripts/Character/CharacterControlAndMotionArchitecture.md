@@ -245,7 +245,7 @@ FullBody Skill 不停用或重路由 Locomotion。Base FSM、环境检测、状�
 flowchart TD
     Task["PlaySkillConfig Task"] -->|播放成功后注册| Action["CharacterActionArbiter"]
     Action -->|占据 true/false| BB["PlayerStateBlackboard"]
-    Phase["SkillRuntime AllowedTransitions"] -->|Handle 更新| Action
+    Phase["SkillRuntime RuntimeTags + Phase Policy"] -->|Runtime 更新| Action
     Input["Ability / Jump / Move 输入"] --> Action
     Action --> Ability["Ability Execution"]
     Action --> Jump["Jump Execution"]

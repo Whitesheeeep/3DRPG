@@ -149,6 +149,14 @@
     margin: 0 4px 0 0;
 }
 
+.ga-asset-rename.has-rename-error {
+    color: rgb(255, 150, 150);
+}
+
+.ga-asset-rename.has-rename-error .unity-base-field__input {
+    border-color: rgb(220, 70, 70);
+}
+
 .ga-ping-button {
     width: 42px;
     height: 20px;
@@ -163,6 +171,10 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.ga-asset-path.has-rename-error {
+    color: rgb(255, 125, 125);
 }
 
 .is-hidden {

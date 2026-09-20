@@ -538,8 +538,8 @@ MonoBehaviour:
     allTags: []
     anyTags: []
     banedTags: []
-  walkReferenceSpeed: 0.914
-  runReferenceSpeed: 3
+  walkReferenceSpeed: 1.2
+  runReferenceSpeed: 2.8
   runFeetParameter: {fileID: 11400000, guid: 2e7a66094800e644e9d6bb724bdd7a80, type: 2}
   references:
     version: 2

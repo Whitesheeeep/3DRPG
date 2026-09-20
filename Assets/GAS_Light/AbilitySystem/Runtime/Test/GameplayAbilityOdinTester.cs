@@ -601,6 +601,78 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             LogSummary();
         }
 
+        /// <summary>验证 ActionPhase RuntimeTags 按相邻 Phase 快照差量增加和移除。</summary>
+        [Button("测试 Phase RuntimeTags 差量")]
+        public void TestPhaseRuntimeTagDiff()
+        {
+            ResetTest();
+            var data = ScriptableObject.CreateInstance<TestAsynchronousAbilityData>();
+            data.Initialize(new WaitDurationGameplayAbilityTaskConfig(10f));
+            GameplayAbilityHandle handle = source.GiveAbility(data, 1);
+
+            bool activated = source.TryActivateAbility(handle, null, out GameplayAbilityRuntime phaseRuntime);
+            Expect("Phase RuntimeTags 测试激活成功", activated && phaseRuntime != null &&
+                phaseRuntime.State == GameplayAbilityRuntimeState.Active);
+            if (!activated || phaseRuntime == null)
+            {
+                DestroyImmediate(data);
+                LogSummary();
+                return;
+            }
+
+            Expect("Runtime 激活后 RuntimeTags 为空", phaseRuntime.RuntimeTags.IsEmpty);
+
+            var startupTags = new GameplayTagContainer();
+            startupTags.AddTag(GameplayTags.Tag_Skill_Window_CancelBy_Move);
+            startupTags.AddTag(GameplayTags.Tag_Skill_Window_CancelBy_Jump);
+            phaseRuntime.ApplyPhasePolicy(
+                startupTags,
+                new GameplayTagContainer(),
+                true,
+                true);
+            Expect("第一个 Phase 添加独有与共享标签",
+                phaseRuntime.RuntimeTags.HasTagExact(GameplayTags.Tag_Skill_Window_CancelBy_Move) &&
+                phaseRuntime.RuntimeTags.HasTagExact(GameplayTags.Tag_Skill_Window_CancelBy_Jump));
+
+            var activeTags = new GameplayTagContainer();
+            activeTags.AddTag(GameplayTags.Tag_Skill_Window_CancelBy_Ability);
+            activeTags.AddTag(GameplayTags.Tag_Skill_Window_CancelBy_Jump);
+            phaseRuntime.ApplyPhasePolicy(
+                activeTags,
+                new GameplayTagContainer(),
+                true,
+                true);
+            Expect("Phase 切换移除旧标签并保留共享标签",
+                !phaseRuntime.RuntimeTags.HasTagExact(GameplayTags.Tag_Skill_Window_CancelBy_Move) &&
+                phaseRuntime.RuntimeTags.HasTagExact(GameplayTags.Tag_Skill_Window_CancelBy_Jump) &&
+                phaseRuntime.RuntimeTags.HasTagExact(GameplayTags.Tag_Skill_Window_CancelBy_Ability));
+
+            phaseRuntime.ApplyPhasePolicy(
+                activeTags,
+                new GameplayTagContainer(),
+                true,
+                true);
+            Expect("重复应用相同 Phase 快照保持不变",
+                phaseRuntime.RuntimeTags.Count == 2 &&
+                phaseRuntime.RuntimeTags.HasTagExact(GameplayTags.Tag_Skill_Window_CancelBy_Jump) &&
+                phaseRuntime.RuntimeTags.HasTagExact(GameplayTags.Tag_Skill_Window_CancelBy_Ability));
+
+            phaseRuntime.ApplyPhasePolicy(
+                new GameplayTagContainer(),
+                new GameplayTagContainer(),
+                false,
+                false);
+            Expect("空白 Phase 移除上一 Phase 的全部 RuntimeTags",
+                phaseRuntime.RuntimeTags.IsEmpty);
+
+            bool ended = source.TryEndAbility(phaseRuntime);
+            Expect("Runtime 结束成功", ended && phaseRuntime.State == GameplayAbilityRuntimeState.Ended);
+            Expect("Runtime 结束后 RuntimeTags 为空", phaseRuntime.RuntimeTags.IsEmpty);
+
+            DestroyImmediate(data);
+            LogSummary();
+        }
+
         /// <summary>验证 Runtime 动态条件在 Cost、Cooldown 和 Active 登记之前生效。</summary>
         [Button("测试 Runtime 动态激活条件")]
         public void TestRuntimeDynamicActivation()
@@ -609,6 +681,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             DynamicActivationAbilityData data =
                 ScriptableObject.CreateInstance<DynamicActivationAbilityData>();
             GameplayAbilityHandle handle = source.GiveAbility(data, 3);
+            Expect("默认 BlockAbilityTags 为空", data.BlockAbilityTags.Count == 0);
             data.AllowActivation = false;
 
             bool rejected = source.TryActivateAbility(handle, null, out GameplayAbilityRuntime rejectedRuntime);
@@ -621,6 +694,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             bool activated = source.TryActivateAbility(handle, null, out GameplayAbilityRuntime acceptedRuntime);
             Expect("动态条件恢复后激活成功", activated && acceptedRuntime != null);
             Expect("动态条件通过后进入启动回调", data.LastRuntime.Started);
+            Expect("空 BlockAbilityTags 不阻止正常激活", acceptedRuntime != null &&
+                acceptedRuntime.BlockAbilityTags.IsEmpty);
             Expect("同步测试 Runtime 已正常结束", acceptedRuntime.State == GameplayAbilityRuntimeState.Ended);
             Expect("动态测试结束后无 Active Runtime", source.ActiveAbilities.Count == 0);
 
@@ -863,6 +938,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             TestProjectileSpreadPose();
             TestCommonSelfAbilities();
             TestSynchronousAbility();
+            TestPhaseRuntimeTagDiff();
             TestAsynchronousSequence();
             TestThreePhaseTask();
             TestSinglePhaseAndSequence();

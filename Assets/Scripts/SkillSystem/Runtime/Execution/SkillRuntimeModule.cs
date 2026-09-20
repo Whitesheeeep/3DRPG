@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
+using WS_Modules.GAS.TAG;
 
 namespace RPG.SkillSystem
 {
@@ -49,8 +51,18 @@ namespace RPG.SkillSystem
         public ActionPhaseType CurrentPhase => execution?.CurrentPhase ?? ActionPhaseType.None;
 
         /// <inheritdoc />
-        public SkillTransitionMask AllowedTransitions =>
-            execution?.AllowedTransitions ?? SkillTransitionMask.None;
+        public bool HasCurrentPhasePolicy => execution?.HasCurrentPhasePolicy ?? false;
+
+        /// <summary>获取当前 Phase 是否允许普通取消。</summary>
+        public bool CurrentPhaseIsCancelable => execution?.CurrentPhaseIsCancelable ?? false;
+
+        /// <summary>获取当前 Phase 的 RuntimeTags 快照。</summary>
+        public IReadOnlyList<GameplayTag> CurrentPhaseRuntimeTags =>
+            execution?.CurrentPhaseRuntimeTags ?? Array.Empty<GameplayTag>();
+
+        /// <summary>获取当前 Phase 的完整 BlockAbilityTags 快照。</summary>
+        public IReadOnlyList<GameplayTag> CurrentPhaseBlockAbilityTags =>
+            execution?.CurrentPhaseBlockAbilityTags ?? Array.Empty<GameplayTag>();
 
         /// <inheritdoc />
         public float PlaybackSpeed => playbackSpeed;
@@ -148,6 +160,16 @@ namespace RPG.SkillSystem
             if (request.Config == null) return SkillStartResult.Failure("SkillPlayRequest 缺少 SkillConfig。");
             if (request.Config.FrameRate <= 0 || request.Config.DurationFrames <= 0)
                 return SkillStartResult.Failure("SkillConfig 的 FPS 与总帧必须大于零。");
+            SkillStartResult startFrameResult = TryResolveStartFrame(
+                request.Config, request.StartMode, out int startFrame);
+            if (!startFrameResult.Succeeded)
+            {
+                Debug.LogWarning(
+                    $"[SkillRuntimeModule] SkillConfig '{request.Config.name}' 启动失败，" +
+                    $"StartMode={request.StartMode}，原因={startFrameResult.Message}",
+                    actorContext.Owner);
+                return startFrameResult;
+            }
 
             ulong executionId = ++nextExecutionId;
             SkillRuntimeContext context = new(
@@ -160,10 +182,14 @@ namespace RPG.SkillSystem
                 PublishProjectileSpawn);
             context.AttackDetectionServices.SetDebugDrawing(
                 drawAttackDetectionDebug, attackDetectionDebugDuration);
-            execution = new SkillExecution(context, playbackSpeed);
+            execution = new SkillExecution(context, playbackSpeed, startFrame);
 
-            // 必须先保存当前引用再处理第 0 帧，使帧零回调可以同步 Stop 或 Cancel。
+            // 必须先保存当前引用再处理入口帧，使首帧回调可以同步 Stop 或 Cancel。
             execution.Start();
+            Debug.Log(
+                $"[SkillRuntimeModule] SkillConfig '{request.Config.name}' 启动，" +
+                $"ExecutionId={executionId}，StartMode={request.StartMode}，startFrame={startFrame}。",
+                actorContext.Owner);
             return SkillStartResult.Success();
         }
 
@@ -210,6 +236,55 @@ namespace RPG.SkillSystem
             // 先封闭公开入口，避免 Completed 回调在销毁过程中启动新的执行。
             disposed = true;
             if (execution != null) CompleteExecution(SkillCompletionReason.Cancelled);
+        }
+
+        #endregion
+
+        #region 入口帧解析
+
+        /// <summary>
+        /// 将请求入口模式解析为完整时间轴中的绝对逻辑帧。
+        /// </summary>
+        /// <param name="config">待播放的技能配置。</param>
+        /// <param name="startMode">请求的时间轴入口模式。</param>
+        /// <param name="startFrame">解析成功时返回的绝对入口帧。</param>
+        /// <returns>解析成功或包含 SkillConfig 与入口模式的明确失败结果。</returns>
+        private static SkillStartResult TryResolveStartFrame(SkillConfig config,
+            SkillStartMode startMode, out int startFrame)
+        {
+            startFrame = 0;
+            switch (startMode)
+            {
+                case SkillStartMode.TimelineStart:
+                    return SkillStartResult.Success();
+                case SkillStartMode.FirstActivePhase:
+                    int earliestActiveFrame = int.MaxValue;
+                    for (int trackIndex = 0; trackIndex < config.Tracks.Count; trackIndex++)
+                    {
+                        if (config.Tracks[trackIndex] is not ActionPhaseTrackConfig phaseTrack)
+                            continue;
+                        for (int clipIndex = 0; clipIndex < phaseTrack.Clips.Count; clipIndex++)
+                        {
+                            ActionPhaseSkillClipConfig clip = phaseTrack.Clips[clipIndex];
+                            if (clip.Phase == ActionPhaseType.Active)
+                                earliestActiveFrame = Mathf.Min(earliestActiveFrame, clip.StartFrame);
+                        }
+                    }
+
+                    if (earliestActiveFrame == int.MaxValue)
+                        return SkillStartResult.Failure(
+                            $"SkillConfig '{config.name}' 没有 Active Phase，无法使用 FirstActivePhase。");
+                    startFrame = earliestActiveFrame;
+                    break;
+                default:
+                    return SkillStartResult.Failure(
+                        $"SkillConfig '{config.name}' 的启动模式 '{startMode}' 无效。");
+            }
+
+            if (startFrame < 0 || startFrame >= config.DurationFrames)
+                return SkillStartResult.Failure(
+                    $"SkillConfig '{config.name}' 的启动帧 {startFrame} 超出 DurationFrames={config.DurationFrames}。");
+            return SkillStartResult.Success();
         }
 
         #endregion

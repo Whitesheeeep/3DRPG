@@ -185,13 +185,16 @@ namespace WS_Modules.GAS.Editor
             view.RenderAbilities(filteredAbilities, currentAbility);
         }
 
-        // 重命名失败时恢复输入；成功时保持对象身份并重新排序。
+        /// <summary>处理行内重命名请求，并避免失败后通过模态弹窗锁死编辑器焦点。</summary>
+        /// <param name="request">包含目标资产和用户提交名称的重命名请求。</param>
         private void OnRenameSubmitted(GameplayAbilityRenameRequest request)
         {
             if (!service.TryRenameAbility(request.Ability, request.Name, out string error))
             {
-                view.ShowError(error);
-                view.RestoreRename(request.Ability, request.Name);
+                UnityEngine.Debug.LogWarning(
+                    $"[GameplayAbilityEditor] GA 重命名失败：asset={request.Ability?.name}，attemptedName={request.Name}，reason={error}",
+                    request.Ability);
+                view.RestoreRename(request.Ability, request.Name, error);
                 return;
             }
 

@@ -44,15 +44,25 @@ namespace WS_Modules.GAS.Editor
         }
 
         // 优先会话数据库；否则仅在项目恰好存在一个数据库时自动使用。
-        private static GameplayTagDatabase ResolveDatabase(out string error)
+        /// <summary>按 PropertyDrawer 的统一规则解析当前可明确使用的 Tag Database。</summary>
+        /// <param name="error">无法唯一确定数据库时返回用于 Editor 显示的原因。</param>
+        /// <returns>当前会话或项目内唯一的 GameplayTagDatabase；无法确定时返回 null。</returns>
+        internal static GameplayTagDatabase ResolveDatabase(out string error)
             => GameplayTagEditorSession.ResolveSingleDatabase(out error);
 
         // 使用当前作者路径显示已烘焙标签，废弃或未知 ID 明确标记为失效。
-        private static string BuildDisplay(GameplayTagDatabase database, GameplayTag tag, string error)
+        /// <summary>生成普通 Inspector 与 Timeline 共用的标签显示文本。</summary>
+        /// <param name="database">用于解析稳定 ID 的已烘焙数据库。</param>
+        /// <param name="tag">待显示的标签。</param>
+        /// <param name="error">数据库不可用时显示的原因。</param>
+        /// <returns>完整标签路径、稳定 ID 或明确的无效标签提示。</returns>
+        internal static string BuildDisplay(GameplayTagDatabase database, GameplayTag tag, string error)
         {
             if (database == null) return error;
             if (!tag.IsValid) return "None";
-            return database.TryGetBakedPath(tag, out string path) ? path : $"Invalid TagId ({tag.Id})";
+            return database.TryGetBakedPath(tag, out string path)
+                ? $"{path} ({tag.Id})"
+                : $"Invalid TagId ({tag.Id})";
         }
 
         #endregion

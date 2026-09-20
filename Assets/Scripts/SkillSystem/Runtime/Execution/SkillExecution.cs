@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
+using WS_Modules.GAS.TAG;
 
 namespace RPG.SkillSystem
 {
@@ -16,6 +18,8 @@ namespace RPG.SkillSystem
 
         // 状态
         private IActionPhaseRuntimeState actionPhaseState;
+        // SkillStartMode 解析后的绝对入口帧；该值不随播放倍率或 DeltaTime 改变。
+        private readonly int startFrame;
         private float elapsedSeconds;
         // 当前执行的全局播放倍率，0 表示暂停，1 表示正常速度，2 表示两倍速。
         private float playbackSpeed = 1f;
@@ -28,8 +32,12 @@ namespace RPG.SkillSystem
         public GameObject Owner => context.Actor.Owner;
         public int CurrentFrame { get; private set; } = -1;
         public ActionPhaseType CurrentPhase => actionPhaseState?.CurrentPhase ?? ActionPhaseType.None;
-        public SkillTransitionMask AllowedTransitions =>
-            actionPhaseState?.AllowedTransitions ?? SkillTransitionMask.None;
+        public bool HasCurrentPhasePolicy => actionPhaseState?.HasPhasePolicy ?? false;
+        public bool CurrentPhaseIsCancelable => actionPhaseState?.IsCancelable ?? false;
+        public IReadOnlyList<GameplayTag> CurrentPhaseRuntimeTags =>
+            actionPhaseState?.RuntimeTags ?? Array.Empty<GameplayTag>();
+        public IReadOnlyList<GameplayTag> CurrentPhaseBlockAbilityTags =>
+            actionPhaseState?.BlockAbilityTags ?? Array.Empty<GameplayTag>();
         public bool CanCompleteNaturally => reachedDurationBoundary && pendingLateFrames.Count == 0;
 
         /// <summary>
@@ -48,13 +56,28 @@ namespace RPG.SkillSystem
         #region 创建
 
         /// <summary>
-        /// 创建执行对象，并按固定类型顺序初始化本次执行独占的聚合轨道处理器。
+        /// 创建从完整时间轴第 0 帧开始的执行对象，兼容旧的内部测试构造调用。
         /// </summary>
         /// <param name="context">本次执行共享上下文。</param>
         /// <param name="playbackSpeed">本次执行开始时采用的全局播放倍率。</param>
         public SkillExecution(SkillRuntimeContext context, float playbackSpeed)
+            : this(context, playbackSpeed, 0)
+        {
+        }
+
+        /// <summary>
+        /// 创建执行对象，并按固定类型顺序初始化本次执行独占的聚合轨道处理器。
+        /// </summary>
+        /// <param name="context">本次执行共享上下文。</param>
+        /// <param name="playbackSpeed">本次执行开始时采用的全局播放倍率。</param>
+        /// <param name="startFrame">已经由 Module 解析并校验的绝对入口帧。</param>
+        public SkillExecution(SkillRuntimeContext context, float playbackSpeed, int startFrame)
         {
             this.context = context;
+            if (startFrame < 0 || startFrame >= context.Request.Config.DurationFrames)
+                throw new ArgumentOutOfRangeException(nameof(startFrame), startFrame,
+                    "SkillExecution 入口帧必须位于 SkillConfig 的有效时间轴范围内。");
+            this.startFrame = startFrame;
             IReadOnlyList<ISkillTrackRuntimeHandler> createdHandlers = SkillRuntimeRegistry.CreateHandlers();
             for (int index = 0; index < createdHandlers.Count; index++)
             {
@@ -74,12 +97,14 @@ namespace RPG.SkillSystem
         #region 帧推进
 
         /// <summary>
-        /// 在 Module 保存当前执行引用后同步处理第 0 帧，使帧零事件回调可以安全 Stop 或 Cancel。
+        /// 在 Module 保存当前执行引用后同步处理入口帧，使入口事件回调可以安全 Stop 或 Cancel。
         /// </summary>
         public void Start()
         {
-            ProcessFrame(0);
-            nextFrame = 1;
+            // 连续时间仍以完整时间轴为基准，保证 NormalizedTime 与 CurrentFrame 反映绝对位置。
+            elapsedSeconds = startFrame / (float)Config.FrameRate;
+            ProcessFrame(startFrame);
+            nextFrame = startFrame + 1;
         }
 
         /// <summary>

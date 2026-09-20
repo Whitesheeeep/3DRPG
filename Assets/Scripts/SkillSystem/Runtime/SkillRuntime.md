@@ -127,11 +127,11 @@ GAS 集成基准使用现有 30 FPS、35 帧 `SkillConfig.asset`。ASC Tester �
 `Skill.NormalAttack.One`、`Skill.NormalAttack.Two` 作为 AbilityTags，并统一使用
 `Skill.NormalAttack` 作为 CancelTag；配置第二个 SkillConfig GA 后可执行互相打断测试。
 
-阶段 Handler 会在普通逻辑帧中发布动作阶段与 `AllowedTransitions` 变化。该数据只属于具体 `SkillRuntime`，不再投影为 Source ASC 的 Phase 或 Interrupt GameplayTag。`PlaySkillConfigGameplayAbilityTask` 在时间轴成功启动后注册 FullBody 执行，并用该事件更新注册 Handle 的转换权限；Phase 名称本身不会写入 Blackboard。
+阶段 Handler 会在普通逻辑帧中发布动作阶段与 Phase Policy 变化。Policy 的 `RuntimeTags`、`BlockAbilityTags` 和 `IsCancelable` 只属于具体 `SkillRuntime`，不投影为 Source ASC 的 Owner Tag，也不混入 AbilityTags。`PlaySkillConfigGameplayAbilityTask` 在时间轴成功启动后注册 FullBody 执行，并用该事件更新 Runtime 的临时策略；Phase 名称本身不会写入 Blackboard。
 
 ```mermaid
 flowchart LR
-    Config["SkillConfig ActionPhase"] --> Runtime["SkillRuntime Phase + AllowedTransitions"]
+    Config["SkillConfig ActionPhase"] --> Runtime["SkillRuntime Phase Policy + RuntimeTags"]
     Runtime --> Task["PlaySkillConfig Task"]
     Task --> Execution["FullBody Skill Execution"]
     Execution --> Arbiter["CharacterActionArbiter"]

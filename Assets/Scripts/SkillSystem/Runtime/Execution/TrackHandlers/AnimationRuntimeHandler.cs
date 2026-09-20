@@ -44,6 +44,7 @@ namespace RPG.SkillSystem
             float sourceFrameRate = selected.AnimationClip.frameRate > 0f
                 ? selected.AnimationClip.frameRate
                 : Context.Request.Config.FrameRate;
+            // 使用起始偏移帧 / 素材帧率计算源时间，避免 Clip 不是从素材开头开始播放时重新从开头播放。
             double sourceStartTime = selected.SourceStartFrame / sourceFrameRate;
             double elapsedTime = (frame - selected.StartFrame) /
                                  (double)Context.Request.Config.FrameRate;

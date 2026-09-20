@@ -19,6 +19,8 @@ MonoBehaviour:
   abilityTags: []
   cancelTags:
   - id: 20
+  blockAbilityTags: []
+  isCancelable: 1
   activationTagQuery:
     allTags: []
     anyTags: []

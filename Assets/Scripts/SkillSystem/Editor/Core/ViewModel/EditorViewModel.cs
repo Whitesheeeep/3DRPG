@@ -60,6 +60,44 @@ namespace RPG.SkillSystem.Editor
         public TrackModuleRegistry Modules => modules;
         #endregion
 
+        #region 原生序列化属性
+
+        /// <summary>
+        /// 按 Item GUID 获取真实 Track 子资产属性，供原生 PropertyField 绑定。
+        /// </summary>
+        /// <param name="track">Item 所属的真实 Track 子资产。</param>
+        /// <param name="item">需要绑定的实际 Item 配置。</param>
+        /// <param name="trackObject">成功时返回 Track 生命周期对应的 SerializedObject。</param>
+        /// <param name="itemProperty">成功时返回按 GUID 定位的 Item SerializedProperty。</param>
+        /// <returns>文档仍有效且 Item 存在时返回 true。</returns>
+        internal bool TryGetSerializedItemProperty(TrackConfigBase track,
+            TimelineItemConfigBase item, out SerializedObject trackObject,
+            out SerializedProperty itemProperty)
+        {
+            return document.TryGetItemSerializedProperty(track, item?.Id,
+                out trackObject, out itemProperty);
+        }
+
+        /// <summary>
+        /// 处理原生 Tag 数组的 SerializedProperty 变化，刷新时间轴与预览但保留当前 Inspector 焦点。
+        /// </summary>
+        /// <param name="track">发生修改的真实 Track 子资产。</param>
+        /// <param name="item">发生修改的实际 Item 配置。</param>
+        internal void NotifyNativeItemPropertyChanged(TrackConfigBase track,
+            TimelineItemConfigBase item)
+        {
+            if (!IsSelected(track, item)) return;
+            document.MarkTrackDirty(track);
+            playback.InvalidatePreviewContent();
+            Debug.Log(
+                $"[SkillTimeline] 原生 Phase Tag 数组已更新，track={track.DisplayName}，itemId={item.Id}，" +
+                $"runtimeTags={(item is ActionPhaseSkillClipConfig phase ? phase.RuntimeTags.Count : 0)}，" +
+                $"blockTags={(item is ActionPhaseSkillClipConfig phaseItem ? phaseItem.BlockAbilityTags.Count : 0)}。");
+            TimelineChanged?.Invoke();
+        }
+
+        #endregion
+
         #region 生命周期
         /// <summary>
         /// 创建窗口私有 ViewModel，并订阅文档、播放和 Preview 事件。

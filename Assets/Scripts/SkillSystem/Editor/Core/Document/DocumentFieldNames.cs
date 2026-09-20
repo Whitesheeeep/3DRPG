@@ -78,8 +78,12 @@ namespace RPG.SkillSystem.Editor
         internal const string Pitch = "pitch";
         /// <summary>动作阶段片段的阶段枚举。</summary>
         internal const string ActionPhase = "phase";
-        /// <summary>动作阶段开放的外部转换窗口位标记。</summary>
-        internal const string AllowedTransitions = "allowedTransitions";
+        /// <summary>动作阶段是否允许普通取消。</summary>
+        internal const string IsCancelable = "isCancelable";
+        /// <summary>动作阶段贡献给 Ability Runtime 的临时标签数组。</summary>
+        internal const string RuntimeTags = "runtimeTags";
+        /// <summary>动作阶段完整采用的 Ability 阻断标签数组。</summary>
+        internal const string BlockAbilityTags = "blockAbilityTags";
         /// <summary>攻击检测片段的采样间隔帧，最小为一帧。</summary>
         internal const string SampleIntervalFrames = "sampleIntervalFrames";
         /// <summary>攻击检测片段在一次技能执行内共享的命中去重 ID。</summary>

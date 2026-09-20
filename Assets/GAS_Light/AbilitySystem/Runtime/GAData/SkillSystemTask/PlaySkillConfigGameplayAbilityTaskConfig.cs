@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using WS_Modules.GAS.Generated;
 using WS_Modules.GAS.GameplayAbilitySystem;
 
 namespace RPG.SkillSystem
@@ -31,7 +32,14 @@ namespace RPG.SkillSystem
         /// <summary>为本次异步 Ability 激活创建独立播放 Task。</summary>
         /// <param name="runtime">拥有该 Task 的异步 Runtime。</param>
         /// <returns>绑定 Runtime 与 SkillConfig 的新 Task。</returns>
-        protected override GameplayAbilityTask CreateTask(AsynchronousGameplayAbilityRuntime runtime) =>
-            new PlaySkillConfigGameplayAbilityTask(runtime, skillConfig);
+        protected override GameplayAbilityTask CreateTask(AsynchronousGameplayAbilityRuntime runtime)
+        {
+            // SetByCaller 只属于本次 Ability Runtime 快照；缺失或非正值保持兼容的完整时间轴入口。
+            SkillStartMode startMode = SkillStartMode.TimelineStart;
+            if (runtime.TryGetSetByCaller(GameplayTags.Tag_Skill_ActiveAbility, out float entryValue) &&
+                entryValue > 0f)
+                startMode = SkillStartMode.FirstActivePhase;
+            return new PlaySkillConfigGameplayAbilityTask(runtime, skillConfig, startMode);
+        }
     }
 }

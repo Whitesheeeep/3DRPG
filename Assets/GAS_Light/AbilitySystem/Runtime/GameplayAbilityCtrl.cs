@@ -18,6 +18,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         // 三个 Unity 阶段复用稳定快照，避免 Runtime 在回调中结束或激活时破坏当前遍历。
         private readonly List<GameplayAbilityRuntime> runtimeSnapshot = new();
         private readonly Dictionary<GameEffectRuntime, GameplayAbilityRuntime> cooldownOwners = new();
+        // key：AbilityTag；value：所有 Active Runtime 对该阻断标签的引用总数。
+        private readonly GameplayTagCountContainer blockedAbilityTags = new();
         // ASC 初始化时注入的统一阻断规则快照；Controller 不直接持有配置资产数组。
         private GameplayTagQuery activationBlockedOwnerTags;
         private int nextHandleId = 1;
@@ -64,6 +66,34 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             activationBlockedOwnerTags.Clear();
             activationBlockedOwnerTags = blockedOwnerTags;
         }
+
+        /// <summary>接收 Active Runtime 的 BlockAbilityTags 差量并更新独立阻断计数。</summary>
+        /// <param name="runtime">请求修改阻断贡献的 Runtime。</param>
+        /// <param name="tag">需要更新的 AbilityTag。</param>
+        /// <param name="delta">正数增加引用，负数移除引用。</param>
+        /// <returns>Runtime 仍归当前 Controller 所有且计数更新成功时返回 true。</returns>
+        internal bool UpdateRuntimeBlockTagCount(
+            GameplayAbilityRuntime runtime,
+            GameplayTag tag,
+            int delta)
+        {
+            return runtime is { State: GameplayAbilityRuntimeState.Active } &&
+                   activeRuntimes.Contains(runtime) &&
+                   blockedAbilityTags.UpdateTagCount(tag, delta);
+        }
+
+        /// <summary>移除指定 Runtime 当前登记的全部 BlockAbilityTags 引用。</summary>
+        /// <param name="runtime">已经进入终态、仍保留标签快照的 Runtime。</param>
+        internal void ReleaseRuntimeBlockTags(GameplayAbilityRuntime runtime)
+        {
+            if (runtime != null && !runtime.BlockAbilityTags.IsEmpty)
+                blockedAbilityTags.UpdateTagCounts(runtime.BlockAbilityTags, -1);
+        }
+
+        /// <summary>接收 Runtime 动态 CancelTag 的显式重试请求。</summary>
+        /// <param name="activatingRuntime">发出取消查询的 Active Runtime。</param>
+        internal void RequestCancelAbilitiesMatching(GameplayAbilityRuntime activatingRuntime) =>
+            CancelAbilitiesMatching(activatingRuntime);
         #endregion
 
         #region Spec 操作
@@ -162,7 +192,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             AdvanceRuntimes(runtime => runtime.LateTick(deltaTime));
         }
 
-        /// <summary>推进当前 Controller 的 Active Runtime 动画根运动阶段。</summary>1
+        /// <summary>推进当前 Controller 的 Active Runtime 动画根运动阶段。</summary>
         public void UpdateAnimationMove(Vector3 deltaPosition, Quaternion deltaRotation) =>
             AdvanceRuntimes(runtime => runtime.UpdateAnimationMove(deltaPosition, deltaRotation));
         #endregion
@@ -204,14 +234,18 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 !spec.Data.IsRuntimeConfigurationValid)
                 return false;
 
-            WSLog.Log($"ASC {Owner.name} 激活条件通过，Ability {spec.Data.name}，Handle={handle.Id}，Level={spec.Level}");
-            GameplayEffectData cooldown = spec.Data.CooldownEffect;
-            if (cooldown != null && HasActiveCooldown(cooldown)) return false;
-
             GameplayAbilityRuntime candidate = spec.Data.CreateRuntimeInstance(
                 AllocateActivationId(), spec, Owner, setByCaller);
             if (candidate == null)
                 throw new InvalidOperationException("GameplayAbilityData 不能返回空 Runtime。");
+
+            // Runtime Block 在 Cost/Cooldown 之前检查，命中时不产生任何提交副作用。
+            if (IsBlockedByActiveAbilities(candidate.AbilityTags))
+            {
+                WSLog.Log(
+                    $"ASC {Owner.name} 拒绝激活 Ability {spec.Data.name}，Handle={handle.Id}，ActivationId={candidate.ActivationId}，失败阶段=Runtime BlockAbilityTags");
+                return false;
+            }
 
             // 具体 Runtime 只在这里提供本次 Ability 独有的动态查询；此时尚未提交 Cost、Cooldown 或其他副作用。
             if (!candidate.CanActivate())
@@ -220,6 +254,10 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                     $"ASC {Owner.name} 拒绝激活 Ability {spec.Data.name}，Handle={handle.Id}，Level={spec.Level}，失败阶段=Runtime 动态激活条件");
                 return false;
             }
+
+            WSLog.Log($"ASC {Owner.name} 激活 Ability 条件通过，Ability {spec.Data.name}，Handle={handle.Id}，Level={spec.Level}");
+            GameplayEffectData cooldown = spec.Data.CooldownEffect;
+            if (cooldown != null && HasActiveCooldown(cooldown)) return false;
 
             WSLog.LogSuccess(
                 $"ASC {Owner.name} 激活 Ability {spec.Data.name}，Handle={handle.Id}，ActivationId={candidate.ActivationId}");
@@ -244,6 +282,15 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             runtime.Finished += OnRuntimeFinished;
             activeRuntimes.Add(runtime);
             runtime.Activate();
+            // 空 Block 集合表示该 Runtime 不贡献激活阻断；只有实际存在标签时才要求计数容器提交。
+            if (!runtime.BlockAbilityTags.IsEmpty &&
+                !blockedAbilityTags.UpdateTagCounts(runtime.BlockAbilityTags, 1))
+            {
+                activeRuntimes.Remove(runtime);
+                runtime.Finished -= OnRuntimeFinished;
+                throw new InvalidOperationException(
+                    $"Ability Runtime ActivationId={runtime.ActivationId} 的 BlockAbilityTags 无法登记。 ");
+            }
             WSLog.LogSuccess(
                 $"ASC {Owner.name} 激活 Ability {spec.Data.name}，Handle={handle.Id}，ActivationId={runtime.ActivationId}");
             if (cooldownRuntime != null)
@@ -270,16 +317,17 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
 
         /// <inheritdoc />
         public bool TryCancel(GameplayAbilityRuntime runtime) =>
-            OwnsActiveRuntime(runtime) && runtime.Cancel();
+            OwnsActiveRuntime(runtime) && runtime.IsCancelable && runtime.Cancel();
 
         /// <inheritdoc />
         public void Clear()
         {
             while (activeRuntimes.Count > 0)
-                activeRuntimes[^1].Cancel();
+                activeRuntimes[^1].ForceCancel();
             runtimeSnapshot.Clear();
             grantedAbilities.Clear();
             activationBlockedOwnerTags.Clear();
+            blockedAbilityTags.Reset();
         }
 
         // Runtime 已先进入终态；Controller 先移除，再发送唯一公开终态事件。
@@ -387,12 +435,13 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             return null;
         }
 
-        /// <summary>强制取消 AbilityTags 与新 Runtime CancelTags 层级匹配的其他 Active Runtime。不判断 GA 是否能被打断。</summary>
+        /// <summary>取消 AbilityTags 与新 Runtime CancelTags 层级匹配且允许普通取消的其他 Active Runtime。</summary>
         /// <param name="activatingRuntime">已发送 Activated 事件且仍处于 Active 的新 Runtime。</param>
         private void CancelAbilitiesMatching(GameplayAbilityRuntime activatingRuntime)
         {
-            IReadOnlyList<GameplayTag> cancelTags = activatingRuntime.Spec.Data.CancelTags;
-            if (cancelTags.Count == 0) return;
+            if (activatingRuntime == null || activatingRuntime.State != GameplayAbilityRuntimeState.Active ||
+                activatingRuntime.CancelTags.IsEmpty)
+                return;
 
             // 每次命令使用独立快照，允许 Cancelled 回调中重入激活其他 Ability。
             var snapshot = new List<GameplayAbilityRuntime>(activeRuntimes);
@@ -402,11 +451,25 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 // 避免取消自身或已终态的 Runtime；仅 Active Runtime 才能被取消。
                 if (ReferenceEquals(candidate, activatingRuntime) ||
                     candidate.State != GameplayAbilityRuntimeState.Active ||
-                    !MatchesAnyAbilityTag(candidate.Spec.Data.AbilityTags, cancelTags))
+                    !candidate.IsCancelable ||
+                    !MatchesAnyAbilityTag(candidate.AbilityTags, activatingRuntime.CancelTags))
                     continue;
 
                 candidate.Cancel();
             }
+        }
+
+        /// <summary>判断候选 Ability 身份是否被任一 Active Runtime 的 Block 标签命中。</summary>
+        /// <param name="abilityTags">候选 Runtime 的 AbilityTags。</param>
+        /// <returns>命中专用阻断计数时返回 true。</returns>
+        private bool IsBlockedByActiveAbilities(IReadOnlyGameplayTagContainer abilityTags)
+        {
+            if (abilityTags == null || abilityTags.IsEmpty || blockedAbilityTags.IsEmpty) return false;
+            foreach (GameplayTag abilityTag in abilityTags.Tags)
+                foreach (GameplayTag blockTag in blockedAbilityTags.Tags)
+                    if (abilityTag.MatchesTag(blockTag))
+                        return true;
+            return false;
         }
 
         /// <summary>判断任一实际 AbilityTag 是否能匹配任一 CancelTag 或其子标签条件。</summary>
@@ -414,12 +477,12 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <param name="cancelTags">新 Ability 发出的取消查询标签。</param>
         /// <returns>存在至少一组层级匹配时返回 true。</returns>
         private static bool MatchesAnyAbilityTag(
-            IReadOnlyList<GameplayTag> abilityTags,
-            IReadOnlyList<GameplayTag> cancelTags)
+            IReadOnlyGameplayTagContainer abilityTags,
+            IReadOnlyGameplayTagContainer cancelTags)
         {
-            for (int i = 0; i < abilityTags.Count; i++)
-                for (int j = 0; j < cancelTags.Count; j++)
-                    if (abilityTags[i].MatchesTag(cancelTags[j]))
+            foreach (GameplayTag abilityTag in abilityTags.Tags)
+                foreach (GameplayTag cancelTag in cancelTags.Tags)
+                    if (abilityTag.MatchesTag(cancelTag))
                         return true;
             return false;
         }

@@ -19,6 +19,8 @@ MonoBehaviour:
     Runtime\u3002"
   abilityTags: []
   cancelTags: []
+  blockAbilityTags: []
+  isCancelable: 1
   activationTagQuery:
     allTags: []
     anyTags: []

@@ -1,4 +1,3 @@
-using RPG.SkillSystem;
 using WS_Modules.GAS.GameplayAbilitySystem;
 
 namespace RPG.Character
@@ -12,28 +11,15 @@ namespace RPG.Character
         internal GameplayAbilityRuntime Runtime { get; }
         /// <summary>获取 Runtime 的稳定激活标识。</summary>
         internal int ActivationId => Runtime.ActivationId;
-        /// <summary>获取当前 Skill Phase 开放的转换权限。</summary>
-        internal SkillTransitionMask AllowedTransitions { get; private set; }
-
         /// <summary>创建一个尚未注销的 FullBody Skill 执行快照。</summary>
         /// <param name="registrationId">Action Arbiter 单调分配的注册标识。</param>
         /// <param name="runtime">当前活动 Ability Runtime。</param>
-        /// <param name="allowedTransitions">注册时的转换窗口。</param>
         internal FullBodySkillExecution(
             int registrationId,
-            GameplayAbilityRuntime runtime,
-            SkillTransitionMask allowedTransitions)
+            GameplayAbilityRuntime runtime)
         {
             RegistrationId = registrationId;
             Runtime = runtime;
-            AllowedTransitions = allowedTransitions;
-        }
-
-        /// <summary>在同一次 Skill 执行内替换当前 Phase 开放的转换权限。</summary>
-        /// <param name="allowedTransitions">新的转换权限组合。</param>
-        internal void UpdateAllowedTransitions(SkillTransitionMask allowedTransitions)
-        {
-            AllowedTransitions = allowedTransitions;
         }
     }
 }

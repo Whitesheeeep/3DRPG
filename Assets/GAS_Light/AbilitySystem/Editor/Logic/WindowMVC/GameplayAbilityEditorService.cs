@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
+using WS_Modules.GAS.Generated;
 using WS_Modules.GAS.GameplayAbilitySystem;
 using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.GameplayEffect;
@@ -15,9 +16,6 @@ namespace WS_Modules.GAS.Editor
     /// <summary>集中执行 GA 资产操作、具体类型发现与跨字段校验。</summary>
     public sealed class GameplayAbilityEditorService
     {
-
-        /// <summary>设置 GA 跨字段校验使用的 Editor Tag Database 上下文。</summary>
-        /// <param name="database">与 GameplayTagPropertyDrawer 一致的当前数据库。</param>
 
         #region 资产与类型查询
         /// <summary>扫描项目中的全部 GameplayAbilityData 并建立稳定顺序。</summary>
@@ -262,8 +260,9 @@ namespace WS_Modules.GAS.Editor
             ValidateCooldownTags(ability.CooldownEffect, issues);
 
             ValidateEffectReferences(ability.Effects, issues);
-            ValidateAbilityTags(ability.AbilityTags, "AbilityTags", issues);
-            ValidateAbilityTags(ability.CancelTags, "CancelTags", issues);
+            ValidateAbilityTags(ability.AbilityTags, "AbilityTags", issues, true);
+            ValidateAbilityTags(ability.CancelTags, "CancelTags", issues, true);
+            ValidateAbilityTags(ability.BlockAbilityTags, "BlockAbilityTags", issues, true);
             ValidateCueTags(ability.CueTags, issues);
 
             if (ability is AsynchronousGameplayAbilityData asynchronous)
@@ -373,13 +372,39 @@ namespace WS_Modules.GAS.Editor
         private static void ValidateAbilityTags(
             IReadOnlyList<WS_Modules.GAS.TAG.GameplayTag> tags,
             string fieldName,
-            ICollection<GameplayAbilityValidationIssue> issues)
+            ICollection<GameplayAbilityValidationIssue> issues,
+            bool rejectRuntimeWindowTags)
         {
             if (tags == null) return;
             var unique = new HashSet<WS_Modules.GAS.TAG.GameplayTag>();
             for (int i = 0; i < tags.Count; i++)
+            {
+                if (!IsBakedTag(tags[i]))
+                    issues.Add(Error($"{fieldName}[{i}] 不是当前 Bake Database 中的有效 GameplayTag。"));
+                if (rejectRuntimeWindowTags && IsRuntimeWindowTag(tags[i]))
+                    issues.Add(Error($"{fieldName}[{i}] 不应使用 Skill.Window.CancelBy.*；窗口 Tag 只属于 RuntimeTags。"));
                 if (!unique.Add(tags[i]))
                     issues.Add(Error($"{fieldName}[{i}] 与前面的标签重复。"));
+            }
+        }
+
+        /// <summary>判断标签是否属于时间轴 Runtime 窗口约定。</summary>
+        /// <param name="tag">待检查的 GameplayTag。</param>
+        /// <returns>属于标准窗口 Tag 时返回 true。</returns>
+        private static bool IsRuntimeWindowTag(GameplayTag tag) =>
+            tag == GameplayTags.Tag_Skill_Window_CancelBy ||
+            tag == GameplayTags.Tag_Skill_Window_CancelBy_Ability ||
+            tag == GameplayTags.Tag_Skill_Window_CancelBy_Jump ||
+            tag == GameplayTags.Tag_Skill_Window_CancelBy_Move;
+
+        /// <summary>在 Tag Manager 已初始化时检查数据库节点，否则保留编辑器资产的有效 ID 判断。</summary>
+        /// <param name="tag">待检查的 GameplayTag。</param>
+        /// <returns>标签通过当前可用的 Bake 校验时返回 true。</returns>
+        private static bool IsBakedTag(GameplayTag tag)
+        {
+            if (!tag.IsValid) return false;
+            GameplayTagDatabase database = GameplayTagManager.Instance.Database;
+            return database == null || database.TryGetNode(tag, out _);
         }
 
         /// <summary>校验 Cooldown GE 的 GrantedTags，确保运行时能以 Tag 作为冷却身份。</summary>

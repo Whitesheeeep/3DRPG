@@ -1,5 +1,4 @@
 using WS_Modules.GAS.GameplayAbilitySystem;
-using RPG.SkillSystem;
 
 namespace RPG.Character
 {
@@ -8,10 +7,7 @@ namespace RPG.Character
     {
         /// <summary>登记一个已经成功启动表现的 FullBody Ability Runtime。</summary>
         /// <param name="runtime">拥有本次 FullBody 表现的活动 Runtime。</param>
-        /// <param name="initialTransitions">当前 Skill Phase 开放的转换窗口。</param>
-        /// <returns>负责权限更新与幂等注销的生命周期 Handle。</returns>
-        FullBodyActionHandle RegisterFullBodyAction(
-            GameplayAbilityRuntime runtime,
-            SkillTransitionMask initialTransitions);
+        /// <returns>负责幂等注销的生命周期 Handle。</returns>
+        FullBodyActionHandle RegisterFullBodyAction(GameplayAbilityRuntime runtime);
     }
 }

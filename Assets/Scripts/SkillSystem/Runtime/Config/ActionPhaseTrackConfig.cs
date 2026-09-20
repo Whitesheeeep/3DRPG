@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using WS_Modules.GAS.TAG;
 
 namespace RPG.SkillSystem
 {
@@ -14,26 +15,6 @@ namespace RPG.SkillSystem
         Startup = 1,
         Active = 2,
         Recovery = 3
-    }
-
-    /// <summary>
-    /// 描述当前技能动作阶段开放的外部转换窗口。
-    /// 该掩码只表达候选动作可以尝试转换，不负责执行取消、激活或状态切换。
-    /// </summary>
-    [Flags]
-    public enum SkillTransitionMask
-    {
-        /// <summary>当前阶段不开放外部转换。</summary>
-        None = 0,
-
-        /// <summary>允许移动逻辑尝试转换。</summary>
-        Move = 1 << 0,
-
-        /// <summary>允许跳跃逻辑尝试转换。</summary>
-        Jump = 1 << 1,
-
-        /// <summary>允许其他 Gameplay Ability 尝试转换。</summary>
-        Ability = 1 << 2
     }
 
     /// <summary>
@@ -65,7 +46,7 @@ namespace RPG.SkillSystem
     }
 
     /// <summary>
-    /// 描述一个左闭右开动作阶段区间及该阶段开放的外部转换窗口。
+    /// 描述一个左闭右开动作阶段区间及该阶段的 RuntimeTag、阻断和取消策略。
     /// </summary>
     [Serializable]
     public sealed class ActionPhaseSkillClipConfig : TimelineItemConfigBase
@@ -84,9 +65,17 @@ namespace RPG.SkillSystem
         [SerializeField, LabelText("动作阶段")]
         private ActionPhaseType phase = ActionPhaseType.Startup;
 
-        [SerializeField, EnumToggleButtons, LabelText("允许转换"),
-         Tooltip("只声明本阶段允许哪些动作尝试转换，不直接取消技能或启动目标动作。")]
-        private SkillTransitionMask allowedTransitions;
+        [SerializeField, LabelText("允许取消"),
+         Tooltip("本阶段是否接受普通取消；系统清理仍可强制回收。")]
+        private bool isCancelable;
+
+        [SerializeField, LabelText("Runtime Tags"),
+         Tooltip("本阶段贡献给当前 Ability Runtime 的临时标签；进入下一 Phase 或空白区间时撤销。")]
+        private GameplayTag[] runtimeTags = Array.Empty<GameplayTag>();
+
+        [SerializeField, LabelText("Block Ability Tags"),
+         Tooltip("本阶段完整替换 Runtime 的 Ability 阻断标签；空白区间恢复 GA 初始值。")]
+        private GameplayTag[] blockAbilityTags = Array.Empty<GameplayTag>();
 
         #endregion
 
@@ -101,10 +90,15 @@ namespace RPG.SkillSystem
         /// </summary>
         public ActionPhaseType Phase => phase;
 
-        /// <summary>
-        /// 当前阶段允许外部逻辑尝试的转换类型。
-        /// </summary>
-        public SkillTransitionMask AllowedTransitions => allowedTransitions;
+        /// <summary>获取本阶段是否接受普通取消。</summary>
+        public bool IsCancelable => isCancelable;
+
+        /// <summary>获取本阶段贡献给 Runtime 的临时标签。</summary>
+        public IReadOnlyList<GameplayTag> RuntimeTags => runtimeTags ?? Array.Empty<GameplayTag>();
+
+        /// <summary>获取本阶段完整采用的 Ability 阻断标签快照。</summary>
+        public IReadOnlyList<GameplayTag> BlockAbilityTags =>
+            blockAbilityTags ?? Array.Empty<GameplayTag>();
 
         #endregion
     }

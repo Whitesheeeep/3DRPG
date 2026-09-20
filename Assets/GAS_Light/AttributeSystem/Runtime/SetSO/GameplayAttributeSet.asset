@@ -29,7 +29,7 @@ MonoBehaviour:
       name: MaxHealth
       displayName: "\u751F\u547D\u503C\u4E0A\u9650"
     type: 0
-    defaultValue: 65
+    defaultValue: 500
     minValue: 0
     maxValue: Infinity
     baseValue: 0

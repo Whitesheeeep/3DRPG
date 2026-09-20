@@ -573,6 +573,47 @@ namespace RPG.SkillSystem.Editor
             return true;
         }
 
+        /// <summary>
+        /// 按 Track 类型和 Item 稳定 GUID 创建与子资产绑定的 SerializedProperty。
+        /// </summary>
+        /// <param name="track">当前动作阶段所属的真实 Track 子资产。</param>
+        /// <param name="itemId">需要绑定的 Item 稳定 GUID。</param>
+        /// <param name="trackObject">成功时返回 Track 生命周期对应的 SerializedObject。</param>
+        /// <param name="itemProperty">成功时返回按 GUID 找到的真实数组元素属性。</param>
+        /// <returns>当前文档、Track 和 Item 都有效时返回 true。</returns>
+        internal bool TryGetItemSerializedProperty(TrackConfigBase track, string itemId,
+            out SerializedObject trackObject, out SerializedProperty itemProperty)
+        {
+            trackObject = null;
+            itemProperty = null;
+            if (!HasConfig || track == null || string.IsNullOrEmpty(itemId)) return false;
+
+            ITrackDocumentHandler handler = GetHandler(track);
+            trackObject = new SerializedObject(track);
+            trackObject.Update();
+            SerializedProperty items = trackObject.FindProperty(handler.ItemsPropertyName);
+            if (items == null) return false;
+            int index = FindItemIndex(items, itemId);
+            if (index < 0)
+            {
+                trackObject = null;
+                return false;
+            }
+
+            itemProperty = items.GetArrayElementAtIndex(index);
+            return true;
+        }
+
+        /// <summary>
+        /// 标记 Track 子资产已被原生 SerializedProperty 编辑，但不触发 Inspector 全量重建。
+        /// </summary>
+        /// <param name="track">发生原生数组编辑的 Track 子资产。</param>
+        internal void MarkTrackDirty(TrackConfigBase track)
+        {
+            if (!HasConfig || track == null) return;
+            EditorUtility.SetDirty(track);
+        }
+
         // 返回 Track 的 Editor 锁定状态。
         internal static bool IsTrackLocked(TrackConfigBase track) => track.EditorLocked;
 
