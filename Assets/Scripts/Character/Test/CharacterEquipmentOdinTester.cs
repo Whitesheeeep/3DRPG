@@ -14,6 +14,9 @@ namespace RPG.Character
         #region 测试参数
 
         [SerializeField, CharacterIdDropdown, LabelText("测试角色")] private CharacterId targetCharacterId;
+        [SerializeField, MinValue(1), LabelText("目标等级")] private int targetLevel = 1;
+        [SerializeField, MinValue(0), LabelText("目标等级内经验")] private int targetExperience;
+        [SerializeField, MinValue(0), LabelText("目标突破阶数")] private int targetAscensionRank;
 
         #endregion
 
@@ -28,9 +31,73 @@ namespace RPG.Character
             CharacterAcquisitionResult result = rosterManager.AcquireCharacter(targetCharacterId);
             bool hasWeapon = system.TryGetEquippedWeapon(targetCharacterId, out WeaponInstance equippedWeapon);
             Debug.Log($"[CharacterEquipmentTester] acquire status={result.Status}, character={targetCharacterId}, " +
+                      $"level={result.Instance?.Level.ToString() ?? "<none>"}, " +
                       $"targetWeapon={equippedWeapon?.InstanceId.ToString() ?? "<none>"}, " +
                       $"targetHasWeapon={hasWeapon}。", this);
             LogPartitionSnapshot();
+        }
+
+        /// <summary>通过正式角色实例 API 更新测试角色的等级、经验和突破状态。</summary>
+        [Button("更新测试角色进度")]
+        public void UpdateTargetCharacterProgress()
+        {
+            if (!TryGetSystem(out CharacterEquipmentSystem _)) return;
+            CharacterRosterManager rosterManager = GameArchitecture.Interface.GetManager<CharacterRosterManager>();
+            CharacterProgressOperationResult result = rosterManager.UpdateCharacterProgress(
+                targetCharacterId,
+                new CharacterProgressUpdate(targetLevel, targetExperience, targetAscensionRank));
+            Debug.Log($"[CharacterEquipmentTester] progress status={result.Status}, character={targetCharacterId}, " +
+                      $"level={result.Instance?.Level.ToString() ?? "<none>"}, " +
+                      $"experience={result.Instance?.CurrentExperience.ToString() ?? "<none>"}, " +
+                      $"ascensionRank={result.Instance?.AscensionRank.ToString() ?? "<none>"}。", this);
+        }
+
+        /// <summary>输出当前目标角色的完整实例状态。</summary>
+        [Button("输出目标角色实例")]
+        public void LogTargetCharacterInstance()
+        {
+            if (!TryGetSystem(out CharacterEquipmentSystem _)) return;
+            CharacterRosterManager rosterManager = GameArchitecture.Interface.GetManager<CharacterRosterManager>();
+            if (!rosterManager.TryGetInstance(targetCharacterId, out CharacterInstance instance))
+            {
+                Debug.LogWarning($"[CharacterEquipmentTester] 目标角色尚未拥有，character={targetCharacterId}。", this);
+                return;
+            }
+
+            Debug.Log($"[CharacterEquipmentTester] instance character={instance.CharacterId}, " +
+                      $"level={instance.Level}, experience={instance.CurrentExperience}, " +
+                      $"ascensionRank={instance.AscensionRank}, " +
+                      $"acquisitionSequence={instance.AcquisitionSequence}, " +
+                      $"weapon={instance.EquippedWeaponInstanceId}, " +
+                      $"flower={FormatArtifact(instance, ArtifactSlot.FlowerOfLife)}, " +
+                      $"plume={FormatArtifact(instance, ArtifactSlot.PlumeOfDeath)}, " +
+                      $"sands={FormatArtifact(instance, ArtifactSlot.SandsOfEon)}, " +
+                      $"goblet={FormatArtifact(instance, ArtifactSlot.GobletOfEonothem)}, " +
+                      $"circlet={FormatArtifact(instance, ArtifactSlot.CircletOfLogos)}。", this);
+        }
+
+        /// <summary>输出所有角色实例，验证获得顺序和进度数据。</summary>
+        [Button("输出全部角色实例")]
+        public void LogAllCharacterInstances()
+        {
+            if (!TryGetSystem(out CharacterEquipmentSystem _)) return;
+            CharacterRosterManager rosterManager = GameArchitecture.Interface.GetManager<CharacterRosterManager>();
+            IReadOnlyList<CharacterInstance> instances = rosterManager.GetInstances();
+            Debug.Log($"[CharacterEquipmentTester] characterInstanceCount={instances.Count}。", this);
+            for (int index = 0; index < instances.Count; index++)
+            {
+                CharacterInstance instance = instances[index];
+                Debug.Log($"[CharacterEquipmentTester] instance[{index}] character={instance.CharacterId}, " +
+                          $"level={instance.Level}, experience={instance.CurrentExperience}, " +
+                          $"ascensionRank={instance.AscensionRank}, " +
+                          $"acquisitionSequence={instance.AcquisitionSequence}, " +
+                          $"weapon={instance.EquippedWeaponInstanceId}, " +
+                          $"flower={FormatArtifact(instance, ArtifactSlot.FlowerOfLife)}, " +
+                          $"plume={FormatArtifact(instance, ArtifactSlot.PlumeOfDeath)}, " +
+                          $"sands={FormatArtifact(instance, ArtifactSlot.SandsOfEon)}, " +
+                          $"goblet={FormatArtifact(instance, ArtifactSlot.GobletOfEonothem)}, " +
+                          $"circlet={FormatArtifact(instance, ArtifactSlot.CircletOfLogos)}。", this);
+            }
         }
 
         /// <summary>显式获取或补齐目标角色武器，验证已有武器优先和装备缓存区容量契约。</summary>
@@ -102,6 +169,17 @@ namespace RPG.Character
         {
             system = GameArchitecture.Interface.GetSystem<CharacterEquipmentSystem>();
             return system != null;
+        }
+
+        /// <summary>将角色指定圣遗物槽转换为测试日志文本。</summary>
+        /// <param name="instance">角色实例。</param>
+        /// <param name="slot">圣遗物部位。</param>
+        /// <returns>实例标识或空槽占位文本。</returns>
+        private static string FormatArtifact(CharacterInstance instance, ArtifactSlot slot)
+        {
+            return instance.TryGetEquippedArtifactInstanceId(slot, out EquipmentInstanceId instanceId)
+                ? instanceId.ToString()
+                : "<none>";
         }
 
         #endregion

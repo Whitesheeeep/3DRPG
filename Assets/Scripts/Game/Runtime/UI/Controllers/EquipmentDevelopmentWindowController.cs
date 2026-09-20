@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using RPG.CurrencySystem;
+using RPG.Character;
 using RPG.Game.UI.Bag;
 using RPG.Game.UI.EquipmentDevelopment;
 using RPG.Game.UI.Escape;
@@ -35,6 +36,7 @@ namespace RPG.Game.UI.Controllers
         private WeaponDevelopmentUIStateModel stateModel;
         private IArchitecture architecture;
         private WeaponInventoryManager weaponInventoryManager;
+        private CharacterRosterManager characterRosterManager;
         private ArtifactInventoryManager artifactInventoryManager;
         private StackableInventoryManager stackableInventoryManager;
         private IUnRegister weaponChangedUnregister;
@@ -82,6 +84,7 @@ namespace RPG.Game.UI.Controllers
             data.ValidateConfiguration();
             architecture = GameArchitecture.Interface;
             weaponInventoryManager = architecture.GetManager<WeaponInventoryManager>();
+            characterRosterManager = architecture.GetManager<CharacterRosterManager>();
             artifactInventoryManager = architecture.GetManager<ArtifactInventoryManager>();
             stackableInventoryManager = architecture.GetManager<StackableInventoryManager>();
             view = data.View;
@@ -248,7 +251,7 @@ namespace RPG.Game.UI.Controllers
                 throw new InvalidOperationException("[WeaponDevelopment] 创建培养服务前必须完成库存 Manager 注入。");
 
             developmentService = new WeaponDevelopmentService(
-                weaponInventoryManager, stackableInventoryManager, CurrencyManager.Instance);
+                weaponInventoryManager, stackableInventoryManager, CurrencyManager.Instance, characterRosterManager);
             Debug.Log("[WeaponDevelopment] 已创建窗口级 WeaponDevelopmentService。", this);
         }
 
@@ -1246,7 +1249,7 @@ namespace RPG.Game.UI.Controllers
                 WeaponInstance material = instances[index];
                 if (material == null || material.InstanceId == target.InstanceId ||
                     material.DefinitionId != definition.ItemId || !IsMaterialSelected(material.InstanceId) ||
-                    material.IsLocked || material.IsEquipped) continue;
+                     material.IsLocked || characterRosterManager.IsEquipmentEquipped(material.InstanceId)) continue;
                 if (!ItemManager.Instance.TryGetDefinition(material.DefinitionId, out ItemDefinition item) ||
                     !(item is WeaponDefinition materialDefinition)) continue;
 
@@ -1255,7 +1258,8 @@ namespace RPG.Game.UI.Controllers
                 var entryKey = new BagEntryKey(ItemCategory.Weapon, material.InstanceId.ToString());
                 result.Add(new BagItemViewData(entryKey, materialDefinition.DisplayName,
                     (int)materialDefinition.Rarity, $"Lv.{material.Level} · R{material.RefinementRank}", icon,
-                    null, string.Empty, false, material.IsLocked, material.IsEquipped));
+                     null, string.Empty, false, material.IsLocked,
+                     characterRosterManager.IsEquipmentEquipped(material.InstanceId)));
             }
 
             return result;
@@ -1582,7 +1586,7 @@ namespace RPG.Game.UI.Controllers
             {
                 WeaponInstance instance = instances[index];
                 if (instance.InstanceId == target.InstanceId || instance.DefinitionId != target.DefinitionId ||
-                    instance.IsLocked || instance.IsEquipped) continue;
+                     instance.IsLocked || characterRosterManager.IsEquipmentEquipped(instance.InstanceId)) continue;
                 if (!ItemManager.Instance.TryGetDefinition(instance.DefinitionId, out ItemDefinition item) ||
                     !(item is WeaponDefinition definition)) continue;
                 Sprite icon = spriteAtlasLeaseService.TryGetSprite(definition.IconAddress, definition.IconSpriteName, out Sprite resolved)
@@ -1592,7 +1596,7 @@ namespace RPG.Game.UI.Controllers
                 entries.Add(new BagItemViewData(
                     entryKey, definition.DisplayName,
                     (int)definition.Rarity, $"Lv.{instance.Level}", icon, null, string.Empty,
-                    false, instance.IsLocked, instance.IsEquipped));
+                     false, instance.IsLocked, characterRosterManager.IsEquipmentEquipped(instance.InstanceId)));
                 // 材料实例 ID 是状态模型的唯一来源；这里只投影仍属于当前候选列表的稳定网格键。
                 if (IsMaterialSelected(instance.InstanceId)) selectedEntryKeys.Add(entryKey);
             }

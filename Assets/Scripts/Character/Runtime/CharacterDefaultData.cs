@@ -143,12 +143,12 @@ namespace RPG.Character
             if (!(serializedObject.targetObject is CharacterConfig config))
                 throw new InvalidOperationException($"角色默认数据要求目标为 CharacterConfig，实际为 {serializedObject.targetObject.GetType().Name}。");
 
-            SerializedProperty rarity = RequireProperty(serializedObject, "rarity");
-            SerializedProperty sideIconAddress = RequireProperty(serializedObject, "sideIconAddress");
-            SerializedProperty avatarAddress = RequireProperty(serializedObject, "avatarAddress");
-            SerializedProperty gravity = RequireProperty(serializedObject, "gravity");
-            SerializedProperty maxLevel = RequireProperty(serializedObject, "maxLevel");
-            SerializedProperty maxAscensionRank = RequireProperty(serializedObject, "maxAscensionRank");
+            SerializedProperty rarity = RequireProperty(serializedObject, "identity.rarity");
+            SerializedProperty sideIconAddress = RequireProperty(serializedObject, "presentation.sideIconAddress");
+            SerializedProperty avatarAddress = RequireProperty(serializedObject, "presentation.avatarAddress");
+            SerializedProperty gravity = RequireProperty(serializedObject, "locomotion.gravity");
+            SerializedProperty maxLevel = RequireProperty(serializedObject, "progression.maxLevel");
+            SerializedProperty maxAscensionRank = RequireProperty(serializedObject, "progression.maxAscensionRank");
             rarity.intValue = (int)DefaultRarity;
             sideIconAddress.stringValue = DefaultSideIconAddress;
             avatarAddress.stringValue = DefaultAvatarAddress;

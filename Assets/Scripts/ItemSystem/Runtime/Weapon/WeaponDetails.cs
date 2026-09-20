@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using RPG.Character;
 using WS_Modules.GAS.GameplayEffect;
 
 namespace RPG.ItemSystem
@@ -98,9 +97,5 @@ namespace RPG.ItemSystem
         public IReadOnlyList<WeaponEffectEvaluation> LevelEffects { get; }
         /// <summary>武器精炼效果的有序贡献。</summary>
         public IReadOnlyList<WeaponEffectEvaluation> RefinementEffects { get; }
-        /// <summary>装备者角色标识。</summary>
-        public CharacterId EquippedCharacterId => Instance.EquippedCharacterId;
-        /// <summary>判断武器是否已装备。</summary>
-        public bool IsEquipped => Instance.IsEquipped;
     }
 }

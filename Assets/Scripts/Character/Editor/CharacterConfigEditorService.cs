@@ -83,8 +83,8 @@ namespace RPG.Character.Editor
                 Undo.RegisterCreatedObjectUndo(growthProfile, "创建角色成长配置");
                 SerializedObject serializedObject = new SerializedObject(config);
                 serializedObject.FindProperty("characterId").FindPropertyRelative("value").stringValue = characterId;
-                serializedObject.FindProperty("characterName").stringValue = "新角色";
-                serializedObject.FindProperty("growthProfile").objectReferenceValue = growthProfile;
+                serializedObject.FindProperty("identity.characterName").stringValue = "新角色";
+                serializedObject.FindProperty("progression.growthProfile").objectReferenceValue = growthProfile;
                 serializedObject.ApplyModifiedPropertiesWithoutUndo();
                 database.DefaultData.ApplyDefault(new SerializedObject(config));
                 Undo.RegisterCreatedObjectUndo(config, "创建角色配置");
@@ -144,7 +144,7 @@ namespace RPG.Character.Editor
                 Undo.RegisterCreatedObjectUndo(copy, "复制角色配置");
                 SerializedObject serializedObject = new SerializedObject(copy);
                 serializedObject.FindProperty("characterId").FindPropertyRelative("value").stringValue = characterId;
-                serializedObject.FindProperty("growthProfile").objectReferenceValue = growthProfileCopy;
+                serializedObject.FindProperty("progression.growthProfile").objectReferenceValue = growthProfileCopy;
                 serializedObject.ApplyModifiedPropertiesWithoutUndo();
                 copy.name = characterId;
                 AddToDatabase(database, copy);
@@ -280,8 +280,8 @@ namespace RPG.Character.Editor
             Undo.RecordObject(config, sideIcon ? "修改侧面头像" : "修改角色头像");
             SerializedObject serializedObject = new SerializedObject(config);
             serializedObject.FindProperty(sideIcon ? "editorSideIcon" : "editorAvatar").objectReferenceValue = sprite;
-            serializedObject.FindProperty(sideIcon ? "sideIconAddress" : "avatarAddress").stringValue = atlasAddress;
-            serializedObject.FindProperty(sideIcon ? "sideIconSpriteName" : "avatarSpriteName").stringValue = spriteName;
+            serializedObject.FindProperty(sideIcon ? "presentation.sideIconAddress" : "presentation.avatarAddress").stringValue = atlasAddress;
+            serializedObject.FindProperty(sideIcon ? "presentation.sideIconSpriteName" : "presentation.avatarSpriteName").stringValue = spriteName;
             serializedObject.ApplyModifiedProperties();
             EditorUtility.SetDirty(config);
             AssetDatabase.SaveAssets();

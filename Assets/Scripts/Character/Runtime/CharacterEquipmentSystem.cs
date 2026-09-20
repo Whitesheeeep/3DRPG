@@ -1,186 +1,232 @@
+using System;
 using RPG.ItemSystem;
+using RPG.SaveSystem;
 using UnityEngine;
 using WS_Modules.BusinessArchitecture;
 using WS_Modules.CustomEventSystem;
+using WSEventSystem = WS_Modules.CustomEventSystem.EventSystem;
 
 namespace RPG.Character
 {
-    /// <summary>协调已拥有角色与武器库存之间的装备关系。</summary>
+    /// <summary>协调角色实例与武器、圣遗物库存之间的装备事务。</summary>
     /// <remarks>
-    /// 本 System 响应角色获得事件，优先复用角色当前装备，在角色缺少装备时创建默认武器，
-    /// 并提供换装、卸下和装备查询入口。角色拥有状态与武器实例分别由对应 Manager 持有，
-    /// 本 System 不负责新增角色拥有状态；自动装配失败时保留角色，等待显式修复入口再次处理。
+    /// CharacterRosterManager 持有最终装备关系；本 System 只在完整校验通过后提交新的不可变状态。
+    /// 场景 CharacterActor 的 ASC 初始化仍然不读取角色实例进度。
     /// </remarks>
     public sealed class CharacterEquipmentSystem : AbstractSystem
     {
         #region 依赖字段
 
-        // 角色拥有状态与武器实例由两个独立 Manager 持有；本 System 只负责跨业务装备协调。
+        // 依赖字段：角色状态是装备关系唯一权威，两个库存只持有各自装备实例。
         private CharacterRosterManager characterRosterManager;
         private WeaponInventoryManager weaponInventoryManager;
+        private ArtifactInventoryManager artifactInventoryManager;
         private IUnRegister characterOwnershipChangedUnregister;
 
         #endregion
 
         #region 生命周期
 
-        /// <summary>初始化角色武器协调，并订阅角色获得事件。</summary>
+        /// <summary>初始化装备事务并注册角色装备存档模块。</summary>
         protected override void OnInit()
         {
             characterRosterManager = this.GetManager<CharacterRosterManager>();
             weaponInventoryManager = this.GetManager<WeaponInventoryManager>();
+            artifactInventoryManager = this.GetManager<ArtifactInventoryManager>();
+            SaveManager saveManager = this.GetManager<SaveManager>();
+            saveManager.RegisterModule(new CharacterEquipmentSaveModule(
+                characterRosterManager, weaponInventoryManager, artifactInventoryManager, this));
             characterOwnershipChangedUnregister =
                 this.RegisterEvent<CharacterOwnershipChangedEvent>(HandleCharacterOwnershipChanged);
-            Debug.Log("[CharacterEquipmentSystem] 角色武器协调已初始化并订阅角色获得事件。 ");
+            Debug.Log("[CharacterEquipmentSystem] 角色装备事务已初始化并注册独立装备关系存档。");
         }
 
-        /// <summary>注销角色获得事件并清理跨业务依赖引用。</summary>
+        /// <summary>注销角色拥有事件并清理跨业务依赖。</summary>
         protected override void OnDeinit()
         {
-            // System 生命周期结束前先注销事件，避免 Architecture 重建后旧实例继续响应角色获得。
             characterOwnershipChangedUnregister?.UnRegister();
             characterOwnershipChangedUnregister = null;
             characterRosterManager = null;
             weaponInventoryManager = null;
-            Debug.Log("[CharacterEquipmentSystem] 角色武器协调已注销并清理事件订阅。 ");
+            artifactInventoryManager = null;
+            Debug.Log("[CharacterEquipmentSystem] 角色装备事务已清理。");
         }
 
         #endregion
 
-        #region 角色武器保障
+        #region 武器查询与默认装备
 
-        /// <summary>获取角色当前装备武器；缺少装备时创建对应的默认武器。</summary>
-        /// <param name="characterId">目标角色标识。</param>
-        /// <returns>角色武器解析结果；已有武器会直接返回，不会读取默认武器配置。</returns>
+        /// <summary>获取角色当前装备武器；缺少时创建并绑定默认武器。</summary>
+        /// <param name="characterId">目标角色。</param>
+        /// <returns>角色武器解析结果。</returns>
         public CharacterWeaponResolutionResult GetOrCreateEquippedWeapon(CharacterId characterId)
         {
             if (!characterId.IsValid)
-                return Fail(
-                    CharacterWeaponResolutionStatus.InvalidCharacterId,
-                    characterId,
-                    InventoryOperationStatus.InvalidQuantity);
+                return Fail(CharacterWeaponResolutionStatus.InvalidCharacterId, characterId, InventoryOperationStatus.InvalidQuantity);
             if (!characterRosterManager.IsOwned(characterId))
-                return Fail(
-                    CharacterWeaponResolutionStatus.CharacterNotOwned,
-                    characterId,
-                    InventoryOperationStatus.CharacterNotOwned);
-
-            // 已有装备是角色当前武器的权威状态；在此分支不能因为默认武器配置异常而覆盖或拒绝现有武器。
-            if (weaponInventoryManager.TryGetEquippedWeapon(characterId, out WeaponInstance existingWeapon))
-                return new CharacterWeaponResolutionResult(
-                    CharacterWeaponResolutionStatus.Succeeded,
-                    characterId,
-                    existingWeapon,
-                    InventoryOperationStatus.Succeeded);
-
-            if (!TryResolveDefaultWeapon(
-                    characterId,
-                    out ItemId defaultWeaponId,
+                return Fail(CharacterWeaponResolutionStatus.CharacterNotOwned, characterId, InventoryOperationStatus.CharacterNotOwned);
+            if (TryGetEquippedWeapon(characterId, out WeaponInstance existingWeapon))
+                return new CharacterWeaponResolutionResult(CharacterWeaponResolutionStatus.Succeeded, characterId,
+                    existingWeapon, InventoryOperationStatus.Succeeded);
+            if (!TryResolveDefaultWeapon(characterId, out ItemId defaultWeaponId,
                     out CharacterWeaponResolutionStatus resolveStatus))
-            {
                 return Fail(resolveStatus, characterId, InventoryOperationStatus.UnknownDefinition);
-            }
 
-            // 缺少装备时才创建默认武器；AddEquippedWeapon 直接写入装备缓存，不参与容纳区容量。
-            EquipmentAddResult<WeaponInstance> addResult = weaponInventoryManager.AddEquippedWeapon(
-                defaultWeaponId,
-                characterId);
+            EquipmentAddResult<WeaponInstance> addResult = weaponInventoryManager.AddEquippedWeapon(defaultWeaponId, characterId);
             if (!addResult.Succeeded)
-            {
-                return Fail(
-                    CharacterWeaponResolutionStatus.DefaultWeaponOperationFailed,
-                    characterId,
-                    addResult.Status);
-            }
+                return Fail(CharacterWeaponResolutionStatus.DefaultWeaponOperationFailed, characterId, addResult.Status);
 
-            Debug.Log($"[CharacterEquipmentSystem] 为角色创建默认武器并进入装备缓存，character={characterId}, " +
-                      $"weapon={addResult.Instance.InstanceId}, stored={weaponInventoryManager.StoredCount}/" +
-                      $"{weaponInventoryManager.Capacity}, equipped={weaponInventoryManager.EquippedCount}。 ");
-            return new CharacterWeaponResolutionResult(
-                CharacterWeaponResolutionStatus.Succeeded,
-                characterId,
-                addResult.Instance,
-                InventoryOperationStatus.Succeeded);
+            CharacterInstance character = characterRosterManager.GetRequiredInstance(characterId);
+            characterRosterManager.CommitEquipmentState(characterId, character.Equipment.WithWeapon(addResult.Instance.InstanceId));
+            Debug.Log($"[CharacterEquipmentSystem] 已创建并绑定默认武器，character={characterId}, instance={addResult.Instance.InstanceId}。");
+            return new CharacterWeaponResolutionResult(CharacterWeaponResolutionStatus.Succeeded, characterId,
+                addResult.Instance, InventoryOperationStatus.Succeeded);
+        }
+
+        /// <summary>按角色查询当前装备武器。</summary>
+        /// <param name="characterId">角色标识。</param>
+        /// <param name="instance">装备中的武器。</param>
+        /// <returns>角色存在武器时返回 true。</returns>
+        public bool TryGetEquippedWeapon(CharacterId characterId, out WeaponInstance instance)
+        {
+            instance = null;
+            if (!characterRosterManager.TryGetEquippedWeaponInstanceId(characterId, out EquipmentInstanceId instanceId)) return false;
+            if (!weaponInventoryManager.TryGetInstance(instanceId, out instance))
+                throw new InvalidOperationException($"[CharacterEquipmentSystem] 角色装备索引缺少武器实例：{instanceId}。");
+            return true;
         }
 
         #endregion
 
-        #region 装备操作
+        #region 武器装备事务
 
-        /// <summary>按角色规则装备容纳区中的指定武器。</summary>
-        /// <param name="characterId">目标角色标识。</param>
-        /// <param name="instanceId">容纳区武器实例标识。</param>
+        /// <summary>将未装备武器装备给角色，已被其他角色使用时明确拒绝。</summary>
+        /// <param name="characterId">目标角色。</param>
+        /// <param name="instanceId">武器实例。</param>
         /// <returns>装备操作结果。</returns>
         public EquipmentOperationResult EquipWeapon(CharacterId characterId, EquipmentInstanceId instanceId)
         {
-            if (!characterRosterManager.IsOwned(characterId))
-                return new EquipmentOperationResult(InventoryOperationStatus.CharacterNotOwned);
-            if (!weaponInventoryManager.TryGetInstance(instanceId, out WeaponInstance instance))
+            if (!characterRosterManager.IsOwned(characterId)) return new EquipmentOperationResult(InventoryOperationStatus.CharacterNotOwned);
+            if (!weaponInventoryManager.TryGetInstance(instanceId, out WeaponInstance weapon))
                 return new EquipmentOperationResult(InventoryOperationStatus.InstanceNotFound);
-            if (!ItemManager.Instance.TryGetDefinition(instance.DefinitionId, out ItemDefinition itemDefinition) ||
-                !(itemDefinition is WeaponDefinition definition))
+            if (!ItemManager.Instance.TryGetDefinition(weapon.DefinitionId, out ItemDefinition definition) ||
+                !(definition is WeaponDefinition weaponDefinition))
                 return new EquipmentOperationResult(InventoryOperationStatus.DefinitionTypeMismatch);
-            if (!CharacterConfigManager.Instance.GetRequiredConfig(characterId).AllowsWeaponType(definition.WeaponType))
+            if (!CharacterConfigManager.Instance.GetRequiredConfig(characterId).AllowsWeaponType(weaponDefinition.WeaponType))
                 return new EquipmentOperationResult(InventoryOperationStatus.WeaponTypeNotAllowed);
+            if (characterRosterManager.TryGetEquipmentOwner(instanceId, out CharacterId owner))
+                return owner == characterId
+                    ? new EquipmentOperationResult(InventoryOperationStatus.Succeeded)
+                    : new EquipmentOperationResult(InventoryOperationStatus.InstanceEquipped);
 
-            return weaponInventoryManager.EquipWeapon(instanceId, characterId);
+            CharacterInstance character = characterRosterManager.GetRequiredInstance(characterId);
+            characterRosterManager.CommitEquipmentState(characterId, character.Equipment.WithWeapon(instanceId));
+            Debug.Log($"[CharacterEquipmentSystem] 武器装备事务成功，character={characterId}, instance={instanceId}。");
+            return new EquipmentOperationResult(InventoryOperationStatus.Succeeded);
         }
 
-        /// <summary>把角色当前装备武器移回容纳区。</summary>
-        /// <param name="characterId">目标角色标识。</param>
-        /// <returns>卸下操作结果。</returns>
+        /// <summary>卸下角色武器；容纳区满时保持原状态。</summary>
+        /// <param name="characterId">目标角色。</param>
+        /// <returns>卸下结果。</returns>
         public EquipmentOperationResult UnequipWeapon(CharacterId characterId)
         {
-            if (!characterRosterManager.IsOwned(characterId))
-                return new EquipmentOperationResult(InventoryOperationStatus.CharacterNotOwned);
-            return weaponInventoryManager.UnequipWeapon(characterId);
-        }
+            if (!characterRosterManager.IsOwned(characterId)) return new EquipmentOperationResult(InventoryOperationStatus.CharacterNotOwned);
+            if (!characterRosterManager.TryGetEquippedWeaponInstanceId(characterId, out _))
+                return new EquipmentOperationResult(InventoryOperationStatus.InstanceNotFound);
+            if (weaponInventoryManager.StoredCount >= weaponInventoryManager.Capacity)
+                return new EquipmentOperationResult(InventoryOperationStatus.CapacityExceeded);
 
-        /// <summary>按角色标识查询当前装备武器。</summary>
-        /// <param name="characterId">角色标识。</param>
-        /// <param name="instance">装备中的武器实例。</param>
-        /// <returns>角色存在装备武器时返回 true。</returns>
-        public bool TryGetEquippedWeapon(CharacterId characterId, out WeaponInstance instance) =>
-            weaponInventoryManager.TryGetEquippedWeapon(characterId, out instance);
+            CharacterInstance character = characterRosterManager.GetRequiredInstance(characterId);
+            characterRosterManager.CommitEquipmentState(characterId, character.Equipment.WithWeapon(default(EquipmentInstanceId)));
+            Debug.Log($"[CharacterEquipmentSystem] 武器卸下事务成功，character={characterId}。");
+            return new EquipmentOperationResult(InventoryOperationStatus.Succeeded);
+        }
 
         #endregion
 
-        #region 事件处理
+        #region 圣遗物装备事务
 
-        /// <summary>响应新角色获得事件并尝试完成一次默认武器装配。</summary>
-        /// <param name="ownershipChangedEvent">角色拥有状态变化事件。</param>
+        /// <summary>按圣遗物 Definition 部位装备实例。</summary>
+        /// <param name="characterId">目标角色。</param>
+        /// <param name="artifactInstanceId">圣遗物实例。</param>
+        /// <returns>装备操作结果。</returns>
+        public EquipmentOperationResult EquipArtifact(CharacterId characterId, EquipmentInstanceId artifactInstanceId)
+        {
+            if (!characterRosterManager.IsOwned(characterId)) return new EquipmentOperationResult(InventoryOperationStatus.CharacterNotOwned);
+            if (!artifactInventoryManager.TryGetInstance(artifactInstanceId, out ArtifactInstance artifact))
+                return new EquipmentOperationResult(InventoryOperationStatus.InstanceNotFound);
+            if (!ItemManager.Instance.TryGetDefinition(artifact.DefinitionId, out ItemDefinition definition) ||
+                !(definition is ArtifactDefinition artifactDefinition))
+                return new EquipmentOperationResult(InventoryOperationStatus.DefinitionTypeMismatch);
+            if (characterRosterManager.TryGetEquipmentOwner(artifactInstanceId, out CharacterId owner))
+                return owner == characterId
+                    ? new EquipmentOperationResult(InventoryOperationStatus.Succeeded)
+                    : new EquipmentOperationResult(InventoryOperationStatus.InstanceEquipped);
+
+            CharacterInstance character = characterRosterManager.GetRequiredInstance(characterId);
+            characterRosterManager.CommitEquipmentState(characterId,
+                character.Equipment.WithArtifact(artifactDefinition.Slot, artifactInstanceId));
+            Debug.Log($"[CharacterEquipmentSystem] 圣遗物装备事务成功，character={characterId}, instance={artifactInstanceId}, slot={artifactDefinition.Slot}。");
+            return new EquipmentOperationResult(InventoryOperationStatus.Succeeded);
+        }
+
+        /// <summary>卸下角色指定圣遗物槽。</summary>
+        /// <param name="characterId">目标角色。</param>
+        /// <param name="slot">圣遗物部位。</param>
+        /// <returns>卸下结果。</returns>
+        public EquipmentOperationResult UnequipArtifact(CharacterId characterId, ArtifactSlot slot)
+        {
+            if (!characterRosterManager.IsOwned(characterId)) return new EquipmentOperationResult(InventoryOperationStatus.CharacterNotOwned);
+            if (!characterRosterManager.TryGetEquippedArtifactInstanceId(characterId, slot, out _))
+                return new EquipmentOperationResult(InventoryOperationStatus.InstanceNotFound);
+            CharacterInstance character = characterRosterManager.GetRequiredInstance(characterId);
+            characterRosterManager.CommitEquipmentState(characterId, character.Equipment.WithArtifact(slot, default(EquipmentInstanceId)));
+            Debug.Log($"[CharacterEquipmentSystem] 圣遗物卸下事务成功，character={characterId}, slot={slot}。");
+            return new EquipmentOperationResult(InventoryOperationStatus.Succeeded);
+        }
+
+        /// <summary>按角色和部位查询圣遗物。</summary>
+        /// <param name="characterId">角色标识。</param>
+        /// <param name="slot">圣遗物部位。</param>
+        /// <param name="instance">装备中的圣遗物。</param>
+        /// <returns>槽位有圣遗物时返回 true。</returns>
+        public bool TryGetEquippedArtifact(CharacterId characterId, ArtifactSlot slot, out ArtifactInstance instance)
+        {
+            instance = null;
+            if (!characterRosterManager.TryGetEquippedArtifactInstanceId(characterId, slot, out EquipmentInstanceId instanceId)) return false;
+            if (!artifactInventoryManager.TryGetInstance(instanceId, out instance))
+                throw new InvalidOperationException($"[CharacterEquipmentSystem] 角色装备索引缺少圣遗物实例：{instanceId}。");
+            return true;
+        }
+
+        #endregion
+
+        #region 存档恢复
+
+        /// <summary>由独立存档模块整体恢复角色装备状态并发布一次完成事件。</summary>
+        /// <param name="equipmentByCharacterIdMap">已校验装备关系。</param>
+        internal void RestoreEquipmentState(System.Collections.Generic.IReadOnlyDictionary<CharacterId, CharacterEquipmentState> equipmentByCharacterIdMap)
+        {
+            characterRosterManager.RestoreEquipmentState(equipmentByCharacterIdMap);
+            WSEventSystem.EventTrigger_Type(typeof(CharacterEquipmentRestoredEvent), new CharacterEquipmentRestoredEvent());
+        }
+
+        #endregion
+
+        #region 事件处理与校验
+
+        /// <summary>角色首次获得后创建并绑定默认武器。</summary>
+        /// <param name="ownershipChangedEvent">角色拥有事件。</param>
         private void HandleCharacterOwnershipChanged(CharacterOwnershipChangedEvent ownershipChangedEvent)
         {
-            if (!ownershipChangedEvent.IsOwned)
-                return;
-
-            CharacterWeaponResolutionResult result = GetOrCreateEquippedWeapon(
-                ownershipChangedEvent.CharacterId);
+            if (!ownershipChangedEvent.IsOwned) return;
+            CharacterWeaponResolutionResult result = GetOrCreateEquippedWeapon(ownershipChangedEvent.CharacterId);
             if (!result.Succeeded)
-            {
-                // 角色拥有事实已经由 RosterManager 提交；事件装配失败只记录错误，不回滚角色。
-                Debug.LogError($"[CharacterEquipmentSystem] 新角色自动装配武器失败，角色仍保留，" +
-                                $"character={ownershipChangedEvent.CharacterId}, status={result.Status}, " +
-                                $"weaponStatus={result.WeaponStatus}。 ");
-                return;
-            }
-
-            Debug.Log($"[CharacterEquipmentSystem] 完成新角色武器自动装配，" +
-                      $"character={ownershipChangedEvent.CharacterId}, weapon={result.Weapon.InstanceId}。 ");
+                Debug.LogError($"[CharacterEquipmentSystem] 新角色默认武器绑定失败，character={ownershipChangedEvent.CharacterId}, status={result.Status}。");
         }
 
-        #endregion
-
-        #region 内部校验
-
-        /// <summary>解析角色默认武器类型对应的 Definition，并校验类型一致性。</summary>
-        /// <param name="characterId">待解析默认武器的角色标识。</param>
-        /// <param name="definitionId">解析出的默认武器 Definition 标识。</param>
-        /// <param name="failureStatus">解析失败时的业务状态。</param>
-        /// <returns>解析成功时返回 true。</returns>
-        private bool TryResolveDefaultWeapon(
-            CharacterId characterId,
-            out ItemId definitionId,
+        /// <summary>解析角色默认武器 Definition。</summary>
+        private bool TryResolveDefaultWeapon(CharacterId characterId, out ItemId definitionId,
             out CharacterWeaponResolutionStatus failureStatus)
         {
             definitionId = default(ItemId);
@@ -189,86 +235,58 @@ namespace RPG.Character
                 failureStatus = CharacterWeaponResolutionStatus.CharacterNotFound;
                 return false;
             }
-
             config.Validate();
-            if (!CharacterConfigManager.Instance.TryGetDefaultWeaponDefinitionId(
-                    config.DefaultWeaponType,
-                    out definitionId))
+            if (!CharacterConfigManager.Instance.TryGetDefaultWeaponDefinitionId(config.DefaultWeaponType, out definitionId))
             {
                 failureStatus = CharacterWeaponResolutionStatus.MissingDefaultWeapon;
                 return false;
             }
-
             if (!ItemManager.Instance.TryGetDefinition(definitionId, out ItemDefinition definition) ||
-                !(definition is WeaponDefinition weapon))
+                !(definition is WeaponDefinition weapon) || weapon.WeaponType != config.DefaultWeaponType)
             {
                 failureStatus = CharacterWeaponResolutionStatus.DefaultWeaponDefinitionInvalid;
                 return false;
             }
-
-            if (weapon.WeaponType != config.DefaultWeaponType ||
-                !config.AllowsWeaponType(weapon.WeaponType))
-            {
-                failureStatus = CharacterWeaponResolutionStatus.DefaultWeaponTypeMismatch;
-                return false;
-            }
-
             failureStatus = CharacterWeaponResolutionStatus.Succeeded;
             return true;
         }
 
-        /// <summary>记录角色武器解析失败并构造不含武器实例的结果。</summary>
-        /// <param name="status">角色武器解析状态。</param>
-        /// <param name="characterId">相关角色标识。</param>
-        /// <param name="weaponStatus">底层武器操作状态。</param>
-        /// <returns>角色武器解析失败结果。</returns>
-        private static CharacterWeaponResolutionResult Fail(
-            CharacterWeaponResolutionStatus status,
-            CharacterId characterId,
+        /// <summary>创建失败结果并记录上下文。</summary>
+        private static CharacterWeaponResolutionResult Fail(CharacterWeaponResolutionStatus status, CharacterId characterId,
             InventoryOperationStatus weaponStatus)
         {
-            Debug.LogWarning($"[CharacterEquipmentSystem] 角色武器解析失败，character={characterId}, status={status}, " +
-                             $"weaponStatus={weaponStatus}。 ");
+            Debug.LogWarning($"[CharacterEquipmentSystem] 角色武器解析失败，character={characterId}, status={status}, weaponStatus={weaponStatus}。");
             return new CharacterWeaponResolutionResult(status, characterId, null, weaponStatus);
         }
 
         #endregion
     }
 
-    /// <summary>角色武器解析与默认武器保障的结果状态。</summary>
+    /// <summary>角色默认武器保障结果状态。</summary>
     public enum CharacterWeaponResolutionStatus
     {
-        /// <summary>成功返回现有武器或创建默认武器。</summary>
+        /// <summary>成功。</summary>
         Succeeded = 0,
         /// <summary>角色标识无效。</summary>
         InvalidCharacterId,
-        /// <summary>角色尚未写入角色拥有状态。</summary>
+        /// <summary>角色未拥有。</summary>
         CharacterNotOwned,
         /// <summary>角色配置不存在。</summary>
         CharacterNotFound,
-        /// <summary>角色默认武器类型没有配置对应 Definition。</summary>
+        /// <summary>缺少默认武器。</summary>
         MissingDefaultWeapon,
-        /// <summary>默认武器 Definition 不存在或不是武器。</summary>
+        /// <summary>默认武器无效。</summary>
         DefaultWeaponDefinitionInvalid,
-        /// <summary>默认武器 Definition 的类型与角色配置不一致。</summary>
-        DefaultWeaponTypeMismatch,
-        /// <summary>底层武器缓存写入失败。</summary>
+        /// <summary>默认武器操作失败。</summary>
         DefaultWeaponOperationFailed
     }
 
-    /// <summary>角色武器解析操作的不可变结果。</summary>
+    /// <summary>角色武器解析结果。</summary>
     public readonly struct CharacterWeaponResolutionResult
     {
-        /// <summary>创建角色武器解析结果。</summary>
-        /// <param name="status">角色武器解析状态。</param>
-        /// <param name="characterId">相关角色标识。</param>
-        /// <param name="weapon">现有或新创建的装备武器。</param>
-        /// <param name="weaponStatus">底层武器操作状态。</param>
-        public CharacterWeaponResolutionResult(
-            CharacterWeaponResolutionStatus status,
-            CharacterId characterId,
-            WeaponInstance weapon,
-            InventoryOperationStatus weaponStatus)
+        /// <summary>创建结果。</summary>
+        public CharacterWeaponResolutionResult(CharacterWeaponResolutionStatus status, CharacterId characterId,
+            WeaponInstance weapon, InventoryOperationStatus weaponStatus)
         {
             Status = status;
             CharacterId = characterId;
@@ -276,19 +294,15 @@ namespace RPG.Character
             WeaponStatus = weaponStatus;
         }
 
-        /// <summary>获取角色武器解析状态。</summary>
+        /// <summary>获取状态。</summary>
         public CharacterWeaponResolutionStatus Status { get; }
-
-        /// <summary>获取相关角色标识。</summary>
+        /// <summary>获取角色。</summary>
         public CharacterId CharacterId { get; }
-
-        /// <summary>获取现有或新创建的装备武器；失败时为空。</summary>
+        /// <summary>获取武器。</summary>
         public WeaponInstance Weapon { get; }
-
-        /// <summary>获取底层武器操作状态。</summary>
+        /// <summary>获取底层操作状态。</summary>
         public InventoryOperationStatus WeaponStatus { get; }
-
-        /// <summary>判断是否成功返回或创建角色装备武器。</summary>
+        /// <summary>判断成功。</summary>
         public bool Succeeded => Status == CharacterWeaponResolutionStatus.Succeeded;
     }
 }

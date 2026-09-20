@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
+using RPG.Character;
 using RPG.Game.UI.Bag;
 using RPG.Game.UI.Escape;
 using RPG.Game.UI.Services;
@@ -41,6 +42,8 @@ namespace RPG.Game.UI.Controllers
         private IUnRegister artifactDefinitionNewChangedUnregister;
         private IUnRegister stackableChangedUnregister;
         private IUnRegister stackableRestoredUnregister;
+        private IUnRegister characterInstanceChangedUnregister;
+        private IUnRegister characterEquipmentRestoredUnregister;
         #endregion
 
         #region 状态字段
@@ -97,6 +100,10 @@ namespace RPG.Game.UI.Controllers
                 typeof(StackableItemChangedEvent), HandleStackableChanged);
             stackableRestoredUnregister = EventSystem.Register_Type<StackableInventoryRestoredEvent>(
                 typeof(StackableInventoryRestoredEvent), HandleStackableRestored);
+            characterInstanceChangedUnregister = EventSystem.Register_Type<CharacterInstanceChangedEvent>(
+                typeof(CharacterInstanceChangedEvent), HandleCharacterInstanceChanged);
+            characterEquipmentRestoredUnregister = EventSystem.Register_Type<CharacterEquipmentRestoredEvent>(
+                typeof(CharacterEquipmentRestoredEvent), HandleCharacterEquipmentRestored);
             initialized = true;
         }
 
@@ -122,6 +129,8 @@ namespace RPG.Game.UI.Controllers
             artifactDefinitionNewChangedUnregister?.UnRegister();
             stackableChangedUnregister?.UnRegister();
             stackableRestoredUnregister?.UnRegister();
+            characterInstanceChangedUnregister?.UnRegister();
+            characterEquipmentRestoredUnregister?.UnRegister();
             for (int index = 0; data != null && index < categoryButtonActions.Count; index++)
             {
                 if (index < data.CategoryButtons.Count && data.CategoryButtons[index] != null)
@@ -201,7 +210,8 @@ namespace RPG.Game.UI.Controllers
         {
             dataSourceByCategoryMap.Clear();
             dataSourceByCategoryMap.Add(ItemCategory.Weapon,
-                new WeaponBagCategoryDataSource(weaponInventoryManager, ResolveSprite));
+                new WeaponBagCategoryDataSource(weaponInventoryManager, ResolveSprite,
+                    GameArchitecture.Interface.GetManager<CharacterRosterManager>()));
             dataSourceByCategoryMap.Add(ItemCategory.Artifact,
                 new ArtifactBagCategoryDataSource(artifactInventoryManager, ResolveSprite));
             dataSourceByCategoryMap.Add(ItemCategory.DevelopmentExperienceItem,
@@ -576,6 +586,24 @@ namespace RPG.Game.UI.Controllers
         {
             if (!disposed && stateModel.CurrentCategory != ItemCategory.Weapon &&
                 stateModel.CurrentCategory != ItemCategory.Artifact)
+                RefreshCurrentCategory(false);
+        }
+
+        /// <summary>角色装备关系变化后刷新武器或圣遗物分类的派生装备状态。</summary>
+        /// <param name="change">角色实例变化事件。</param>
+        private void HandleCharacterInstanceChanged(CharacterInstanceChangedEvent change)
+        {
+            if (disposed || change.ChangeType != CharacterInstanceChangeType.EquipmentUpdated) return;
+            if (stateModel.CurrentCategory == ItemCategory.Weapon || stateModel.CurrentCategory == ItemCategory.Artifact)
+                RefreshCurrentCategory(false);
+        }
+
+        /// <summary>角色装备关系整体恢复后刷新当前装备分类。</summary>
+        /// <param name="_">装备关系恢复事件。</param>
+        private void HandleCharacterEquipmentRestored(CharacterEquipmentRestoredEvent _)
+        {
+            if (!disposed && (stateModel.CurrentCategory == ItemCategory.Weapon ||
+                              stateModel.CurrentCategory == ItemCategory.Artifact))
                 RefreshCurrentCategory(false);
         }
 

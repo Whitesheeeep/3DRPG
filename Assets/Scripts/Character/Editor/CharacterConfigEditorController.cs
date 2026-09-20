@@ -168,7 +168,7 @@ namespace RPG.Character.Editor
             // DetailsView 已经在 SerializedPropertyChangeEvent 中刷新摘要；这里仅刷新虚拟化列表，
             // 避免在绑定事件期间重新 Bind 当前详情，同时让 Name、Rarity 和计数元信息立即更新。
             view.SetDatabase(database, CharacterConfigEditorSession.Search);
-            if (propertyPath == "maxLevel" || string.IsNullOrEmpty(propertyPath))
+            if (propertyPath == "progression.maxLevel" || propertyPath == "maxLevel" || string.IsNullOrEmpty(propertyPath))
                 ScheduleGrowthProfileSynchronization(config);
         }
 

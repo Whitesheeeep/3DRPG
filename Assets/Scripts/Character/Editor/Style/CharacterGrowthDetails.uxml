@@ -3,13 +3,13 @@
     <ui:VisualElement name="CharacterGrowthDetailsPage" class="character-growth-details-page">
         <ui:Label text="等级与成长" class="character-growth-section-title" />
         <ui:VisualElement name="CharacterGrowthBaseFields" class="character-growth-field-group">
-            <uie:PropertyField name="CharacterMaxLevelField" binding-path="maxLevel" label="最大等级" class="character-growth-property-field" />
-            <uie:PropertyField name="CharacterMaxAscensionRankField" binding-path="maxAscensionRank" label="最大突破阶数" class="character-growth-property-field" />
-            <uie:ObjectField name="CharacterGrowthProfileField" binding-path="growthProfile" label="成长配置" type="RPG.Character.CharacterGrowthProfile, Assembly-CSharp" allow-scene-objects="false" class="character-growth-property-field" />
+            <uie:PropertyField name="CharacterMaxLevelField" binding-path="progression.maxLevel" label="最大等级" class="character-growth-property-field" />
+            <uie:PropertyField name="CharacterMaxAscensionRankField" binding-path="progression.maxAscensionRank" label="最大突破阶数" class="character-growth-property-field" />
+            <uie:ObjectField name="CharacterGrowthProfileField" binding-path="progression.growthProfile" label="成长配置" type="RPG.Character.CharacterGrowthProfile, Assembly-CSharp" allow-scene-objects="false" class="character-growth-property-field" />
         </ui:VisualElement>
         <ui:Label name="CharacterAscensionStageTitle" text="突破配置" class="character-growth-subsection-title" />
         <ui:VisualElement name="CharacterAscensionStageHost" class="character-growth-field-group">
-            <uie:PropertyField name="CharacterAscensionStagesField" binding-path="ascensionStages" label="突破阶段与消耗" class="character-growth-property-field" />
+            <uie:PropertyField name="CharacterAscensionStagesField" binding-path="progression.ascensionStages" label="突破阶段与消耗" class="character-growth-property-field" />
         </ui:VisualElement>
         <ui:Label text="成长 Profile" class="character-growth-section-title" />
         <ui:VisualElement name="MissingCharacterGrowthProfileWarning" class="character-growth-warning">

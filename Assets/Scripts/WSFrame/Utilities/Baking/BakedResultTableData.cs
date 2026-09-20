@@ -25,6 +25,9 @@ namespace WS_Modules.Baking
         /// <summary>获取最终结果行。</summary>
         public IReadOnlyList<BakedResultRowData> Rows => rows;
 
+        /// <summary>获取数据源提供的状态栏文本；为空时由通用查看器生成默认文本。</summary>
+        public string StatusText { get; }
+
         #endregion
 
         #region 构造
@@ -33,11 +36,13 @@ namespace WS_Modules.Baking
         /// <param name="title">表格标题。</param>
         /// <param name="headers">表头文本。</param>
         /// <param name="rows">结果行。</param>
+        /// <param name="statusText">可选状态栏文本。</param>
         /// <exception cref="ArgumentException">表头或行数据不符合表格契约时抛出。</exception>
         public BakedResultTableData(
             string title,
             IReadOnlyList<string> headers,
-            IReadOnlyList<BakedResultRowData> rows)
+            IReadOnlyList<BakedResultRowData> rows,
+            string statusText = null)
         {
             if (string.IsNullOrWhiteSpace(title)) throw new ArgumentException("烘焙结果标题不能为空。", nameof(title));
             if (headers == null || headers.Count == 0) throw new ArgumentException("烘焙结果至少需要一列。", nameof(headers));
@@ -50,6 +55,7 @@ namespace WS_Modules.Baking
                     throw new ArgumentException($"烘焙结果第 {index} 行的列数与题头不一致。", nameof(rows));
 
             Title = title;
+            StatusText = statusText;
             this.headers = new ReadOnlyCollection<string>(new List<string>(headers));
             this.rows = new ReadOnlyCollection<BakedResultRowData>(new List<BakedResultRowData>(rows));
         }

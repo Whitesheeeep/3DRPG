@@ -2,13 +2,13 @@
     <ui:Style src="project://database/Assets/Scripts/Character/Editor/Style/CharacterConfigDetails.uss" />
     <ui:VisualElement name="IdentityPage" class="character-config-details-page">
         <ui:Label text="基础配置" class="config-editor-section-title character-config-section-title" />
-        <ui:TextField name="NameField" binding-path="characterName" label="角色名称" is-delayed="false" class="config-editor-property-field character-config-property-field" />
-        <uie:PropertyField name="RarityField" binding-path="rarity" label="稀有度" class="config-editor-property-field character-config-property-field" />
+        <ui:TextField name="NameField" binding-path="identity.characterName" label="角色名称" is-delayed="false" class="config-editor-property-field character-config-property-field" />
+        <uie:PropertyField name="RarityField" binding-path="identity.rarity" label="稀有度" class="config-editor-property-field character-config-property-field" />
         <uie:PropertyField name="CharacterIdField" binding-path="characterId" label="角色标识" class="config-editor-property-field character-config-property-field" />
-        <uie:PropertyField name="PrefabAddressField" binding-path="prefabAddress" label="角色 Prefab 地址" class="config-editor-property-field character-config-property-field" />
+        <uie:PropertyField name="PrefabAddressField" binding-path="presentation.prefabAddress" label="角色 Prefab 地址" class="config-editor-property-field character-config-property-field" />
         <ui:Label text="武器配置" class="config-editor-section-title character-config-section-title" />
-        <uie:PropertyField name="AllowedWeaponTypesField" binding-path="allowedWeaponTypes" label="允许装备的武器类型" class="config-editor-property-field character-config-property-field" />
-        <uie:PropertyField name="DefaultWeaponTypeField" binding-path="defaultWeaponType" label="默认武器类型" class="config-editor-property-field character-config-property-field" />
+        <uie:PropertyField name="AllowedWeaponTypesField" binding-path="equipmentRules.allowedWeaponTypes" label="允许装备的武器类型" class="config-editor-property-field character-config-property-field" />
+        <uie:PropertyField name="DefaultWeaponTypeField" binding-path="equipmentRules.defaultWeaponType" label="默认武器类型" class="config-editor-property-field character-config-property-field" />
         <ui:Label text="角色图片" class="config-editor-section-title character-config-section-title" />
         <ui:VisualElement name="SideIconRow" class="character-config-preview-row">
             <ui:VisualElement class="character-config-preview-frame">
@@ -17,8 +17,8 @@
             </ui:VisualElement>
             <ui:VisualElement class="character-config-preview-fields">
                 <uie:ObjectField name="SideIconField" label="编辑器预览 Sprite" class="config-editor-property-field character-config-preview-field" />
-                <uie:PropertyField name="SideIconAddressField" binding-path="sideIconAddress" label="图集 Address" class="config-editor-property-field character-config-property-field" />
-                <uie:PropertyField name="SideIconSpriteNameField" binding-path="sideIconSpriteName" label="SpriteName" class="config-editor-property-field character-config-property-field" />
+                <uie:PropertyField name="SideIconAddressField" binding-path="presentation.sideIconAddress" label="图集 Address" class="config-editor-property-field character-config-property-field" />
+                <uie:PropertyField name="SideIconSpriteNameField" binding-path="presentation.sideIconSpriteName" label="SpriteName" class="config-editor-property-field character-config-property-field" />
             </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement name="AvatarRow" class="character-config-preview-row">
@@ -28,19 +28,19 @@
             </ui:VisualElement>
             <ui:VisualElement class="character-config-preview-fields">
                 <uie:ObjectField name="AvatarField" label="编辑器预览 Sprite" class="config-editor-property-field character-config-preview-field" />
-                <uie:PropertyField name="AvatarAddressField" binding-path="avatarAddress" label="图集 Address" class="config-editor-property-field character-config-property-field" />
-                <uie:PropertyField name="AvatarSpriteNameField" binding-path="avatarSpriteName" label="SpriteName" class="config-editor-property-field character-config-property-field" />
+                <uie:PropertyField name="AvatarAddressField" binding-path="presentation.avatarAddress" label="图集 Address" class="config-editor-property-field character-config-property-field" />
+                <uie:PropertyField name="AvatarSpriteNameField" binding-path="presentation.avatarSpriteName" label="SpriteName" class="config-editor-property-field character-config-property-field" />
             </ui:VisualElement>
         </ui:VisualElement>
         <ui:Label text="初始属性" class="config-editor-section-title character-config-section-title" />
-        <uie:PropertyField name="InitialAttributeSetsField" binding-path="initialAttributeSets" label="初始属性集" class="config-editor-property-field character-config-property-field" />
+        <uie:PropertyField name="InitialAttributeSetsField" binding-path="progression.initialAttributeSets" label="初始属性集" class="config-editor-property-field character-config-property-field" />
         <ui:Label text="战斗配置" class="config-editor-section-title character-config-section-title" />
         <uie:PropertyField name="NormalAttackAbilitiesField" binding-path="combatConfig.normalAttackAbilities" label="普攻连段" class="config-editor-property-field character-config-property-field" />
         <ui:HelpBox name="EmptyNormalAttackWarning" text="当前角色未配置普通攻击连段。该配置可以正常运行，但 Primary 输入不会触发能力。" message-type="Warning" />
         <uie:PropertyField name="SkillInputBindingsField" binding-path="combatConfig.skillInputBindings" label="技能输入绑定" class="config-editor-property-field character-config-property-field" />
         <ui:Label text="移动配置" class="config-editor-section-title character-config-section-title" />
-        <uie:PropertyField name="GravityField" binding-path="gravity" label="重力" class="config-editor-property-field character-config-property-field" />
-        <uie:PropertyField name="TransitionField" binding-path="locomotionTransition" label="Locomotion 状态过渡" class="config-editor-property-field character-config-property-field" />
+        <uie:PropertyField name="GravityField" binding-path="locomotion.gravity" label="重力" class="config-editor-property-field character-config-property-field" />
+        <uie:PropertyField name="TransitionField" binding-path="locomotion.locomotionTransition" label="Locomotion 状态过渡" class="config-editor-property-field character-config-property-field" />
         <ui:VisualElement name="CharacterGrowthDetailsHost" />
     </ui:VisualElement>
 </ui:UXML>

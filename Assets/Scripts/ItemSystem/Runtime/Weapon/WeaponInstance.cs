@@ -1,5 +1,3 @@
-using RPG.Character;
-
 namespace RPG.ItemSystem
 {
     /// <summary>保存单把武器独立成长状态的装备实例。</summary>
@@ -14,15 +12,12 @@ namespace RPG.ItemSystem
         /// <param name="refinementRank">精炼阶数。</param>
         /// <param name="isLocked">是否锁定。</param>
         /// <param name="acquisitionSequence">获得顺序。</param>
-        /// <param name="equippedCharacterId">装备者角色标识；默认值表示未装备。</param>
         internal WeaponInstance(EquipmentInstanceId instanceId, ItemId definitionId, int level, int currentExperience,
-            int ascensionRank, int refinementRank, bool isLocked, long acquisitionSequence,
-            CharacterId equippedCharacterId = default(CharacterId))
+            int ascensionRank, int refinementRank, bool isLocked, long acquisitionSequence)
             : base(instanceId, definitionId, level, currentExperience, isLocked, acquisitionSequence)
         {
             AscensionRank = ascensionRank;
             RefinementRank = refinementRank;
-            EquippedCharacterId = equippedCharacterId;
         }
 
         /// <summary>获取突破阶数。</summary>
@@ -31,10 +26,5 @@ namespace RPG.ItemSystem
         /// <summary>获取精炼阶数。</summary>
         public int RefinementRank { get; }
 
-        /// <summary>获取当前装备者的稳定角色标识；无效标识表示未装备。</summary>
-        public CharacterId EquippedCharacterId { get; }
-
-        /// <summary>判断该武器是否已经记录了装备角色。</summary>
-        public bool IsEquipped => EquippedCharacterId.IsValid;
     }
 }

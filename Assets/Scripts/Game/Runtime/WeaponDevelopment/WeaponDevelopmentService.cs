@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using RPG.CurrencySystem;
+using RPG.Character;
 using RPG.Game.Runtime.EquipmentDevelopment;
 using RPG.ItemSystem;
 using UnityEngine;
@@ -19,6 +20,7 @@ namespace RPG.Game.Runtime.WeaponDevelopment
         private readonly WeaponInventoryManager weaponInventoryManager;
         private readonly StackableInventoryManager stackableInventoryManager;
         private readonly CurrencyManager currencyManager;
+        private readonly CharacterRosterManager characterRosterManager;
 
         #endregion
 
@@ -28,15 +30,18 @@ namespace RPG.Game.Runtime.WeaponDevelopment
         /// <param name="weaponInventoryManager">武器实例库存。</param>
         /// <param name="stackableInventoryManager">堆叠材料库存。</param>
         /// <param name="currencyManager">货币钱包。</param>
+        /// <param name="characterRosterManager">角色装备关系权威。</param>
         /// <exception cref="ArgumentNullException">依赖为空时抛出。</exception>
         public WeaponDevelopmentService(WeaponInventoryManager weaponInventoryManager,
-            StackableInventoryManager stackableInventoryManager, CurrencyManager currencyManager)
+            StackableInventoryManager stackableInventoryManager, CurrencyManager currencyManager,
+            CharacterRosterManager characterRosterManager)
         {
             this.weaponInventoryManager = weaponInventoryManager ??
                                           throw new ArgumentNullException(nameof(weaponInventoryManager));
             this.stackableInventoryManager = stackableInventoryManager ??
                                              throw new ArgumentNullException(nameof(stackableInventoryManager));
             this.currencyManager = currencyManager ?? throw new ArgumentNullException(nameof(currencyManager));
+            this.characterRosterManager = characterRosterManager ?? throw new ArgumentNullException(nameof(characterRosterManager));
         }
 
         /// <summary>提交当前窗口选择的经验素材，更新武器等级和等级内经验。</summary>
@@ -190,7 +195,8 @@ namespace RPG.Game.Runtime.WeaponDevelopment
             {
                 if (!seenMaterialIds.Add(materialId) || materialId == instanceId ||
                     !weaponInventoryManager.TryGetInstance(materialId, out WeaponInstance material) ||
-                    material.DefinitionId != instance.DefinitionId || material.IsLocked || material.IsEquipped)
+                    material.DefinitionId != instance.DefinitionId || material.IsLocked ||
+                    characterRosterManager.IsEquipmentEquipped(material.InstanceId))
                     return WeaponDevelopmentOperationResult.Failure(
                         WeaponDevelopmentOperationStatus.InvalidSelection, "精炼材料必须是未锁定且未装备的同名武器。");
                 materialInstances.Add(materialId);

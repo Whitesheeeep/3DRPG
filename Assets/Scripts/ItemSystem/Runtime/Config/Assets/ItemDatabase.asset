@@ -22,13 +22,19 @@ MonoBehaviour:
   - {fileID: 11400000, guid: d7fd4cfa86e628146b6dcd9034a95ba8, type: 2}
   - {fileID: 11400000, guid: c2e94407c62cb3645b62e31b22883b93, type: 2}
   - {fileID: 11400000, guid: fb993ad77455429dbeb9bb69be1724f1, type: 2}
+  - {fileID: 11400000, guid: b342ce4ad484fec438584c086ecc557c, type: 2}
+  - {fileID: 11400000, guid: 42639cb5b83457f498e08c8245edc054, type: 2}
+  - {fileID: 11400000, guid: e97147e99b1fb174cac0fec4d893da32, type: 2}
+  - {fileID: 11400000, guid: 077ec22520f1561498d421683afdb0ac, type: 2}
+  - {fileID: 11400000, guid: 2235cf0de35f09c40af1378cb1d5ea1b, type: 2}
+  - {fileID: 11400000, guid: 3cfc2f0b7ab11f242b595352009c826c, type: 2}
   categoryDefaults:
   - rid: 100000000000000005
   - rid: 100000000000000006
   - rid: 100000000000000002
   - rid: 100000000000000003
   - rid: 100000000000000001
-  nextMaterialIdNumber: 14
+  nextMaterialIdNumber: 21
   nextExperienceMaterialIdNumber: 9
   nextFoodIdNumber: 4
   nextWeaponIdNumber: 4

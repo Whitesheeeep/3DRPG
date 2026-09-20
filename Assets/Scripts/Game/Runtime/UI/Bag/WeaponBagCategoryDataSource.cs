@@ -14,6 +14,7 @@ namespace RPG.Game.UI.Bag
         #region 依赖字段
 
         private readonly WeaponInventoryManager manager;
+        private readonly CharacterRosterManager characterRosterManager;
         private readonly Func<string, string, UnityEngine.Sprite> spriteResolver;
 
         #endregion
@@ -23,10 +24,12 @@ namespace RPG.Game.UI.Bag
         /// <param name="spriteResolver">按 Atlas Address 和 SpriteName 查找 Sprite 的函数。</param>
         public WeaponBagCategoryDataSource(
             WeaponInventoryManager manager,
-            Func<string, string, UnityEngine.Sprite> spriteResolver)
+            Func<string, string, UnityEngine.Sprite> spriteResolver,
+            CharacterRosterManager characterRosterManager)
         {
             this.manager = manager ?? throw new ArgumentNullException(nameof(manager));
             this.spriteResolver = spriteResolver ?? throw new ArgumentNullException(nameof(spriteResolver));
+            this.characterRosterManager = characterRosterManager ?? throw new ArgumentNullException(nameof(characterRosterManager));
         }
 
         /// <inheritdoc />
@@ -65,8 +68,9 @@ namespace RPG.Game.UI.Bag
                     out UnityEngine.Sprite icon);
                 UnityEngine.Sprite ownerIcon = null;
                 string ownerText = string.Empty;
-                if (value.Instance.IsEquipped && CharacterConfigManager.Instance.IsConfigured && CharacterConfigManager.Instance.TryGetConfig(
-                        value.Instance.EquippedCharacterId, out CharacterConfig character))
+                bool isEquipped = characterRosterManager.TryGetEquipmentOwner(value.Instance.InstanceId, out CharacterId ownerId);
+                if (isEquipped && CharacterConfigManager.Instance.IsConfigured && CharacterConfigManager.Instance.TryGetConfig(
+                        ownerId, out CharacterConfig character))
                 {
                     ownerText = character.Name;
                     SpriteParts(character.SideIconAddress, character.SideIconSpriteName, out ownerIcon);
@@ -86,7 +90,7 @@ namespace RPG.Game.UI.Bag
                     ownerText,
                     showNew,
                     value.Instance.IsLocked,
-                    value.Instance.IsEquipped));
+                    isEquipped));
             }
 
             return result;
@@ -112,8 +116,9 @@ namespace RPG.Game.UI.Bag
             string ownerText = string.Empty;
             UnityEngine.Sprite ownerIcon = null;
             // 解析装备者图标和名称
-            if (instance.IsEquipped && CharacterConfigManager.Instance.IsConfigured && CharacterConfigManager.Instance.TryGetConfig(
-                    instance.EquippedCharacterId, out CharacterConfig character))
+            bool isEquipped = characterRosterManager.TryGetEquipmentOwner(instance.InstanceId, out CharacterId ownerId);
+            if (isEquipped && CharacterConfigManager.Instance.IsConfigured && CharacterConfigManager.Instance.TryGetConfig(
+                    ownerId, out CharacterConfig character))
             {
                 ownerText = character.Name;
                 SpriteParts(character.SideIconAddress, character.SideIconSpriteName, out ownerIcon);
@@ -133,7 +138,7 @@ namespace RPG.Game.UI.Bag
                 weapon.Description,
                 ownerText,
                 ownerIcon,
-                instance.IsEquipped && ownerIcon != null,
+                isEquipped && ownerIcon != null,
                 true,
                 true);
             return true;

@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -168,7 +169,6 @@ namespace RPG.Character.Editor
             missingGrowthProfileWarning.style.display = hasProfile ? DisplayStyle.None : DisplayStyle.Flex;
             growthProfileContent.style.display = hasProfile ? DisplayStyle.Flex : DisplayStyle.None;
             bakeButton.SetEnabled(hasProfile);
-            viewBakedResultButton.SetEnabled(hasProfile && boundGrowthProfile.BakedLevelProgressions.Count > 0);
             if (!hasProfile)
             {
                 bakedSummaryLabel.text = "烘焙结果：未配置成长 Profile。";
@@ -180,12 +180,31 @@ namespace RPG.Character.Editor
             ConfigureCollection(attributeGrowthCurvesField, "暂无 Attribute 成长曲线");
             ConfigureCollection(levelOverridesField, "暂无特殊等级覆盖");
             int bakedCount = boundGrowthProfile.BakedLevelProgressions.Count;
+            int initialAttributeCount = CountInitialAttributes(boundConfig.InitialAttributeSets);
+            int bakedAttributeCount = boundGrowthProfile.BakedAttributeProgressions.Count;
+            int curveCount = boundGrowthProfile.AttributeGrowthCurves?.Count ?? 0;
+            bool needsRebake = boundGrowthProfile.NeedsRebake(boundConfig.InitialAttributeSets);
+            // 只有列结构仍与当前初始 AttributeSet 对齐时才允许打开表格；默认值、曲线等输入变化仍可查看旧结果。
+            viewBakedResultButton.SetEnabled(bakedCount > 0 && bakedAttributeCount == initialAttributeCount);
             bakedSummaryLabel.text = bakedCount == 0
                 ? "烘焙结果：尚未生成，请先烘焙成长表。"
-                : boundGrowthProfile.NeedsRebake
-                    ? $"烘焙结果：输入已变化，请重新烘焙（当前仍保留 {bakedCount} 个旧等级条目）。"
-                    : $"烘焙结果：已生成 {bakedCount} 个等级条目，等级 1 至 {boundGrowthProfile.MaxLevel}；Attribute 曲线 {boundGrowthProfile.BakedAttributeProgressions.Count} 条。";
+                : needsRebake
+                    ? $"烘焙结果：输入已变化，请重新烘焙（当前保留 {bakedCount} 个等级、{bakedAttributeCount} 个 Attribute；配置为 {initialAttributeCount} 个）。"
+                    : $"烘焙结果：已生成 {bakedCount} 个等级、{bakedAttributeCount} 个 Attribute；其中 {curveCount} 个使用成长曲线，{Mathf.Max(0, bakedAttributeCount - curveCount)} 个保持默认值。";
             SetVisible(true);
+        }
+
+        /// <summary>按角色初始 AttributeSet 顺序统计全部 Attribute Definition。</summary>
+        /// <param name="attributeSets">角色初始 AttributeSet 列表。</param>
+        /// <returns>初始 Attribute 总数。</returns>
+        private static int CountInitialAttributes(IReadOnlyList<WS_Modules.GAS.AttributeSystem.GameplayAttributeSet> attributeSets)
+        {
+            if (attributeSets == null) return 0;
+            int count = 0;
+            for (int setIndex = 0; setIndex < attributeSets.Count; setIndex++)
+                if (attributeSets[setIndex]?.Definitions != null)
+                    count += attributeSets[setIndex].Definitions.Count;
+            return count;
         }
 
         /// <summary>绑定新的 GrowthProfile SerializedObject 和变化 Tracker。</summary>

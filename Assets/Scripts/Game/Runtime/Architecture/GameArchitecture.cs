@@ -42,7 +42,7 @@ namespace RPG.Game
                 snapshotTypeRegistry);
             RegisterManager(saveManager);
 
-            // 角色拥有模块先于装备 Manager 注册，使武器存档的恢复依赖始终可解析。
+            // 角色实例先于装备 Manager 注册，后续角色装备关系存档会在三类实例存档之后恢复。
             CharacterRosterManager characterRosterManager = new CharacterRosterManager(saveManager);
             RegisterManager(characterRosterManager);
 
@@ -72,6 +72,7 @@ namespace RPG.Game
                 bagRedDotConfig.WeaponNewKey));
             RegisterManager(new ArtifactInventoryManager(
                 saveManager,
+                characterRosterManager,
                 itemDiscoveryManager,
                 redDotSystem,
                 bagRedDotConfig.ArtifactNewKey));
@@ -87,11 +88,12 @@ namespace RPG.Game
             // 角色、背包等跨业务模块在这里继续注册；各 Manager 在自身 OnInit 中注册 SaveModule。
             TaskSaveModule taskSaveModule = new TaskSaveModule(TaskManager.Instance);
             snapshotTypeRegistry.Register<TaskSaveSnapshot>(taskSaveModule.ModuleId, taskSaveModule.CurrentVersion);
-            snapshotTypeRegistry.Register<CharacterRosterSaveSnapshot>(CharacterRosterSaveModule.StableModuleId, 1);
+            snapshotTypeRegistry.Register<CharacterRosterSaveSnapshot>(CharacterRosterSaveModule.StableModuleId, 2);
             snapshotTypeRegistry.Register<ItemDiscoverySaveSnapshot>(ItemDiscoverySaveModule.StableModuleId, 1);
             snapshotTypeRegistry.Register<StackableInventorySaveSnapshot>(new SaveModuleId("stackable-inventory"), 1);
             snapshotTypeRegistry.Register<WeaponInventorySaveSnapshot>(new SaveModuleId("weapon-inventory"), 1);
             snapshotTypeRegistry.Register<ArtifactInventorySaveSnapshot>(new SaveModuleId("artifact-inventory"), 1);
+            snapshotTypeRegistry.Register<CharacterEquipmentSaveSnapshot>(new SaveModuleId("character-equipment"), 1);
             snapshotTypeRegistry.Register<CurrencySaveSnapshot>(new SaveModuleId("currency"), 1);
             #endregion
         }

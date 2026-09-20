@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
 using UnityEditor.AddressableAssets.Settings;
@@ -12,6 +13,7 @@ namespace WS_Modules
     /// <summary>
     /// Draws Addressables address selectors for string fields and string arrays/lists.
     /// </summary>
+    [InitializeOnLoad]
     [CustomPropertyDrawer(typeof(WSAddressableKeyAttribute))]
     internal sealed class WSAddressableKeyDrawer : PropertyDrawer
     {
@@ -28,6 +30,66 @@ namespace WS_Modules
         private const float PingButtonWidth = 38f;
         private const float ObjectFieldRatio = 0.32f;
         private const float FieldSpacing = 2f;
+
+        #endregion
+
+        #region 依赖字段
+
+        // Addressables 筛选缓存：Key 包含 Settings 实例和原始筛选表达式，Value 为不可变的筛选结果快照。
+        private static readonly Dictionary<
+            AddressableKeyFilterCacheKey,
+            IReadOnlyList<AddressableKeyOption>> optionsByFilterKeyMap =
+            new Dictionary<AddressableKeyFilterCacheKey, IReadOnlyList<AddressableKeyOption>>();
+
+        // 用于检测当前 Addressables Settings 是否已经切换，避免旧 Settings 的结果继续被复用。
+        private static int cachedSettingsInstanceId = int.MinValue;
+
+        #endregion
+
+        #region 过滤缓存生命周期
+
+        /// <summary>
+        /// 注册用于失效内存 Addressables 筛选缓存的编辑器回调。
+        /// </summary>
+        static WSAddressableKeyDrawer()
+        {
+            AddressableAssetSettings.OnModificationGlobal -= OnAddressableSettingsModified;
+            AddressableAssetSettings.OnModificationGlobal += OnAddressableSettingsModified;
+            EditorApplication.projectChanged -= OnProjectChanged;
+            EditorApplication.projectChanged += OnProjectChanged;
+        }
+
+        /// <summary>
+        /// 在任意 Addressables Settings 修改后清空筛选结果缓存。
+        /// </summary>
+        /// <param name="settings">发生修改的 Addressables Settings 实例。</param>
+        /// <param name="modificationEvent">Addressables 修改事件类别。</param>
+        /// <param name="eventData">与修改事件关联的数据对象。</param>
+        private static void OnAddressableSettingsModified(
+            AddressableAssetSettings settings,
+            AddressableAssetSettings.ModificationEvent modificationEvent,
+            object eventData)
+        {
+            // 修改事件可能在一次 Inspector 重绘期间触发；这里只失效缓存，不在回调中扫描资源。
+            InvalidateAddressableOptionsCache();
+        }
+
+        /// <summary>
+        /// 在 Unity 报告项目资产变化后清空筛选结果缓存。
+        /// </summary>
+        private static void OnProjectChanged()
+        {
+            // Project 变更只负责让下一次访问重新构建，避免在高频编辑器事件中执行全量遍历。
+            InvalidateAddressableOptionsCache();
+        }
+
+        /// <summary>
+        /// 清除所有 Addressables 筛选结果，但不访问或修改 Addressable 资源。
+        /// </summary>
+        private static void InvalidateAddressableOptionsCache()
+        {
+            optionsByFilterKeyMap.Clear();
+        }
 
         #endregion
 
@@ -201,7 +263,7 @@ namespace WS_Modules
                 return;
             }
 
-            List<AddressableKeyOption> options = GetAddressableKeyOptions(keyAttribute);
+            IReadOnlyList<AddressableKeyOption> options = GetAddressableKeyOptions(keyAttribute);
             if (options.Count == 0)
             {
                 DrawDisabledPopupWithHelp(position, label, property.stringValue, EmptyOptionsMessage);
@@ -240,7 +302,7 @@ namespace WS_Modules
             Rect position,
             SerializedProperty property,
             GUIContent label,
-            List<AddressableKeyOption> options)
+            IReadOnlyList<AddressableKeyOption> options)
         {
             List<string> values = new List<string>(options.Count + 2) { string.Empty };
             List<GUIContent> labels = new List<GUIContent>(options.Count + 2) { new GUIContent(NoneLabel) };
@@ -481,18 +543,55 @@ namespace WS_Modules
         #region Addressables 筛选
 
         /// <summary>
-        /// Collects Addressables entries matching the configured group and label expressions.
+        /// 获取满足 Group 和 Label 表达式的 Addressables 选项，并复用当前编辑器缓存。
         /// </summary>
-        /// <param name="keyAttribute">The filter configuration attached to the field.</param>
-        /// <returns>Sorted Addressables options that satisfy the filters.</returns>
-        private static List<AddressableKeyOption> GetAddressableKeyOptions(WSAddressableKeyAttribute keyAttribute)
+        /// <param name="keyAttribute">字段上的筛选配置。</param>
+        /// <returns>满足筛选条件的排序后只读 Addressables 选项。</returns>
+        private static IReadOnlyList<AddressableKeyOption> GetAddressableKeyOptions(WSAddressableKeyAttribute keyAttribute)
         {
             AddressableAssetSettings settings = AddressableAssetSettingsDefaultObject.Settings;
-            List<AddressableKeyOption> options = new List<AddressableKeyOption>();
             if (settings == null)
             {
-                return options;
+                if (cachedSettingsInstanceId != 0)
+                {
+                    // Settings 被删除后不能保留旧结果，否则重新创建 Settings 前会显示过期 Address。
+                    InvalidateAddressableOptionsCache();
+                    cachedSettingsInstanceId = 0;
+                }
+
+                return Array.Empty<AddressableKeyOption>();
             }
+
+            int settingsInstanceId = settings.GetInstanceID();
+            if (cachedSettingsInstanceId != settingsInstanceId)
+            {
+                // Settings 资产切换时清除旧实例的快照，防止相同表达式命中错误项目数据。
+                InvalidateAddressableOptionsCache();
+                cachedSettingsInstanceId = settingsInstanceId;
+            }
+
+            AddressableKeyFilterCacheKey cacheKey = CreateFilterCacheKey(settingsInstanceId, keyAttribute);
+            if (optionsByFilterKeyMap.TryGetValue(cacheKey, out IReadOnlyList<AddressableKeyOption> cachedOptions))
+            {
+                return cachedOptions;
+            }
+
+            IReadOnlyList<AddressableKeyOption> options = BuildAddressableKeyOptions(settings, keyAttribute);
+            optionsByFilterKeyMap.Add(cacheKey, options);
+            return options;
+        }
+
+        /// <summary>
+        /// 在缓存未命中时构建一份排序后的 Addressables 筛选结果快照。
+        /// </summary>
+        /// <param name="settings">当前生效的 Addressables Settings 实例。</param>
+        /// <param name="keyAttribute">字段上的筛选配置。</param>
+        /// <returns>满足筛选条件的排序后只读结果。</returns>
+        private static IReadOnlyList<AddressableKeyOption> BuildAddressableKeyOptions(
+            AddressableAssetSettings settings,
+            WSAddressableKeyAttribute keyAttribute)
+        {
+            List<AddressableKeyOption> options = new List<AddressableKeyOption>();
 
             // 预先解析表达式，避免为每个 Addressables 条目重复拆分字符串。
             List<string> groupFilters = ParseGroupFilters(keyAttribute.GroupName);
@@ -522,6 +621,42 @@ namespace WS_Modules
                 .OrderBy(option => option.GroupName)
                 .ThenBy(option => option.Address)
                 .ToList();
+        }
+
+        /// <summary>
+        /// 根据当前 Settings 实例和原始筛选表达式创建缓存键。
+        /// </summary>
+        /// <param name="settingsInstanceId">当前 Addressables Settings 的实例 ID。</param>
+        /// <param name="keyAttribute">Drawer 使用的筛选配置。</param>
+        /// <returns>能够区分所有筛选组合且不会因分隔符产生碰撞的值键。</returns>
+        private static AddressableKeyFilterCacheKey CreateFilterCacheKey(
+            int settingsInstanceId,
+            WSAddressableKeyAttribute keyAttribute)
+        {
+            return new AddressableKeyFilterCacheKey(
+                settingsInstanceId,
+                keyAttribute.GroupName,
+                CreateLabelExpressionSignature(keyAttribute.Labels));
+        }
+
+        /// <summary>
+        /// 为全部原始 Label 参数创建带长度前缀的签名。
+        /// </summary>
+        /// <param name="labelExpressions">Attribute 中的原始 Label 表达式。</param>
+        /// <returns>保留参数数量与顺序且不会发生分隔符碰撞的签名。</returns>
+        private static string CreateLabelExpressionSignature(IReadOnlyList<string> labelExpressions)
+        {
+            StringBuilder signatureBuilder = new StringBuilder();
+            int expressionCount = labelExpressions?.Count ?? 0;
+            signatureBuilder.Append(expressionCount).Append(':');
+
+            for (int i = 0; i < expressionCount; i++)
+            {
+                string expression = labelExpressions[i] ?? string.Empty;
+                signatureBuilder.Append(expression.Length).Append(':').Append(expression);
+            }
+
+            return signatureBuilder.ToString();
         }
 
         /// <summary>
@@ -662,6 +797,88 @@ namespace WS_Modules
                 : string.Join(", ", entry.labels);
 
             return $"Path: {entry.AssetPath}\nGUID: {entry.guid}\nLabels: {labels}";
+        }
+
+        #endregion
+
+        #region 筛选缓存键
+
+        /// <summary>
+        /// 标识某个 Settings 实例上的一份 Addressables 筛选缓存结果。
+        /// </summary>
+        private readonly struct AddressableKeyFilterCacheKey : IEquatable<AddressableKeyFilterCacheKey>
+        {
+            /// <summary>
+            /// 根据 Settings 实例和原始筛选表达式初始化缓存键。
+            /// </summary>
+            /// <param name="settingsInstanceId">当前 Addressables Settings 的实例 ID。</param>
+            /// <param name="groupExpression">原始 Group 表达式。</param>
+            /// <param name="labelExpressionSignature">带长度前缀的 Label 签名。</param>
+            public AddressableKeyFilterCacheKey(
+                int settingsInstanceId,
+                string groupExpression,
+                string labelExpressionSignature)
+            {
+                SettingsInstanceId = settingsInstanceId;
+                GroupExpression = groupExpression ?? string.Empty;
+                LabelExpressionSignature = labelExpressionSignature ?? string.Empty;
+            }
+
+            /// <summary>
+            /// 获取该键对应的 Addressables Settings 实例 ID。
+            /// </summary>
+            public int SettingsInstanceId { get; }
+
+            /// <summary>
+            /// 获取该键对应的原始 Group 表达式。
+            /// </summary>
+            public string GroupExpression { get; }
+
+            /// <summary>
+            /// 获取原始 Label 表达式的无碰撞签名。
+            /// </summary>
+            public string LabelExpressionSignature { get; }
+
+            /// <summary>
+            /// 使用序数表达式比较两个缓存键。
+            /// </summary>
+            /// <param name="other">要比较的缓存键。</param>
+            /// <returns>当两个键标识同一份筛选快照时返回 <see langword="true"/>。</returns>
+            public bool Equals(AddressableKeyFilterCacheKey other)
+            {
+                return SettingsInstanceId == other.SettingsInstanceId &&
+                       string.Equals(GroupExpression, other.GroupExpression, StringComparison.Ordinal) &&
+                       string.Equals(
+                           LabelExpressionSignature,
+                           other.LabelExpressionSignature,
+                           StringComparison.Ordinal);
+            }
+
+            /// <summary>
+            /// 将当前缓存键与其他对象进行比较。
+            /// </summary>
+            /// <param name="obj">要比较的对象。</param>
+            /// <returns>当 <paramref name="obj"/> 是相同缓存键时返回 <see langword="true"/>。</returns>
+            public override bool Equals(object obj)
+            {
+                return obj is AddressableKeyFilterCacheKey other && Equals(other);
+            }
+
+            /// <summary>
+            /// 计算筛选缓存字典使用的哈希值。
+            /// </summary>
+            /// <returns>由 Settings 和筛选表达式共同计算出的哈希值。</returns>
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    int hashCode = SettingsInstanceId;
+                    hashCode = (hashCode * 397) ^ StringComparer.Ordinal.GetHashCode(GroupExpression);
+                    hashCode = (hashCode * 397) ^
+                               StringComparer.Ordinal.GetHashCode(LabelExpressionSignature);
+                    return hashCode;
+                }
+            }
         }
 
         #endregion

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using RPG.RedDotSystemNS;
 using RPG.SaveSystem;
+using RPG.Character;
 using UnityEngine;
 using WS_Modules.BusinessArchitecture;
 using WS_Modules.CustomEventSystem;
@@ -22,6 +23,7 @@ namespace RPG.ItemSystem
         #region 依赖字段
 
         private readonly SaveManager saveManager;
+        private readonly CharacterRosterManager characterRosterManager;
         private readonly ItemDiscoveryManager itemDiscoveryManager;
         private readonly RedDotSystem redDotSystem;
         private readonly RedDotKey artifactNewRedDotKey;
@@ -31,16 +33,19 @@ namespace RPG.ItemSystem
 
         /// <summary>创建由 GameArchitecture 持有的圣遗物实例 Manager。</summary>
         /// <param name="saveManager">用于注册圣遗物存档模块的 Manager。</param>
+        /// <param name="characterRosterManager">用于校验圣遗物装备关系的角色实例 Manager。</param>
         /// <param name="itemDiscoveryManager">用于记录首次发现 Definition 的 Manager。</param>
         /// <param name="redDotSystem">统一红点运行时系统。</param>
         /// <param name="artifactNewRedDotKey">圣遗物 New 红点叶节点。</param>
         public ArtifactInventoryManager(
             SaveManager saveManager,
+            CharacterRosterManager characterRosterManager,
             ItemDiscoveryManager itemDiscoveryManager,
             RedDotSystem redDotSystem,
             RedDotKey artifactNewRedDotKey) : base(GetConfiguredCapacity())
         {
             this.saveManager = saveManager ?? throw new ArgumentNullException(nameof(saveManager));
+            this.characterRosterManager = characterRosterManager ?? throw new ArgumentNullException(nameof(characterRosterManager));
             this.itemDiscoveryManager = itemDiscoveryManager ??
                                         throw new ArgumentNullException(nameof(itemDiscoveryManager));
             this.redDotSystem = redDotSystem ?? throw new ArgumentNullException(nameof(redDotSystem));
@@ -158,6 +163,8 @@ namespace RPG.ItemSystem
             {
                 if (!instances.TryGetValue(instanceIds[index], out ArtifactInstance instance)) return new EquipmentOperationResult(InventoryOperationStatus.InstanceNotFound);
                 if (instance.IsLocked) return new EquipmentOperationResult(InventoryOperationStatus.InstanceLocked);
+                if (characterRosterManager.IsEquipmentEquipped(instance.InstanceId))
+                    return new EquipmentOperationResult(InventoryOperationStatus.InstanceEquipped);
                 if (removed.Exists(item => item.InstanceId == instance.InstanceId)) return new EquipmentOperationResult(InventoryOperationStatus.DuplicateInstanceId);
                 removed.Add(instance);
             }

@@ -46,10 +46,21 @@ namespace RPG.Character
         /// <summary>获取 Attribute BaseValue 烘焙结果。</summary>
         public IReadOnlyList<BakedCharacterAttributeProgression> BakedAttributeProgressions => bakedAttributeProgressions;
 
-        /// <summary>判断当前曲线输入是否已经重新烘焙。</summary>
-        public bool NeedsRebake => bakedLevelProgressions == null || bakedAttributeProgressions == null ||
-            bakedLevelProgressions.Count != maxLevel || bakedAttributeProgressions.Count != (attributeGrowthCurves?.Count ?? -1) ||
-            bakedInputHash != CalculateInputHash();
+        /// <summary>判断当前成长与初始 AttributeSet 输入是否需要重新烘焙。</summary>
+        /// <param name="initialAttributeSets">当前角色使用的完整初始 AttributeSet 列表。</param>
+        /// <returns>烘焙结果缺失或任意输入发生变化时返回 true。</returns>
+        public bool NeedsRebake(IReadOnlyList<GameplayAttributeSet> initialAttributeSets)
+        {
+            if (bakedLevelProgressions == null || bakedAttributeProgressions == null)
+                return true;
+            if (bakedLevelProgressions.Count != maxLevel)
+                return true;
+
+            // 先建立并校验完整 Definition 顺序；未配置成长曲线的 Attribute 也必须拥有烘焙列。
+            List<GameplayAttributeDefinition> orderedDefinitions = BuildOrderedAttributeDefinitions(initialAttributeSets);
+            return bakedAttributeProgressions.Count != orderedDefinitions.Count ||
+                   bakedInputHash != CalculateInputHash(initialAttributeSets);
+        }
 
         #endregion
 
@@ -95,19 +106,32 @@ namespace RPG.Character
                 previousExperience = cumulative;
             }
 
-            var attributeResults = new List<BakedCharacterAttributeProgression>(attributeGrowthCurves.Count);
+            List<GameplayAttributeDefinition> orderedDefinitions = BuildOrderedAttributeDefinitions(initialAttributeSets);
+            var growthCurveByAttributeIdMap = new Dictionary<int, CharacterAttributeGrowthCurve>();
             for (int index = 0; index < attributeGrowthCurves.Count; index++)
             {
                 CharacterAttributeGrowthCurve growthCurve = attributeGrowthCurves[index];
+                growthCurveByAttributeIdMap.Add(growthCurve.Attribute.Id, growthCurve);
+            }
+
+            var attributeResults = new List<BakedCharacterAttributeProgression>(orderedDefinitions.Count);
+            for (int index = 0; index < orderedDefinitions.Count; index++)
+            {
+                GameplayAttributeDefinition definition = orderedDefinitions[index];
                 var values = new List<float>(maxLevel);
                 for (int level = 1; level <= maxLevel; level++)
-                    values.Add(growthCurve.BaseValueCurve.Evaluate(level));
-                attributeResults.Add(new BakedCharacterAttributeProgression(growthCurve.Attribute, values));
+                {
+                    values.Add(growthCurveByAttributeIdMap.TryGetValue(definition.Attribute.Id, out CharacterAttributeGrowthCurve growthCurve)
+                        ? growthCurve.BaseValueCurve.Evaluate(level)
+                        : definition.DefaultValue);
+                }
+
+                attributeResults.Add(new BakedCharacterAttributeProgression(definition.Attribute, values));
             }
 
             bakedLevelProgressions = levelResults;
             bakedAttributeProgressions = attributeResults;
-            bakedInputHash = CalculateInputHash();
+            bakedInputHash = CalculateInputHash(initialAttributeSets);
         }
 
         #endregion
@@ -188,29 +212,54 @@ namespace RPG.Character
         /// <returns>按稳定 AttributeId 索引的 Definition。</returns>
         private Dictionary<int, GameplayAttributeDefinition> BuildAttributeDefinitionIndex(IReadOnlyList<GameplayAttributeSet> initialAttributeSets)
         {
+            var definitionByAttributeIdMap = new Dictionary<int, GameplayAttributeDefinition>();
+            List<GameplayAttributeDefinition> orderedDefinitions = BuildOrderedAttributeDefinitions(initialAttributeSets);
+            for (int index = 0; index < orderedDefinitions.Count; index++)
+            {
+                GameplayAttributeDefinition definition = orderedDefinitions[index];
+                definitionByAttributeIdMap.Add(definition.Attribute.Id, definition);
+            }
+
+            return definitionByAttributeIdMap;
+        }
+
+        /// <summary>按角色配置顺序收集并校验全部初始 Attribute Definition。</summary>
+        /// <param name="initialAttributeSets">角色初始 AttributeSet 列表。</param>
+        /// <returns>保持 Set 与 Definition 配置顺序的完整 Definition 列表。</returns>
+        private List<GameplayAttributeDefinition> BuildOrderedAttributeDefinitions(
+            IReadOnlyList<GameplayAttributeSet> initialAttributeSets)
+        {
             if (initialAttributeSets == null)
                 throw new InvalidOperationException($"CharacterGrowthProfile '{name}' 的初始 AttributeSet 列表不能为 null。");
-            var definitionByAttributeIdMap = new Dictionary<int, GameplayAttributeDefinition>();
+
+            var orderedDefinitions = new List<GameplayAttributeDefinition>();
             var setReferences = new HashSet<GameplayAttributeSet>();
+            var definitionByAttributeIdMap = new Dictionary<int, GameplayAttributeDefinition>();
             for (int setIndex = 0; setIndex < initialAttributeSets.Count; setIndex++)
             {
                 GameplayAttributeSet attributeSet = initialAttributeSets[setIndex];
-                if (attributeSet == null) throw new InvalidOperationException($"角色初始 AttributeSet 第 {setIndex} 项为空。");
-                if (!setReferences.Add(attributeSet)) throw new InvalidOperationException($"角色初始 AttributeSet '{attributeSet.name}' 被重复引用。");
+                if (attributeSet == null)
+                    throw new InvalidOperationException($"角色初始 AttributeSet 第 {setIndex} 项为空。");
+                if (!setReferences.Add(attributeSet))
+                    throw new InvalidOperationException($"角色初始 AttributeSet '{attributeSet.name}' 被重复引用。");
+
                 IReadOnlyList<GameplayAttributeDefinition> definitions = attributeSet.Definitions;
-                if (definitions == null) throw new InvalidOperationException($"AttributeSet '{attributeSet.name}' 的 Definition 列表为空引用。");
+                if (definitions == null)
+                    throw new InvalidOperationException($"AttributeSet '{attributeSet.name}' 的 Definition 列表为空引用。");
                 for (int definitionIndex = 0; definitionIndex < definitions.Count; definitionIndex++)
                 {
                     GameplayAttributeDefinition definition = definitions[definitionIndex];
-                    if (definition == null) throw new InvalidOperationException($"AttributeSet '{attributeSet.name}' 的 Definition 第 {definitionIndex} 项为空。");
+                    if (definition == null)
+                        throw new InvalidOperationException($"AttributeSet '{attributeSet.name}' 的 Definition 第 {definitionIndex} 项为空。");
                     if (!definition.TryValidateTemplate(out string error))
                         throw new InvalidOperationException($"AttributeSet '{attributeSet.name}'：{error}");
                     if (!definitionByAttributeIdMap.TryAdd(definition.Attribute.Id, definition))
                         throw new InvalidOperationException($"角色初始 AttributeSet 重复配置 AttributeId {definition.Attribute.Id}。");
+                    orderedDefinitions.Add(definition);
                 }
             }
 
-            return definitionByAttributeIdMap;
+            return orderedDefinitions;
         }
 
         /// <summary>采样一个非负有限的整数曲线值。</summary>
@@ -230,9 +279,10 @@ namespace RPG.Character
 
         #region 内部辅助
 
-        /// <summary>计算影响烘焙结果的配置输入指纹。</summary>
+        /// <summary>计算包含 AttributeSet 模板的成长输入指纹。</summary>
+        /// <param name="initialAttributeSets">角色初始 AttributeSet 列表。</param>
         /// <returns>当前成长输入的稳定整数指纹。</returns>
-        private int CalculateInputHash()
+        private int CalculateInputHash(IReadOnlyList<GameplayAttributeSet> initialAttributeSets)
         {
             unchecked
             {
@@ -255,6 +305,18 @@ namespace RPG.Character
                     hash = CombineHash(hash, levelOverride?.Level ?? 0);
                     hash = CombineHash(hash, levelOverride?.NextExperience ?? 0);
                     hash = CombineHash(hash, levelOverride?.CurrencyCost ?? 0);
+                }
+
+                List<GameplayAttributeDefinition> orderedDefinitions = BuildOrderedAttributeDefinitions(initialAttributeSets);
+                hash = CombineHash(hash, orderedDefinitions.Count);
+                for (int index = 0; index < orderedDefinitions.Count; index++)
+                {
+                    GameplayAttributeDefinition definition = orderedDefinitions[index];
+                    hash = CombineHash(hash, definition.Attribute.Id);
+                    hash = CombineHash(hash, definition.Type.GetHashCode());
+                    hash = CombineHash(hash, definition.DefaultValue.GetHashCode());
+                    hash = CombineHash(hash, definition.MinValue.GetHashCode());
+                    hash = CombineHash(hash, definition.MaxValue.GetHashCode());
                 }
 
                 return hash;

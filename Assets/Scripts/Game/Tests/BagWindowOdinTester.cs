@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
+using RPG.Character;
 using RPG.CurrencySystem;
 using RPG.Game.UI.Bag;
 using RPG.Game.UI.Escape;
@@ -424,7 +425,8 @@ namespace RPG.Game.Tests
                     $"[BagWindowTest] instance={instance.InstanceId}, definition={instance.DefinitionId}, level={instance.Level}, " +
                     $"refinement={instance.RefinementRank}, locked={instance.IsLocked}, " +
                     $"definitionNew={manager.IsDefinitionNew(instance.DefinitionId)}, " +
-                    $"isDiscovered={discoveryManager.IsDiscovered(instance.DefinitionId)}, equipped={instance.IsEquipped}。",
+                    $"isDiscovered={discoveryManager.IsDiscovered(instance.DefinitionId)}, " +
+                    $"equipped={GameArchitecture.Interface.GetManager<CharacterRosterManager>().IsEquipmentEquipped(instance.InstanceId)}。",
                     this);
             }
         }

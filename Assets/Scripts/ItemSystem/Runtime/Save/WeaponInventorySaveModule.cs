@@ -1,11 +1,10 @@
 using System;
 using System.Collections.Generic;
 using RPG.SaveSystem;
-using RPG.Character;
 
 namespace RPG.ItemSystem
 {
-    /// <summary>武器实例的版本化存档快照。</summary>
+    /// <summary>武器实例自身状态的版本化存档快照，不保存角色装备关系。</summary>
     [Serializable]
     public sealed class WeaponInventorySaveSnapshot : ISaveModuleSnapshot
     {
@@ -18,11 +17,9 @@ namespace RPG.ItemSystem
 
         /// <summary>武器实例数据。</summary>
         public List<WeaponInventorySaveEntry> Instances { get; set; }
-
         /// <summary>下一个获得顺序。</summary>
         public long NextAcquisitionSequence { get; set; } = 1;
-
-        /// <summary>当前显示 New 的武器 Definition 标识。</summary>
+        /// <summary>当前显示 New 的武器 Definition。</summary>
         public List<string> NewDefinitionIds { get; set; }
 
         /// <summary>验证快照结构。</summary>
@@ -30,32 +27,29 @@ namespace RPG.ItemSystem
         {
             if (Instances == null || NewDefinitionIds == null || NextAcquisitionSequence <= 0)
                 throw new InvalidOperationException("武器背包快照结构无效。");
-            var ids = new HashSet<string>(StringComparer.Ordinal);
-            var definitionIds = new HashSet<string>(StringComparer.Ordinal);
-            long maxAcquisitionSequence = 0;
+            var instanceIdSet = new HashSet<string>(StringComparer.Ordinal);
+            var definitionIdSet = new HashSet<string>(StringComparer.Ordinal);
+            long maxSequence = 0;
             for (int index = 0; index < Instances.Count; index++)
             {
                 WeaponInventorySaveEntry entry = Instances[index];
-                if (entry == null || string.IsNullOrWhiteSpace(entry.InstanceId) || string.IsNullOrWhiteSpace(entry.DefinitionId) ||
-                    entry.Level < 1 || entry.CurrentExperience < 0 || entry.AscensionRank < 0 || entry.RefinementRank < 1 ||
-                    entry.AcquisitionSequence <= 0 || !ids.Add(entry.InstanceId))
+                if (entry == null || string.IsNullOrWhiteSpace(entry.InstanceId) ||
+                    string.IsNullOrWhiteSpace(entry.DefinitionId) || entry.Level < 1 ||
+                    entry.CurrentExperience < 0 || entry.AscensionRank < 0 || entry.RefinementRank < 1 ||
+                    entry.AcquisitionSequence <= 0 || !instanceIdSet.Add(entry.InstanceId))
                     throw new InvalidOperationException("武器背包快照包含非法或重复实例。");
-                definitionIds.Add(entry.DefinitionId);
-                if (!string.IsNullOrEmpty(entry.EquippedCharacterId) &&
-                    !new CharacterId(entry.EquippedCharacterId).IsValid)
-                    throw new InvalidOperationException($"武器背包快照实例 {entry.InstanceId} 的装备角色标识无效（第 {index} 项）。");
-                if (entry.AcquisitionSequence > maxAcquisitionSequence) maxAcquisitionSequence = entry.AcquisitionSequence;
+                definitionIdSet.Add(entry.DefinitionId);
+                maxSequence = Math.Max(maxSequence, entry.AcquisitionSequence);
             }
-            if (NextAcquisitionSequence <= maxAcquisitionSequence)
-                throw new InvalidOperationException("武器背包快照的下一个获得顺序必须大于现有实例顺序。");
 
-            var newDefinitionIds = new HashSet<string>(StringComparer.Ordinal);
+            if (NextAcquisitionSequence <= maxSequence)
+                throw new InvalidOperationException("武器背包快照的下一个获得顺序必须大于现有实例顺序。");
+            var newDefinitionIdSet = new HashSet<string>(StringComparer.Ordinal);
             for (int index = 0; index < NewDefinitionIds.Count; index++)
             {
                 string definitionId = NewDefinitionIds[index];
-                if (!ItemId.TryCreate(definitionId, out ItemId parsedDefinitionId) ||
-                    !newDefinitionIds.Add(definitionId) ||
-                    !definitionIds.Contains(definitionId))
+                if (!ItemId.TryCreate(definitionId, out _) || !newDefinitionIdSet.Add(definitionId) ||
+                    !definitionIdSet.Contains(definitionId))
                     throw new InvalidOperationException("武器背包快照的 Definition New 集合无效。");
             }
         }
@@ -81,43 +75,28 @@ namespace RPG.ItemSystem
         public bool IsLocked { get; set; }
         /// <summary>获得顺序。</summary>
         public long AcquisitionSequence { get; set; }
-        /// <summary>装备该武器的角色稳定标识；空字符串表示未装备。</summary>
-        public string EquippedCharacterId { get; set; } = string.Empty;
     }
 
-    /// <summary>将 WeaponInventoryManager 状态接入 SaveSystem。</summary>
+    /// <summary>将武器实例状态接入 SaveSystem。</summary>
     public sealed class WeaponInventorySaveModule : SaveModule<WeaponInventorySaveSnapshot>
     {
         #region 依赖字段
 
         private readonly WeaponInventoryManager manager;
-        private readonly CharacterRosterManager characterRosterManager;
 
         #endregion
 
         /// <summary>创建武器实例存档模块。</summary>
         /// <param name="manager">武器 Manager。</param>
-        /// <param name="characterRosterManager">用于验证装备关系的角色拥有 Manager。</param>
-        public WeaponInventorySaveModule(
-            WeaponInventoryManager manager,
-            CharacterRosterManager characterRosterManager)
-            : base(
-                new SaveModuleId("weapon-inventory"),
-                1,
-                SaveMissingModulePolicy.Required,
-                new[]
-                {
-                    CharacterRosterSaveModule.StableModuleId,
-                    ItemDiscoverySaveModule.StableModuleId
-                })
+        public WeaponInventorySaveModule(WeaponInventoryManager manager)
+            : base(new SaveModuleId("weapon-inventory"), 1, SaveMissingModulePolicy.Required,
+                new[] { ItemDiscoverySaveModule.StableModuleId })
         {
             this.manager = manager ?? throw new ArgumentNullException(nameof(manager));
-            this.characterRosterManager = characterRosterManager ??
-                throw new ArgumentNullException(nameof(characterRosterManager));
         }
 
         /// <summary>采集武器实例状态。</summary>
-        /// <returns>快照。</returns>
+        /// <returns>武器实例快照。</returns>
         protected override WeaponInventorySaveSnapshot CaptureTypedSnapshot()
         {
             var snapshot = new WeaponInventorySaveSnapshot();
@@ -131,63 +110,51 @@ namespace RPG.ItemSystem
                 WeaponInstance instance = instances[index];
                 snapshot.Instances.Add(new WeaponInventorySaveEntry
                 {
-                    InstanceId = instance.InstanceId.Value, DefinitionId = instance.DefinitionId.Value, Level = instance.Level,
-                    CurrentExperience = instance.CurrentExperience, AscensionRank = instance.AscensionRank, RefinementRank = instance.RefinementRank,
+                    InstanceId = instance.InstanceId.Value,
+                    DefinitionId = instance.DefinitionId.Value,
+                    Level = instance.Level,
+                    CurrentExperience = instance.CurrentExperience,
+                    AscensionRank = instance.AscensionRank,
+                    RefinementRank = instance.RefinementRank,
                     IsLocked = instance.IsLocked,
-                    AcquisitionSequence = instance.AcquisitionSequence,
-                    EquippedCharacterId = instance.EquippedCharacterId.ToString()
+                    AcquisitionSequence = instance.AcquisitionSequence
                 });
             }
-            // 直接保存 Manager 的真实计数器，删除实例后也不会根据剩余集合回退或复用序号。
+
             snapshot.NextAcquisitionSequence = manager.NextAcquisitionSequence;
             return snapshot;
         }
 
-        /// <summary>验证武器实例快照。</summary>
-        /// <param name="snapshot">快照。</param>
+        /// <summary>验证武器定义和成长状态。</summary>
+        /// <param name="snapshot">待验证快照。</param>
         protected override void ValidateTypedSnapshot(WeaponInventorySaveSnapshot snapshot)
         {
             if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
             snapshot.ValidateShape();
-            int storedCount = 0;
-            var equippedCharacterIds = new HashSet<CharacterId>();
             for (int index = 0; index < snapshot.Instances.Count; index++)
             {
                 WeaponInventorySaveEntry entry = snapshot.Instances[index];
-                if (string.IsNullOrEmpty(entry.EquippedCharacterId))
-                {
-                    storedCount++;
-                }
-                else
-                {
-                    CharacterId equippedCharacterId = new CharacterId(entry.EquippedCharacterId);
-                    if (!equippedCharacterIds.Add(equippedCharacterId))
-                        throw new InvalidOperationException($"武器快照为角色重复保存装备：{equippedCharacterId}。 ");
-                }
-
-                if (!ItemId.TryCreate(entry.DefinitionId, out ItemId definitionId) || !ItemManager.Instance.TryGetDefinition(definitionId, out ItemDefinition definition) || !(definition is WeaponDefinition weapon))
+                if (!ItemId.TryCreate(entry.DefinitionId, out ItemId definitionId) ||
+                    !ItemManager.Instance.TryGetDefinition(definitionId, out ItemDefinition definition) ||
+                    !(definition is WeaponDefinition weapon))
                     throw new InvalidOperationException($"武器快照引用了无效定义：{entry.DefinitionId}。");
-                if (entry.Level > weapon.MaxLevel || entry.AscensionRank > weapon.MaxAscensionRank || entry.RefinementRank > weapon.MaxRefinementRank)
+                if (entry.Level > weapon.MaxLevel || entry.AscensionRank > weapon.MaxAscensionRank ||
+                    entry.RefinementRank > weapon.MaxRefinementRank)
                     throw new InvalidOperationException($"武器实例 {entry.InstanceId} 的成长状态超出定义上限。");
             }
-            if (storedCount > manager.Capacity)
-                throw new InvalidOperationException($"武器背包快照容纳区超过容量：{storedCount}/{manager.Capacity}。 ");
         }
 
-        /// <summary>恢复已验证的武器实例。</summary>
-        /// <param name="snapshot">快照。</param>
+        /// <summary>恢复已验证的武器实例，装备关系由独立模块随后恢复。</summary>
+        /// <param name="snapshot">已经完成验证的快照。</param>
         protected override void RestoreTypedSnapshot(WeaponInventorySaveSnapshot snapshot)
         {
             var instances = new List<WeaponInstance>(snapshot.Instances.Count);
             for (int index = 0; index < snapshot.Instances.Count; index++)
             {
                 WeaponInventorySaveEntry entry = snapshot.Instances[index];
-                if (!string.IsNullOrEmpty(entry.EquippedCharacterId) &&
-                    !characterRosterManager.IsOwned(new CharacterId(entry.EquippedCharacterId)))
-                    throw new InvalidOperationException($"武器快照实例 {entry.InstanceId} 装备到了未拥有角色：{entry.EquippedCharacterId}。 ");
-                instances.Add(new WeaponInstance(new EquipmentInstanceId(entry.InstanceId), new ItemId(entry.DefinitionId), entry.Level,
-                    entry.CurrentExperience, entry.AscensionRank, entry.RefinementRank, entry.IsLocked, entry.AcquisitionSequence,
-                    new CharacterId(entry.EquippedCharacterId ?? string.Empty)));
+                instances.Add(new WeaponInstance(new EquipmentInstanceId(entry.InstanceId), new ItemId(entry.DefinitionId),
+                    entry.Level, entry.CurrentExperience, entry.AscensionRank, entry.RefinementRank,
+                    entry.IsLocked, entry.AcquisitionSequence));
             }
 
             var newDefinitionIds = new List<ItemId>(snapshot.NewDefinitionIds.Count);

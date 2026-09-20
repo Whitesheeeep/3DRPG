@@ -96,13 +96,15 @@ namespace WS_Modules.Baking.Editor
             for (int index = 0; index < data.Headers.Count; index++)
             {
                 int columnIndex = index;
+                float width = GetColumnWidth(index);
                 var column = new Column
                 {
                     name = $"BakedResultColumn{index}",
                     title = data.Headers[index],
-                    width = index == 0 ? 100f : 150f,
+                    width = width,
                     resizable = true,
-                    stretchable = true
+                    // 关闭自动拉伸，属性列较多时由 MultiColumnListView 的横向滚动承载完整表格。
+                    stretchable = false
                 };
                 column.makeCell = () => new Label();
                 column.bindCell = (element, rowIndex) =>
@@ -122,7 +124,9 @@ namespace WS_Modules.Baking.Editor
             table.style.display = data.Rows.Count == 0 ? DisplayStyle.None : DisplayStyle.Flex;
             statusLabel.text = data.Rows.Count == 0
                 ? "尚未生成烘焙结果。"
-                : $"已生成 {data.Rows.Count} 行、{data.Headers.Count} 列。";
+                : string.IsNullOrWhiteSpace(data.StatusText)
+                    ? $"已生成 {data.Rows.Count} 行、{data.Headers.Count} 列。"
+                    : data.StatusText;
             table.Rebuild();
         }
 
@@ -162,6 +166,17 @@ namespace WS_Modules.Baking.Editor
         #endregion
 
         #region 内部辅助
+
+        /// <summary>按固定业务列顺序返回默认宽度，避免属性列被窗口宽度压缩。</summary>
+        /// <param name="columnIndex">零基列索引。</param>
+        /// <returns>默认列宽。</returns>
+        private static float GetColumnWidth(int columnIndex)
+        {
+            if (columnIndex == 0) return 72f;
+            if (columnIndex <= 2) return 120f;
+            if (columnIndex <= 4) return 100f;
+            return 140f;
+        }
 
         /// <summary>从根节点获取必需控件。</summary>
         /// <typeparam name="T">控件类型。</typeparam>

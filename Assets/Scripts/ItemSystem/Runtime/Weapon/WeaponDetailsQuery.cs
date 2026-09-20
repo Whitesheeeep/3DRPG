@@ -47,8 +47,7 @@ namespace RPG.ItemSystem
             // 只创建内存中的投影实例，绝不写回库存 Manager 或触发变化事件。
             var projected = new WeaponInstance(instance.InstanceId, instance.DefinitionId,
                 projectedLevel, instance.CurrentExperience, projectedAscensionRank,
-                projectedRefinementRank, instance.IsLocked, instance.AcquisitionSequence,
-                instance.EquippedCharacterId);
+                projectedRefinementRank, instance.IsLocked, instance.AcquisitionSequence);
             return Create(definition, projected);
         }
 
