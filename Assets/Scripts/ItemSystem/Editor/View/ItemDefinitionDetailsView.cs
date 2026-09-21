@@ -1,6 +1,5 @@
 #if UNITY_EDITOR
 using System;
-using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -43,8 +42,9 @@ namespace RPG.ItemSystem.Editor
         private readonly Label summaryId;
         private readonly PropertyField itemIdField;
         private readonly PropertyField categoryField;
+        private readonly PropertyField iconAddressField;
+        private readonly PropertyField worldPrefabAddressField;
         private readonly PropertyField foodUseEffectsField;
-        private readonly List<(PropertyField field, string label)> fixedPropertyLabels = new();
 
         private ItemDefinition boundDefinition;
         private SerializedObject definitionSerializedObject;
@@ -143,13 +143,10 @@ namespace RPG.ItemSystem.Editor
             itemIdField.SetEnabled(false);
             categoryField = RequireFromPage<PropertyField>(commonDetailsPage, "CategoryField", "公共物品详情");
             categoryField.SetEnabled(false);
+            iconAddressField = RequireFromPage<PropertyField>(commonDetailsPage, "IconAddressField", "公共物品详情");
+            worldPrefabAddressField = RequireFromPage<PropertyField>(commonDetailsPage, "WorldPrefabAddressField", "公共物品详情");
             foodUseEffectsField = RequireFromPage<PropertyField>(foodDetailsPage, "UseEffectsField", "食物详情");
             commonDetailsPage.RegisterCallback<SerializedPropertyChangeEvent>(OnCommonPropertyChanged);
-            CacheFixedPropertyLabels(commonDetailsPage);
-            CacheFixedPropertyLabels(stackableDetailsPage);
-            CacheFixedPropertyLabels(developmentItemDetailsPage);
-            CacheFixedPropertyLabels(developmentExperienceDetailsPage);
-            CacheFixedPropertyLabels(foodDetailsPage);
             displayNameField.RegisterCallback<FocusInEvent>(OnDisplayNameFocusIn);
             displayNameField.RegisterCallback<ChangeEvent<string>>(OnDisplayNameChanged);
             displayNameField.RegisterCallback<KeyDownEvent>(OnDisplayNameKeyDown);
@@ -209,6 +206,8 @@ namespace RPG.ItemSystem.Editor
             }
 
             definitionSerializedObject = new SerializedObject(definition);
+            // 复制资产后先刷新新的序列化快照，避免常驻 PropertyField 使用旧对象的值。
+            definitionSerializedObject.UpdateIfRequiredOrScript();
             Debug.Log($"[ItemDefinitionDetailsView] 绑定物品定义：{definition.ItemId}，类型={definition.GetType().Name}。");
             commonDetailsPage.Bind(definitionSerializedObject);
             if (definition is DevelopmentExperienceItemDefinition)
@@ -252,7 +251,7 @@ namespace RPG.ItemSystem.Editor
                 developmentExperienceDetailsPage.Unbind();
                 foodDetailsPage.Unbind();
                 artifactDetailsPage.Unbind();
-                // 武器页面先保持隐藏，待子 View 完成原生数组生成和中文化后再显示，避免 Element 0 首帧闪现。
+                // 子 View 只负责切换原生绑定与页面显隐；数组标题和空状态交给 Unity 默认渲染。
                 SetPageVisibility(true, false, false, false, false, false, false);
                 weaponDetailsView.Bind(weapon, definitionSerializedObject);
             }
@@ -264,7 +263,7 @@ namespace RPG.ItemSystem.Editor
                 foodDetailsPage.Unbind();
                 weaponDetailsView.Unbind();
                 artifactDetailsView.Bind((ArtifactDefinition)definition, definitionSerializedObject);
-                // 圣遗物页与武器页一样，先隐藏动态列表，待 Profile 绑定和中文化完成后再由子 View 显示。
+                // 圣遗物子 View 在完成 Profile 原生绑定后直接显示固定页面。
                 SetPageVisibility(true, false, false, false, false, false, true);
             }
             else
@@ -399,14 +398,7 @@ namespace RPG.ItemSystem.Editor
             return template;
         }
 
-        /// <summary>缓存 UXML 中的固定字段标签，避免在 C# 中重复维护中文名称。</summary>
-        /// <param name="page">详情页根节点。</param>
-        private void CacheFixedPropertyLabels(VisualElement page)
-        {
-            page.Query<PropertyField>().ForEach(field => fixedPropertyLabels.Add((field, field.label)));
-        }
-
-        /// <summary>在原生绑定完成后恢复 UXML 中声明的固定字段标签。</summary>
+        /// <summary>在原生绑定完成后修正可见字段标签并刷新 Addressable Drawer。</summary>
         private void ScheduleFixedPropertyLabels()
         {
             if (boundDefinition == null) return;
@@ -414,11 +406,10 @@ namespace RPG.ItemSystem.Editor
             root.schedule.Execute(() =>
             {
                 if (disposed || scheduledVersion != bindingVersion || boundDefinition == null) return;
-                for (int index = 0; index < fixedPropertyLabels.Count; index++)
-                {
-                    PropertyField field = fixedPropertyLabels[index].field;
-                    if (field != null) field.label = fixedPropertyLabels[index].label;
-                }
+                // 只修改已经生成的 Label 节点，不能设置 PropertyField.label；后者会重建 Addressable IMGUI Drawer。
+                VisibleSerializedFieldLabelLocalizer.Apply(root);
+                MarkAddressableFieldsDirty(iconAddressField);
+                MarkAddressableFieldsDirty(worldPrefabAddressField);
                 // 食物的 GE 集合在绑定后才生成内部 ListView，必须在固定控件完成绑定后配置一次原生列表。
                 if (boundDefinition is FoodItemDefinition && foodUseEffectsField.Q<ListView>() != null)
                 {
@@ -430,6 +421,15 @@ namespace RPG.ItemSystem.Editor
                     foodUseEffectsListConfigured = true;
                 }
             });
+        }
+
+        /// <summary>请求 Addressable 自定义 Drawer 在新绑定对象上重绘。</summary>
+        /// <param name="field">包含 IMGUI Drawer 的 Addressable 字段。</param>
+        private static void MarkAddressableFieldsDirty(PropertyField field)
+        {
+            if (field == null) return;
+            field.MarkDirtyRepaint();
+            field.Query<IMGUIContainer>().ForEach(container => container.MarkDirtyRepaint());
         }
 
         #endregion
@@ -498,7 +498,7 @@ namespace RPG.ItemSystem.Editor
         private void OnSerializedObjectChanged(SerializedObject serializedObject)
         {
             if (serializedObject == null || serializedObject != definitionSerializedObject || boundDefinition == null) return;
-            weaponDetailsView.ScheduleStructureRefresh();
+            weaponDetailsView.RefreshPresentation();
             PropertiesChanged?.Invoke(boundDefinition);
         }
 

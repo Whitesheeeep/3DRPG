@@ -3,10 +3,15 @@ using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using RPG.Character.State;
+using RPG.Game;
 using RPG.PlayerInputSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using WS_Modules;
+using WS_Modules.BusinessArchitecture;
+using WS_Modules.CustomEventSystem;
 using WS_Modules.ResLoadModule;
+using WSEventSystem = WS_Modules.CustomEventSystem.EventSystem;
 
 namespace RPG.Character
 {
@@ -27,6 +32,7 @@ namespace RPG.Character
         private readonly List<CharacterActor> spawnedCharacters = new();
         private CharacterInitializationState initializationState = CharacterInitializationState.Uninitialized;
         private bool cancellationRequested;
+        private IUnRegister rosterRestoredUnregister;
 
         // 固定槽位输入只在 Ready 阶段查询，不把 PlayerInputController 保存为 Manager 生命周期依赖。
         private static readonly PlayerInputType[] characterSlotInputTypes =
@@ -62,6 +68,13 @@ namespace RPG.Character
 
         #region 异步初始化
 
+        /// <summary>注册角色存档恢复校验事件。</summary>
+        private void Awake()
+        {
+            rosterRestoredUnregister = WSEventSystem.Register_Type<CharacterRosterRestoredEvent>(
+                typeof(CharacterRosterRestoredEvent), HandleRosterRestored);
+        }
+
         /// <summary>并发加载配置中的角色 Prefab，并在全部成功后按配置顺序原子提交。</summary>
         /// <param name="root">稳定 Player 持有的角色根节点。</param>
         /// <param name="driver">Player 持有的统一运动请求出口。</param>
@@ -92,15 +105,40 @@ namespace RPG.Character
                 if (initialCharacterIds == null || initialCharacterIds.Length == 0)
                     throw new InvalidOperationException("[CharacterManager] 未配置初始 CharacterId。");
 
-                var configManager = CharacterConfigManager.Instance;
-                var configs = new CharacterConfig[initialCharacterIds.Length];
+                // 先校验队伍输入，避免空新档在发现重复角色后留下部分已获得实例。
                 var ids = new HashSet<CharacterId>();
                 for (int index = 0; index < initialCharacterIds.Length; index++)
                 {
                     CharacterId characterId = initialCharacterIds[index];
                     if (!characterId.IsValid || !ids.Add(characterId))
                         throw new InvalidOperationException($"[CharacterManager] 初始 CharacterId 无效或重复：{characterId}。");
-                    configs[index] = configManager.GetRequiredConfig(characterId);
+                }
+
+                CharacterRosterManager rosterManager = GameArchitecture.Interface.GetManager<CharacterRosterManager>();
+                if (rosterManager.GetInstances().Count == 0)
+                {
+                    // 当前尚无独立 Party 存档时，初始队伍同时承担空新档的角色获得入口。
+                    for (int index = 0; index < initialCharacterIds.Length; index++)
+                    {
+                        CharacterAcquisitionResult acquisition = rosterManager.AcquireCharacter(initialCharacterIds[index]);
+                        if (!acquisition.Succeeded && acquisition.Status != CharacterAcquisitionStatus.AlreadyOwned)
+                            throw new InvalidOperationException($"[CharacterManager] 无法初始化初始角色 {initialCharacterIds[index]}：{acquisition.Status}。");
+                    }
+                    Debug.Log($"[CharacterManager] 空角色档已按初始队伍创建，count={initialCharacterIds.Length}。");
+                }
+                else
+                {
+                    for (int index = 0; index < initialCharacterIds.Length; index++)
+                        if (!rosterManager.IsOwned(initialCharacterIds[index]))
+                            throw new InvalidOperationException($"[CharacterManager] 已有角色档缺少队伍角色：{initialCharacterIds[index]}。");
+                }
+
+                var configs = new CharacterConfig[initialCharacterIds.Length];
+                for (int index = 0; index < initialCharacterIds.Length; index++)
+                {
+                    CharacterId characterId = initialCharacterIds[index];
+                    // Prefab 地址和静态配置从稳定 Instance 读取，避免队伍加载绕过 Roster 的 Config 权威。
+                    configs[index] = rosterManager.GetRequiredInstance(characterId).Config;
                     configs[index].Validate();
                 }
 
@@ -138,8 +176,9 @@ namespace RPG.Character
                         throw new InvalidOperationException($"[CharacterManager] Actor '{actor.name}' 的 Config 与 CharacterId '{configs[index].CharacterId}' 不一致。");
 
                     // 绑定和初始化在提交到 characters 之前完成，失败时可整批销毁。
-                    actor.BindRuntime(root, driver, controller, blackboard);
-                    actor.InitializeFromConfig();
+                    CharacterInstance characterInstance = rosterManager.GetRequiredInstance(configs[index].CharacterId);
+                    actor.BindRuntime(root, driver, controller, blackboard, characterInstance);
+                    actor.InitializeFromInstance();
                     actor.PrimeIdlePose();
                     actor.SetActivePresentation(false);
                     spawnedCharacters.Add(actor);
@@ -176,6 +215,8 @@ namespace RPG.Character
         /// <summary>销毁时清理已创建实例和每一次成功加载的资源引用。</summary>
         private void OnDestroy()
         {
+            rosterRestoredUnregister?.UnRegister();
+            rosterRestoredUnregister = null;
             CancelInitialization();
             for (int index = 0; index < spawnedCharacters.Count; index++)
                 if (spawnedCharacters[index] != null) Destroy(spawnedCharacters[index].gameObject);
@@ -203,6 +244,36 @@ namespace RPG.Character
             for (int index = 0; index < loadedPrefabAddresses.Count; index++)
                 ResSystem.Instance.UnLoad<GameObject>(loadedPrefabAddresses[index]);
             loadedPrefabAddresses.Clear();
+        }
+
+        #endregion
+
+        #region 存档恢复
+
+        /// <summary>存档恢复后校验已经加载的 Actor 是否仍对应有效稳定实例。</summary>
+        /// <param name="restoredEvent">角色存档恢复事件。</param>
+        private void HandleRosterRestored(CharacterRosterRestoredEvent restoredEvent)
+        {
+            if (!IsInitialized) return;
+            CharacterRosterManager rosterManager = GameArchitecture.Interface.GetManager<CharacterRosterManager>();
+            for (int index = characters.Count - 1; index >= 0; index--)
+            {
+                CharacterActor actor = characters[index];
+                if (actor == null || !rosterManager.TryGetInstance(actor.CharacterId, out CharacterInstance instance))
+                {
+                    if (ReferenceEquals(ActiveCharacter, actor)) ActiveCharacter = null;
+                    actor?.StopRuntime();
+                    spawnedCharacters.Remove(actor);
+                    characters.RemoveAt(index);
+                    if (actor != null) Destroy(actor.gameObject);
+                    Debug.LogError($"[CharacterManager] 存档恢复后角色 Actor 缺少对应实例，character={actor?.CharacterId}。");
+                    continue;
+                }
+                if (!ReferenceEquals(actor.Instance, instance))
+                    Debug.LogError($"[CharacterManager] 存档恢复破坏了稳定 CharacterInstance 引用，character={actor.CharacterId}。");
+            }
+            if (ActiveCharacter == null && characters.Count > 0)
+                SwitchInternal(characters[0]);
         }
 
         #endregion

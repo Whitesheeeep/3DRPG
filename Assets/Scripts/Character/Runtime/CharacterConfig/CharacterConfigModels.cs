@@ -20,8 +20,6 @@ namespace RPG.Character
         public string CharacterName => characterName;
         /// <summary>读取稀有度。</summary>
         public CharacterRarity Rarity => rarity;
-        /// <summary>从旧的平铺字段迁移身份值。</summary>
-        internal void CopyFrom(string name, CharacterRarity value) { characterName = name; rarity = value; }
     }
 
     /// <summary>角色 Prefab 和头像资源配置组。</summary>
@@ -48,15 +46,6 @@ namespace RPG.Character
         public string AvatarAddress => avatarAddress;
         /// <summary>读取头像名称。</summary>
         public string AvatarSpriteName => avatarSpriteName;
-        /// <summary>从旧的平铺字段迁移资源值。</summary>
-        internal void CopyFrom(string prefab, string sideAddress, string sideSprite, string avatar, string avatarSprite)
-        {
-            prefabAddress = prefab;
-            sideIconAddress = sideAddress;
-            sideIconSpriteName = sideSprite;
-            avatarAddress = avatar;
-            avatarSpriteName = avatarSprite;
-        }
     }
 
     /// <summary>角色武器装备规则配置组。</summary>
@@ -71,8 +60,6 @@ namespace RPG.Character
         public WeaponTypeFlags AllowedWeaponTypes => allowedWeaponTypes;
         /// <summary>读取默认武器类型。</summary>
         public WeaponType DefaultWeaponType => defaultWeaponType;
-        /// <summary>从旧的平铺字段迁移装备规则。</summary>
-        internal void CopyFrom(WeaponTypeFlags allowed, WeaponType defaultType) { allowedWeaponTypes = allowed; defaultWeaponType = defaultType; }
     }
 
     /// <summary>角色等级、突破和初始属性配置组。</summary>
@@ -89,6 +76,8 @@ namespace RPG.Character
         [SerializeField, LabelText("突破阶段与消耗")] private List<CharacterAscensionStage> ascensionStages = new();
         /// <summary>初始属性集。</summary>
         [SerializeField, LabelText("初始属性集")] private GameplayAttributeSet[] initialAttributeSets = Array.Empty<GameplayAttributeSet>();
+        /// <summary>声明所有 Resource 的初始值和容量关系。</summary>
+        [SerializeField, LabelText("资源规则")] private List<CharacterResourceRule> resourceRules = new();
         /// <summary>读取最大等级。</summary>
         public int MaxLevel => maxLevel;
         /// <summary>读取最大突破阶数。</summary>
@@ -99,16 +88,8 @@ namespace RPG.Character
         public IReadOnlyList<CharacterAscensionStage> AscensionStages => ascensionStages;
         /// <summary>读取初始属性集。</summary>
         public IReadOnlyList<GameplayAttributeSet> InitialAttributeSets => initialAttributeSets;
-        /// <summary>从旧的平铺字段迁移成长值。</summary>
-        internal void CopyFrom(int level, int rank, CharacterGrowthProfile profile, List<CharacterAscensionStage> stages,
-            GameplayAttributeSet[] sets)
-        {
-            maxLevel = level;
-            maxAscensionRank = rank;
-            growthProfile = profile;
-            ascensionStages = stages ?? new List<CharacterAscensionStage>();
-            initialAttributeSets = sets ?? Array.Empty<GameplayAttributeSet>();
-        }
+        /// <summary>读取角色资源与容量映射规则。</summary>
+        public IReadOnlyList<CharacterResourceRule> ResourceRules => resourceRules;
     }
 
     /// <summary>角色移动参数配置组。</summary>
@@ -123,7 +104,5 @@ namespace RPG.Character
         public float Gravity => gravity;
         /// <summary>读取状态过渡。</summary>
         public PlayerFSMTransition LocomotionTransition => locomotionTransition;
-        /// <summary>从旧的平铺字段迁移移动配置。</summary>
-        internal void CopyFrom(float value, PlayerFSMTransition transition) { gravity = value; locomotionTransition = transition; }
     }
 }

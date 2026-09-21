@@ -10,8 +10,8 @@ namespace RPG.Character
 {
     /// <summary>协调角色实例与武器、圣遗物库存之间的装备事务。</summary>
     /// <remarks>
-    /// CharacterRosterManager 持有最终装备关系；本 System 只在完整校验通过后提交新的不可变状态。
-    /// 场景 CharacterActor 的 ASC 初始化仍然不读取角色实例进度。
+    /// CharacterRosterManager 持有最终装备关系；本 System 只在完整校验通过后提交新的装备状态。
+    /// 场景 CharacterActor 通过同一个 CharacterInstance 初始化 ASC，装备变化不会复制另一份角色身份数据。
     /// </remarks>
     public sealed class CharacterEquipmentSystem : AbstractSystem
     {
@@ -164,6 +164,7 @@ namespace RPG.Character
                     : new EquipmentOperationResult(InventoryOperationStatus.InstanceEquipped);
 
             CharacterInstance character = characterRosterManager.GetRequiredInstance(characterId);
+            // 圣遗物槽位唯一，直接覆盖原有槽位。
             characterRosterManager.CommitEquipmentState(characterId,
                 character.Equipment.WithArtifact(artifactDefinition.Slot, artifactInstanceId));
             Debug.Log($"[CharacterEquipmentSystem] 圣遗物装备事务成功，character={characterId}, instance={artifactInstanceId}, slot={artifactDefinition.Slot}。");

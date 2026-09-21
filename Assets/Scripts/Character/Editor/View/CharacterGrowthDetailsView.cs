@@ -21,6 +21,7 @@ namespace RPG.Character.Editor
         private readonly VisualElement growthProfileContent;
         private readonly VisualElement missingGrowthProfileWarning;
         private readonly PropertyField growthProfileMaxLevelField;
+        private readonly PropertyField resourceRulesField;
         private readonly PropertyField ascensionStagesField;
         private readonly PropertyField attributeGrowthCurvesField;
         private readonly PropertyField levelOverridesField;
@@ -66,6 +67,7 @@ namespace RPG.Character.Editor
             growthProfileContent = Require<VisualElement>("CharacterGrowthProfileContent");
             missingGrowthProfileWarning = Require<VisualElement>("MissingCharacterGrowthProfileWarning");
             growthProfileMaxLevelField = Require<PropertyField>("CharacterGrowthProfileMaxLevelField");
+            resourceRulesField = Require<PropertyField>("CharacterResourceRulesField");
             ascensionStagesField = Require<PropertyField>("CharacterAscensionStagesField");
             attributeGrowthCurvesField = Require<PropertyField>("CharacterAttributeGrowthCurvesField");
             levelOverridesField = Require<PropertyField>("CharacterLevelOverridesField");
@@ -113,6 +115,7 @@ namespace RPG.Character.Editor
             baseFields.Bind(configSerializedObject);
             ascensionStageHost.Bind(configSerializedObject);
             ConfigureCollection(ascensionStagesField, "暂无突破阶段");
+            ConfigureCollection(resourceRulesField, "暂无资源规则");
             BindGrowthProfile(config.GrowthProfile);
             RefreshPresentation();
         }
@@ -285,6 +288,9 @@ namespace RPG.Character.Editor
             if (bindingPath.EndsWith("amount", StringComparison.Ordinal)) return "金额";
             if (bindingPath.EndsWith("nextExperience", StringComparison.Ordinal)) return "下一级所需经验";
             if (bindingPath.EndsWith("currencyCost", StringComparison.Ordinal)) return "货币消耗";
+            if (bindingPath.EndsWith("resourceAttribute", StringComparison.Ordinal)) return "资源 Attribute";
+            if (bindingPath.EndsWith("capacityAttribute", StringComparison.Ordinal)) return "容量 Attribute";
+            if (bindingPath.EndsWith("initialValueMode", StringComparison.Ordinal)) return "初始值模式";
             if (bindingPath.EndsWith("baseValueCurve", StringComparison.Ordinal)) return "BaseValue 曲线";
             if (bindingPath.EndsWith("attribute", StringComparison.Ordinal)) return "Attribute";
             if (bindingPath.EndsWith("level", StringComparison.Ordinal) && bindingPath.Contains("levelOverrides", StringComparison.Ordinal)) return "等级";
@@ -306,6 +312,7 @@ namespace RPG.Character.Editor
             if (string.Equals(collectionName, "ascensionStages", StringComparison.Ordinal)) return $"突破阶段 {index + 1}";
             if (string.Equals(collectionName, "attributeGrowthCurves", StringComparison.Ordinal)) return $"Attribute 成长曲线 {index + 1}";
             if (string.Equals(collectionName, "levelOverrides", StringComparison.Ordinal)) return $"特殊等级覆盖 {index + 1}";
+            if (string.Equals(collectionName, "resourceRules", StringComparison.Ordinal)) return $"资源规则 {index + 1}";
             if (string.Equals(collectionName, "itemCosts", StringComparison.Ordinal)) return $"物品消耗 {index + 1}";
             if (string.Equals(collectionName, "currencyCosts", StringComparison.Ordinal)) return $"货币消耗 {index + 1}";
             return $"配置项 {index + 1}";
@@ -319,6 +326,7 @@ namespace RPG.Character.Editor
             if (bindingPath.Contains("ascensionStages", StringComparison.Ordinal)) return "暂无突破阶段";
             if (bindingPath.Contains("attributeGrowthCurves", StringComparison.Ordinal)) return "暂无 Attribute 成长曲线";
             if (bindingPath.Contains("levelOverrides", StringComparison.Ordinal)) return "暂无特殊等级覆盖";
+            if (bindingPath.Contains("resourceRules", StringComparison.Ordinal)) return "暂无资源规则";
             if (bindingPath.Contains("itemCosts", StringComparison.Ordinal)) return "暂无物品消耗";
             if (bindingPath.Contains("currencyCosts", StringComparison.Ordinal)) return "暂无货币消耗";
             return "暂无配置项";

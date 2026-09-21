@@ -34,6 +34,9 @@ namespace RPG.Character
         [SerializeField] private CharacterLocomotionStateMachine locomotion = new();
         private readonly CharacterCombatSystem combatSystem = new();
         private CharacterActionArbiter actionArbiter;
+        private CharacterInstance instance;
+        private CharacterRuntimeAttributeBinding runtimeAttributeBinding;
+        private readonly CharacterAttributeProgressionResolver progressionResolver = new();
 
         // Player 注入的稳定运行时依赖，不随角色切换重新创建。
         private Transform characterRoot;
@@ -53,9 +56,11 @@ namespace RPG.Character
         #region 属性
 
         /// <summary>获取角色稳定标识。</summary>
-        public CharacterId CharacterId => config != null ? config.CharacterId : default;
+        public CharacterId CharacterId => Config != null ? Config.CharacterId : default;
         /// <summary>获取角色配置；Manager 在加载阶段校验该引用。</summary>
-        public CharacterConfig Config => config;
+        public CharacterConfig Config => instance != null ? instance.Config : config;
+        /// <summary>获取当前 Actor 绑定的稳定角色实例。</summary>
+        public CharacterInstance Instance => instance;
         /// <summary>获取角色独立 ASC。</summary>
         public GameplayAbilitySystemComponent AbilitySystemComponent
         {
@@ -139,14 +144,13 @@ namespace RPG.Character
         {
             // 正式入口由 PlayerController 初始化流程调用；Player 初始化失败时不能再制造缺少 Locomotion 依赖的次生异常。
             if (stateBlackboard != null)
-                InitializeFromConfig();
+                InitializeFromInstance();
         }
 
         /// <summary>销毁角色时释放 FullBody Action 注册并归还共享 Blackboard 占据。</summary>
         private void OnDestroy()
         {
-            actionArbiter?.Dispose();
-            actionArbiter = null;
+            StopRuntime();
         }
 
         /// <summary>在父级 PlayerController 先于子角色 Awake 时也能同步解析依赖。</summary>
@@ -176,13 +180,20 @@ namespace RPG.Character
         }
 
         /// <summary>仅在配置了 AttributeSet 且 ASC 尚未初始化时执行一次初始化。</summary>
-        private void InitializeConfiguredAttributes()
+        private void InitializeAttributesFromInstance()
         {
             EnsureDependencies();
-            IReadOnlyList<GameplayAttributeSet> attributeSets = config.InitialAttributeSets;
-            if (abilitySystemComponent.IsInitialized || attributeSets == null || attributeSets.Count == 0)
+            IReadOnlyList<GameplayAttributeValue> baseValues = progressionResolver.ResolveBaseValues(instance.Config, instance.Level);
+            // 即使其他启动路径提前导入了 AttributeSet，也必须把稳定实例等级的烘焙 BaseValue 覆盖进去。
+            if (abilitySystemComponent.IsInitialized)
+            {
+                if (!abilitySystemComponent.TryApplyBaseValues(baseValues))
+                    throw new InvalidOperationException($"CharacterActor '{name}' 的 ASC 已初始化，但无法应用角色等级 BaseValue。");
                 return;
-            abilitySystemComponent.Initialize(attributeSets);
+            }
+            // 如果 ASC 未初始化，则需要进行初始化。
+            if (!abilitySystemComponent.TryInitialize(instance.Config.InitialAttributeSets, baseValues))
+                throw new InvalidOperationException($"CharacterActor '{name}' 的 ASC 等级属性初始化失败。");
         }
 
         #endregion
@@ -196,13 +207,14 @@ namespace RPG.Character
         /// PlayerController 在自己的 Start 中显式调用该方法，保证所有 ASC 已完成 Awake，
         /// 再激活可能读取 GAS Speed 的 Locomotion；CharacterActor.Start 会再次调用但不会重复授予。
         /// </remarks>
-        internal void InitializeFromConfig()
+        internal void InitializeFromInstance()
         {
             if (runtimeConfigurationInitialized) return;
-            if (config == null) throw new InvalidOperationException($"CharacterActor '{name}' 未配置 CharacterConfig。");
-            config.Validate();
-            InitializeConfiguredAttributes();
-            combatSystem.Initialize(abilitySystemComponent, config.CombatConfig);
+            if (instance == null) throw new InvalidOperationException($"CharacterActor '{name}' 尚未绑定 CharacterInstance。");
+            instance.Config.Validate();
+            InitializeAttributesFromInstance();
+            runtimeAttributeBinding = new CharacterRuntimeAttributeBinding(instance, abilitySystemComponent, progressionResolver);
+            combatSystem.Initialize(abilitySystemComponent, instance.Config.CombatConfig);
             actionArbiter = new CharacterActionArbiter(
                 this,
                 stateBlackboard,
@@ -210,6 +222,22 @@ namespace RPG.Character
                 abilitySystemComponent,
                 locomotion.GroundedJumpTransitionQueryService);
             runtimeConfigurationInitialized = true;
+        }
+
+        /// <summary>停止当前 Actor 的实例绑定和战斗运行时，防止存档移除角色后继续持有孤立实例。</summary>
+        internal void StopRuntime()
+        {
+            runtimeAttributeBinding?.Dispose();
+            runtimeAttributeBinding = null;
+            actionArbiter?.Dispose();
+            actionArbiter = null;
+            runtimeConfigurationInitialized = false;
+            instance = null;
+            if (animator != null) animator.enabled = false;
+            if (presentationRenderers == null) presentationRenderers = GetComponentsInChildren<Renderer>(true);
+            for (int index = 0; index < presentationRenderers.Length; index++)
+                if (presentationRenderers[index] != null) presentationRenderers[index].forceRenderingOff = true;
+            Debug.Log($"[CharacterActor] 已停止角色运行时并解除实例绑定，actor={name}。");
         }
 
         /// <summary>把稳定 CharacterRoot、输入黑板与 Player 持有的运动请求接口注入角色。</summary>
@@ -221,14 +249,18 @@ namespace RPG.Character
             Transform root,
             IMotionDriver driver,
             PlayerController controller,
-            PlayerStateBlackboard blackboard)
+            PlayerStateBlackboard blackboard,
+            CharacterInstance characterInstance)
         {
             characterRoot = root;
             motionDriver = driver;
             playerController = controller ?? throw new ArgumentNullException(nameof(controller));
             stateBlackboard = blackboard ?? throw new ArgumentNullException(nameof(blackboard));
             if (config == null) throw new InvalidOperationException($"CharacterActor '{name}' 未配置 CharacterConfig。");
-            locomotion.Configure(config.Gravity, config.LocomotionTransition);
+            instance = characterInstance ?? throw new ArgumentNullException(nameof(characterInstance));
+            if (instance.Config.CharacterId != config.CharacterId)
+                throw new InvalidOperationException($"CharacterActor '{name}' 的 Prefab Config 与 CharacterInstance 不一致。");
+            locomotion.Configure(instance.Config.Gravity, instance.Config.LocomotionTransition);
             locomotion.Initialize(this, driver);
         }
 

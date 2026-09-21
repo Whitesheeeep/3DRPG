@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using RPG.SaveSystem;
 using UnityEngine;
+using WS_Modules.GAS.AttributeSystem;
 
 namespace RPG.Character
 {
@@ -37,7 +38,7 @@ namespace RPG.Character
             {
                 CharacterInstanceSaveEntry entry = Characters[index];
                 if (entry == null || string.IsNullOrWhiteSpace(entry.CharacterId) ||
-                    !characterIdSet.Add(entry.CharacterId) || entry.AcquisitionSequence <= 0 ||
+                    entry.Resources == null || !characterIdSet.Add(entry.CharacterId) || entry.AcquisitionSequence <= 0 ||
                     !acquisitionSequenceSet.Add(entry.AcquisitionSequence))
                     throw new InvalidOperationException("角色实例快照包含空、非法或重复角色数据。");
 
@@ -68,6 +69,20 @@ namespace RPG.Character
 
         /// <summary>首次获得顺序。</summary>
         public long AcquisitionSequence { get; set; }
+
+        /// <summary>角色 Resource CurrentValue 快照。</summary>
+        public List<CharacterResourceSaveEntry> Resources { get; set; } = new();
+    }
+
+    /// <summary>角色存档中的单条 Resource CurrentValue 数据。</summary>
+    [Serializable]
+    public sealed class CharacterResourceSaveEntry
+    {
+        /// <summary>稳定 AttributeId。</summary>
+        public int AttributeId { get; set; }
+
+        /// <summary>Resource 当前值。</summary>
+        public float CurrentValue { get; set; }
     }
 
     /// <summary>将角色实例状态接入 SaveSystem。</summary>
@@ -117,7 +132,8 @@ namespace RPG.Character
                     Level = instance.Level,
                     CurrentExperience = instance.CurrentExperience,
                     AscensionRank = instance.AscensionRank,
-                    AcquisitionSequence = instance.AcquisitionSequence
+                    AcquisitionSequence = instance.AcquisitionSequence,
+                    Resources = BuildResourceEntries(instance)
                 });
             }
 
@@ -139,12 +155,14 @@ namespace RPG.Character
                     !CharacterConfigManager.Instance.TryGetConfig(characterId, out _))
                     throw new InvalidOperationException($"角色实例快照引用了不存在的角色：{entry.CharacterId}。");
 
+                CharacterConfig config = CharacterConfigManager.Instance.GetRequiredConfig(characterId);
                 CharacterInstance instance = new CharacterInstance(
-                    characterId,
+                    config,
                     entry.Level,
                     entry.CurrentExperience,
                     entry.AscensionRank,
                     entry.AcquisitionSequence);
+                ValidateResourceEntries(config, entry.Resources);
                 CharacterProgressOperationStatus status = manager.ValidateRestoredInstance(instance);
                 if (status != CharacterProgressOperationStatus.Succeeded)
                     throw new InvalidOperationException($"角色实例快照包含非法进度：character={characterId}, status={status}。");
@@ -159,12 +177,23 @@ namespace RPG.Character
             for (int index = 0; index < snapshot.Characters.Count; index++)
             {
                 CharacterInstanceSaveEntry entry = snapshot.Characters[index];
-                instances.Add(new CharacterInstance(
-                    new CharacterId(entry.CharacterId),
+                CharacterId characterId = new CharacterId(entry.CharacterId);
+                CharacterConfig config = CharacterConfigManager.Instance.GetRequiredConfig(characterId);
+                CharacterInstance instance = new CharacterInstance(
+                    config,
                     entry.Level,
                     entry.CurrentExperience,
                     entry.AscensionRank,
-                    entry.AcquisitionSequence));
+                    entry.AcquisitionSequence);
+                var resources = new List<CharacterResourceValue>(entry.Resources.Count);
+                for (int resourceIndex = 0; resourceIndex < entry.Resources.Count; resourceIndex++)
+                {
+                    CharacterResourceSaveEntry resource = entry.Resources[resourceIndex];
+                    GameplayAttribute attribute = FindAttribute(config, resource.AttributeId);
+                    resources.Add(new CharacterResourceValue(attribute, resource.CurrentValue));
+                }
+                instance.RestoreResourceCurrentValues(resources);
+                instances.Add(instance);
             }
 
             manager.RestoreState(instances, snapshot.NextAcquisitionSequence);
@@ -175,6 +204,64 @@ namespace RPG.Character
         /// <returns>空角色实例快照。</returns>
         protected override CharacterRosterSaveSnapshot CreateDefaultTypedSnapshot() =>
             new CharacterRosterSaveSnapshot();
+
+        /// <summary>把实例内的 Resource 快照转换为稳定 AttributeId 存档条目。</summary>
+        /// <param name="instance">角色实例。</param>
+        /// <returns>按 AttributeId 稳定排序的存档条目。</returns>
+        private static List<CharacterResourceSaveEntry> BuildResourceEntries(CharacterInstance instance)
+        {
+            IReadOnlyList<CharacterResourceValue> values = instance.GetResourceCurrentValues();
+            var entries = new List<CharacterResourceSaveEntry>(values.Count);
+            for (int index = 0; index < values.Count; index++)
+                entries.Add(new CharacterResourceSaveEntry
+                {
+                    AttributeId = values[index].Attribute.Id,
+                    CurrentValue = values[index].CurrentValue
+                });
+            return entries;
+        }
+
+        /// <summary>校验 Resource 存档只包含配置声明且数值处于固定边界。</summary>
+        /// <param name="config">角色配置。</param><param name="resources">待校验资源条目。</param>
+        private static void ValidateResourceEntries(CharacterConfig config, IReadOnlyList<CharacterResourceSaveEntry> resources)
+        {
+            var definitionByAttributeIdMap = new Dictionary<int, GameplayAttributeDefinition>();
+            for (int setIndex = 0; setIndex < config.InitialAttributeSets.Count; setIndex++)
+                for (int definitionIndex = 0; definitionIndex < config.InitialAttributeSets[setIndex].Definitions.Count; definitionIndex++)
+                {
+                    GameplayAttributeDefinition definition = config.InitialAttributeSets[setIndex].Definitions[definitionIndex];
+                    definitionByAttributeIdMap.Add(definition.Attribute.Id, definition);
+                }
+
+            var resourceAttributeIdSet = new HashSet<int>();
+            for (int ruleIndex = 0; ruleIndex < config.ResourceRules.Count; ruleIndex++)
+                resourceAttributeIdSet.Add(config.ResourceRules[ruleIndex].ResourceAttribute.Id);
+            var savedAttributeIdSet = new HashSet<int>();
+            for (int index = 0; index < resources.Count; index++)
+            {
+                CharacterResourceSaveEntry entry = resources[index];
+                if (entry == null || !savedAttributeIdSet.Add(entry.AttributeId) ||
+                    !resourceAttributeIdSet.Contains(entry.AttributeId) ||
+                    !definitionByAttributeIdMap.TryGetValue(entry.AttributeId, out GameplayAttributeDefinition definition) ||
+                    float.IsNaN(entry.CurrentValue) || float.IsInfinity(entry.CurrentValue) ||
+                    entry.CurrentValue < definition.MinValue || entry.CurrentValue > definition.MaxValue)
+                    throw new InvalidOperationException($"角色 {config.CharacterId} 的 Resource 存档无效：attributeId={entry?.AttributeId}。");
+            }
+        }
+
+        /// <summary>从角色初始 AttributeSet 按 ID 找到可恢复的 Attribute。</summary>
+        /// <param name="config">角色配置。</param><param name="attributeId">稳定 AttributeId。</param>
+        /// <returns>对应 Attribute。</returns>
+        private static GameplayAttribute FindAttribute(CharacterConfig config, int attributeId)
+        {
+            for (int setIndex = 0; setIndex < config.InitialAttributeSets.Count; setIndex++)
+                for (int definitionIndex = 0; definitionIndex < config.InitialAttributeSets[setIndex].Definitions.Count; definitionIndex++)
+                {
+                    GameplayAttribute attribute = config.InitialAttributeSets[setIndex].Definitions[definitionIndex].Attribute;
+                    if (attribute.Id == attributeId) return attribute;
+                }
+            throw new InvalidOperationException($"角色 {config.CharacterId} 未配置 AttributeId {attributeId}。");
+        }
 
         #endregion
     }

@@ -6,7 +6,7 @@ using WS_Modules.GAS.AttributeSystem;
 
 namespace RPG.Character
 {
-    /// <summary>按经验、货币和 Attribute BaseValue 曲线生成角色逐级成长表的配置资产。</summary>
+    /// <summary>按经验、货币、Attribute 曲线与 DefaultValue 回退生成角色逐级成长表的配置资产。</summary>
     [CreateAssetMenu(fileName = "CharacterGrowthProfile", menuName = "RPG/Character/Character Growth Profile", order = 20)]
     public sealed class CharacterGrowthProfile : ScriptableObject
     {
@@ -77,7 +77,7 @@ namespace RPG.Character
             ValidateAttributeCurves(definitionByAttributeIdMap);
         }
 
-        /// <summary>按曲线生成等级经验、货币与 Attribute BaseValue 烘焙结果。</summary>
+        /// <summary>按曲线或 Attribute Definition.DefaultValue 生成等级经验、货币与 BaseValue 烘焙结果。</summary>
         /// <param name="initialAttributeSets">角色初始化时导入的 AttributeSet。</param>
         /// <exception cref="InvalidOperationException">Profile 或 Attribute 曲线不满足配置契约时抛出。</exception>
         public void Bake(IReadOnlyList<GameplayAttributeSet> initialAttributeSets)
@@ -201,8 +201,6 @@ namespace RPG.Character
                         throw new InvalidOperationException($"CharacterGrowthProfile '{name}' 的 Attribute '{growthCurve.Attribute}' 在等级 {level} 产生非有限 BaseValue。");
                     if (value < definition.MinValue || value > definition.MaxValue)
                         throw new InvalidOperationException($"CharacterGrowthProfile '{name}' 的 Attribute '{growthCurve.Attribute}' 在等级 {level} 超出 AttributeSet 边界。");
-                    if (level == 1 && !Mathf.Approximately(value, definition.DefaultValue))
-                        throw new InvalidOperationException($"CharacterGrowthProfile '{name}' 的 Attribute '{growthCurve.Attribute}' 一级 BaseValue 必须等于 AttributeSet 默认值。");
                 }
             }
         }

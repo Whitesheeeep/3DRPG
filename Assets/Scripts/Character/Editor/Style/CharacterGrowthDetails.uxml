@@ -6,6 +6,7 @@
             <uie:PropertyField name="CharacterMaxLevelField" binding-path="progression.maxLevel" label="最大等级" class="character-growth-property-field" />
             <uie:PropertyField name="CharacterMaxAscensionRankField" binding-path="progression.maxAscensionRank" label="最大突破阶数" class="character-growth-property-field" />
             <uie:ObjectField name="CharacterGrowthProfileField" binding-path="progression.growthProfile" label="成长配置" type="RPG.Character.CharacterGrowthProfile, Assembly-CSharp" allow-scene-objects="false" class="character-growth-property-field" />
+            <uie:PropertyField name="CharacterResourceRulesField" binding-path="progression.resourceRules" label="资源规则" class="character-growth-property-field" />
         </ui:VisualElement>
         <ui:Label name="CharacterAscensionStageTitle" text="突破配置" class="character-growth-subsection-title" />
         <ui:VisualElement name="CharacterAscensionStageHost" class="character-growth-field-group">

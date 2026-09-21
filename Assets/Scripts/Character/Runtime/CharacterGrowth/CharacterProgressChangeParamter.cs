@@ -3,12 +3,12 @@ using System;
 namespace RPG.Character
 {
     /// <summary>
-    /// 描述一次角色进度替换请求。
+    /// 描述一次提交到稳定角色实例的进度请求。
     /// </summary>
     public readonly struct CharacterProgressUpdate
     {
         /// <summary>
-        /// 创建角色进度替换请求。
+        /// 创建角色进度提交请求。
         /// </summary>
         /// <param name="level">目标等级。</param>
         /// <param name="currentExperience">目标等级内经验。</param>

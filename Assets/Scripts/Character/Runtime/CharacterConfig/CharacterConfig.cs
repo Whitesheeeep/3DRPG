@@ -8,6 +8,7 @@ using WS_Modules.GAS.AttributeSystem;
 
 #if UNITY_EDITOR
 using System.Globalization;
+using UnityEditor;
 using WS_Modules.Baking;
 #endif
 
@@ -24,34 +25,6 @@ namespace RPG.Character
         #region 配置字段
         [SerializeField, ReadOnly, LabelText("角色标识")]
         private CharacterId characterId;
-        [SerializeField, HideInInspector]
-        private string characterName;
-        [SerializeField, HideInInspector]
-        private CharacterRarity rarity = CharacterRarity.Five;
-        [SerializeField, HideInInspector]
-        private string prefabAddress;
-        [SerializeField, HideInInspector]
-        private string sideIconAddress = CharacterAssetAddresses.SideIconsAtlas;
-        [SerializeField, HideInInspector]
-        private string sideIconSpriteName;
-        [SerializeField, HideInInspector]
-        private string avatarAddress = CharacterAssetAddresses.AvatarAtlas;
-        [SerializeField, HideInInspector]
-        private string avatarSpriteName;
-        [SerializeField, HideInInspector]
-        private WeaponTypeFlags allowedWeaponTypes = WeaponTypeFlags.Sword;
-        [SerializeField, HideInInspector]
-        private WeaponType defaultWeaponType = WeaponType.Sword;
-        [SerializeField, HideInInspector]
-        private int maxLevel = 90;
-        [SerializeField, HideInInspector]
-        private int maxAscensionRank = 6;
-        [SerializeField, HideInInspector]
-        private CharacterGrowthProfile growthProfile;
-        [SerializeField, HideInInspector]
-        private List<CharacterAscensionStage> ascensionStages = new();
-        [SerializeField, HideInInspector]
-        private GameplayAttributeSet[] initialAttributeSets = Array.Empty<GameplayAttributeSet>();
         [SerializeField, LabelText("身份配置")]
         private CharacterIdentityConfig identity = new();
         [SerializeField, LabelText("表现配置")]
@@ -62,13 +35,8 @@ namespace RPG.Character
         private CharacterProgressionConfig progression = new();
         [SerializeField, LabelText("战斗配置")]
         private CharacterCombatConfig combatConfig = new();
-        [SerializeField, MinValue(0f), LabelText("重力")]
-        private float gravity = 9.81f;
-        [SerializeField, Required, LabelText("Locomotion 状态过渡")]
-        private PlayerFSMTransition locomotionTransition;
         [SerializeField, LabelText("移动配置")]
         private CharacterLocomotionConfig locomotion = new();
-        [SerializeField, HideInInspector] private bool legacyFieldsMigrated;
 
 #if UNITY_EDITOR
         [SerializeField, HideInInspector]
@@ -78,74 +46,45 @@ namespace RPG.Character
 #endif
         #endregion
 
-        #region 兼容迁移
-
-        /// <summary>对象启用时把旧版平铺字段迁移到新的职责分组。</summary>
-        private void OnEnable() => MigrateLegacyFields();
-
-        /// <summary>编辑器序列化值变化后保持旧资产与分组字段一致。</summary>
-        private void OnValidate() => MigrateLegacyFields();
-
-        /// <summary>只在检测到旧版字段时执行一次内存和序列化分组迁移。</summary>
-        private void MigrateLegacyFields()
-        {
-            if (legacyFieldsMigrated) return;
-            bool hasLegacyValue = !string.IsNullOrWhiteSpace(characterName) ||
-                                  !string.IsNullOrWhiteSpace(prefabAddress) || growthProfile != null ||
-                                  initialAttributeSets != null && initialAttributeSets.Length > 0;
-            if (!hasLegacyValue) return;
-            if (identity == null) identity = new CharacterIdentityConfig();
-            if (presentation == null) presentation = new CharacterPresentationConfig();
-            if (equipmentRules == null) equipmentRules = new CharacterEquipmentRuleConfig();
-            if (progression == null) progression = new CharacterProgressionConfig();
-            if (locomotion == null) locomotion = new CharacterLocomotionConfig();
-            identity.CopyFrom(characterName, rarity);
-            presentation.CopyFrom(prefabAddress, sideIconAddress, sideIconSpriteName, avatarAddress, avatarSpriteName);
-            equipmentRules.CopyFrom(allowedWeaponTypes, defaultWeaponType);
-            progression.CopyFrom(maxLevel, maxAscensionRank, growthProfile, ascensionStages, initialAttributeSets);
-            locomotion.CopyFrom(gravity, locomotionTransition);
-            legacyFieldsMigrated = true;
-        }
-
-        #endregion
-
         #region 属性
         /// <summary>获取稳定角色标识。</summary>
         public CharacterId CharacterId => characterId;
         /// <summary>获取用于编辑器和界面展示的角色名称。</summary>
-        public string Name => identity != null && !string.IsNullOrWhiteSpace(identity.CharacterName) ? identity.CharacterName : characterName;
+        public string Name => identity.CharacterName;
         /// <summary>获取角色稀有度。</summary>
-        public CharacterRarity Rarity => identity != null ? identity.Rarity : rarity;
+        public CharacterRarity Rarity => identity.Rarity;
         /// <summary>获取 Addressables 角色 Prefab 地址。</summary>
-        public string PrefabAddress => presentation != null && !string.IsNullOrWhiteSpace(presentation.PrefabAddress) ? presentation.PrefabAddress : prefabAddress;
+        public string PrefabAddress => presentation.PrefabAddress;
         /// <summary>获取侧面头像 SpriteAtlas 的 Addressable Address。</summary>
-        public string SideIconAddress => presentation != null && !string.IsNullOrWhiteSpace(presentation.SideIconAddress) ? presentation.SideIconAddress : sideIconAddress;
+        public string SideIconAddress => presentation.SideIconAddress;
         /// <summary>获取侧面头像图集内的 Sprite 名称。</summary>
-        public string SideIconSpriteName => presentation != null && !string.IsNullOrWhiteSpace(presentation.SideIconSpriteName) ? presentation.SideIconSpriteName : sideIconSpriteName;
+        public string SideIconSpriteName => presentation.SideIconSpriteName;
         /// <summary>获取角色头像 SpriteAtlas 的 Addressable Address。</summary>
-        public string AvatarAddress => presentation != null && !string.IsNullOrWhiteSpace(presentation.AvatarAddress) ? presentation.AvatarAddress : avatarAddress;
+        public string AvatarAddress => presentation.AvatarAddress;
         /// <summary>获取角色头像图集内的 Sprite 名称。</summary>
-        public string AvatarSpriteName => presentation != null && !string.IsNullOrWhiteSpace(presentation.AvatarSpriteName) ? presentation.AvatarSpriteName : avatarSpriteName;
+        public string AvatarSpriteName => presentation.AvatarSpriteName;
         /// <summary>获取角色允许装备的武器类型位掩码。</summary>
-        public WeaponTypeFlags AllowedWeaponTypes => equipmentRules != null ? equipmentRules.AllowedWeaponTypes : allowedWeaponTypes;
+        public WeaponTypeFlags AllowedWeaponTypes => equipmentRules.AllowedWeaponTypes;
         /// <summary>获取新角色生成默认武器时使用的武器类型。</summary>
-        public WeaponType DefaultWeaponType => equipmentRules != null ? equipmentRules.DefaultWeaponType : defaultWeaponType;
+        public WeaponType DefaultWeaponType => equipmentRules.DefaultWeaponType;
         /// <summary>获取角色最大等级。</summary>
-        public int MaxLevel => progression != null ? progression.MaxLevel : maxLevel;
+        public int MaxLevel => progression.MaxLevel;
         /// <summary>获取角色最大突破阶数。</summary>
-        public int MaxAscensionRank => progression != null ? progression.MaxAscensionRank : maxAscensionRank;
+        public int MaxAscensionRank => progression.MaxAscensionRank;
         /// <summary>获取角色等级、货币和 Attribute 成长配置。</summary>
-        public CharacterGrowthProfile GrowthProfile => progression != null && progression.GrowthProfile != null ? progression.GrowthProfile : growthProfile;
+        public CharacterGrowthProfile GrowthProfile => progression.GrowthProfile;
         /// <summary>获取角色突破阶段配置。</summary>
-        public IReadOnlyList<CharacterAscensionStage> AscensionStages => progression != null && progression.AscensionStages != null ? progression.AscensionStages : ascensionStages;
+        public IReadOnlyList<CharacterAscensionStage> AscensionStages => progression.AscensionStages;
         /// <summary>获取角色初始属性集，顺序保持作者配置。</summary>
-        public IReadOnlyList<GameplayAttributeSet> InitialAttributeSets => progression != null && progression.InitialAttributeSets != null ? progression.InitialAttributeSets : initialAttributeSets;
+        public IReadOnlyList<GameplayAttributeSet> InitialAttributeSets => progression.InitialAttributeSets;
+        /// <summary>获取角色资源规则，资源必须通过显式配置声明。</summary>
+        public IReadOnlyList<CharacterResourceRule> ResourceRules => progression.ResourceRules;
         /// <summary>获取角色普通攻击连段和技能槽位配置。</summary>
         public CharacterCombatConfig CombatConfig => combatConfig;
         /// <summary>获取角色 Locomotion 重力。</summary>
-        public float Gravity => locomotion != null ? locomotion.Gravity : gravity;
+        public float Gravity => locomotion.Gravity;
         /// <summary>获取角色 Locomotion 状态过渡配置。</summary>
-        public PlayerFSMTransition LocomotionTransition => locomotion != null && locomotion.LocomotionTransition != null ? locomotion.LocomotionTransition : locomotionTransition;
+        public PlayerFSMTransition LocomotionTransition => locomotion.LocomotionTransition;
 
         /// <summary>获取身份配置组。</summary>
         public CharacterIdentityConfig Identity => identity;
@@ -229,6 +168,52 @@ namespace RPG.Character
             combatConfig.Validate(name);
             ValidateAscensionStages();
             GrowthProfile.Validate(InitialAttributeSets);
+            ValidateResourceRules();
+            if (GrowthProfile.NeedsRebake(InitialAttributeSets))
+                throw new InvalidOperationException($"CharacterConfig '{name}' 的成长烘焙结果已过期，请重新 Bake。");
+        }
+
+        /// <summary>校验所有 Resource 都有唯一规则，并检查容量关系的属性类型。</summary>
+        private void ValidateResourceRules()
+        {
+            if (ResourceRules == null)
+                throw new InvalidOperationException($"CharacterConfig '{name}' 的 ResourceRules 为空引用。");
+            var definitionByAttributeIdMap = new Dictionary<int, GameplayAttributeDefinition>();
+            for (int setIndex = 0; setIndex < InitialAttributeSets.Count; setIndex++)
+            {
+                IReadOnlyList<GameplayAttributeDefinition> definitions = InitialAttributeSets[setIndex].Definitions;
+                for (int definitionIndex = 0; definitionIndex < definitions.Count; definitionIndex++)
+                {
+                    GameplayAttributeDefinition definition = definitions[definitionIndex];
+                    if (!definitionByAttributeIdMap.TryAdd(definition.Attribute.Id, definition))
+                        throw new InvalidOperationException($"CharacterConfig '{name}' 重复配置 AttributeId {definition.Attribute.Id}。");
+                }
+            }
+
+            var resourceRuleByAttributeIdMap = new Dictionary<int, CharacterResourceRule>();
+            for (int index = 0; index < ResourceRules.Count; index++)
+            {
+                CharacterResourceRule rule = ResourceRules[index];
+                if (rule == null || !rule.ResourceAttribute.IsValid ||
+                    !resourceRuleByAttributeIdMap.TryAdd(rule.ResourceAttribute.Id, rule))
+                    throw new InvalidOperationException($"CharacterConfig '{name}' 的 ResourceRules 包含空项、无效 Attribute 或重复资源。");
+                if (!Enum.IsDefined(typeof(CharacterResourceInitialValueMode), rule.InitialValueMode))
+                    throw new InvalidOperationException($"CharacterConfig '{name}' 的资源 {rule.ResourceAttribute} 初始值模式无效。");
+                if (!definitionByAttributeIdMap.TryGetValue(rule.ResourceAttribute.Id, out GameplayAttributeDefinition resourceDefinition) ||
+                    resourceDefinition.Type != GameplayAttributeType.Resource)
+                    throw new InvalidOperationException($"CharacterConfig '{name}' 的资源规则未指向 Resource Attribute：{rule.ResourceAttribute}。");
+                if (rule.InitialValueMode == CharacterResourceInitialValueMode.FullCapacity &&
+                    !rule.CapacityAttribute.IsValid)
+                    throw new InvalidOperationException($"CharacterConfig '{name}' 的资源 {rule.ResourceAttribute} 使用 FullCapacity 却没有 Capacity Attribute。");
+                if (rule.CapacityAttribute.IsValid &&
+                    (!definitionByAttributeIdMap.TryGetValue(rule.CapacityAttribute.Id, out GameplayAttributeDefinition capacityDefinition) ||
+                     capacityDefinition.Type != GameplayAttributeType.Stat))
+                    throw new InvalidOperationException($"CharacterConfig '{name}' 的容量 Attribute 无效或不是 Stat：{rule.CapacityAttribute}。");
+            }
+
+            foreach (KeyValuePair<int, GameplayAttributeDefinition> pair in definitionByAttributeIdMap)
+                if (pair.Value.Type == GameplayAttributeType.Resource && !resourceRuleByAttributeIdMap.ContainsKey(pair.Key))
+                    throw new InvalidOperationException($"CharacterConfig '{name}' 的 Resource Attribute 未配置 ResourceRule：{pair.Value.Attribute}。");
         }
 
         /// <summary>校验突破阶段顺序、等级上限和阶段消耗。</summary>

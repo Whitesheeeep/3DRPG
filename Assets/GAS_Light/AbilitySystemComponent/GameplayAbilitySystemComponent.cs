@@ -86,6 +86,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         // Attribute 结算必须绕过只读门面，由 ASC 内部统一持有可变实例。
         internal GameplayAttributeContainer MutableAttributes { get; private set; }
 
+        /// <summary>转发 AttributeContainer 的 CurrentValue 实际变化。</summary>
+        public event Action<GameplayAttribute, float, float> AttributeChanged;
+
         /// <summary>接收 GE/GA 提交成功后的局部 Cue 请求。</summary>
         internal event Action<GameplayCueRequest> CueRequested;
         #endregion
@@ -104,6 +107,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             Tags = MutableTags;
             MutableAttributes = new GameplayAttributeContainer();
             Attributes = MutableAttributes;
+            MutableAttributes.AttributeChanged += HandleAttributeChanged;
             GameEffectCtrl = new GameEffectCtrl(this);
             abilityController = new GameplayAbilityCtrl(this);
             Abilities = abilityController;
@@ -114,9 +118,15 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         // 组件销毁时释放 Tick 注册、Active GA、GE 和容器运行状态。
         private void OnDestroy()
         {
+            if (MutableAttributes != null) MutableAttributes.AttributeChanged -= HandleAttributeChanged;
             Clear();
             cueController.Dispose();
         }
+
+        /// <summary>把容器 CurrentValue 事件转发给角色运行时同步层。</summary>
+        /// <param name="attribute">发生变化的 Attribute。</param><param name="oldValue">旧值。</param><param name="newValue">新值。</param>
+        private void HandleAttributeChanged(GameplayAttribute attribute, float oldValue, float newValue) =>
+            AttributeChanged?.Invoke(attribute, oldValue, newValue);
         #endregion
 
         #region 公开生命周期
@@ -127,7 +137,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         /// <param name="attributeSets">由外部 Owner 提供的 AttributeSet 集合。</param>
         public void Initialize(IEnumerable<GameplayAttributeSet> attributeSets)
         {
-            InitializeCore(attributeSets, new());
+            InitializeCore(attributeSets, new(), null, false);
         }
 
         /// <summary>
@@ -140,7 +150,18 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             GameplayAbilityActivationRules activationRules)
         {
             if (activationRules == null) throw new ArgumentNullException(nameof(activationRules));
-            InitializeCore(attributeSets, activationRules.ActivationBlockedOwnerTags);
+            InitializeCore(attributeSets, activationRules.ActivationBlockedOwnerTags, null, false);
+        }
+
+        /// <summary>导入 AttributeSet 并使用角色等级烘焙结果原子初始化全部 BaseValue。</summary>
+        /// <param name="attributeSets">由角色配置提供的 AttributeSet。</param>
+        /// <param name="initialBaseValues">覆盖全部导入 Attribute 的等级 BaseValue。</param>
+        /// <returns>整体初始化成功时返回 true。</returns>
+        public bool TryInitialize(
+            IEnumerable<GameplayAttributeSet> attributeSets,
+            IReadOnlyList<GameplayAttributeValue> initialBaseValues)
+        {
+            return InitializeCore(attributeSets, new(), initialBaseValues, true);
         }
 
         /// <summary>
@@ -148,21 +169,64 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         /// </summary>
         /// <param name="attributeSets">待导入的 AttributeSet 集合。</param>
         /// <param name="blockedOwnerTags">Ability 激活阻断 Tag 集合。</param>
-        private void InitializeCore(
+        private bool InitializeCore(
             IEnumerable<GameplayAttributeSet> attributeSets,
-            GameplayTagQuery blockedOwnerTags)
+            GameplayTagQuery blockedOwnerTags,
+            IReadOnlyList<GameplayAttributeValue> initialBaseValues,
+            bool requireBaseValues)
         {
-            if (initialized) return;
+            if (initialized) return true;
 
             if (!MutableAttributes.TryInitialize(attributeSets, out string error))
             {
                 Debug.Log($"[ASC] 初始化失败：{error}", this);
-                return;
+                return false;
+            }
+
+            if (requireBaseValues && !TryValidateInitialBaseValues(initialBaseValues))
+            {
+                MutableAttributes.Clear();
+                Debug.LogError("[ASC] 等级 BaseValue 未覆盖全部 Attribute，初始化已回滚。", this);
+                return false;
+            }
+            if (initialBaseValues != null && initialBaseValues.Count > 0 &&
+                !MutableAttributes.TryApplyBaseValues(initialBaseValues))
+            {
+                MutableAttributes.Clear();
+                Debug.LogError("[ASC] 等级 BaseValue 经过 AttributeSet 规则校验失败，初始化已回滚。", this);
+                return false;
             }
 
             abilityController.InitializeActivationBlockedTags(blockedOwnerTags);
             initialized = true;
+            return true;
         }
+
+        /// <summary>校验初始化 BaseValue 是否恰好覆盖导入的每个 Attribute。</summary>
+        /// <param name="values">待校验 BaseValue。</param>
+        /// <returns>覆盖完整且无重复时返回 true。</returns>
+        private bool TryValidateInitialBaseValues(IReadOnlyList<GameplayAttributeValue> values)
+        {
+            if (values == null || values.Count != Attributes.Attributes.Count) return false;
+            var seenAttributeIdSet = new HashSet<int>();
+            for (int index = 0; index < values.Count; index++)
+                if (!seenAttributeIdSet.Add(values[index].Attribute.Id) ||
+                    !MutableAttributes.Contains(values[index].Attribute))
+                    return false;
+            return true;
+        }
+
+        /// <summary>应用新的等级 BaseValue 并保留已有 Modifier、GE 和 Tag。</summary>
+        /// <param name="values">新的等级 BaseValue。</param>
+        /// <returns>ASC 已初始化且全部值提交成功时返回 true。</returns>
+        public bool TryApplyBaseValues(IReadOnlyList<GameplayAttributeValue> values) =>
+            initialized && MutableAttributes.TryApplyBaseValues(values);
+
+        /// <summary>设置 Resource CurrentValue，并继续经过 AttributeSet Pre/Post 与 Clamp。</summary>
+        /// <param name="values">待设置的 Resource 值。</param>
+        /// <returns>ASC 已初始化且全部资源值提交成功时返回 true。</returns>
+        public bool TrySetResourceCurrentValues(IReadOnlyList<GameplayAttributeValue> values) =>
+            initialized && MutableAttributes.TrySetResourceCurrentValues(values);
 
         /// <summary>
         /// 按固定顺序清理 Ability、GE、Tag 和 Attribute，使 ASC 回到可重新初始化状态。

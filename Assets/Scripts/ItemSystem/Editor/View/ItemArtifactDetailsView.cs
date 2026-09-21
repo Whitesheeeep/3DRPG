@@ -1,6 +1,5 @@
 #if UNITY_EDITOR
 using System;
-using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -12,20 +11,22 @@ namespace RPG.ItemSystem.Editor
     /// <summary>常驻复用的圣遗物成长配置详情 View。</summary>
     internal sealed class ItemArtifactDetailsView : IDisposable
     {
-        #region 字段
+        #region 依赖字段
 
+        // 页面控件只创建一次；绑定周期只负责切换 Definition 和 GrowthProfile 的 SerializedObject。
         private readonly VisualElement pageRoot;
         private readonly VisualTreeAsset artifactTemplate;
         private readonly VisualElement artifactBaseFields;
         private readonly VisualElement artifactGrowthProfileContent;
         private readonly VisualElement missingGrowthProfileWarning;
         private readonly PropertyField growthProfileMaxLevelField;
-        private readonly PropertyField levelEffectsField;
-        private readonly PropertyField levelOverridesField;
-        private readonly List<(PropertyField field, string label)> fixedPropertyLabels = new();
         private readonly Label bakedSummaryLabel;
         private readonly Button bakeButton;
         private readonly Button viewBakedResultButton;
+
+        #endregion
+
+        #region 绑定状态
 
         private ArtifactDefinition boundArtifact;
         private SerializedObject definitionSerializedObject;
@@ -33,11 +34,7 @@ namespace RPG.ItemSystem.Editor
         private SerializedObject growthProfileSerializedObject;
         private VisualElement growthProfileTracker;
         private int bindingVersion;
-        private bool effectListConfigured;
-        private bool structureRefreshScheduled;
-        private int scheduledStructureVersion = -1;
-        private bool revealAfterStructureRefresh;
-        private int lastGrowthStructureSignature = int.MinValue;
+        private bool labelRefreshScheduled;
         private bool disposed;
 
         #endregion
@@ -55,7 +52,7 @@ namespace RPG.ItemSystem.Editor
 
         #endregion
 
-        #region 生命周期
+        #region 生命周期与初始化
 
         /// <summary>创建一次圣遗物详情视觉树和烘焙列表。</summary>
         /// <param name="parent">圣遗物页面根节点。</param>
@@ -64,7 +61,8 @@ namespace RPG.ItemSystem.Editor
             pageRoot = parent ?? throw new ArgumentNullException(nameof(parent));
             artifactTemplate = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
                 UxmlUssPathConstants.Uxml.AssetsScriptsItemSystemEditorStyleItemArtifactDetails);
-            if (artifactTemplate == null) throw new InvalidOperationException("物品配置窗口缺少圣遗物详情 UXML。");
+            if (artifactTemplate == null)
+                throw new InvalidOperationException("物品配置窗口缺少圣遗物详情 UXML。");
 
             artifactTemplate.CloneTree(pageRoot);
             artifactBaseFields = Require<VisualElement>("ArtifactBaseFields");
@@ -72,31 +70,32 @@ namespace RPG.ItemSystem.Editor
             missingGrowthProfileWarning = Require<VisualElement>("MissingArtifactGrowthProfileWarning");
             growthProfileMaxLevelField = Require<PropertyField>("ArtifactGrowthProfileMaxLevelField");
             growthProfileMaxLevelField.SetEnabled(false);
-            levelEffectsField = Require<PropertyField>("ArtifactLevelEffectsField");
-            levelOverridesField = Require<PropertyField>("ArtifactLevelOverridesField");
             bakedSummaryLabel = Require<VisualElement>("ArtifactBakedSummary").Q<Label>("ArtifactBakedSummaryLabel");
-            if (bakedSummaryLabel == null) throw new InvalidOperationException("圣遗物详情 UXML 缺少烘焙摘要标签。");
+            if (bakedSummaryLabel == null)
+                throw new InvalidOperationException("圣遗物详情 UXML 缺少烘焙摘要标签：ArtifactBakedSummaryLabel。");
+
             bakeButton = Require<Button>("ArtifactBakeButton");
             viewBakedResultButton = Require<Button>("ArtifactViewBakedResultButton");
-            CacheFixedPropertyLabels(artifactBaseFields);
-            CacheFixedPropertyLabels(artifactGrowthProfileContent);
             bakeButton.clicked += OnBakeButtonClicked;
             viewBakedResultButton.clicked += OnViewBakedResultButtonClicked;
+            pageRoot.RegisterCallback<GeometryChangedEvent>(OnPageGeometryChanged);
             SetVisible(false);
             UpdateEmptyPresentation();
         }
 
-        /// <summary>释放绑定、Tracker、列表回调和事件。</summary>
+        /// <summary>释放绑定、Tracker、展示刷新回调和按钮事件。</summary>
         public void Dispose()
         {
             if (disposed) return;
             disposed = true;
+            pageRoot.UnregisterCallback<GeometryChangedEvent>(OnPageGeometryChanged);
             bakeButton.clicked -= OnBakeButtonClicked;
             viewBakedResultButton.clicked -= OnViewBakedResultButtonClicked;
             Unbind();
             BakeGrowthRequested = null;
             ViewBakedResultRequested = null;
             PropertiesChanged = null;
+            Debug.Log("[ItemArtifactDetailsView] 释放圣遗物详情绑定和事件。");
         }
 
         #endregion
@@ -114,8 +113,7 @@ namespace RPG.ItemSystem.Editor
             if (ReferenceEquals(boundArtifact, artifact) && ReferenceEquals(definitionSerializedObject, definitionObject))
             {
                 RefreshPresentation();
-                if (structureRefreshScheduled) revealAfterStructureRefresh = true;
-                else SetVisible(true);
+                SetVisible(true);
                 return;
             }
 
@@ -125,22 +123,21 @@ namespace RPG.ItemSystem.Editor
             definitionSerializedObject.UpdateIfRequiredOrScript();
             artifactBaseFields.Bind(definitionSerializedObject);
             BindGrowthProfile(artifact.GrowthProfile);
-            ScheduleStructureRefresh(true, true);
+            ScheduleVisibleFieldLabelRefresh();
+            SetVisible(true);
+            Debug.Log($"[ItemArtifactDetailsView] 绑定圣遗物详情：{artifact.ItemId}。");
         }
 
-        /// <summary>解除圣遗物绑定并清空动态列表，保留常驻控件树。</summary>
+        /// <summary>解除圣遗物绑定并保留常驻控件树。</summary>
         internal void Unbind()
         {
             bindingVersion++;
-            structureRefreshScheduled = false;
-            scheduledStructureVersion = -1;
-            revealAfterStructureRefresh = false;
+            labelRefreshScheduled = false;
             artifactBaseFields?.Unbind();
+            artifactGrowthProfileContent?.Unbind();
             ReleaseGrowthProfileBinding();
             boundArtifact = null;
             definitionSerializedObject = null;
-            lastGrowthStructureSignature = int.MinValue;
-            effectListConfigured = false;
             UpdateEmptyPresentation();
             SetVisible(false);
         }
@@ -153,56 +150,51 @@ namespace RPG.ItemSystem.Editor
 
         #region 状态刷新
 
-        /// <summary>轻量刷新 Profile 引用、标题、烘焙状态和结构文本。</summary>
+        /// <summary>轻量刷新 Profile 引用、烘焙状态和可见字段标签。</summary>
         internal void RefreshPresentation()
         {
             if (boundArtifact == null) return;
-            if (!ReferenceEquals(boundGrowthProfile, boundArtifact.GrowthProfile)) BindGrowthProfile(boundArtifact.GrowthProfile);
+            if (!ReferenceEquals(boundGrowthProfile, boundArtifact.GrowthProfile))
+                BindGrowthProfile(boundArtifact.GrowthProfile);
             RefreshBakedProgressions(boundGrowthProfile);
-            ScheduleStructureRefresh();
+            ScheduleVisibleFieldLabelRefresh();
         }
 
-        /// <summary>合并当前绑定版本的动态结构中文化任务。</summary>
-        /// <param name="revealAfterRefresh">中文化后是否显示页面。</param>
-        /// <param name="force">是否强制执行。</param>
-        private void ScheduleStructureRefresh(bool revealAfterRefresh = false, bool force = false)
+        /// <summary>合并当前绑定版本的可见字段标签刷新，不介入 ListView 原生绑定。</summary>
+        private void ScheduleVisibleFieldLabelRefresh()
         {
-            if (boundArtifact == null) return;
-            int signature = ComputeGrowthStructureSignature();
-            if (!force && signature == lastGrowthStructureSignature && !revealAfterRefresh) return;
-            if (structureRefreshScheduled && scheduledStructureVersion == bindingVersion)
-            {
-                this.revealAfterStructureRefresh |= revealAfterRefresh;
-                return;
-            }
-
-            structureRefreshScheduled = true;
-            scheduledStructureVersion = bindingVersion;
-            this.revealAfterStructureRefresh |= revealAfterRefresh;
+            if (disposed || boundArtifact == null || labelRefreshScheduled) return;
+            labelRefreshScheduled = true;
             int scheduledVersion = bindingVersion;
             pageRoot.schedule.Execute(() =>
             {
+                labelRefreshScheduled = false;
                 if (disposed || scheduledVersion != bindingVersion || boundArtifact == null) return;
-                ConfigureLevelOverridesList();
-                ItemConfigEditorPresentation.ConfigureGameplayEffectList(
-                    levelEffectsField,
-                    "暂无圣遗物等级效果",
-                    "等级效果",
-                    !effectListConfigured);
-                effectListConfigured = true;
-                NormalizeDynamicLabels();
-                lastGrowthStructureSignature = ComputeGrowthStructureSignature();
-                structureRefreshScheduled = false;
-                scheduledStructureVersion = -1;
-                bool reveal = this.revealAfterStructureRefresh;
-                this.revealAfterStructureRefresh = false;
-                if (reveal) SetVisible(true);
+                VisibleSerializedFieldLabelLocalizer.Apply(pageRoot);
             });
         }
 
-        /// <summary>计算特殊等级覆盖数量签名。</summary>
-        /// <returns>结构签名。</returns>
-        private int ComputeGrowthStructureSignature() => boundGrowthProfile?.LevelOverrides?.Count ?? 0;
+        /// <summary>布局生成或虚拟化行进入视觉树后请求一次可见字段标签刷新。</summary>
+        /// <param name="eventData">布局变化事件。</param>
+        private void OnPageGeometryChanged(GeometryChangedEvent eventData)
+        {
+            if (disposed || boundArtifact == null) return;
+            ScheduleVisibleFieldLabelRefresh();
+        }
+
+        /// <summary>更新没有 Profile 时的固定空状态。</summary>
+        private void UpdateEmptyPresentation()
+        {
+            missingGrowthProfileWarning.style.display = DisplayStyle.None;
+            artifactGrowthProfileContent.style.display = DisplayStyle.None;
+            bakedSummaryLabel.text = "烘焙结果：未配置成长配置。";
+            bakeButton.SetEnabled(false);
+            viewBakedResultButton.SetEnabled(false);
+        }
+
+        #endregion
+
+        #region 成长 Profile 绑定
 
         /// <summary>绑定 Profile 或显示缺失配置警告。</summary>
         /// <param name="profile">成长配置。</param>
@@ -228,7 +220,7 @@ namespace RPG.ItemSystem.Editor
             artifactGrowthProfileContent.Bind(growthProfileSerializedObject);
             growthProfileTracker = CreateGrowthProfileTracker(growthProfileSerializedObject);
             RefreshBakedProgressions(profile);
-            ScheduleStructureRefresh(force: true);
+            ScheduleVisibleFieldLabelRefresh();
         }
 
         /// <summary>创建 Profile 字段变化 Tracker。</summary>
@@ -244,11 +236,13 @@ namespace RPG.ItemSystem.Editor
         }
 
         /// <summary>响应成长 Profile 字段变化。</summary>
-        /// <param name="serializedObject">发生变化的 Profile。</param>
+        /// <param name="serializedObject">发生变化的对象。</param>
         private void OnGrowthProfileChanged(SerializedObject serializedObject)
         {
-            if (serializedObject == null || serializedObject != growthProfileSerializedObject || boundArtifact == null) return;
-            ScheduleStructureRefresh();
+            if (serializedObject == null || serializedObject != growthProfileSerializedObject || boundArtifact == null)
+                return;
+            RefreshBakedProgressions(boundGrowthProfile);
+            ScheduleVisibleFieldLabelRefresh();
             PropertiesChanged?.Invoke(boundArtifact);
         }
 
@@ -266,50 +260,9 @@ namespace RPG.ItemSystem.Editor
             boundGrowthProfile = null;
         }
 
-        /// <summary>更新没有 Profile 时的固定空状态。</summary>
-        private void UpdateEmptyPresentation()
-        {
-            missingGrowthProfileWarning.style.display = DisplayStyle.None;
-            artifactGrowthProfileContent.style.display = DisplayStyle.None;
-            bakedSummaryLabel.text = "烘焙结果：未配置成长配置。";
-            bakeButton.SetEnabled(false);
-            viewBakedResultButton.SetEnabled(false);
-        }
-
         #endregion
 
-        #region 烘焙结果与动态结构
-
-        /// <summary>配置特殊等级覆盖的原生 ListView。</summary>
-        private void ConfigureLevelOverridesList()
-        {
-            levelOverridesField.Query<ListView>().ForEach(listView =>
-            {
-                listView.showBoundCollectionSize = false;
-                listView.showFoldoutHeader = true;
-                listView.showAddRemoveFooter = true;
-                listView.AddToClassList("item-editor-stage-list");
-            });
-        }
-
-        /// <summary>将动态列表元素标题和字段标签转换为中文。</summary>
-        private void NormalizeDynamicLabels()
-        {
-            RestoreFixedPropertyLabels();
-            pageRoot.Query<PropertyField>().ForEach(field =>
-            {
-                if (field.bindingPath.EndsWith("nextExperience", StringComparison.Ordinal)) field.label = "下一级所需经验";
-                else if (field.bindingPath.EndsWith("currencyCost", StringComparison.Ordinal)) field.label = "货币消耗";
-                else if (field.bindingPath.EndsWith("level", StringComparison.Ordinal) && field.bindingPath.Contains("levelOverrides", StringComparison.Ordinal)) field.label = "等级";
-            });
-            pageRoot.Query<Label>().ForEach(label =>
-            {
-                string text = label.text ?? string.Empty;
-                if (text.StartsWith("Element ", StringComparison.Ordinal) && int.TryParse(text.Substring(8), out int index))
-                    label.text = $"特殊等级覆盖 {index + 1}";
-                else if (text == "List is empty") label.text = "暂无特殊等级覆盖";
-            });
-        }
+        #region 烘焙结果与事件辅助
 
         /// <summary>刷新圣遗物烘焙结果。</summary>
         /// <param name="profile">成长配置。</param>
@@ -324,21 +277,6 @@ namespace RPG.ItemSystem.Editor
             viewBakedResultButton.SetEnabled(profile != null);
         }
 
-        /// <summary>缓存固定字段 Label。</summary>
-        /// <param name="container">字段容器。</param>
-        private void CacheFixedPropertyLabels(VisualElement container) => container.Query<PropertyField>().ForEach(field => fixedPropertyLabels.Add((field, field.label)));
-
-        /// <summary>恢复 UXML 固定字段 Label。</summary>
-        private void RestoreFixedPropertyLabels()
-        {
-            for (int index = 0; index < fixedPropertyLabels.Count; index++)
-                if (fixedPropertyLabels[index].field != null) fixedPropertyLabels[index].field.label = fixedPropertyLabels[index].label;
-        }
-
-        #endregion
-
-        #region 事件与辅助
-
         /// <summary>转发烘焙请求。</summary>
         private void OnBakeButtonClicked() => BakeGrowthRequested?.Invoke();
 
@@ -348,7 +286,7 @@ namespace RPG.ItemSystem.Editor
         /// <summary>查询页面内的必需控件。</summary>
         /// <typeparam name="TElement">控件类型。</typeparam>
         /// <param name="name">UXML 名称。</param>
-        /// <returns>找到的控件。</returns>
+        /// <returns>对应控件。</returns>
         private TElement Require<TElement>(string name) where TElement : VisualElement
         {
             TElement element = pageRoot.Q<TElement>(name);

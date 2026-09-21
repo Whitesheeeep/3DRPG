@@ -115,6 +115,7 @@ namespace RPG.Character
             if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
             snapshot.ValidateShape();
             var referencedInstanceIds = new HashSet<EquipmentInstanceId>();
+            var snapshotCharacterIdSet = new HashSet<CharacterId>();
             int equippedWeaponCount = 0;
             for (int index = 0; index < snapshot.Characters.Count; index++)
             {
@@ -122,6 +123,7 @@ namespace RPG.Character
                 CharacterId characterId = new CharacterId(entry.CharacterId);
                 if (!characterId.IsValid || !characterRosterManager.IsOwned(characterId))
                     throw new InvalidOperationException($"角色装备快照引用了未拥有角色：{entry.CharacterId}。");
+                snapshotCharacterIdSet.Add(characterId);
 
                 ValidateWeapon(entry.WeaponInstanceId, characterId, referencedInstanceIds, ref equippedWeaponCount);
                 ValidateArtifact(entry.FlowerOfLifeInstanceId, ArtifactSlot.FlowerOfLife, referencedInstanceIds);
@@ -130,6 +132,12 @@ namespace RPG.Character
                 ValidateArtifact(entry.GobletOfEonothemInstanceId, ArtifactSlot.GobletOfEonothem, referencedInstanceIds);
                 ValidateArtifact(entry.CircletOfLogosInstanceId, ArtifactSlot.CircletOfLogos, referencedInstanceIds);
             }
+
+            // 装备关系快照必须覆盖当前全部角色；遗漏角色会在恢复时被错误清空装备。
+            IReadOnlyList<CharacterInstance> ownedInstances = characterRosterManager.GetInstances();
+            for (int index = 0; index < ownedInstances.Count; index++)
+                if (!snapshotCharacterIdSet.Contains(ownedInstances[index].CharacterId))
+                    throw new InvalidOperationException($"角色装备快照缺少已拥有角色：{ownedInstances[index].CharacterId}。");
 
             int unEquippedWeaponCount = weaponInventoryManager.Count - equippedWeaponCount;
             if (unEquippedWeaponCount > weaponInventoryManager.Capacity)

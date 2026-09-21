@@ -14,51 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterId:
     value: character_0002
-  characterName: Rusk
-  rarity: 5
-  prefabAddress: Character/Rusk
-  sideIconAddress: CharacterSideIcons
-  sideIconSpriteName: Rusk_Side
-  avatarAddress: Characters
-  avatarSpriteName: Rusk_Protrait
-  allowedWeaponTypes: 1
-  defaultWeaponType: 0
-  maxLevel: 90
-  maxAscensionRank: 6
-  growthProfile: {fileID: 11400000, guid: d88b9cad1e2f3a4b5c6d7e8f90123456, type: 2}
-  ascensionStages:
-  - requiredLevel: 20
-    maxLevelAfter: 40
-    cost:
-      itemCosts: []
-      currencyCosts: []
-  - requiredLevel: 40
-    maxLevelAfter: 50
-    cost:
-      itemCosts: []
-      currencyCosts: []
-  - requiredLevel: 50
-    maxLevelAfter: 60
-    cost:
-      itemCosts: []
-      currencyCosts: []
-  - requiredLevel: 60
-    maxLevelAfter: 70
-    cost:
-      itemCosts: []
-      currencyCosts: []
-  - requiredLevel: 70
-    maxLevelAfter: 80
-    cost:
-      itemCosts: []
-      currencyCosts: []
-  - requiredLevel: 80
-    maxLevelAfter: 90
-    cost:
-      itemCosts: []
-      currencyCosts: []
-  initialAttributeSets:
-  - {fileID: 11400000, guid: fa050d1171257b24bbba13162066da88, type: 2}
   identity:
     characterName: Rusk
     rarity: 5
@@ -108,17 +63,33 @@ MonoBehaviour:
         currencyCosts: []
     initialAttributeSets:
     - {fileID: 11400000, guid: fa050d1171257b24bbba13162066da88, type: 2}
+    resourceRules:
+    - resourceAttribute:
+        id: 0
+        name: Health
+        displayName: "\u5F53\u524D\u751F\u547D\u503C"
+      capacityAttribute:
+        id: 1
+        name: MaxHealth
+        displayName: "\u751F\u547D\u503C\u4E0A\u9650"
+      initialValueMode: 1
+    - resourceAttribute:
+        id: 3
+        name: MP
+        displayName: "\u80FD\u91CF"
+      capacityAttribute:
+        id: -1
+        name: 
+        displayName: 
+      initialValueMode: 0
   combatConfig:
     normalAttackAbilities:
     - {fileID: 11400000, guid: a5f4af29fcb07fc4db4c0235ea89f01b, type: 2}
     - {fileID: 11400000, guid: 5b1b22e4d2c647a09c12aac149412fd1, type: 2}
     - {fileID: 11400000, guid: bc0c2362d9e535b4d9969d4824d2f393, type: 2}
     skillInputBindings: []
-  gravity: 9.81
-  locomotionTransition: {fileID: 11400000, guid: 8b2e9e80cfd84d94b68a1f7f15d89b21, type: 2}
   locomotion:
     gravity: 9.81
     locomotionTransition: {fileID: 11400000, guid: 8b2e9e80cfd84d94b68a1f7f15d89b21, type: 2}
-  legacyFieldsMigrated: 1
   editorSideIcon: {fileID: 21300000, guid: 699e57692fb65a141ac8614e8e9b1b15, type: 3}
   editorAvatar: {fileID: 21300000, guid: 51dff29dc9d2d4a4fa608e696e82ea59, type: 3}

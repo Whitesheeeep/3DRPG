@@ -311,6 +311,52 @@ namespace WS_Modules.GAS.AttributeSystem
             return changeTransaction.TryScheduleBaseValueChange(attribute, value) && ProcessPendingChanges();
         }
 
+        /// <summary>批量应用已经解析好的 BaseValue，并在同一事务中结算 CurrentValue。</summary>
+        /// <param name="values">按 Attribute 提供的 BaseValue。</param>
+        /// <returns>所有值通过 Pre/Post 规则并完成原子提交时返回 true。</returns>
+        internal bool TryApplyBaseValues(IReadOnlyList<GameplayAttributeValue> values)
+        {
+            if (values == null) return false;
+            EnsureTransientState();
+            if (changeTransaction.IsProcessing) return false;
+            var seenAttributeIdSet = new HashSet<int>();
+            var changes = new List<PreparedBaseValueChange>(values.Count);
+            if (!changeTransaction.TryBegin()) return false;
+            try
+            {
+                for (int index = 0; index < values.Count; index++)
+                {
+                    GameplayAttributeValue value = values[index];
+                    if (!value.Attribute.IsValid || !seenAttributeIdSet.Add(value.Attribute.Id) ||
+                        !TryGetDefinition(value.Attribute, out GameplayAttributeDefinition definition) ||
+                        !IsFinite(value.Value) || !TryPrepareBaseValueChange(definition, value.Value, out PreparedBaseValueChange change))
+                        return false;
+                    changes.Add(change);
+                }
+
+                CommitBaseValueChanges(changes);
+                DrainPendingChanges();
+                return true;
+            }
+            finally
+            {
+                changeTransaction.Complete();
+            }
+        }
+
+        /// <summary>批量设置 Resource 的 CurrentValue；调用方必须先完成资源类型筛选。</summary>
+        /// <param name="values">待设置的 Resource 值。</param>
+        /// <returns>所有目标为 Resource 且成功提交时返回 true。</returns>
+        internal bool TrySetResourceCurrentValues(IReadOnlyList<GameplayAttributeValue> values)
+        {
+            if (values == null) return false;
+            for (int index = 0; index < values.Count; index++)
+                if (!TryGetDefinition(values[index].Attribute, out GameplayAttributeDefinition definition) ||
+                    definition.Type != GameplayAttributeType.Resource)
+                    return false;
+            return TryApplyBaseValues(values);
+        }
+
         /// <inheritdoc />
         public void ResetToDefaultValues()
         {

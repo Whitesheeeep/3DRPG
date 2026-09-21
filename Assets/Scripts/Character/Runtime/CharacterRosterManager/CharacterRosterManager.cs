@@ -15,7 +15,7 @@ namespace RPG.Character
     /// <remarks>
     /// 角色实例存在即表示角色已拥有，避免把拥有状态和成长状态拆成两套可能不一致的 Manager。
     /// 角色实例是持久化业务状态；场景中的 CharacterActor 仍由 CharacterManager 管理，
-    /// 当前阶段不会自动把实例进度同步到 Actor 的 ASC。
+    /// Actor 通过 CharacterRuntimeAttributeBinding 消费同一个实例并同步等级与资源。
     /// </remarks>
     public sealed class CharacterRosterManager : AbstractManager
     {
@@ -213,8 +213,9 @@ namespace RPG.Character
             }
 
             // 先提交角色实例，再发布两个事件；订阅方收到事件时可以立即查询完整实例和拥有状态。
+            CharacterConfig config = CharacterConfigManager.Instance.GetRequiredConfig(characterId);
             CharacterInstance instance = new CharacterInstance(
-                characterId,
+                config,
                 1,
                 0,
                 0,
@@ -272,21 +273,15 @@ namespace RPG.Character
                     currentInstance);
             }
 
-            CharacterInstance updatedInstance = new CharacterInstance(
-                characterId,
-                update.Level,
-                update.CurrentExperience,
-                update.AscensionRank,
-                currentInstance.AcquisitionSequence,
-                currentInstance.Equipment);
-            characterByIdMap[characterId] = updatedInstance;
-            PublishInstanceChanged(CharacterInstanceChangeType.ProgressUpdated, updatedInstance);
+            // 校验已经完成后原地提交，Actor、Binding 和 UI 持有的引用继续指向同一个领域实例。
+            currentInstance.CommitProgress(update);
+            PublishInstanceChanged(CharacterInstanceChangeType.ProgressUpdated, currentInstance);
             Debug.Log($"[CharacterRosterManager] 角色进度已更新，character={characterId}, " +
-                      $"level={updatedInstance.Level}, experience={updatedInstance.CurrentExperience}, " +
-                      $"ascensionRank={updatedInstance.AscensionRank}。");
+                      $"level={currentInstance.Level}, experience={currentInstance.CurrentExperience}, " +
+                      $"ascensionRank={currentInstance.AscensionRank}。");
             return new CharacterProgressOperationResult(
                 CharacterProgressOperationStatus.Succeeded,
-                updatedInstance);
+                currentInstance);
         }
 
         #endregion
@@ -307,6 +302,7 @@ namespace RPG.Character
             RemoveLocationsForCharacter(nextLocationByInstanceIdMap, characterId);
             AddEquipmentLocation(nextLocationByInstanceIdMap, equipment.EquippedWeaponInstanceId,
                 new CharacterEquipmentLocation(characterId, CharacterEquipmentSlotKind.Weapon));
+            // 圣遗物槽位按枚举顺序提交，避免出现不同角色装备同一实例的冲突。
             foreach (ArtifactSlot slot in Enum.GetValues(typeof(ArtifactSlot)))
             {
                 if (!equipment.TryGetArtifactInstanceId(slot, out EquipmentInstanceId instanceId)) continue;
@@ -315,18 +311,12 @@ namespace RPG.Character
             }
 
             if (AreEquipmentStatesEqual(currentInstance.Equipment, equipment)) return;
-            CharacterInstance updatedInstance = new CharacterInstance(
-                currentInstance.CharacterId,
-                currentInstance.Level,
-                currentInstance.CurrentExperience,
-                currentInstance.AscensionRank,
-                currentInstance.AcquisitionSequence,
-                equipment);
-            characterByIdMap[characterId] = updatedInstance;
+            // 反向索引和实例状态在同一校验结果下提交，避免出现半更新状态。
+            currentInstance.CommitEquipment(equipment);
             equipmentLocationByInstanceIdMap.Clear();
             foreach (KeyValuePair<EquipmentInstanceId, CharacterEquipmentLocation> pair in nextLocationByInstanceIdMap)
                 equipmentLocationByInstanceIdMap.Add(pair.Key, pair.Value);
-            PublishInstanceChanged(CharacterInstanceChangeType.EquipmentUpdated, updatedInstance);
+            PublishInstanceChanged(CharacterInstanceChangeType.EquipmentUpdated, currentInstance);
             Debug.Log($"[CharacterRosterManager] 角色装备状态已提交，character={characterId}, weapon={equipment.EquippedWeaponInstanceId}, " +
                       $"equipmentCount={equipmentLocationByInstanceIdMap.Count}。");
         }
@@ -357,8 +347,7 @@ namespace RPG.Character
                     ? state
                     : new CharacterEquipmentState();
                 CharacterInstance currentInstance = characterByIdMap[characterId];
-                characterByIdMap[characterId] = new CharacterInstance(currentInstance.CharacterId, currentInstance.Level,
-                    currentInstance.CurrentExperience, currentInstance.AscensionRank, currentInstance.AcquisitionSequence, equipment);
+                currentInstance.CommitEquipment(equipment);
             }
 
             equipmentLocationByInstanceIdMap.Clear();
@@ -387,10 +376,36 @@ namespace RPG.Character
                     throw new InvalidOperationException($"角色实例恢复列表包含重复角色：{instance.CharacterId}。");
             }
 
-            characterByIdMap.Clear();
-            equipmentLocationByInstanceIdMap.Clear();
+            // 先完成候选集合校验，再复用同 ID 的旧实例，避免场景 Actor 持有孤立引用。
+            var existingCharacterIdsToRemove = new List<CharacterId>();
+            foreach (CharacterId characterId in characterByIdMap.Keys)
+                if (!restoredCharacterByIdMap.ContainsKey(characterId)) existingCharacterIdsToRemove.Add(characterId);
+            for (int index = 0; index < existingCharacterIdsToRemove.Count; index++)
+                characterByIdMap.Remove(existingCharacterIdsToRemove[index]);
             foreach (KeyValuePair<CharacterId, CharacterInstance> pair in restoredCharacterByIdMap)
-                characterByIdMap.Add(pair.Key, pair.Value);
+            {
+                if (characterByIdMap.TryGetValue(pair.Key, out CharacterInstance existingInstance))
+                {
+                    existingInstance.CommitProgress(new CharacterProgressUpdate(
+                        pair.Value.Level, pair.Value.CurrentExperience, pair.Value.AscensionRank));
+                    existingInstance.RestoreResourceCurrentValues(pair.Value.GetResourceCurrentValues());
+                    existingInstance.CommitEquipment(pair.Value.Equipment);
+                }
+                else
+                {
+                    characterByIdMap.Add(pair.Key, pair.Value);
+                }
+            }
+            equipmentLocationByInstanceIdMap.Clear();
+            foreach (CharacterInstance instance in characterByIdMap.Values)
+            {
+                AddEquipmentLocation(equipmentLocationByInstanceIdMap, instance.EquippedWeaponInstanceId,
+                    new CharacterEquipmentLocation(instance.CharacterId, CharacterEquipmentSlotKind.Weapon));
+                foreach (ArtifactSlot slot in Enum.GetValues(typeof(ArtifactSlot)))
+                    if (instance.TryGetEquippedArtifactInstanceId(slot, out EquipmentInstanceId artifactInstanceId))
+                        AddEquipmentLocation(equipmentLocationByInstanceIdMap, artifactInstanceId,
+                            new CharacterEquipmentLocation(instance.CharacterId, CharacterEquipmentSlotKind.Artifact, slot));
+            }
             nextAcquisitionSequence = restoredNextAcquisitionSequence;
             Debug.Log($"[CharacterRosterManager] 恢复角色实例状态，count={characterByIdMap.Count}, " +
                       $"nextAcquisitionSequence={nextAcquisitionSequence}。");
