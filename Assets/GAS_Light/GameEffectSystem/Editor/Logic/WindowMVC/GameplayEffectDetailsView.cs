@@ -35,6 +35,7 @@ namespace WS_Modules.GAS.Editor
         private readonly VisualElement durationPolicyField;
         private readonly VisualElement periodPolicyField;
         private readonly VisualElement expirationPolicyField;
+        private readonly VisualElement executionsField;
         private readonly Button addModifierButton;
         private readonly Button removeModifierButton;
         private readonly ListView modifierList;
@@ -114,6 +115,7 @@ namespace WS_Modules.GAS.Editor
             durationPolicyField = Require<VisualElement>("DurationPolicyField");
             periodPolicyField = Require<VisualElement>("PeriodPolicyField");
             expirationPolicyField = Require<VisualElement>("ExpirationPolicyField");
+            executionsField = Require<VisualElement>("ExecutionsField");
             addModifierButton = Require<Button>("AddModifierButton");
             removeModifierButton = Require<Button>("RemoveModifierButton");
             modifierList = Require<ListView>("ModifierList");
@@ -261,6 +263,7 @@ namespace WS_Modules.GAS.Editor
             SetVisible(durationPolicyField, stacking && duration);
             SetVisible(periodPolicyField, stacking && periodic);
             SetVisible(expirationPolicyField, stacking && duration);
+            SetVisible(executionsField, hasEffect);
         }
 
         /// <inheritdoc />

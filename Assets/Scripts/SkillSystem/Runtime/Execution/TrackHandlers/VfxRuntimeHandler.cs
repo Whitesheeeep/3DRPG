@@ -67,7 +67,7 @@ namespace RPG.SkillSystem
             for (int index = instances.Count - 1; index >= 0; index--)
             {
                 VfxRuntimeInstance instance = instances[index];
-                if (reason == SkillCompletionReason.Cancelled) instance.RecycleImmediately();
+                if (reason == SkillCompletionReason.Cancelled && instance.Clip.StopMode != VfxStopMode.KeepAlive) instance.RecycleImmediately();
                 else instance.ReleaseToTail(stopEmission: true);
             }
             instances.Clear();

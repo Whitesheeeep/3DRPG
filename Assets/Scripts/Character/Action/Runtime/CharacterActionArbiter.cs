@@ -91,6 +91,7 @@ namespace RPG.Character
                 return;
             }
 
+            // 存在 FullBody 占据时，
             if (execution.Runtime.RuntimeTags.HasTag(GameplayTags.Tag_Skill_Window_CancelBy_Ability) &&
                 abilityExecution.TryExecute(inputRequests,
                     execution.Runtime.AbilityTags.HasTag(GameplayTags.Tag_Skill_NormalAttack)))

@@ -62,6 +62,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         internal bool UpdateRuntimeTagCount(GameplayTag tag, int delta) =>
             MutableTags.UpdateTagCount(tag, delta);
 
+        #region Ablity Controller 内部入口
         /// <summary>由 Ability Runtime 同步其专用 BlockAbilityTags 引用计数。</summary>
         /// <param name="runtime">发起同步的 Runtime。</param>
         /// <param name="tag">需要更新的阻断 AbilityTag。</param>
@@ -82,6 +83,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         /// <param name="runtime">发起扫描的 Active Runtime。</param>
         internal void RequestCancelAbilitiesMatching(GameplayAbilityRuntime runtime) =>
             abilityController.RequestCancelAbilitiesMatching(runtime);
+        #endregion
 
         // Attribute 结算必须绕过只读门面，由 ASC 内部统一持有可变实例。
         internal GameplayAttributeContainer MutableAttributes { get; private set; }
@@ -240,6 +242,33 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         #endregion
 
         #region GE 快捷操作
+        /// <summary>由当前 ASC 作为 Source 创建一个尚未封存的 outgoing GE Spec。</summary>
+        /// <param name="data">要应用的 Gameplay Effect 配置。</param>
+        /// <param name="level">本次应用等级，必须至少为 1。</param>
+        /// <param name="setByCaller">初始 SetByCaller 数据，可以为 null。</param>
+        /// <param name="spec">成功时返回绑定当前 ASC Source 的 Spec。</param>
+        /// <returns>输入合法且 Spec 创建成功时返回 true。</returns>
+        public bool TryCreateOutgoingEffectSpec(
+            GameplayEffectData data,
+            int level,
+            IReadOnlyDictionary<GameplayTag, float> setByCaller,
+            out GameplayEffectSpec spec)
+        {
+            spec = null;
+            if (data == null || level < 1) return false;
+            spec = new GameplayEffectSpec(data, this, level, setByCaller);
+            return true;
+        }
+
+        /// <summary>将一个 GE Spec 应用到当前 ASC；当前 ASC 作为 Target。</summary>
+        /// <param name="spec">待应用的 GE Spec。</param>
+        /// <param name="result">成功时返回 GE 应用结果。</param>
+        /// <returns>Spec 计算和原子提交成功时返回 true。</returns>
+        public bool TryApplyEffect(
+            GameplayEffectSpec spec,
+            out GameplayEffectApplicationResult result) =>
+            GameEffectCtrl.TryApply(spec, out result);
+
         /// <summary>将 Gameplay Effect 应用到当前 ASC；当前 ASC 作为 Target，Source 由参数指定。</summary>
         /// <param name="data">要应用的 Gameplay Effect 配置。</param>
         /// <param name="source">提供效果来源的 ASC。</param>

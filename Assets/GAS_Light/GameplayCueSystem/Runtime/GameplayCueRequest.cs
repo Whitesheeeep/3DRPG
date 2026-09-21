@@ -22,6 +22,10 @@ namespace WS_Modules.GAS.GameplayCue
         public GameEffectRuntime EffectRuntime { get; }
         /// <summary>产生请求的 Gameplay Ability Runtime。</summary>
         public GameplayAbilityRuntime AbilityRuntime { get; }
+        /// <summary>产生请求的封存 GameplayEffectSpec。</summary>
+        public GameplayEffectSpec EffectSpec { get; }
+        /// <summary>产生请求的 GE 应用计算结果。</summary>
+        public GameplayEffectApplicationResult ApplicationResult { get; }
         /// <summary>显式世界位置。</summary>
         public Vector3 Position { get; }
         /// <summary>显式世界旋转。</summary>
@@ -40,9 +44,11 @@ namespace WS_Modules.GAS.GameplayCue
             GameplayAbilitySystemComponent source,
             GameplayAbilitySystemComponent target,
             GameEffectRuntime effectRuntime = null,
-            GameplayAbilityRuntime abilityRuntime = null)
+            GameplayAbilityRuntime abilityRuntime = null,
+            GameplayEffectSpec effectSpec = null,
+            GameplayEffectApplicationResult applicationResult = null)
             : this(cueTag, eventType, source, target, effectRuntime, abilityRuntime,
-                Vector3.zero, Quaternion.identity, null, false)
+                effectSpec, applicationResult, Vector3.zero, Quaternion.identity, null, false)
         {
         }
 
@@ -56,9 +62,11 @@ namespace WS_Modules.GAS.GameplayCue
             GameplayAbilityRuntime abilityRuntime,
             Vector3 position,
             Quaternion rotation,
-            Transform attachTransform = null)
+            Transform attachTransform = null,
+            GameplayEffectSpec effectSpec = null,
+            GameplayEffectApplicationResult applicationResult = null)
             : this(cueTag, eventType, source, target, effectRuntime, abilityRuntime,
-                position, rotation, attachTransform, true)
+                effectSpec, applicationResult, position, rotation, attachTransform, true)
         {
         }
 
@@ -69,6 +77,8 @@ namespace WS_Modules.GAS.GameplayCue
             GameplayAbilitySystemComponent target,
             GameEffectRuntime effectRuntime,
             GameplayAbilityRuntime abilityRuntime,
+            GameplayEffectSpec effectSpec,
+            GameplayEffectApplicationResult applicationResult,
             Vector3 position,
             Quaternion rotation,
             Transform attachTransform,
@@ -80,6 +90,8 @@ namespace WS_Modules.GAS.GameplayCue
             Target = target;
             EffectRuntime = effectRuntime;
             AbilityRuntime = abilityRuntime;
+            EffectSpec = effectSpec;
+            ApplicationResult = applicationResult;
             Position = position;
             Rotation = rotation;
             AttachTransform = attachTransform;

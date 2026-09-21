@@ -6,6 +6,7 @@ using WS_Modules.GAS.GameplayAbilitySystem;
 using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.TAG;
 using RPG.Character;
+using WS_Modules.GAS.GameplayEffect;
 
 namespace RPG.SkillSystem
 {
@@ -16,6 +17,7 @@ namespace RPG.SkillSystem
 
         private readonly SkillConfig skillConfig;
         private readonly SkillStartMode startMode;
+        private IReadOnlyList<GameplayEffectSpec> effectSpecs;
         private bool suppressNextAnimatorMotion;
         private ISkillRuntimeHost host;
         private bool subscribed;
@@ -61,11 +63,25 @@ namespace RPG.SkillSystem
         /// <summary>获取 Source Host、订阅本次执行事件并尝试播放时间轴。</summary>
         protected override void OnStart()
         {
-            if (Runtime.SourceOwner is not { } skillOwner)
+            // Runtime 只负责创建封存的 GE Specs，SkillRuntimeHost 才是实际应用者；因此不在 Task 内部直接 Apply。
+            if (!GARuntime.Data.TryCreateConfiguredEffectSpecs(
+                    GARuntime.SourceASC,
+                    GARuntime.Level,
+                    GARuntime.SetByCaller,
+                    out effectSpecs))
             {
                 Debug.LogError(
-                    $"Ability '{Runtime.Data.name}' 的 Source '{Runtime.SourceASC.name}' 宿主不支持 Skill Gameplay Ability。",
-                    Runtime.SourceASC);
+                    $"Ability '{GARuntime.Data.name}' ActivationId={GARuntime.ActivationId} 无法创建封存的 GE Specs。",
+                    GARuntime.SourceASC);
+                Complete();
+                return;
+            }
+
+            if (GARuntime.SourceOwner is not { } skillOwner)
+            {
+                Debug.LogError(
+                    $"Ability '{GARuntime.Data.name}' 的 Source '{GARuntime.SourceASC.name}' 宿主不支持 Skill Gameplay Ability。",
+                    GARuntime.SourceASC);
                 Complete();
                 return;
             }
@@ -75,8 +91,8 @@ namespace RPG.SkillSystem
             if (host == null)
             {
                 Debug.LogError(
-                    $"Ability '{Runtime.Data.name}' 的 Source '{Runtime.SourceASC.name}' 宿主缺少 SkillRuntimeHost。",
-                    Runtime.SourceASC);
+                    $"Ability '{GARuntime.Data.name}' 的 Source '{GARuntime.SourceASC.name}' 宿主缺少 SkillRuntimeHost。",
+                    GARuntime.SourceASC);
                 Complete();
                 return;
             }
@@ -84,7 +100,7 @@ namespace RPG.SkillSystem
             // 技能是否根运动只决定是否放行 Animator/Vertical 提交；技能一旦占据水平和旋转通道，
             // Locomotion 即使继续运行也不会在技能站桩期间偷偷移动角色。
             motionDriver = skillOwner.MotionDriver ??
-                throw new InvalidOperationException($"Ability '{Runtime.Data.name}' 的角色未绑定 MotionDriver。");
+                throw new InvalidOperationException($"Ability '{GARuntime.Data.name}' 的角色未绑定 MotionDriver。");
             MotionChannels motionChannels = MotionChannels.Horizontal | MotionChannels.Rotation;
             if (skillConfig.IsRootMotion)
                 motionChannels |= MotionChannels.Vertical;
@@ -97,10 +113,10 @@ namespace RPG.SkillSystem
             try
             {
                 Debug.Log(
-                    $"[PlaySkillConfigGameplayAbilityTask] Ability '{Runtime.Data.name}' " +
-                    $"ActivationId={Runtime.ActivationId} 启动 SkillConfig '{skillConfig.name}'，" +
+                    $"[PlaySkillConfigGameplayAbilityTask] Ability '{GARuntime.Data.name}' " +
+                    $"ActivationId={GARuntime.ActivationId} 启动 SkillConfig '{skillConfig.name}'，" +
                     $"StartMode={startMode}。",
-                    Runtime.SourceASC);
+                    GARuntime.SourceASC);
                 SkillStartResult result = host.TryPlay(skillConfig, startMode);
                 if (result.Succeeded)
                 {
@@ -109,9 +125,9 @@ namespace RPG.SkillSystem
                     // SkillRuntimeHost 已经成功取得表现层后再发布占据，避免播放失败留下虚假的 FullBody 状态。
                     fullBodyActionArbiter = skillOwner.FullBodyActionArbiter ??
                         throw new InvalidOperationException(
-                            $"Ability '{Runtime.Data.name}' 的角色未绑定 FullBody Action Arbiter。");
+                            $"Ability '{GARuntime.Data.name}' 的角色未绑定 FullBody Action Arbiter。");
                     fullBodyActionHandle = fullBodyActionArbiter.RegisterFullBodyAction(
-                        Runtime);
+                        GARuntime);
                     // TryPlay 可能没有 ActionPhase Clip；注册后再次读取 Host 快照，确保初始策略一致。
                     ApplyPhasePolicy(
                         host.CurrentPhase,
@@ -124,8 +140,8 @@ namespace RPG.SkillSystem
                 }
 
                 Debug.Log(
-                    $"Ability '{Runtime.Data.name}' 无法播放 SkillConfig：{result.Message}",
-                    Runtime.SourceASC);
+                    $"Ability '{GARuntime.Data.name}' 无法播放 SkillConfig：{result.Message}",
+                    GARuntime.SourceASC);
                 Unsubscribe();
                 Complete();
             }
@@ -183,9 +199,9 @@ namespace RPG.SkillSystem
                 // 非零帧 Seek 后 Animator 的第一份增量可能是从素材原点跳到入口的差值，必须丢弃一次。
                 suppressNextAnimatorMotion = false;
                 Debug.Log(
-                    $"[PlaySkillConfigGameplayAbilityTask] Ability '{Runtime.Data.name}' " +
+                    $"[PlaySkillConfigGameplayAbilityTask] Ability '{GARuntime.Data.name}' " +
                     $"忽略 FirstActivePhase Seek 后的首个根运动增量。",
-                    Runtime.SourceASC);
+                    GARuntime.SourceASC);
                 return;
             }
             motionDriver.SubmitAnimatorMotion(motionHandle,
@@ -244,14 +260,14 @@ namespace RPG.SkillSystem
             var phaseBlockAbilityTags = new GameplayTagContainer();
             for (int i = 0; i < blockAbilityTags.Count; i++) phaseBlockAbilityTags.AddTag(blockAbilityTags[i]);
 
-            Runtime.ApplyPhasePolicy(
+            GARuntime.ApplyPhasePolicy(
                 phaseRuntimeTags,
                 phaseBlockAbilityTags,
                 isCancelable,
                 hasPhasePolicy);
             Debug.Log(
-                $"[PlaySkillConfigGameplayAbilityTask] Ability '{Runtime.Data.name}' ActivationId={Runtime.ActivationId} 应用 Phase 策略，Phase={phase}，Frame={frame}，HasPolicy={hasPhasePolicy}，RuntimeTags={runtimeTags.Count}，BlockTags={blockAbilityTags.Count}，IsCancelable={isCancelable}。",
-                Runtime.SourceASC);
+                $"[PlaySkillConfigGameplayAbilityTask] Ability '{GARuntime.Data.name}' ActivationId={GARuntime.ActivationId} 应用 Phase 策略，Phase={phase}，Frame={frame}，HasPolicy={hasPhasePolicy}，RuntimeTags={runtimeTags.Count}，BlockTags={blockAbilityTags.Count}，IsCancelable={isCancelable}。",
+                GARuntime.SourceASC);
         }
 
         /// <summary>把 SkillSystem 去重后的命中映射为当前 GA 的 Effects 与 Execute Cue。</summary>
@@ -261,20 +277,29 @@ namespace RPG.SkillSystem
             if (args.Config != skillConfig || args.Target == null) return;
             GameplayAbilitySystemComponent target =
                 args.Target.GetComponentInParent<GameplayAbilitySystemComponent>();
-            if (target == null || ReferenceEquals(target, Runtime.SourceASC)) return;
+            if (target == null || ReferenceEquals(target, GARuntime.SourceASC)) return;
 
-            Runtime.Data.ApplyConfiguredEffects(
-                Runtime.SourceASC,
-                target,
-                Runtime.Level,
-                Runtime.SetByCaller);
-            Runtime.Data.PublishConfiguredCues(
+            GameplayEffectApplicationResult lastApplicationResult = null;
+            for (int i = 0; i < effectSpecs.Count; i++)
+            {
+                if (!target.TryApplyEffect(
+                        effectSpecs[i],
+                        out GameplayEffectApplicationResult applicationResult))
+                    continue;
+                lastApplicationResult = applicationResult;
+
+                if (applicationResult.ActiveEffect != null)
+                    GARuntime.RetainOwnedEffect(applicationResult.ActiveEffect);
+            }
+            GARuntime.Data.PublishConfiguredCues(
                 GameplayCueEventType.Execute,
-                Runtime.SourceASC,
+                GARuntime.SourceASC,
                 target,
-                abilityRuntime: Runtime,
+                abilityRuntime: GARuntime,
                 position: args.Point,
-                rotation: Quaternion.identity);
+                rotation: Quaternion.identity,
+                effectSpec: lastApplicationResult?.Spec,
+                applicationResult: lastApplicationResult);
         }
 
         /// <summary>将当前 SkillConfig 的 Projectile 发射事件转换为带有 GA 快照的池化投射物生成。</summary>
@@ -286,13 +311,11 @@ namespace RPG.SkillSystem
             ProjectileSpawnService.SpawnBatch(
                 args.Origin,
                 args.SpawnConfig,
-                Runtime.SourceASC,
-                Runtime.Level,
-                Runtime.SetByCaller,
-                Runtime.Data.Effects,
-                Runtime.Data.CueTags,
-                Runtime,
-                Runtime.SourceASC);
+                GARuntime.SourceASC,
+                effectSpecs,
+                GARuntime.Data.CueTags,
+                GARuntime,
+                GARuntime.SourceASC);
         }
 
         /// <summary>订阅当前共享 Module 的完成、Phase、命中与投射物事件。</summary>

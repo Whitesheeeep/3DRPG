@@ -75,17 +75,17 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <summary>对 Source 应用一次 Effects，并为本次周期发布 Execute Cue。</summary>
         private void ApplyCycle()
         {
-            GameplayAbilityData data = Runtime.Data;
+            GameplayAbilityData data = GARuntime.Data;
             data.ApplyConfiguredEffects(
-                Runtime.SourceASC,
-                Runtime.SourceASC,
-                Runtime.Level,
-                Runtime.SetByCaller);
+                GARuntime.SourceASC,
+                GARuntime.SourceASC,
+                GARuntime.Level,
+                GARuntime.SetByCaller);
             data.PublishConfiguredCues(
                 GameplayCueEventType.Execute,
-                Runtime.SourceASC,
-                Runtime.SourceASC,
-                abilityRuntime: Runtime);
+                GARuntime.SourceASC,
+                GARuntime.SourceASC,
+                abilityRuntime: GARuntime);
         }
 
         #endregion

@@ -277,7 +277,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         #endregion
 
         #region 持续效果所有权
-        /// <summary>登记一个由当前生命周期型 Task 成功应用的 Active GE。</summary>
+        /// <summary>登记一个由当前生命周期型 Task 成功应用的 Active GE。目前只用于 ASC 显示。</summary>
         /// <param name="effectRuntime">需要随本次 Ability 结束而移除的 GE Runtime。</param>
         internal void RetainOwnedEffect(GameEffectRuntime effectRuntime)
         {

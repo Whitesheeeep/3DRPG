@@ -4,27 +4,52 @@
 
 `GameplayEffectData` 是独立 ScriptableObject，只保存可复用配置。资产引用就是 GE 身份，不保存字符串 ID、Level 或运行状态。
 
-运行时只使用一个 `GameEffectRuntime`：Instant 创建临时 Runtime 后立即释放；Duration 与 Infinite 把同一种 Runtime 加入目标 `GameEffectCtrl.ActiveEffects`。当前不拆分 Spec 和 Active，也不增加独立计算 Context。
+运行时先由 Source ASC 创建 `GameplayEffectSpec`。Spec 固定 Data、Source、Level 和复制后的 SetByCaller，完成校验后封存；Target ASC 应用同一个封存 Spec 时，`GameplayEffectCalculationContext` 再读取结算瞬间的 Source/Target 属性。Instant 只创建临时计算过程，Duration 与 Infinite 才把 `GameplayEffectRuntime` 加入目标 `GameEffectCtrl.ActiveEffects`。
 
 ```mermaid
 flowchart TD
-    Data["GameplayEffectData\n可复用 SO 配置"] -->|GameEffectCtrl 创建| Runtime["GameEffectRuntime\nData / Source / Target / Level / Stack / SetByCaller / 计时"]
-    Runtime -->|逐项 CalculateMagnitude| Modifiers["GameplayEffectModifier 列表"]
-    Modifiers --> Results["AttributeModifier 列表"]
-    Results --> Target["Target GameplayAttributeContainer"]
+    Data["GameplayEffectData\n可复用 SO 配置"] -->|Source ASC 创建| Spec["GameplayEffectSpec\nData / Source / Level / SetByCaller"]
+    Spec -->|Target ASC 应用| Context["GameplayEffectCalculationContext\n实时 Source / Target 属性"]
+    Context --> Modifiers["普通 Modifier + Execution"]
+    Modifiers --> Output["GameplayEffectCalculationOutput\n一次性聚合结果"]
+    Output --> Target["Target GameplayAttributeContainer\n原子提交"]
+    Spec --> Runtime["GameplayEffectRuntime\nDuration / Infinite 状态"]
 ```
+
+## GameplayEffectSpec 与封存时机
+
+`GameplayEffectSpec` 是一次应用意图，不保存 Target，也不保存属性快照。创建时复制外部 SetByCaller；封存前可以通过 `TrySetSetByCaller`、`TryRemoveSetByCaller` 补齐或覆盖输入，`TrySeal` 成功后所有输入不可变。封存失败不会返回部分应用结果。
+
+```mermaid
+sequenceDiagram
+    participant Ability as GA/业务调用方
+    participant Source as Source ASC
+    participant Spec as GameplayEffectSpec
+    participant Target as Target ASC
+    participant Calc as CalculationContext
+    Ability->>Source: TryCreateOutgoingEffectSpec(Data, Level, SetByCaller)
+    Source-->>Ability: 未封存 Spec
+    Ability->>Spec: 补充 SetByCaller
+    Ability->>Spec: TrySeal()
+    Target->>Spec: TryApplyEffect(Spec)
+    Target->>Calc: 读取当前 Source/Target 属性
+    Calc-->>Target: 聚合 Output
+    Target->>Target: 一次性提交 AttributeModifier
+```
+
+同一 GA 激活创建的多个命中或投射物可以复用同一封存 Spec，因此技能等级倍率在激活时固定；AttackPower、暴击属性和 Armor 仍在每次命中或周期 Tick 的计算上下文中实时读取。
 
 ## GameplayEffectModifier
 
-`GameplayEffectModifier` 同时保存 Attribute、运算类型、优先级和 Magnitude 计算策略。它读取 Source、Target 与 Runtime，直接生成不可变 `AttributeModifier`，不修改 Attribute、Tag 或 ActiveEffects。
+`GameplayEffectModifier` 同时保存 Attribute、运算类型、优先级和 Magnitude 计算策略。它通过 `GameplayEffectCalculationContext` 读取 Source、Target、Level 与 SetByCaller，直接生成不可变 `AttributeModifier`，不修改 Attribute、Tag 或 ActiveEffects。
 
 - `FixedGameplayEffectModifier` 输出固定值。
 - `CurveGameplayEffectModifier` 使用 `BaseMagnitude × LevelCurve(Level)`，用于连续曲线倍率。
 - `LevelGameplayEffectModifier` 保存离散的 `Level → Magnitude` 列表，直接输出不高于 Runtime Level 的最近等级数值；超过最高等级时保持最高等级数值。
 - `SetByCallerGameplayEffectModifier` 通过 GameplayTag Key 读取 Runtime 数据，缺失 Key 时应用失败。
-- 自定义 Modifier 可以读取 Source/Target CurrentValue、Runtime.Level 和 Runtime.StackCount；一个配置只生成一个 AttributeModifier，多个目标使用多个配置项。
+- 自定义 Modifier 可以读取 CalculationContext 的 Source/Target CurrentValue、Level 和 StackCount；一个配置只生成一个 AttributeModifier，多个目标使用多个配置项。
 
-所有 Modifier 作者配置必须无运行时状态。层数不由框架自动放大；需要层数参与时，由具体子类明确读取 `Runtime.StackCount`，避免双重缩放。
+所有 Modifier 作者配置必须无运行时状态。层数不由框架自动放大；需要层数参与时，由具体子类明确读取 `GameplayEffectCalculationContext.StackCount`，避免双重缩放。
 
 ```mermaid
 flowchart LR
@@ -32,10 +57,25 @@ flowchart LR
     Curve["Curve"] --> Output
     Level["Level 阶梯值"] --> Output
     Caller["SetByCaller"] --> Output
-    Runtime["Source / Target / Level / StackCount / SetByCaller"] --> Fixed
-    Runtime --> Curve
-    Runtime --> Level
-    Runtime --> Caller
+    Context["GameplayEffectCalculationContext"] --> Fixed
+    Context --> Curve
+    Context --> Level
+    Context --> Caller
+```
+
+## GameplayEffectExecution 与原子 Output
+
+复杂业务计算使用 `GameplayEffectExecution`。Execution 可以读取实时属性和 SetByCaller，并返回 `GameplayEffectExecutionOutput`；返回 `null` 表示本次 GE 结算失败，非空但 Modifier 为空表示成功但没有数值变化。`GameplayEffectData.CalculateApplication` 会先计算普通 Modifier，再按配置顺序执行 Execution，最后合并成一个 `GameplayEffectCalculationOutput`，任一环节失败都不会提交部分 Attribute 变化。
+
+第一版基础伤害 Execution 使用以下数据流：
+
+```mermaid
+flowchart LR
+    Attack["Source AttackPower"] --> Damage["BasicDamageGameplayEffectExecution"]
+    Crit["Source CriticalChance / CriticalDamage"] --> Damage
+    Armor["Target Armor"] --> Damage
+    Multiplier["Spec Data.Damage.Multiplier"] --> Damage
+    Damage --> Result["Health Add -FinalDamage\n+IsCritical / DamageBeforeDefense / FinalDamage"]
 ```
 
 离散 Level 配置必须包含 Level 1，等级必须为正数且不可重复，Magnitude 必须为有限值。列表顺序不参与语义；运行时线性选择不高于当前等级的最高条目，不进行插值、LINQ 或临时排序。
@@ -119,25 +159,18 @@ flowchart TD
     ASC --> Attributes["GameplayAttributeContainer"]
     ASC --> GEController["GameEffectCtrl"]
     GEController --> Data["GameplayEffectData"]
-    GEController --> GERuntime["GameplayEffectRuntime : IModifierSource"]
-    Data --> Modifier["GameplayEffectModifier"]
-    Modifier --> AttributeModifier["不可变 AttributeModifier"]
+    ASC --> Spec["GameplayEffectSpec"]
+    Spec --> GEController
+    GEController --> Context["GameplayEffectCalculationContext"]
+    Context --> Modifier["GameplayEffectModifier"]
+    Context --> Execution["GameplayEffectExecution"]
+    Modifier --> Output["GameplayEffectCalculationOutput"]
+    Execution --> Output
+    Output --> AttributeModifier["不可变 AttributeModifier"]
     AttributeModifier --> Attributes
 ```
 
 配置资产不依赖 Editor Window；`GameEffectCtrl` 不依赖 View、Editor 或 Odin Tester。Odin Tester 仅在 `UNITY_EDITOR` 下调用真实公开 API。
-
-```mermaid
-flowchart TD
-    ASC["GameplayAbilitySystemComponent"] --> Tags["GameplayTagCountContainer"]
-    ASC --> Attributes["GameplayAttributeContainer"]
-    ASC --> GEController["GameEffectCtrl"]
-    GEController --> Data["GameplayEffectData"]
-    GEController --> GERuntime["GameplayEffectRuntime : IModifierSource"]
-    Data --> Modifier["GameplayEffectModifier"]
-    Modifier --> AttributeModifier["不可变 AttributeModifier"]
-    AttributeModifier --> Attributes
-```
 
 ## Editor 作者流程
 
@@ -145,7 +178,9 @@ flowchart TD
 flowchart LR
     Asset["选择 GameplayEffectData"] --> Details["SerializedObject 详情"]
     Details --> ModifierEdit["Managed-reference Modifier 编辑"]
+    Details --> ExecutionEdit["SerializeReference Execution 编辑"]
     ModifierEdit --> Validate["延迟合并校验"]
+    ExecutionEdit --> Validate
     Validate --> State["列表 Error/Warning 背景"]
     ModifierEdit --> Undo["Unity Undo/Redo"]
 ```
@@ -171,9 +206,9 @@ Modifier Add 菜单使用 `TypeCache` 发现可序列化的非抽象派生类型
 左侧 GE 资产列表缓存每个资产的最高校验严重程度：Error 使用红色背景，Warning 使用黄色背景，只有 Info 或没有问题时保持普通背景。校验由 Controller 在窗口首次打开、项目变化和 Undo/Redo 后延迟批量执行；普通字段和 Modifier 变化只延迟校验当前 GE。`ListView.bindItem` 只读取缓存并切换 USS class，不执行 Validator，虚拟化行复用前会清除旧严重程度样式。
 ## GE 固定资产验收
 
-`GameplayEffectOdinTester` 同时保留通用 Apply/Tick/Remove 操作和固定场景套件。固定套件使用 GameplayAttributeTestSet、烘焙 Tag Database 与 `Runtime/DataConfig/SO` 下的 GE 资产，每个场景通过临时 GameObject 挂载 Source A、Source B 和 Target ASC，只通过公开 Runtime API 验证最终 CurrentValue、Active Runtime、StackCount、Duration、Period 与 GrantedTag。
+`GameplayEffectOdinTester` 使用 Odin Button 验证 ScalableFloat、Spec 封存、基础伤害 Execution 与应用结果。已有 GE/Cue 集成测试继续使用 `GameplayAttributeTestSet`、烘焙 Tag Database 与 `Runtime/DataConfig/SO` 下的 GE 资产，通过公开 Runtime API 验证最终 CurrentValue、Active Runtime、StackCount、Duration、Period 与 GrantedTag。
 
-固定场景覆盖 Instant Fixed/Curve/Level/SetByCaller、Duration/Infinite、周期首跳与大 delta、TagQuery、GrantedTag、AggregateBySource、AggregateByTarget、三种 Duration 刷新、两种 Period 刷新、溢出拒绝/允许和逐层到期。Fixed Modifier 不自动乘 StackCount；叠层场景只验证 Runtime 身份、层数和计时，数值需要层数参与时由自定义 Modifier 显式读取 `Runtime.StackCount`。
+固定场景覆盖 Instant Fixed/Curve/Level/SetByCaller、Duration/Infinite、周期首跳与大 delta、TagQuery、GrantedTag、AggregateBySource、AggregateByTarget、三种 Duration 刷新、两种 Period 刷新、溢出拒绝/允许和逐层到期。Fixed Modifier 不自动乘 StackCount；叠层场景只验证 Runtime 身份、层数和计时，数值需要层数参与时由自定义 Modifier 显式读取 `GameplayEffectCalculationContext.StackCount`。
 
 Curve 测试固定为 `BaseMagnitude 10 × Curve(Level)`，Level 1/2/3 输出 10/20/30。离散 Level 固定为 `1→10、3→30、5→60`，用于验证精确等级、向下选择最近等级和超过最高等级。`GE_Test_StackPeriodPreserveTiming` 与 `GE_Test_StackPeriodResetTiming` 作为 NeverReset/Reset 的对照资产。
 
@@ -186,7 +221,7 @@ GE 的 Target 与 Source 都是挂载在 Owner 上的 `GameplayAbilitySystemComp
 
 ## ASC GE 快捷门面
 
-业务层可以使用 Target ASC 的 `TryApplyEffect`、`TryRemoveEffect`、`HasActiveEffect` 和 `ActiveEffects` 进行高频 GE 操作与查询。快捷接口只是 `GameEffectCtrl` 的委托：Target 仍是调用方法的 ASC，Source 通过参数传入；Level、SetByCaller、叠层、计时、GrantedTag 和原子提交规则全部由原 Controller 处理。
+业务层可以使用 Target ASC 的 `TryCreateOutgoingEffectSpec`、`TryApplyEffect(Spec)`、`TryApplyEffect(Data, Source, ...)`、`TryRemoveEffect`、`HasActiveEffect` 和 `ActiveEffects` 进行 GE 操作与查询。快捷接口只是 `GameEffectCtrl` 的委托：Target 仍是调用方法的 ASC，Source 通过 Spec 或参数固定；Level、SetByCaller、叠层、计时、GrantedTag、Execution 输出和原子提交规则全部由原 Controller 处理。
 
 无参数简化入口使用 Level 1 和空 SetByCaller。`ActiveEffects` 是 Controller 内部列表的只读别名，不创建副本；需要订阅或执行复杂流程时继续使用 `GameEffectCtrl`。
 

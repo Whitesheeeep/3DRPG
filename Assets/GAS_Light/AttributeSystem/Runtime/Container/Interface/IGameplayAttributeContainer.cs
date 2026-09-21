@@ -30,7 +30,7 @@ namespace WS_Modules.GAS.AttributeSystem
         /// <returns>至少找到一个 Modifier 且全部受影响 CurrentValue 已原子提交时返回 true。</returns>
         bool TryRemoveModifiers(IModifierSource source, out int removedCount);
 
-        /// <summary>原子替换指定 Source 在当前 Container 中持有的全部持续 Modifier。</summary>
+        /// <summary>原子替换指定 Source 在当前 Container 中持有的全部持续 Modifier。在其中会提交所有受影响的 CurrentValue，也就是会更新所有相关的 Attribute。</summary>
         /// <param name="source">Active GE 等运行时 Modifier Source。</param>
         /// <param name="modifiers">替换后的完整候选 Modifier；空列表表示只移除旧值。</param>
         /// <returns>全部旧值移除、新值创建和受影响 CurrentValue 提交成功时返回 true。</returns>

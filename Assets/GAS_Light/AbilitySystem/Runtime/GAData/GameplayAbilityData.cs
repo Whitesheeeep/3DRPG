@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
+using WS_Modules.GAS.Generated;
 using WS_Modules.GAS.GameplayEffect;
 using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.TAG;
@@ -36,6 +38,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private GameplayEffectData costEffect;
         [SerializeField, Tooltip("激活时应用到 Source 的 Duration 或 Infinite Cooldown GE；可为空。")]
         private GameplayEffectData cooldownEffect;
+        [SerializeField, Tooltip("根据 Ability Level 求值的技能伤害倍率；最终会写入 Data.Damage.Multiplier。")]
+        private GameplayScalableFloat damageMultiplier = new(1f);
         [SerializeField, Tooltip("Ability 的统一结果 GE 列表，由具体 Data 或 Task 决定应用时机。")]
         private List<GameplayEffectData> effects = new();
         [SerializeField, Tooltip("Ability 成功执行后发布的 GameplayCueTag 列表。")]
@@ -66,6 +70,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         public GameplayEffectData CostEffect => costEffect;
         /// <summary>获取激活时应用到 Source 的 Cooldown GE。</summary>
         public GameplayEffectData CooldownEffect => cooldownEffect;
+        /// <summary>获取根据 Ability Level 求值的技能伤害倍率配置。</summary>
+        public GameplayScalableFloat DamageMultiplier => damageMultiplier;
         /// <summary>获取该 Ability 配置的统一结果 GE 列表。</summary>
         public IReadOnlyList<GameplayEffectData> Effects => effects;
         /// <summary>获取 Ability 配置的 CueTag 列表。</summary>
@@ -107,6 +113,83 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
 
         #region 效果与 Cue 提交
 
+        /// <summary>使用 Ability Level 求出本次激活的最终伤害倍率。</summary>
+        /// <param name="abilityLevel">本次 Ability 激活等级。</param>
+        /// <param name="multiplier">求值成功时返回最终倍率。</param>
+        /// <returns>配置存在、求值有限且不小于零时返回 true。</returns>
+        public bool TryEvaluateDamageMultiplier(int abilityLevel, out float multiplier)
+        {
+            if (damageMultiplier == null)
+            {
+                multiplier = default;
+                return false;
+            }
+
+            if (!damageMultiplier.TryEvaluate(abilityLevel, out multiplier) ||
+                float.IsNaN(multiplier) || float.IsInfinity(multiplier) || multiplier < 0f)
+            {
+                multiplier = default;
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 根据本次 Ability 的等级和 SetByCaller 创建并封存所有结果 GE Spec。
+        /// </summary>
+        /// <param name="source">本次 Ability 的 Source ASC。</param>
+        /// <param name="abilityLevel">本次 Ability 的等级快照。</param>
+        /// <param name="activationSetByCaller">Ability 激活时的 SetByCaller 数据。</param>
+        /// <param name="specs">成功时返回所有已封存的结果 GE Spec。</param>
+        /// <returns>全部配置 GE 都成功创建和封存时返回 true。</returns>
+        internal bool TryCreateConfiguredEffectSpecs(
+            GameplayAbilitySystemComponent source,
+            int abilityLevel,
+            IReadOnlyDictionary<GameplayTag, float> activationSetByCaller,
+            out IReadOnlyList<GameplayEffectSpec> specs)
+        {
+            specs = Array.Empty<GameplayEffectSpec>();
+            if (source == null || abilityLevel < 1 ||
+                !TryEvaluateDamageMultiplier(abilityLevel, out float multiplier))
+                return false;
+
+            // key：SetByCaller GameplayTag；value：本次激活冻结的输入值。
+            var setByCallerMagnitudeByTagMap = new Dictionary<GameplayTag, float>();
+            if (activationSetByCaller != null)
+                foreach (KeyValuePair<GameplayTag, float> pair in activationSetByCaller)
+                    setByCallerMagnitudeByTagMap[pair.Key] = pair.Value;
+            setByCallerMagnitudeByTagMap[GameplayTags.Tag_Data_Damage_Multiplier] = multiplier;
+
+            var createdSpecs = new List<GameplayEffectSpec>(effects?.Count ?? 0);
+            if (effects == null)
+            {
+                specs = createdSpecs;
+                return true;
+            }
+
+            for (int i = 0; i < effects.Count; i++)
+            {
+                GameplayEffectData effect = effects[i];
+                if (effect == null ||
+                    !source.TryCreateOutgoingEffectSpec(
+                        effect,
+                        abilityLevel,
+                        setByCallerMagnitudeByTagMap,
+                        out GameplayEffectSpec spec) ||
+                    !spec.TrySeal())
+                {
+                    specs = Array.Empty<GameplayEffectSpec>();
+                    return false;
+                }
+
+                createdSpecs.Add(spec);
+            }
+
+            specs = createdSpecs;
+            return true;
+        }
+
         /// <summary>向指定 Target 应用统一结果 GE 列表，但不决定激活、命中等业务时机。</summary>
         /// <param name="source">本次 GE 的来源 ASC。</param>
         /// <param name="target">接收 GE 的目标 ASC。</param>
@@ -121,23 +204,23 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             IReadOnlyDictionary<GameplayTag, float> setByCaller,
             ICollection<GameEffectRuntime> retainedEffects = null)
         {
-            if (source == null || target == null || level < 1 || effects == null)
+            if (source == null || target == null || level < 1)
+                return 0;
+
+            if (!TryCreateConfiguredEffectSpecs(source, level, setByCaller, out IReadOnlyList<GameplayEffectSpec> specs))
                 return 0;
 
             int appliedCount = 0;
-            for (int i = 0; i < effects.Count; i++)
+            for (int i = 0; i < specs.Count; i++)
             {
-                GameplayEffectData effect = effects[i];
-                if (effect == null || !target.GameEffectCtrl.TryApply(
-                        effect,
-                        source,
-                        level,
-                        setByCaller,
-                        out GameEffectRuntime activeEffect))
+                if (!target.GameEffectCtrl.TryApply(
+                        specs[i],
+                        out GameplayEffectApplicationResult applicationResult))
                     continue;
 
                 appliedCount++;
-                if (activeEffect != null) retainedEffects?.Add(activeEffect);
+                if (applicationResult.ActiveEffect != null)
+                    retainedEffects?.Add(applicationResult.ActiveEffect);
             }
 
             return appliedCount;
@@ -152,6 +235,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <param name="position">可选的显式世界位置。</param>
         /// <param name="rotation">可选的显式世界旋转。</param>
         /// <param name="attachTransform">可选的显式挂点。</param>
+        /// <param name="effectSpec">可选的本次命中 GE Spec。</param>
+        /// <param name="applicationResult">可选的本次命中 GE 应用结果。</param>
         internal void PublishConfiguredCues(
             GameplayCueEventType eventType,
             GameplayAbilitySystemComponent source,
@@ -160,7 +245,9 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             GameplayAbilityRuntime abilityRuntime = null,
             Vector3? position = null,
             Quaternion? rotation = null,
-            Transform attachTransform = null)
+            Transform attachTransform = null,
+            GameplayEffectSpec effectSpec = null,
+            GameplayEffectApplicationResult applicationResult = null)
         {
             if (source == null || target == null || cueTags == null) return;
             for (int i = 0; i < cueTags.Length; i++)
@@ -172,12 +259,16 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                         cueTags[i], eventType, source, target, effectRuntime, abilityRuntime,
                         position ?? target.transform.position,
                         rotation ?? Quaternion.identity,
-                        attachTransform);
+                        attachTransform,
+                        effectSpec,
+                        applicationResult);
                 }
                 else
                 {
                     request = new GameplayCueRequest(
-                        cueTags[i], eventType, source, target, effectRuntime, abilityRuntime);
+                        cueTags[i], eventType, source, target, effectRuntime, abilityRuntime,
+                        effectSpec,
+                        applicationResult);
                 }
                 target.PublishGameplayCue(request);
             }

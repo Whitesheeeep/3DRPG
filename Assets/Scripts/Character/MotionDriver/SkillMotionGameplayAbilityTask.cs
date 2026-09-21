@@ -41,13 +41,13 @@ namespace RPG.Character
         /// <summary>取得现有 IMotionDriver 并申请 Skill 优先级的持续控制权。</summary>
         protected override void OnStart()
         {
-            driver = Runtime.SourceOwner.MotionDriver ??
+            driver = GARuntime.SourceOwner.MotionDriver ??
                 throw new InvalidOperationException("[SkillMotionTask] 当前角色未绑定 MotionDriver。");
             // 请求成功后不再执行可能失败的初始化操作，所有终态都对称释放 Handle。
             MotionChannels controlChannels = channels;
             if (consumeRootMotion)
                 controlChannels |= MotionChannels.Vertical;
-            handle = driver.RequestControl(new MotionControlRequest(Runtime.SourceOwner,
+            handle = driver.RequestControl(new MotionControlRequest(GARuntime.SourceOwner,
                 MotionPriority.Skill, controlChannels));
         }
 

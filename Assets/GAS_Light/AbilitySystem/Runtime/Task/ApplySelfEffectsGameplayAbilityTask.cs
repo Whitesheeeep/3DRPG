@@ -21,17 +21,17 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <summary>同步应用 Effects 和 Cue，然后立即完成当前 Task。</summary>
         protected override void OnStart()
         {
-            GameplayAbilityData data = Runtime.Data;
+            GameplayAbilityData data = GARuntime.Data;
             data.ApplyConfiguredEffects(
-                Runtime.SourceASC,
-                Runtime.SourceASC,
-                Runtime.Level,
-                Runtime.SetByCaller);
+                GARuntime.SourceASC,
+                GARuntime.SourceASC,
+                GARuntime.Level,
+                GARuntime.SetByCaller);
             data.PublishConfiguredCues(
                 GameplayCueEventType.Execute,
-                Runtime.SourceASC,
-                Runtime.SourceASC,
-                abilityRuntime: Runtime);
+                GARuntime.SourceASC,
+                GARuntime.SourceASC,
+                abilityRuntime: GARuntime);
             Complete();
         }
 

@@ -17,6 +17,11 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: 037f56e38ec8b75419e8983b585d6042
   m_SerializeEntries:
+  - m_GUID: 1c3be6c35dbf4a4fa6d4a0a0cd5c52bc
+    m_Address: EquipmentDevelopmentWindow
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 2d9160d59cd222943ab947bccbef21b0
     m_Address: HUDWindow
     m_ReadOnly: 0
@@ -27,6 +32,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 56877926b16b6fb499d7e457aeafd430
+    m_Address: BagWindow
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 9043c1983ab086e40920577426014006
     m_Address: ChoiceWindow
     m_ReadOnly: 0
@@ -34,16 +44,6 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: d89412627c47e9c4a992cc1265cf7cb2
     m_Address: DialogueWindow
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 56877926b16b6fb499d7e457aeafd430
-    m_Address: BagWindow
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 1c3be6c35dbf4a4fa6d4a0a0cd5c52bc
-    m_Address: EquipmentDevelopmentWindow
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0

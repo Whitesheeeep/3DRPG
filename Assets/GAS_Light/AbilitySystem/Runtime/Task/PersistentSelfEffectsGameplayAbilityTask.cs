@@ -29,18 +29,18 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <summary>应用 Source 持续效果并保持 Running，等待 Runtime End 或 Cancel。</summary>
         protected override void OnStart()
         {
-            GameplayAbilityData data = Runtime.Data;
+            GameplayAbilityData data = GARuntime.Data;
             data.ApplyConfiguredEffects(
-                Runtime.SourceASC,
-                Runtime.SourceASC,
-                Runtime.Level,
-                Runtime.SetByCaller,
-                Runtime.OwnedEffectsInternal);
+                GARuntime.SourceASC,
+                GARuntime.SourceASC,
+                GARuntime.Level,
+                GARuntime.SetByCaller,
+                GARuntime.OwnedEffectsInternal);
             data.PublishConfiguredCues(
                 GameplayCueEventType.Active,
-                Runtime.SourceASC,
-                Runtime.SourceASC,
-                abilityRuntime: Runtime);
+                GARuntime.SourceASC,
+                GARuntime.SourceASC,
+                abilityRuntime: GARuntime);
             cuesActive = true;
         }
 
@@ -58,11 +58,11 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private void RemoveOwnedState()
         {
             if (!cuesActive) return;
-            Runtime.Data.PublishConfiguredCues(
+            GARuntime.Data.PublishConfiguredCues(
                 GameplayCueEventType.Remove,
-                Runtime.SourceASC,
-                Runtime.SourceASC,
-                abilityRuntime: Runtime);
+                GARuntime.SourceASC,
+                GARuntime.SourceASC,
+                abilityRuntime: GARuntime);
             cuesActive = false;
         }
 

@@ -17,6 +17,16 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: 34e20b5498285eb47ae7dad85e7a6349
   m_SerializeEntries:
+  - m_GUID: 3c086062246e71947b6c39f65a255238
+    m_Address: Weapon/Sword02
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cda4c51234f1b7e468b93b182b8edd4a
+    m_Address: Weapon/Sword01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: f7cd217d74b5764469dfe3b43be8eb8c
     m_Address: Weapon/OdettaSword
     m_ReadOnly: 0

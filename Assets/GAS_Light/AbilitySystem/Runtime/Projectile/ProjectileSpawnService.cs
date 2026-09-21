@@ -15,9 +15,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <param name="origin">Marker 或 Source Transform 发射参考。</param>
         /// <param name="config">投射物 Spawn 配置。</param>
         /// <param name="source">本次投射物的 Source ASC。</param>
-        /// <param name="level">Ability 等级快照。</param>
-        /// <param name="setByCaller">Ability 动态值快照。</param>
-        /// <param name="effects">投射物命中时应用的 Effects。</param>
+        /// <param name="effectSpecs">投射物命中时应用的已封存 GE Specs。</param>
         /// <param name="cueTags">投射物命中时发布的 CueTags。</param>
         /// <param name="abilityRuntime">产生投射物的 Ability Runtime。</param>
         /// <param name="logContext">资源失败时使用的日志上下文。</param>
@@ -26,9 +24,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             Transform origin,
             ProjectileSpawnConfig config,
             GameplayAbilitySystemComponent source,
-            int level,
-            IReadOnlyDictionary<GameplayTag, float> setByCaller,
-            IReadOnlyList<GameplayEffectData> effects,
+            IReadOnlyList<GameplayEffectSpec> effectSpecs,
             IReadOnlyList<GameplayTag> cueTags,
             GameplayAbilityRuntime abilityRuntime,
             Object logContext)
@@ -64,9 +60,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 // 位置、旋转和方向与 Ability 快照一起提交，避免池化实例继续使用上一轮 Pose。
                 behaviour.Initialize(
                     source,
-                    level,
-                    setByCaller,
-                    effects,
+                    effectSpecs,
                     cueTags,
                     abilityRuntime,
                     pose.Position,
