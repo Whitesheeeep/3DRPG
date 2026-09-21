@@ -260,6 +260,7 @@ namespace WS_Modules.GAS.Editor
             ValidateCooldownTags(ability.CooldownEffect, issues);
 
             ValidateEffectReferences(ability.Effects, issues);
+            ValidateDamageMultiplier(ability, issues);
             ValidateAbilityTags(ability.AbilityTags, "AbilityTags", issues, true);
             ValidateAbilityTags(ability.CancelTags, "CancelTags", issues, true);
             ValidateAbilityTags(ability.BlockAbilityTags, "BlockAbilityTags", issues, true);
@@ -275,6 +276,33 @@ namespace WS_Modules.GAS.Editor
 
             ValidateSpecializedAbility(ability, issues);
             return issues;
+        }
+
+        /// <summary>校验 GA 的等级倍率配置，避免非法曲线值进入 GE Spec。</summary>
+        /// <param name="ability">待校验的 Ability 资产。</param>
+        /// <param name="issues">接收校验结果的集合。</param>
+        private static void ValidateDamageMultiplier(
+            GameplayAbilityData ability,
+            ICollection<GameplayAbilityValidationIssue> issues)
+        {
+            if (ability.DamageMultiplier == null)
+            {
+                issues.Add(Error("Damage Multiplier 不能为 null。"));
+                return;
+            }
+
+            if (!ability.TryEvaluateDamageMultiplier(1, out _))
+                issues.Add(Error("Damage Multiplier 在 Ability Level 1 下必须产生有限且不小于零的结果。"));
+
+            AnimationCurve curve = ability.DamageMultiplier.LevelCurve;
+            if (curve == null) return;
+            for (int i = 0; i < curve.length; i++)
+            {
+                Keyframe key = curve[i];
+                if (float.IsNaN(key.time) || float.IsInfinity(key.time) ||
+                    float.IsNaN(key.value) || float.IsInfinity(key.value))
+                    issues.Add(Error($"Damage Multiplier 曲线关键帧 {i + 1} 必须使用有限数值。"));
+            }
         }
 
         /// <summary>校验具体同步或异步 Ability 的专属配置，不重复 GE 内部规则。</summary>

@@ -10,17 +10,30 @@ namespace WS_Modules.GAS.GameplayEffect
     {
         /// <summary>Active GE 从当前 Target 移除后发送一次。</summary>
         event Action<GameEffectRuntime> EffectRemoved;
+        /// <summary>一次 GE 计算成功并完成原子提交后发送一次。</summary>
+        event Action<GameplayEffectApplicationResult> EffectExecuted;
 
         /// <summary>获取该 Controller 服务的目标 ASC。</summary>
         GameplayAbilitySystemComponent Owner { get; }
         /// <summary>获取当前 Duration 与 Infinite Runtime 的只读视图。</summary>
         IReadOnlyList<GameEffectRuntime> ActiveEffects { get; }
 
+        /// <summary>检查 Spec、来源与目标 Tag 是否允许进入应用流程。</summary>
+        /// <param name="spec">待应用的封存或可封存 Spec。</param>
+        /// <returns>基础配置与目标条件合法时返回 true。</returns>
+        bool CanApply(GameplayEffectSpec spec);
+
         /// <summary>检查配置、来源与目标 Tag 是否允许进入应用流程。</summary>
         /// <param name="data">待应用的 GE 配置。</param>
         /// <param name="source">效果来源 ASC。</param>
         /// <returns>基础配置与目标条件合法时返回 true。</returns>
         bool CanApply(GameplayEffectData data, GameplayAbilitySystemComponent source);
+
+        /// <summary>应用一个 GameplayEffectSpec 到当前 Target ASC。</summary>
+        /// <param name="spec">待应用的 GE Spec。</param>
+        /// <param name="result">成功时返回应用结果。</param>
+        /// <returns>全部计算与提交成功时返回 true。</returns>
+        bool TryApply(GameplayEffectSpec spec, out GameplayEffectApplicationResult result);
 
         /// <summary>向 Owner 应用一次 GE；Target 隐式为 Owner。</summary>
         /// <param name="data">待应用的 GE 配置资产。</param>

@@ -31,6 +31,8 @@ namespace WS_Modules.GAS.GameplayCue
             Target = request.Target;
             EffectRuntime = request.EffectRuntime;
             AbilityRuntime = request.AbilityRuntime;
+            EffectSpec = request.EffectSpec;
+            ApplicationResult = request.ApplicationResult;
             Position = request.Position;
             Rotation = request.Rotation;
             AttachTransform = request.AttachTransform;
@@ -53,6 +55,10 @@ namespace WS_Modules.GAS.GameplayCue
         public GameEffectRuntime EffectRuntime { get; }
         /// <summary>对应的 GA Runtime。</summary>
         public GameplayAbilityRuntime AbilityRuntime { get; }
+        /// <summary>对应的封存 GE Spec。</summary>
+        public GameplayEffectSpec EffectSpec { get; }
+        /// <summary>对应的 GE 应用计算结果。</summary>
+        public GameplayEffectApplicationResult ApplicationResult { get; }
         /// <summary>对象池取出的表现对象。</summary>
         public GameObject CueObject { get; }
         /// <summary>对象上的表现行为。</summary>

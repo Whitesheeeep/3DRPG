@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using RPG.Markers;
 using UnityEngine;
 using WS_Modules;
+using WS_Modules.GAS.GameplayEffect;
 
 namespace WS_Modules.GAS.GameplayAbilitySystem
 {
@@ -50,14 +52,24 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <param name="runtime">本次同步 Ability 的运行快照。</param>
         protected override void Execute(SynchronousGameplayAbilityRuntime runtime)
         {
+            if (!TryCreateConfiguredEffectSpecs(
+                    runtime.SourceASC,
+                    runtime.Level,
+                    runtime.SetByCaller,
+                    out IReadOnlyList<GameplayEffectSpec> effectSpecs))
+            {
+                Debug.LogError(
+                    $"Projectile Ability '{name}' ActivationId={runtime.ActivationId} 无法创建封存的 GE Specs。",
+                    runtime.SourceASC);
+                return;
+            }
+
             Transform origin = ResolveSpawnTransform(runtime);
             ProjectileSpawnService.SpawnBatch(
                 origin,
                 spawnConfig,
                 runtime.SourceASC,
-                runtime.Level,
-                runtime.SetByCaller,
-                Effects,
+                effectSpecs,
                 CueTags,
                 runtime,
                 this);

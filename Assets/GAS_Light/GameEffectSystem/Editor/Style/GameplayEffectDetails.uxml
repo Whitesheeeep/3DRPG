@@ -36,6 +36,7 @@
                     <ui:VisualElement name="ModifierPropertyHost" />
                 </ui:VisualElement>
             </ui:TwoPaneSplitView>
+            <uie:PropertyField name="ExecutionsField" binding-path="executions" label="Executions" />
             <ui:VisualElement name="CurveBakeGroup" class="ge-config-group ge-curve-bake-group">
                 <ui:Label text="Curve 烘焙预览" class="ge-section-title" />
                 <uie:PropertyField name="CurveBakeXAxisLabelField" binding-path="curveBakeXAxisLabel" label="X 轴名称" />

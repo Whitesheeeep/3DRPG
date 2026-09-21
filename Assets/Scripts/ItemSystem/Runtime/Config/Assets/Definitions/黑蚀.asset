@@ -21,7 +21,7 @@ MonoBehaviour:
   sortPriority: 500
   iconAddress: WeaponIcons
   iconSpriteName: "\u9ED1\u8680_9045"
-  worldPrefabAddress: 
+  worldPrefabAddress: Weapon/Sword02
   editorPreviewIcon: {fileID: 21300000, guid: 16effd0a7bdfaab4497acbbfe014f625, type: 3}
   weaponType: 0
   maxLevel: 90

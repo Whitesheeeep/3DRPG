@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using WS_Modules.GAS.AbilitySystemComponent;
 
 namespace WS_Modules.GAS.GameplayEffect
 {
@@ -18,11 +17,11 @@ namespace WS_Modules.GAS.GameplayEffect
         public string BakedResultLabel => bakedResultLabel;
 #endif
 
-        // 使用 Runtime.Level 采样倍率；未配置曲线时保持基础值。
+        /// <summary>使用上下文等级采样曲线倍率；未配置曲线时保持基础值。</summary>
+        /// <param name="context">提供本次 GE 等级的计算上下文。</param>
+        /// <returns>基础 Magnitude 与曲线倍率的乘积。</returns>
         protected override float CalculateMagnitude(
-            GameplayAbilitySystemComponent source,
-            GameplayAbilitySystemComponent target,
-            GameEffectRuntime runtime) => CalculateConfiguredMagnitude(runtime.Level);
+            GameplayEffectCalculationContext context) => CalculateConfiguredMagnitude(context.Level);
 
         /// <summary>使用指定等级计算曲线 Modifier 的作者数值。</summary>
         /// <param name="x">曲线采样坐标。</param>

@@ -13,7 +13,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <summary>获取当前 Task 状态。</summary>
         public GameplayAbilityTaskState State { get; private set; }
         /// <summary>获取拥有该 Task 的异步 Runtime。</summary>
-        protected AsynchronousGameplayAbilityRuntime Runtime { get; }
+        protected AsynchronousGameplayAbilityRuntime GARuntime { get; }
         #endregion
 
         #region 构造
@@ -21,7 +21,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <summary>创建尚未启动的 Task。</summary>
         protected GameplayAbilityTask(AsynchronousGameplayAbilityRuntime runtime)
         {
-            Runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+            GARuntime = runtime ?? throw new ArgumentNullException(nameof(runtime));
             State = GameplayAbilityTaskState.Inactive;
         }
         #endregion

@@ -1,14 +1,12 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using WS_Modules.GAS.AttributeSystem;
 using WS_Modules.GAS.TAG;
 #if UNITY_EDITOR
 using System.Globalization;
 using WS_Modules.Baking;
 using WS_Modules.GAS.GameplayEffect;
-#endif
-#if UNITY_EDITOR
-using WS_Modules.GAS.AttributeSystem;
 #endif
 
 namespace WS_Modules.GAS.GameplayEffect
@@ -45,6 +43,8 @@ namespace WS_Modules.GAS.GameplayEffect
         private GameplayTag[] cueTags = Array.Empty<GameplayTag>();
         [SerializeReference, Tooltip("按列表顺序执行；每项生成一个最终 Attribute Modifier。")]
         private List<GameplayEffectModifier> modifiers = new();
+        [SerializeReference, Tooltip("按列表顺序执行动态计算；返回的 Modifier 与业务结果会和普通 Modifier 一起原子提交。")]
+        private List<GameplayEffectExecution> executions = new();
 
         #endregion
 
@@ -190,9 +190,10 @@ namespace WS_Modules.GAS.GameplayEffect
         private List<(CurveGameplayEffectModifier Modifier, int OriginalIndex)> CollectCurveModifiers()
         {
             var result = new List<(CurveGameplayEffectModifier, int)>();
-            for (int index = 0; index < modifiers.Count; index++)
+            IReadOnlyList<GameplayEffectModifier> configuredModifiers = Modifiers;
+            for (int index = 0; index < configuredModifiers.Count; index++)
             {
-                GameplayEffectModifier modifier = modifiers[index];
+                GameplayEffectModifier modifier = configuredModifiers[index];
                 if (modifier == null) throw new InvalidOperationException($"GameplayEffectData '{name}' 的 Modifier {index + 1} 为空。");
                 if (modifier is CurveGameplayEffectModifier curveModifier)
                     result.Add((curveModifier, index));
@@ -266,7 +267,11 @@ namespace WS_Modules.GAS.GameplayEffect
         /// <summary>获取 GE 成功提交后发布的 CueTag 列表。</summary>
         public IReadOnlyList<GameplayTag> CueTags => cueTags;
         /// <summary>获取按顺序计算并提交的 GE Modifier 作者配置。</summary>
-        public IReadOnlyList<GameplayEffectModifier> Modifiers => modifiers;
+        public IReadOnlyList<GameplayEffectModifier> Modifiers =>
+            modifiers ?? (IReadOnlyList<GameplayEffectModifier>)Array.Empty<GameplayEffectModifier>();
+        /// <summary>获取按顺序执行的动态 GE Execution 作者配置。</summary>
+        public IReadOnlyList<GameplayEffectExecution> Executions =>
+            executions ?? (IReadOnlyList<GameplayEffectExecution>)Array.Empty<GameplayEffectExecution>();
         /// <summary>获取重复应用时的合并规则。</summary>
         public E_GameEffectStackingType StackingType => stackingType;
         /// <summary>获取允许的最大叠层数。</summary>
@@ -284,13 +289,89 @@ namespace WS_Modules.GAS.GameplayEffect
 
         #endregion
 
-        #region Modifier 计算契约
+        #region 计算契约与运行时输出
 
-        // 汇总所有 Modifier 声明的动态输入 Key，供 Controller 在唯一公开失败入口统一检查。
+        /// <summary>汇总普通 Modifier 和 Execution 声明的动态 SetByCaller Key。</summary>
+        /// <param name="keys">由 Spec 封存阶段填充的 Key 集合。</param>
         internal void CollectRequiredSetByCallerKeys(ISet<GameplayTag> keys)
         {
+            if (keys == null) return;
             for (int i = 0; i < Modifiers.Count; i++)
-                Modifiers[i].CollectRequiredSetByCallerKeys(keys);
+                Modifiers[i]?.CollectRequiredSetByCallerKeys(keys);
+            for (int i = 0; i < Executions.Count; i++)
+                Executions[i]?.CollectRequiredSetByCallerKeys(keys);
+        }
+
+        /// <summary>汇总 Execution 声明的 Source Attribute。</summary>
+        /// <param name="attributes">由编辑器或运行时校验的 Attribute 集合。</param>
+        internal void CollectRequiredSourceAttributes(ISet<GameplayAttribute> attributes)
+        {
+            if (attributes == null) return;
+            for (int i = 0; i < Executions.Count; i++)
+                Executions[i]?.CollectRequiredSourceAttributes(attributes);
+        }
+
+        /// <summary>汇总 Execution 声明的 Target Attribute。</summary>
+        /// <param name="attributes">由编辑器或运行时校验的 Attribute 集合。</param>
+        internal void CollectRequiredTargetAttributes(ISet<GameplayAttribute> attributes)
+        {
+            if (attributes == null) return;
+            for (int i = 0; i < Executions.Count; i++)
+                Executions[i]?.CollectRequiredTargetAttributes(attributes);
+        }
+
+        /// <summary>校验应用阶段可执行的 GE 配置边界。</summary>
+        /// <returns>配置可进入 Spec 结算管线时返回 true。</returns>
+        internal bool TryValidateApplicationConfiguration()
+        {
+            // 旧资产可能没有序列化新增的 Execution 列表；公开属性会把缺失列表视为空集合，保持兼容。
+            for (int i = 0; i < Modifiers.Count; i++)
+                if (Modifiers[i] == null) return false;
+            for (int i = 0; i < Executions.Count; i++)
+                if (Executions[i] == null) return false;
+
+            // Execution 表示一次结算；非周期持续 GE 没有明确的重算时机，因此拒绝该组合。
+            if (!IsPeriodic && durationType != E_GameEffectDurationType.Instant && Executions.Count > 0)
+                return false;
+            return true;
+        }
+
+        /// <summary>
+        /// 计算普通 Modifier 和全部 Execution，并将输出合并为一次原子结算结果。
+        /// </summary>
+        /// <param name="context">本次应用的实时计算上下文。</param>
+        /// <returns>成功时返回非空输出；任一计算失败时返回 null。</returns>
+        internal GameplayEffectCalculationOutput CalculateApplication(
+            GameplayEffectCalculationContext context)
+        {
+            if (context == null || !TryValidateApplicationConfiguration()) return null;
+
+            var outputModifiers = new List<AttributeModifier>();
+            var executionResults = new List<GameplayEffectExecutionResult>();
+            for (int i = 0; i < Modifiers.Count; i++)
+            {
+                AttributeModifier modifier = Modifiers[i].CreateModifier(context);
+                if (modifier == null || !modifier.IsValid()) return null;
+                outputModifiers.Add(modifier);
+            }
+
+            for (int i = 0; i < Executions.Count; i++)
+            {
+                GameplayEffectExecutionOutput output = Executions[i].Calculate(context);
+                // 如果 Execution 的计算结果为空，或者其 Modifiers 列表为空，则返回 null。
+                if (output?.Modifiers == null) return null;
+                // 如果 Execution 的计算结果中有任何一个 Modifier 为空或无效，则返回 null。
+                for (int modifierIndex = 0; modifierIndex < output.Modifiers.Count; modifierIndex++)
+                {
+                    AttributeModifier modifier = output.Modifiers[modifierIndex];
+                    if (modifier == null || !modifier.IsValid()) return null;
+                    outputModifiers.Add(modifier);
+                }
+
+                if (output.Result != null) executionResults.Add(output.Result);
+            }
+
+            return new GameplayEffectCalculationOutput(outputModifiers, executionResults);
         }
 
         #endregion

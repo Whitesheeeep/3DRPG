@@ -41,6 +41,10 @@ MonoBehaviour:
     name: CriticalChance
     displayName: 暴击率
     description: "\u66B4\u51FB\u7387"
+  - guid: b3b5c7d19e3240e1a9ef7f3d2d1c8a44
+    name: CriticalDamage
+    displayName: 暴击伤害
+    description: "\u66B4\u51FB\u4F24\u5BB3"
   idRecords:
   - guid: e3508c9a368a4a41a3bac0bb9153ef23
     id: 0
@@ -56,6 +60,8 @@ MonoBehaviour:
     id: 5
   - guid: a8cbe7f8445244a7b34ae972e95acbb6
     id: 6
+  - guid: b3b5c7d19e3240e1a9ef7f3d2d1c8a44
+    id: 7
   retiredIds: 
-  nextId: 7
+  nextId: 8
   bakeDirty: 0

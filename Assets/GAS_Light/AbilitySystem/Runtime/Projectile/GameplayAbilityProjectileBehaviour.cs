@@ -17,15 +17,13 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
 
         private Rigidbody projectileBody;
         private GameplayAbilitySystemComponent source;
-        private GameplayEffectData[] effects;
+        private GameplayEffectSpec[] effectSpecs;
         private GameplayTag[] cueTags;
-        private Dictionary<GameplayTag, float> setByCaller;
         private GameplayAbilityRuntime abilityRuntime;
         private Vector3 direction;
         private float speed;
         private float remainingLifetime;
         private LayerMask targetLayerMask = ~0;
-        private int level;
         private bool running;
 
         #endregion
@@ -66,11 +64,16 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             if ((targetLayerMask.value & (1 << target.gameObject.layer)) == 0) return;
 
             running = false;
-            for (int i = 0; i < effects.Length; i++)
+            GameplayEffectApplicationResult lastApplicationResult = null;
+            for (int i = 0; i < effectSpecs.Length; i++)
             {
-                GameplayEffectData effect = effects[i];
-                if (effect != null)
-                    target.TryApplyEffect(effect, source, level, setByCaller, out _);
+                if (effectSpecs[i] != null)
+                {
+                    if (target.TryApplyEffect(
+                            effectSpecs[i],
+                            out GameplayEffectApplicationResult applicationResult))
+                        lastApplicationResult = applicationResult;
+                }
             }
 
             for (int i = 0; i < cueTags.Length; i++)
@@ -83,7 +86,9 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                     effectRuntime: null,
                     abilityRuntime: abilityRuntime,
                     position: transform.position,
-                    rotation: transform.rotation));
+                    rotation: transform.rotation,
+                    effectSpec: lastApplicationResult?.Spec,
+                    applicationResult: lastApplicationResult));
             }
 
             Recycle();
@@ -108,18 +113,15 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             // projectileBody.velocity = Vector3.zero;
             //projectileBody.angularVelocity = Vector3.zero;
             source = null;
-            effects = null;
+            effectSpecs = null;
             cueTags = null;
-            setByCaller = null;
             abilityRuntime = null;
             targetLayerMask = ~0;
         }
 
         /// <summary>复制单次 Ability 激活数据并启动投射物。</summary>
         /// <param name="sourceAsc">发射投射物的 Source ASC。</param>
-        /// <param name="abilityLevel">激活时等级快照。</param>
-        /// <param name="callerValues">激活时 SetByCaller 快照。</param>
-        /// <param name="configuredEffects">命中时应用的 Effects。</param>
+        /// <param name="configuredEffectSpecs">命中时应用的已封存 GE Specs。</param>
         /// <param name="configuredCueTags">命中时发布的 CueTags。</param>
         /// <param name="sourceRuntime">生成投射物的 Ability Runtime。</param>
         /// <param name="spawnPosition">本次激活的刚体世界位置。</param>
@@ -130,9 +132,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <param name="targetMask">允许投射物结算的目标 ASC 根节点 LayerMask。</param>
         public void Initialize(
             GameplayAbilitySystemComponent sourceAsc,
-            int abilityLevel,
-            IReadOnlyDictionary<GameplayTag, float> callerValues,
-            IReadOnlyList<GameplayEffectData> configuredEffects,
+            IReadOnlyList<GameplayEffectSpec> configuredEffectSpecs,
             IReadOnlyList<GameplayTag> configuredCueTags,
             GameplayAbilityRuntime sourceRuntime,
             Vector3 spawnPosition,
@@ -151,25 +151,19 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
 
 
             source = sourceAsc;
-            level = abilityLevel;
             abilityRuntime = sourceRuntime;
             direction = moveDirection.normalized;
             speed = moveSpeed;
             remainingLifetime = lifetime;
             targetLayerMask = targetMask;
 
-            effects = new GameplayEffectData[configuredEffects.Count];
-            for (int i = 0; i < configuredEffects.Count; i++)
-                effects[i] = configuredEffects[i];
+            effectSpecs = new GameplayEffectSpec[configuredEffectSpecs?.Count ?? 0];
+            for (int i = 0; i < effectSpecs.Length; i++)
+                effectSpecs[i] = configuredEffectSpecs[i];
 
             cueTags = new GameplayTag[configuredCueTags.Count];
             for (int i = 0; i < configuredCueTags.Count; i++)
                 cueTags[i] = configuredCueTags[i];
-
-            setByCaller = new Dictionary<GameplayTag, float>();
-            if (callerValues != null)
-                foreach (KeyValuePair<GameplayTag, float> pair in callerValues)
-                    setByCaller.Add(pair.Key, pair.Value);
 
             // 所有 Pose 与运行快照提交完毕后才允许物理帧推进。
             running = true;

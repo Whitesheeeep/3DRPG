@@ -12,6 +12,8 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayAttribute Attribute_AttackPower = new GameplayAttribute(5, "AttackPower", "攻击力");
         /// <summary>CriticalChance</summary>
         public static readonly GameplayAttribute Attribute_CriticalChance = new GameplayAttribute(6, "CriticalChance", "暴击率");
+        /// <summary>CriticalDamage</summary>
+        public static readonly GameplayAttribute Attribute_CriticalDamage = new GameplayAttribute(7, "CriticalDamage", "暴击伤害");
         /// <summary>Health</summary>
         public static readonly GameplayAttribute Attribute_Health = new GameplayAttribute(0, "Health", "当前生命值");
         /// <summary>MP</summary>

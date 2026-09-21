@@ -273,6 +273,7 @@ namespace WS_Modules.GAS.Editor
 
             ValidatePolicies(effect, issues);
             ValidateCueTags(effect.CueTags, issues);
+            ValidateExecutions(effect, issues);
             GameplayAttributeRegistry registry = ResolveRegistry(issues);
             List<GameplayAttributeSet> sets = ResolveValidationSets(effect, issues);
             ValidateModifiers(effect, registry, sets, issues);
@@ -349,6 +350,24 @@ namespace WS_Modules.GAS.Editor
                 AddError(issues, "StackingType 包含未定义枚举值。");
             if (effect.StackingType != E_GameEffectStackingType.None && effect.MaxStackCount < 1)
                 AddError(issues, "启用叠层时 MaxStackCount 必须至少为 1。");
+        }
+
+        /// <summary>校验 SerializeReference Execution 列表及其支持的 GE 生命周期组合。</summary>
+        /// <param name="effect">待校验的 GE。</param>
+        /// <param name="issues">接收校验问题的集合。</param>
+        private static void ValidateExecutions(
+            GameplayEffectData effect,
+            ICollection<GameplayEffectValidationIssue> issues)
+        {
+            IReadOnlyList<GameplayEffectExecution> executions = effect.Executions;
+            for (int i = 0; i < executions.Count; i++)
+                if (executions[i] == null)
+                    AddError(issues, $"Execution [{i}] 为 null 或派生类型已丢失。");
+
+            if (executions.Count > 0 &&
+                effect.DurationType != E_GameEffectDurationType.Instant &&
+                !effect.IsPeriodic)
+                AddError(issues, "Execution 只支持 Instant 或 Periodic Duration/Infinite GE。");
         }
 
         // CueTag 只检查序列化值和当前已初始化数据库中的映射，不复制运行时 Cue 规则。

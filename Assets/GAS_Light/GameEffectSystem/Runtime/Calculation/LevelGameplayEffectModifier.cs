@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using WS_Modules.GAS.AbilitySystemComponent;
 
 namespace WS_Modules.GAS.GameplayEffect
 {
@@ -26,13 +25,13 @@ namespace WS_Modules.GAS.GameplayEffect
         [SerializeField, Tooltip("离散等级与最终 Magnitude；必须包含 Level 1。")]
         private List<GameplayEffectLevelMagnitude> levelMagnitudes = new();
 
-        // 线性查找不高于 Runtime.Level 的最高配置等级，列表作者顺序不影响结果。
+        /// <summary>按上下文等级选择不高于该等级的最高配置项。</summary>
+        /// <param name="context">提供本次 GE 等级的计算上下文。</param>
+        /// <returns>适用配置的 Magnitude；缺少 Level 1 时返回 NaN。</returns>
         protected override float CalculateMagnitude(
-            GameplayAbilitySystemComponent source,
-            GameplayAbilitySystemComponent target,
-            GameEffectRuntime runtime)
+            GameplayEffectCalculationContext context)
         {
-            return TryGetMagnitude(runtime.Level, out float value) ? value : float.NaN;
+            return TryGetMagnitude(context.Level, out float value) ? value : float.NaN;
         }
 
         /// <summary>按指定等级读取离散 Magnitude。</summary>

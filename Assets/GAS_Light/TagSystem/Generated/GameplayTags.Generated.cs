@@ -34,6 +34,12 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_CueTest_GE_Instant = new GameplayTag(118);
         /// <summary>CueTest.GE.Periodic</summary>
         public static readonly GameplayTag Tag_CueTest_GE_Periodic = new GameplayTag(121);
+        /// <summary>Data</summary>
+        public static readonly GameplayTag Tag_Data = new GameplayTag(178);
+        /// <summary>Data.Damage</summary>
+        public static readonly GameplayTag Tag_Data_Damage = new GameplayTag(179);
+        /// <summary>Data.Damage.Multiplier</summary>
+        public static readonly GameplayTag Tag_Data_Damage_Multiplier = new GameplayTag(180);
         /// <summary>Intent</summary>
         public static readonly GameplayTag Tag_Intent = new GameplayTag(138);
         /// <summary>Intent.Interaction</summary>

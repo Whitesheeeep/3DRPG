@@ -84,6 +84,7 @@ MonoBehaviour:
       initialValueMode: 0
   combatConfig:
     normalAttackAbilities:
+    - {fileID: 11400000, guid: 9245d8261e9c9f54192f88a26171d000, type: 2}
     - {fileID: 11400000, guid: a5f4af29fcb07fc4db4c0235ea89f01b, type: 2}
     - {fileID: 11400000, guid: 5b1b22e4d2c647a09c12aac149412fd1, type: 2}
     - {fileID: 11400000, guid: bc0c2362d9e535b4d9969d4824d2f393, type: 2}

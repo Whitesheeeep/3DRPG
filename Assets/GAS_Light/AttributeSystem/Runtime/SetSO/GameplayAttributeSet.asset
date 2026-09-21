@@ -73,20 +73,31 @@ MonoBehaviour:
       name: AttackPower
       displayName: "\u653B\u51FB\u529B"
     type: 0
-    defaultValue: 0
+    defaultValue: 100
     minValue: -Infinity
     maxValue: Infinity
-    baseValue: 0
-    currentValue: 0
+    baseValue: 100
+    currentValue: 100
     ownerSet: {fileID: 0}
   - attribute:
       id: 6
       name: CriticalChance
       displayName: "\u66B4\u51FB\u7387"
     type: 0
-    defaultValue: 0
-    minValue: -Infinity
+    defaultValue: 0.05
+    minValue: 0
     maxValue: Infinity
-    baseValue: 0
-    currentValue: 0
+    baseValue: 0.05
+    currentValue: 0.05
+    ownerSet: {fileID: 0}
+  - attribute:
+      id: 7
+      name: CriticalDamage
+      displayName: "\u66B4\u51FB\u4F24\u5BB3"
+    type: 0
+    defaultValue: 0.5
+    minValue: 0
+    maxValue: Infinity
+    baseValue: 0.5
+    currentValue: 0.5
     ownerSet: {fileID: 0}

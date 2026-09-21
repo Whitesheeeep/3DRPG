@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using WS_Modules.GAS.AbilitySystemComponent;
 
 namespace WS_Modules.GAS.GameplayEffect
 {
@@ -10,11 +9,11 @@ namespace WS_Modules.GAS.GameplayEffect
     {
         [SerializeField] private float magnitude;
 
-        // 固定计算直接返回作者值，合法性由 AttributeContainer 最终边界保障。
+        /// <summary>固定 Modifier 不读取上下文，直接返回作者配置值。</summary>
+        /// <param name="context">本次 GE 应用上下文；固定 Modifier 不使用。</param>
+        /// <returns>作者配置的固定 Magnitude。</returns>
         protected override float CalculateMagnitude(
-            GameplayAbilitySystemComponent source,
-            GameplayAbilitySystemComponent target,
-            GameEffectRuntime runtime) => CalculateConfiguredMagnitude();
+            GameplayEffectCalculationContext context) => CalculateConfiguredMagnitude();
 
         /// <summary>读取固定 Modifier 的作者配置值。</summary>
         /// <returns>固定 Magnitude。</returns>

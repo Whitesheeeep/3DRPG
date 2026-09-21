@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.AttributeSystem;
 using WS_Modules.GAS.TAG;
 
@@ -33,22 +32,21 @@ namespace WS_Modules.GAS.GameplayEffect
 
         #region 运行时计算
 
-        // 使用计算状态 Runtime 求出 Magnitude，但把最终 Source 绑定到真实 Active Runtime。
+        /// <summary>使用统一上下文求出 Magnitude，并绑定到本次 Spec 或 Active Runtime。</summary>
+        /// <param name="context">本次 GE 应用的实时计算上下文。</param>
+        /// <returns>尚未提交到 AttributeContainer 的最终 Modifier。</returns>
         internal AttributeModifier CreateModifier(
-            IModifierSource modifierSource,
-            GameplayAbilitySystemComponent source,
-            GameplayAbilitySystemComponent target,
-            GameEffectRuntime runtime)
+            GameplayEffectCalculationContext context)
         {
-            float magnitude = CalculateMagnitude(source, target, runtime);
-            return new AttributeModifier(modifierSource, attribute, type, magnitude, priority);
+            float magnitude = CalculateMagnitude(context);
+            return context.CreateModifier(attribute, type, magnitude, priority);
         }
 
-        // 子类只负责计算本次 Magnitude；合法性由最终 AttributeContainer 边界统一检查。
+        /// <summary>由具体 Modifier 根据本次实时上下文计算 Magnitude。</summary>
+        /// <param name="context">本次 GE 应用的实时计算上下文。</param>
+        /// <returns>本次应用使用的 Magnitude。</returns>
         protected abstract float CalculateMagnitude(
-            GameplayAbilitySystemComponent source,
-            GameplayAbilitySystemComponent target,
-            GameEffectRuntime runtime);
+            GameplayEffectCalculationContext context);
 
         /// <summary>尝试在不创建运行时对象的情况下计算指定等级的静态 Magnitude。</summary>
         /// <param name="level">用于等级型 Modifier 的输入等级。</param>
