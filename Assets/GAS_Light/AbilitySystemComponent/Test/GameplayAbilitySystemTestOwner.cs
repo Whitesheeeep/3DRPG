@@ -1,4 +1,5 @@
 using RPG.Character;
+using RPG.Character.Animation;
 using RPG.Markers;
 using RPG.SkillSystem;
 using UnityEngine;
@@ -23,6 +24,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
 
         /// <inheritdoc />
         public IMotionDriver MotionDriver => motionDriver;
+        public IAnimationPlayer AnimationPlayer { get; }
 
         /// <inheritdoc />
         public IFullBodyActionArbiter FullBodyActionArbiter => null;

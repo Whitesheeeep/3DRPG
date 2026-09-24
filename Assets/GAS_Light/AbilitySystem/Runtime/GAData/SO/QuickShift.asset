@@ -1,0 +1,76 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 92a3fd70e0644c4da339c935362b3d99, type: 3}
+  m_Name: QuickShift
+  m_EditorClassIdentifier: 
+  abilityId: 1
+  abilityName: "\u51B2\u523A"
+  icon: {fileID: 21300000, guid: 41bd82d2fe20ec64aaf74cd70fc9aacc, type: 3}
+  description: "\u4E00\u4E2A\u901A\u7528\u51B2\u523A\u6280\u80FD"
+  abilityTags:
+  - id: 181
+  cancelTags:
+  - id: 164
+  - id: 126
+  blockAbilityTags:
+  - id: 126
+  isCancelable: 0
+  activationTagQuery:
+    allTags: []
+    anyTags: []
+    banedTags:
+    - id: 161
+    - id: 162
+    - id: 163
+    - id: 154
+    - id: 156
+  costEffect: {fileID: 0}
+  cooldownEffect: {fileID: 0}
+  effects: []
+  cueTags: []
+  damageMultiplier:
+    baseValue: 1
+    levelCurve:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  rootTask:
+    rid: 4928037610329485701
+  references:
+    version: 2
+    RefIds:
+    - rid: 4928037610329485701
+      type: {class: SprintGATaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
+      data:
+        targetDistance: 2
+        directionalTransitions:
+        - direction: 0
+          transition: {fileID: 11400000, guid: 8f20eddf758ca1841a7f8ba16be78214, type: 2}
+        - direction: 1
+          transition: {fileID: 11400000, guid: 26fa0503c278442e94081b67d29e8b05, type: 2}
+        - direction: 2
+          transition: {fileID: 11400000, guid: 33687f56b3fa4b5d86205b94fe9475ec, type: 2}
+        - direction: 3
+          transition: {fileID: 11400000, guid: 8fbfb4c7e7a748eab5990d82fb833cbd, type: 2}
+        - direction: 4
+          transition: {fileID: 11400000, guid: 9ce8e63c6cf4488a984b74ee03eea8ef, type: 2}
+        - direction: 5
+          transition: {fileID: 11400000, guid: e35cf4a5cf8c493fa94cda3ef8bd8261, type: 2}
+        - direction: 6
+          transition: {fileID: 11400000, guid: 4e01b4b5dd0a4074804530edb940cecf, type: 2}
+        - direction: 7
+          transition: {fileID: 11400000, guid: 4e7005399ce14729b45eb96e510d8909, type: 2}
+        movementStartEvent: {fileID: 11400000, guid: 2201a2f4cde0448eacb8ffce87c3f9d3, type: 2}
+        movementStopEvent: {fileID: 11400000, guid: 4953475c065e464880d75063cc00875f, type: 2}
+        fadeOutDuration: 0.2

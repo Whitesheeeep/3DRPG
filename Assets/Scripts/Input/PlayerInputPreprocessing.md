@@ -6,14 +6,15 @@
 
 它不是按键队列，也不会直接向 ASC 写入 Gameplay Tag。系统的数据流分为三层：
 
-- `PlayerInputRequest`：保存一次物理手势，以及独立的 Press、Release 缓冲阶段。
+- `PlayerInputBinding`：每个输入独立的 ScriptableObject，拥有身份、交付模式及四项时长。
+- `PlayerInputRequest`：保存一次物理手势，以及独立的 Press、Release、Click 缓冲阶段。
 - `GameplayInputIntentArbiter`：仅对需要空间转换、合并或上下文分析的输入生成 Blackboard 结果。
 - `PlayerStateBlackboard`：保存当前帧 Intent、来源 Handle 和连续 Move，并在业务成功后把消费确认回传到来源 Request。
 
 ```mermaid
 flowchart LR
     A["InputAction performed / canceled"] --> B["PlayerInputController"]
-    B --> C["PlayerInputRequest<br/>Press / Held / Release"]
+    B --> C["PlayerInputRequest<br/>Press / Held / Release / Click"]
     C --> D["GameplayInputIntentArbiterManager"]
     D --> G["PlayerStateBlackboard<br/>Frame Intent + Move"]
     G --> H["GAS / FSM / 其他业务消费者"]
@@ -36,7 +37,7 @@ flowchart LR
 
 ### 2.2 配置输入绑定
 
-在 `PlayerInputController.bindings` 中显式添加 `PlayerInputBinding`。每项配置包括：
+在 `Assets/Scripts/Input/Bindings` 为每个动作创建独立 `PlayerInputBinding` 资产，再将资产引用加入 `PlayerInputController.bindings`。每项配置包括：
 
 | 字段 | 含义 |
 | --- | --- |
@@ -44,15 +45,21 @@ flowchart LR
 | `InputType` | Request 使用的逻辑输入类型 |
 | `PressBufferDuration` | Press 阶段可跨帧重试的真实时间 |
 | `ReleaseBufferDuration` | Release 阶段可跨帧重试的真实时间 |
+| `ClickMaxHeldDuration` | 短按 Click 与持续按住的分界；松开耗时严格小于该值才产生 Click |
+| `ClickBufferDuration` | 松开后 Click 阶段可跨帧重试的真实时间 |
+| `DeliveryMode` | `BufferedRequest` 进入 Request 生命周期；`ImmediateNotification` 只转发 performed |
 
 约束如下：
 
-- 至少配置一个绑定。
+- 至少配置一个绑定资产；`Reset` 只将四个时长恢复为默认值，不改 Action、InputType 或 DeliveryMode。
 - Action 引用不能为空。
 - 同一个 Action 不能重复绑定。
 - 同一个 `PlayerInputType` 不能重复绑定。
-- Duration 必须是有限非负数。
-- 绑定中的 Duration 为 `0` 时使用 Controller 的对应默认值。
+- 四个时长必须是有限非负数，不存在 Controller 全局默认值或 `0` 回退。
+- 每次按下会将该绑定当前的四个时长复制进本次 Request；手势期间编辑 SO 不会改变本次手势的 Click 边界或缓冲期限。
+- 每个 `BufferedRequest` 都可以产生 Click，不另设短按/长按开关；业务消费者决定是否使用 Click 阶段。
+- Sprint 的 `ClickMaxHeldDuration` 为 `0.20s`：小于阈值松开会生成冲刺 Click；按住达到阈值后仍保持按下则进入奔跑，之后松开不再生成 Click。
+- `ImmediateNotification` 不创建 Request，因此不会产生 Press、Release 或 Click Handle；SO 上的时长只为配置结构保持一致，不参与即时转发。
 
 对于需要从按下瞬间开始累计 `HeldDuration` 的技能，建议使用普通 Button Action。若给 Action 配置 Input System 的 `Hold` Interaction，`performed` 可能到达阈值后才触发，此时系统记录的起点将不再是物理按下瞬间。
 
@@ -135,11 +142,25 @@ if (!inputController.TryGetRequest(PlayerInputType.Skill1,
 // 这里由蓄力 Ability 自己记录开始/释放，不经过通用 Intent Arbiter。
 ```
 
-释放后 `HeldDuration` 会保留，因此具体蓄力 Ability 可以根据最终按住时长决定释放普通技能、蓄力技能或取消技能。Press 和 Release 是两个独立阶段，消费 Press 不会自动消费 Release。
+释放后 `HeldDuration` 会保留，因此具体蓄力 Ability 可以根据最终按住时长决定释放普通技能、蓄力技能或取消技能。Press 和 Release 是两个独立阶段，消费 Press 不会自动消费 Release。短于阈值的手势在释放时另创建 Click 阶段，Click 有自己的 Handle 与 Buffer；三种阶段可独立消费或到期。
+
+Sprint 的业务消费规则是：CharacterCombatSystem 仅在短按释放后尝试 Sprint 绑定的 QuickShift，并消费 Click；角色 Blackboard 仅在同一个 Request 仍物理按住且 `HeldDuration >= ClickMaxHeldDuration` 时把 Sprint 视为奔跑。两个判断都读取 Request 中同一份 SO 快照，避免边界不一致。QuickShift 激活时冻结当前 `MoveWorldInput` 的水平世界方向，通过 SetByCaller 参数传给冲刺 Task；无移动输入时 Task 采用角色正前方。Task 使用方向 Mixer、按动画进度提交固定目标距离，由 MotionDriver 负责正常碰撞结算。
+
+```mermaid
+flowchart LR
+    Press["Sprint 按下并快照阈值"] --> Release{松开时长}
+    Release -->|"< 0.20 秒"| Click["生成 Click"]
+    Click --> QuickShift["激活 QuickShift"]
+    Move["MoveWorldInput 世界方向"] --> SetByCaller["冻结 SetByCaller X/Z"]
+    SetByCaller --> QuickShift
+    QuickShift --> Task["Mixer 动画进度换算目标距离"]
+    Task --> Driver["MotionDriver 碰撞约束结算"]
+    Release -->|">= 0.20 秒且仍按住"| Run["Locomotion 进入 Run"]
+```
 
 ### 2.6 调试
 
-`GameplayInputOdinTester` 使用真实键鼠或手柄输入，不制造 performed、canceled 或 Request。它提供：
+`GameplayInputOdinTester` 可使用真实键鼠或手柄检查 InputAction 路径；Odin 按钮“验证 Click 手势生命周期”则以合成手势时间验证配置快照、阈值边界、长按、阶段消费、过期与手势替换。它还提供：
 
 - `Manual`：通过 OnGUI 按钮模拟业务成功后的确认。
 - `Interval`：每隔指定真实时间确认当前 Intent。
@@ -224,7 +245,7 @@ stateDiagram-v2
     Pressed --> Held: 下一帧仍未释放
     Pressed --> Released: canceled
     Held --> Released: canceled
-    Released --> [*]: Press 与 Release 均已消费或到期
+    Released --> [*]: Press、Release 与 Click 均已消费或到期
     Released --> Pressed: 同类型新 performed
 ```
 
@@ -235,7 +256,8 @@ stateDiagram-v2
 - 物理状态设为 `Pressed`。
 - `HeldDuration` 从零开始。
 - 创建新的 Press Handle 和 Press Buffer。
-- 清除上一手势遗留的 Release 阶段。
+- 快照该绑定四个时长配置。
+- 清除上一手势遗留的 Release 与 Click 阶段。
 
 之后仍保持按住时，Request 在下一帧转为 `Held`。这个转换不会创建新 Request、不会更换 Press Handle，也不会重置 Press Buffer。
 
@@ -243,20 +265,22 @@ stateDiagram-v2
 
 - 物理状态设为 `Released`。
 - 创建同一手势版本的独立 Release Handle 和 Release Buffer。
+- 若按住真实时间小于该手势的 `ClickMaxHeldDuration`，同时创建独立 Click Handle 和 Click Buffer；达到或超过阈值不创建 Click。
 - 不修改 Press Handle、Press Pending 或 Press 剩余时间。
 - 保留最终 `HeldDuration` 供 Release 仲裁使用。
 
-Press 和 Release 可以同时处于 Pending，并分别消费或到期。只有物理状态已经是 `Released`，且两个阶段都不再 Pending 时，Controller 才移除整个 Request。
+Press、Release 和 Click 可以独立处于 Pending，并分别消费或到期。只有物理状态已经是 `Released`，且三个阶段都不再 Pending 时，Controller 才移除整个 Request。新手势会替换上一手势未完成的 Release 与 Click 阶段，并使旧 Handle 失效。
 
 ### 4.2 Buffer 与时间
 
-Controller 在 `Update` 中使用 `Time.unscaledDeltaTime` 推进：
+Controller 在每次 `Update` 中通过 `Time.realtimeSinceStartupAsDouble` 对照 InputAction 回调的绝对时间戳更新：
 
 - `HeldDuration`。
 - Press Buffer 剩余时间。
 - Release Buffer 剩余时间。
+- Click Buffer 剩余时间。
 
-因此 `Time.timeScale = 0` 时输入缓冲仍会到期，自动测试的真实时间逻辑也能继续运行。
+因此 `Time.timeScale = 0` 时输入缓冲仍会到期；使用回调时间戳也避免在按下或松开后立刻完整扣除当前帧的 `deltaTime`。
 
 Buffer 的意义是允许同一个 Request 阶段在多个帧中重复仲裁。Intent 本身不跨帧；跨帧的是 Request 的 Pending 状态和剩余 Duration。
 
@@ -268,7 +292,7 @@ Buffer 的意义是允许同一个 Request 阶段在多个帧中重复仲裁。I
 | --- | --- |
 | `InputType` | 定位对应输入类型 |
 | `GestureVersion` | 区分同一输入类型的不同手势 |
-| `Stage` | 区分 Press 或 Release 阶段 |
+| `Stage` | 区分 Press、Release 或 Click 阶段 |
 
 只有 Handle 的三部分都匹配当前 Request，且对应阶段仍然 Pending，消费确认才会成功。旧手势 Handle、错误阶段 Handle、已消费 Handle 和已过期 Handle 都不能改变当前 Request。
 
@@ -284,7 +308,7 @@ sequenceDiagram
     participant BC as 业务消费者
 
     IS->>IC: performed / canceled
-    IC->>IC: Advance(unscaledDeltaTime)
+    IC->>IC: Advance(realtimeSinceStartupAsDouble)
     PC->>PC: ASC Tick
     PC->>AM: ArbitrateFrame(camera)
     AM->>A: 调用各个 ArbitrateFrame(input, BB, camera)
@@ -301,13 +325,14 @@ sequenceDiagram
 
 `PlayerInputController` 的执行顺序为 `-900`，`PlayerController` 为 `-800`。普通默认顺序的 `Update` 消费者会在仲裁完成后读取本帧 Intent。帧末清理只移除临时 Intent 和来源映射，不会误认为业务已经消费 Request。
 
-输入测试面板显示当前 Intent、连续 Move 和 Press/Release 消费结果。发布过程没有独立诊断事件；`TryPublishFrameIntent` 的返回值只在仲裁策略内部用于同步处理。自动模式中当前 Intent 变为 `false`，表示该帧意图已被业务确认或帧末清理。
+输入测试面板显示当前 Intent、连续 Move 和 Press/Release/Click 消费结果。发布过程没有独立诊断事件；`TryPublishFrameIntent` 的返回值只在仲裁策略内部用于同步处理。自动模式中当前 Intent 变为 `false`，表示该帧意图已被业务确认或帧末清理。
 
 ### 4.5 数据所有权
 
 | 数据 | 所有者 | 生命周期 |
 | --- | --- | --- |
-| Input Action 绑定 | `PlayerInputController` | 组件生命周期 |
+| Input Action 身份与时间配置 | 每项 `PlayerInputBinding` SO | 资产生命周期；时长在每次按下时快照 |
+| Input Action 监听映射 | `PlayerInputController` | 组件生命周期 |
 | Request 与 Buffer | `PlayerInputController` | 一次物理手势及其待消费阶段 |
 | 仲裁器顺序 | `GameplayInputIntentArbiterManager` | PlayerController 生命周期 |
 | Intent Tags | `PlayerStateBlackboard` | 当前帧 |
@@ -322,7 +347,7 @@ Intent 表示“本帧仲裁结果”，不是角色持久状态。一直保留�
 
 ### 为什么 TagContainer 之外还需要 `intentSources`？
 
-TagContainer 只能回答某个 Tag 是否存在，不能记录它由哪个 Request、哪个手势版本、哪个阶段产生。消费确认必须依赖来源 Handle，才能准确清除 Press 或 Release，并拒绝旧手势确认。
+TagContainer 只能回答某个 Tag 是否存在，不能记录它由哪个 Request、哪个手势版本、哪个阶段产生。消费确认必须依赖来源 Handle，才能准确清除 Press、Release 或 Click，并拒绝旧手势确认。
 
 ### Press 和 Held 为什么共用一个 Press 阶段？
 
@@ -330,7 +355,7 @@ Held 是物理状态的持续变化，不是第二次输入。Pressed 转 Held �
 
 ### Release 为什么拥有独立 Buffer？
 
-快速点击后，Press 可能仍在等待可用条件，而 Release 已经发生。两个独立窗口允许业务分别处理“尝试开始”和“尝试结束”，互不覆盖。
+快速点击后，Press 可能仍在等待可用条件，而 Release 与 Click 已经发生。三个独立窗口允许业务分别处理开始、释放和短按语义，互不覆盖。
 
 ### 禁用组件时会发生什么？
 

@@ -164,6 +164,7 @@ GameObject:
   - component: {fileID: 8044412219233088983}
   - component: {fileID: 1428188949264102162}
   - component: {fileID: 2712018371044770488}
+  - component: {fileID: 3143196628603700296}
   m_Layer: 5
   m_Name: WeaponBtn
   m_TagString: Untagged
@@ -272,7 +273,32 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1428188949264102162}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 3143196628603700296}
+        m_TargetAssemblyTypeName: EasyAudioPlay, WSFrame.AudioSystem
+        m_MethodName: PlayAudio
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+--- !u!114 &3143196628603700296
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 473374749925403538}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43d8fa2b677045d496d5a085fc82df75, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  audioClipNameKey: UI/BagBtnClick
 --- !u!1 &671663167203307432
 GameObject:
   m_ObjectHideFlags: 0
@@ -2399,6 +2425,7 @@ GameObject:
   - component: {fileID: 5826737562889460131}
   - component: {fileID: 2494939760903648946}
   - component: {fileID: 6743791230722766580}
+  - component: {fileID: 3433419955143881891}
   m_Layer: 5
   m_Name: DevelopmentExperienceBtn
   m_TagString: Untagged
@@ -2507,7 +2534,32 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 2494939760903648946}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 3433419955143881891}
+        m_TargetAssemblyTypeName: EasyAudioPlay, WSFrame.AudioSystem
+        m_MethodName: PlayAudio
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+--- !u!114 &3433419955143881891
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3837728617010122020}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43d8fa2b677045d496d5a085fc82df75, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  audioClipNameKey: UI/BagBtnClick
 --- !u!1 &3904403068822574326
 GameObject:
   m_ObjectHideFlags: 0
@@ -2520,6 +2572,7 @@ GameObject:
   - component: {fileID: 2909815401555228334}
   - component: {fileID: 3472878051869344033}
   - component: {fileID: 55718924737871649}
+  - component: {fileID: 77423481093418989}
   m_Layer: 5
   m_Name: FoodBtn
   m_TagString: Untagged
@@ -2628,7 +2681,32 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 3472878051869344033}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 3433419955143881891}
+        m_TargetAssemblyTypeName: EasyAudioPlay, WSFrame.AudioSystem
+        m_MethodName: PlayAudio
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+--- !u!114 &77423481093418989
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3904403068822574326}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43d8fa2b677045d496d5a085fc82df75, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  audioClipNameKey: UI/BagBtnClick
 --- !u!1 &3931851589628886846
 GameObject:
   m_ObjectHideFlags: 0
@@ -3256,6 +3334,7 @@ GameObject:
   - component: {fileID: 7041438989692354688}
   - component: {fileID: 2214919290587363676}
   - component: {fileID: 3548044360310706155}
+  - component: {fileID: 8022908413116025428}
   m_Layer: 5
   m_Name: DevelopmentItemBtn
   m_TagString: Untagged
@@ -3364,7 +3443,32 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 2214919290587363676}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 3433419955143881891}
+        m_TargetAssemblyTypeName: EasyAudioPlay, WSFrame.AudioSystem
+        m_MethodName: PlayAudio
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+--- !u!114 &8022908413116025428
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4464979547637706987}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43d8fa2b677045d496d5a085fc82df75, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  audioClipNameKey: UI/BagBtnClick
 --- !u!1 &4923707293509994615
 GameObject:
   m_ObjectHideFlags: 0
@@ -5343,6 +5447,7 @@ GameObject:
   - component: {fileID: 5667571766793091423}
   - component: {fileID: 1330849295592042893}
   - component: {fileID: 7860950047979609687}
+  - component: {fileID: 6753540488649806523}
   m_Layer: 5
   m_Name: ArtifactBtn
   m_TagString: Untagged
@@ -5451,7 +5556,32 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1330849295592042893}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 3433419955143881891}
+        m_TargetAssemblyTypeName: EasyAudioPlay, WSFrame.AudioSystem
+        m_MethodName: PlayAudio
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+--- !u!114 &6753540488649806523
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8262678751701540136}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43d8fa2b677045d496d5a085fc82df75, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  audioClipNameKey: UI/BagBtnClick
 --- !u!1 &8693566291221208861
 GameObject:
   m_ObjectHideFlags: 0

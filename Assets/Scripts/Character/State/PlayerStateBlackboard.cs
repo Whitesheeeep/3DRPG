@@ -27,11 +27,12 @@ namespace RPG.Character.State
         public bool HasMovement => MoveWorldInput.sqrMagnitude > 0.0001f;
         /// <summary>获取稳定 Player 持有的输入请求缓冲区。</summary>
         public IPlayerInputRequestBuffer InputRequests => inputRequests;
-        /// <summary>获取 Sprint 是否处于 Pressed 或 Held 阶段。</summary>
+        /// <summary>判断 Sprint 是否仍被按住并超过同一输入手势的 Click 阈值。</summary>
         public bool IsSprintHeld => inputRequests.TryGetRequest(
             PlayerInputType.Sprint,
             out IReadOnlyPlayerInputRequest request) &&
-            request.PhysicalState != PlayerInputPhysicalState.Released;
+            request.PhysicalState != PlayerInputPhysicalState.Released &&
+            request.HeldDuration >= request.ClickMaxHeldDuration;
         /// <summary>获取环境检测到的接地事实。</summary>
         public bool IsGrounded { get; internal set; }
         /// <summary>获取环境检测到的地面法线。</summary>

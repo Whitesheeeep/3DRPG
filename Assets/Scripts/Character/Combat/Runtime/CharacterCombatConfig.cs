@@ -71,8 +71,9 @@ namespace RPG.Character
 
         /// <summary>判断输入是否属于 CombatSystem 管理的固定技能槽位。</summary>
         /// <param name="inputType">待检查的输入类型。</param>
-        /// <returns>输入属于 Secondary 或 Skill1 至 Skill4 时返回 true。</returns>
+        /// <returns>输入属于 Sprint、Secondary 或 Skill1 至 Skill4 时返回 true。</returns>
         private static bool IsSkillInputType(PlayerInputType inputType) =>
+            inputType == PlayerInputType.Sprint ||
             inputType == PlayerInputType.Secondary ||
             inputType == PlayerInputType.Skill1 ||
             inputType == PlayerInputType.Skill2 ||

@@ -1,4 +1,5 @@
 using RPG.Character;
+using RPG.Character.Animation;
 using RPG.Markers;
 using RPG.SkillSystem;
 using UnityEngine;
@@ -21,6 +22,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
 
         /// <summary>获取按 ASC Tag 限制移动的接口。</summary>
         IMotionDriver MotionDriver { get; }
+
+        /// <summary>获取宿主用于播放动画的接口。</summary>
+        IAnimationPlayer AnimationPlayer { get; }
 
         /// <summary>获取宿主用于登记 FullBody Ability 生命周期和转换窗口的动作仲裁接口。</summary>
         IFullBodyActionArbiter FullBodyActionArbiter { get; }

@@ -56,10 +56,21 @@ namespace RPG.Character
             if (bakedLevelProgressions.Count != maxLevel)
                 return true;
 
+            Debug.Log($"CharacterGrowthProfile '{name}' 检查烘焙需求：bakedLevelProgressions={bakedLevelProgressions.Count}, maxLevel={maxLevel}, bakedAttributeProgressions={bakedAttributeProgressions.Count}");
             // 先建立并校验完整 Definition 顺序；未配置成长曲线的 Attribute 也必须拥有烘焙列。
             List<GameplayAttributeDefinition> orderedDefinitions = BuildOrderedAttributeDefinitions(initialAttributeSets);
-            return bakedAttributeProgressions.Count != orderedDefinitions.Count ||
-                   bakedInputHash != CalculateInputHash(initialAttributeSets);
+            if (bakedAttributeProgressions.Count != orderedDefinitions.Count)
+            {
+                Debug.LogError("CharacterGrowthProfile '" + name + "' 的烘焙 Attribute 数量与初始 AttributeSet 不一致：baked=" + bakedAttributeProgressions.Count + ", ordered=" + orderedDefinitions.Count);
+                return true;
+            }
+            if (bakedInputHash != CalculateInputHash(initialAttributeSets))
+            {
+                Debug.LogError("CharacterGrowthProfile '" + name + "' 的烘焙输入指纹与当前初始 AttributeSet 不一致：baked=" + bakedInputHash + ", current=" + CalculateInputHash(initialAttributeSets));
+                return true;
+            }
+
+            return false;
         }
 
         #endregion

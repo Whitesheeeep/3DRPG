@@ -214,7 +214,7 @@ namespace RPG.Character
             instance.Config.Validate();
             InitializeAttributesFromInstance();
             runtimeAttributeBinding = new CharacterRuntimeAttributeBinding(instance, abilitySystemComponent, progressionResolver);
-            combatSystem.Initialize(abilitySystemComponent, instance.Config.CombatConfig);
+            combatSystem.Initialize(abilitySystemComponent, instance.Config.CombatConfig, stateBlackboard);
             actionArbiter = new CharacterActionArbiter(
                 this,
                 stateBlackboard,

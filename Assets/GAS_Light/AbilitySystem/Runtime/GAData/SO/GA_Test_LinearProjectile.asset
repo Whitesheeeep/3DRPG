@@ -31,6 +31,14 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 6861f23c72baf27428de65bec7d0d062, type: 2}
   cueTags:
   - id: 23
+  damageMultiplier:
+    baseValue: 1
+    levelCurve:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
   spawnConfig:
     addressableKey: 
     fallbackPrefab: {fileID: 100000, guid: 6fdae0aae4594fa396c5bb6c568bbdc4, type: 3}

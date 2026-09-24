@@ -26,7 +26,12 @@ MonoBehaviour:
   activationTagQuery:
     allTags: []
     anyTags: []
-    banedTags: []
+    banedTags:
+    - id: 161
+    - id: 162
+    - id: 163
+    - id: 154
+    - id: 156
   costEffect: {fileID: 0}
   cooldownEffect: {fileID: 0}
   damageMultiplier:
@@ -40,6 +45,14 @@ MonoBehaviour:
   effects: []
   cueTags:
   - id: 57
+  damageMultiplier:
+    baseValue: 1
+    levelCurve:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
   rootTask:
     rid: 8492673064478303488
   references:

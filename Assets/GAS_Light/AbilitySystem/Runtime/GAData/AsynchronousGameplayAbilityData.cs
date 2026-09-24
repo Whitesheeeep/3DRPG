@@ -6,7 +6,7 @@ using WS_Modules.GAS.TAG;
 namespace WS_Modules.GAS.GameplayAbilitySystem
 {
     /// <summary>定义由独立 Root Task 驱动完成或中断的异步 Ability。</summary>
-    public abstract class AsynchronousGameplayAbilityData : GameplayAbilityData
+    public abstract class AsynchronousGameplayAbilityData : DamageGameplayAbilityData
     {
         #region 字段与属性
         [SerializeReference, Tooltip("每次激活都会据此创建独立的 Root Task 实例。")]

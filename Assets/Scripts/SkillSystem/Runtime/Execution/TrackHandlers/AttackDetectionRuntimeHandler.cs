@@ -49,6 +49,7 @@ namespace RPG.SkillSystem
 
         /// <summary>
         /// 在 Animator 与武器节点完成本帧更新后执行所有命中采样帧。
+        /// 同一个 Detection ID 的命中结果会在整次技能执行中去重，WeaponTrace 姿态状态仍按 Clip 独立保存。
         /// </summary>
         /// <param name="frame">当前整数帧。</param>
         public override void ProcessLateFrame(int frame)
@@ -162,7 +163,18 @@ namespace RPG.SkillSystem
         {
             Transform root = Context.Request.WeaponRoot;
             Transform tip = Context.Request.WeaponTip;
-            if (root == null || tip == null || root == tip) return;
+
+            if (root == null)
+            {
+                Debug.LogWarning("WeaponTrace 无法执行，因为刀根为空。");
+                return;
+            }
+
+            if (root == tip)
+            {
+                Debug.LogWarning("WeaponTrace 无法执行，因为刀根和刀尖相同。");
+                return;
+            }
 
             Vector3 currentRoot = root.position;
             Vector3 currentTip = tip.position;
