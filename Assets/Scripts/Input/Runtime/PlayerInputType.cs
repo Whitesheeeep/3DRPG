@@ -42,6 +42,7 @@ namespace RPG.PlayerInputSystem
     public enum PlayerInputRequestStage
     {
         Press,
-        Release
+        Release,
+        Click
     }
 }

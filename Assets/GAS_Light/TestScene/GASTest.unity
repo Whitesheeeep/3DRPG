@@ -1346,12 +1346,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   testAttributeSet: {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
   abilityDatabase: {fileID: 11400000, guid: 1a17a26fee721d940838d5befe222554, type: 2}
-  instantSkill: {fileID: 11400000, guid: 8dd9cbf03c2d4dcf8b0b9276fb7fc9b1, type: 2}
+  instantSkill: {fileID: 11400000, guid: 29af3eba64d141afbfac72595181c363, type: 2}
   passiveSkill: {fileID: 11400000, guid: f1e6875193c543f89aee4ec2a1e2a04a, type: 2}
   sphereProjectileSkill: {fileID: 11400000, guid: d9fc6a1d2b8e490bb12d3b3be9b2e0f8, type: 2}
   selfCastSkill: {fileID: 11400000, guid: 7c68c905fb1240e3a920e9a1240f2d19, type: 2}
   selfChannelSkill: {fileID: 11400000, guid: b51db005f9ad4a3e800780ca1f834f79, type: 2}
   toggleSkill: {fileID: 11400000, guid: 0bcaf93a89b74feb82dd830fe0897150, type: 2}
+  quickShiftSkill: {fileID: 11400000, guid: 8dd9cbf03c2d4dcf8b0b9276fb7fc9b1, type: 2}
 --- !u!114 &1696073711
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1370,7 +1371,7 @@ MonoBehaviour:
   abilityDatabase: {fileID: 11400000, guid: 1a17a26fee721d940838d5befe222554, type: 2}
   cueDatabase: {fileID: 11400000, guid: 1d5d8bec41f863940bc59fc14cc022f0, type: 2}
   activationRules: {fileID: 11400000, guid: 6aef4de02d8d4b9aa6f1e0c4e305f1d2, type: 2}
-  instantAbility: {fileID: 11400000, guid: 8dd9cbf03c2d4dcf8b0b9276fb7fc9b1, type: 2}
+  instantAbility: {fileID: 11400000, guid: 29af3eba64d141afbfac72595181c363, type: 2}
   asynchronousAbility: {fileID: 11400000, guid: b1236d98197e43c283ffc1f644b3f4fb, type: 2}
   passiveAbility: {fileID: 11400000, guid: f1e6875193c543f89aee4ec2a1e2a04a, type: 2}
   projectileAbility: {fileID: 11400000, guid: d9fc6a1d2b8e490bb12d3b3be9b2e0f8, type: 2}
@@ -1430,7 +1431,7 @@ MonoBehaviour:
   durationEffect: {fileID: 11400000, guid: ab00e5b49e1ee3e4f8a4ddaaaf5f0e22, type: 2}
   infiniteEffect: {fileID: 11400000, guid: a12f1e6d370a4f93a846d7d9b3e20c71, type: 2}
   periodicEffect: {fileID: 11400000, guid: b91394775fc00f64bbab6c0a30c0f0af, type: 2}
-  instantAbility: {fileID: 11400000, guid: 8dd9cbf03c2d4dcf8b0b9276fb7fc9b1, type: 2}
+  instantAbility: {fileID: 11400000, guid: 29af3eba64d141afbfac72595181c363, type: 2}
   passiveAbility: {fileID: 11400000, guid: f1e6875193c543f89aee4ec2a1e2a04a, type: 2}
   projectileAbility: {fileID: 11400000, guid: d9fc6a1d2b8e490bb12d3b3be9b2e0f8, type: 2}
   instantEffectCueTag:

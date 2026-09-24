@@ -489,7 +489,6 @@ namespace WS_Modules.GAS.Editor
             propertyPath == "activationTagQuery" ||
             propertyPath == "costEffect" ||
             propertyPath == "cooldownEffect" ||
-            propertyPath == "damageMultiplier" ||
             propertyPath == "effects" ||
             propertyPath == "cueTags";
 

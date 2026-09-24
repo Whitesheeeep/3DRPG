@@ -15,7 +15,7 @@ namespace RPG.Character
         [SerializeField, LabelText("Gameplay Ability")]
         private GameplayAbilityData ability;
 
-        /// <summary>获取 Secondary 或 Skill1 至 Skill4 输入槽位。</summary>
+        /// <summary>获取 Sprint、Secondary 或 Skill1 至 Skill4 输入槽位。</summary>
         public PlayerInputType InputType => inputType;
         /// <summary>获取由 CharacterCombatSystem 预先授予角色 ASC 的能力配置。</summary>
         public GameplayAbilityData Ability => ability;

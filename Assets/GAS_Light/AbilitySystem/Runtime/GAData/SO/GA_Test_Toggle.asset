@@ -31,6 +31,14 @@ MonoBehaviour:
   - {fileID: 11400000, guid: a12f1e6d370a4f93a846d7d9b3e20c71, type: 2}
   cueTags:
   - id: 22
+  damageMultiplier:
+    baseValue: 1
+    levelCurve:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
   rootTask:
     rid: 730001
   references:

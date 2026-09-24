@@ -5,7 +5,7 @@ using WS_Modules.GAS.TAG;
 namespace WS_Modules.GAS.GameplayAbilitySystem
 {
     /// <summary>定义在当前调用内完成业务执行且不创建 Ability Task 的同步 Ability。</summary>
-    public abstract class SynchronousGameplayAbilityData : GameplayAbilityData
+    public abstract class SynchronousGameplayAbilityData : DamageGameplayAbilityData
     {
         #region 执行与工厂
         // Runtime 通过该包装入口执行具体 Data。

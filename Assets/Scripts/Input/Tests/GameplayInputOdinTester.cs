@@ -10,6 +10,7 @@ using RPG.Character.State;
 namespace RPG.PlayerInputSystem.Tests
 {
     /// <summary>使用真实 InputAction 验证 Request 仲裁、Intent 消费和三种消费模式。</summary>
+    [InfoBox("依赖同节点 PlayerInputController、PlayerController，以及已配置的运行时 GameplayTagDatabase。")]
     public sealed class GameplayInputOdinTester : MonoBehaviour
     {
         #region 测试配置
@@ -20,14 +21,17 @@ namespace RPG.PlayerInputSystem.Tests
         [Title("Intent")]
         [SerializeField] private GameplayTag pressIntentTag = GameplayTag.Empty;
         [SerializeField] private GameplayTag releaseIntentTag = GameplayTag.Empty;
+        [SerializeField] private GameplayTag clickIntentTag = GameplayTag.Empty;
         [SerializeField] private IntentConsumeTestMode consumeMode = IntentConsumeTestMode.Manual;
-        [SerializeField, Min(0.01f)] private float consumeInterval = .2f;
-        [SerializeField, Min(0f)] private float heldThreshold = 0.5f;
+        [SerializeField, MinValue(0.01f)] private float consumeInterval = .2f;
+        [SerializeField, MinValue(0f)] private float heldThreshold = 0.5f;
         [SerializeField, ReadOnly] private bool showOnGui;
         [SerializeField, ReadOnly] private string lastConfirmationResult = "尚未确认 Intent";
         [SerializeField, ReadOnly] private string lastPressConfirmationResult = "尚未确认 Press Intent";
         [SerializeField, ReadOnly] private string lastReleaseConfirmationResult = "尚未确认 Release Intent";
+        [SerializeField, ReadOnly] private string lastClickConfirmationResult = "尚未确认 Click Intent";
 
+        // 依赖字段：由同节点玩家组件和当前场景的 Tag 数据库提供。
         private PlayerInputController inputController;
         private PlayerController playerController;
         private PlayerStateBlackboard blackboard;
@@ -49,7 +53,11 @@ namespace RPG.PlayerInputSystem.Tests
             inputController = GetComponent<PlayerInputController>();
             playerController = GetComponent<PlayerController>();
             if (inputController == null || playerController == null)
-                throw new InvalidOperationException("GameplayInputOdinTester 必须与 PlayerInputController 和 PlayerController 同节点。");
+            {
+                const string error = "[GameplayInputOdinTester] 必须与 PlayerInputController 和 PlayerController 同节点。";
+                Debug.LogError(error, this);
+                throw new InvalidOperationException(error);
+            }
 
             blackboard = playerController.StateBlackboard;
             testArbiter = new TestIntentArbiter(this);
@@ -62,6 +70,7 @@ namespace RPG.PlayerInputSystem.Tests
             InitializeTagDatabase();
             playerController.InputRequestConsumptionForwarded += OnInputRequestConsumptionForwarded;
             playerController.InputIntentArbiterManager.RegisterArbiter(testArbiter);
+            Debug.Log($"[GameplayInputOdinTester] 已注册测试仲裁器，mode={consumeMode}。", this);
         }
 
         /// <summary>在 PlayerController 完成本帧仲裁后推进自动消费测试。</summary>
@@ -93,6 +102,7 @@ namespace RPG.PlayerInputSystem.Tests
             }
 
             RestoreTagDatabase();
+            Debug.Log("[GameplayInputOdinTester] 已注销测试仲裁器并解除输入消费观察。", this);
         }
 
         #endregion
@@ -104,7 +114,10 @@ namespace RPG.PlayerInputSystem.Tests
             previousTagDatabase = GameplayTagManager.Instance.Database;
             ownsTagDatabase = tagDatabase != null && previousTagDatabase != tagDatabase;
             if (tagDatabase != null && ownsTagDatabase)
+            {
                 GameplayTagManager.Instance.Initialize(tagDatabase);
+                Debug.Log($"[GameplayInputOdinTester] 已切换测试 Tag 数据库，database={tagDatabase.name}。", this);
+            }
         }
 
         /// <summary>只在 Manager 仍由本测试器接管时恢复之前的数据库引用。</summary>
@@ -114,6 +127,9 @@ namespace RPG.PlayerInputSystem.Tests
             if (previousTagDatabase != null) GameplayTagManager.Instance.Initialize(previousTagDatabase);
             else GameplayTagManager.Instance.Reset();
             ownsTagDatabase = false;
+            Debug.Log(
+                $"[GameplayInputOdinTester] 已恢复测试前 Tag 数据库，database={(previousTagDatabase != null ? previousTagDatabase.name : "未初始化")}。",
+                this);
         }
 
         #endregion
@@ -128,13 +144,14 @@ namespace RPG.PlayerInputSystem.Tests
             ConfirmAvailableIntents("Interval");
         }
 
-        /// <summary>分别确认当前帧的 Press 与 Release Intent，保留两阶段独立结果。</summary>
+        /// <summary>分别确认当前帧的 Press、Release 与 Click Intent，保留阶段独立结果。</summary>
         /// <param name="reason">触发本次自动确认的测试模式。</param>
         private void ConfirmAvailableIntents(string reason)
         {
             string pressResult = ConfirmIntent(pressIntentTag, "Press", reason);
             string releaseResult = ConfirmIntent(releaseIntentTag, "Release", reason);
-            lastConfirmationResult = $"{reason}: {pressResult} | {releaseResult}";
+            string clickResult = ConfirmIntent(clickIntentTag, "Click", reason);
+            lastConfirmationResult = $"{reason}: {pressResult} | {releaseResult} | {clickResult}";
         }
 
         /// <summary>模拟业务成功后通过黑板确认指定阶段 Intent，并记录 Request 实际接受数量。</summary>
@@ -157,7 +174,8 @@ namespace RPG.PlayerInputSystem.Tests
                             $"RequestAccepted={confirmationAcceptedCount}, " +
                             $"RequestRejected={confirmationRejectedCount}";
             if (stageName == "Press") lastPressConfirmationResult = result;
-            else lastReleaseConfirmationResult = result;
+            else if (stageName == "Release") lastReleaseConfirmationResult = result;
+            else lastClickConfirmationResult = result;
             return result;
         }
 
@@ -177,6 +195,7 @@ namespace RPG.PlayerInputSystem.Tests
             lastConfirmationResult = reason;
             lastPressConfirmationResult = "尚未确认 Press Intent";
             lastReleaseConfirmationResult = "尚未确认 Release Intent";
+            lastClickConfirmationResult = "尚未确认 Click Intent";
         }
         #endregion
 
@@ -205,6 +224,86 @@ namespace RPG.PlayerInputSystem.Tests
             showOnGui = !showOnGui;
             Debug.Log($"[InputTest] OnGUI 显示已{(showOnGui ? "开启" : "关闭")}。", this);
         }
+
+        /// <summary>验证 Click 阈值快照、边界比较、阶段消费、到期和新手势替换。</summary>
+        [Button("验证 Click 手势生命周期", ButtonSizes.Medium)]
+        private void TestClickGestureLifecycle()
+        {
+            var relaxedThresholdRequest = new PlayerInputRequest(PlayerInputType.Sprint);
+            relaxedThresholdRequest.Perform(0.2f, 0.1f, 0.25f, 0.2f, 10, 100d);
+            ExpectTest("Request 保留按下时的四项绑定时长快照",
+                Mathf.Approximately(relaxedThresholdRequest.PressBufferDuration, 0.2f) &&
+                Mathf.Approximately(relaxedThresholdRequest.ReleaseBufferDuration, 0.1f) &&
+                Mathf.Approximately(relaxedThresholdRequest.ClickMaxHeldDuration, 0.25f) &&
+                Mathf.Approximately(relaxedThresholdRequest.ClickBufferDuration, 0.2f));
+            bool shortRelease = relaxedThresholdRequest.Release(100.22d);
+            ExpectTest("0.25s 阈值允许 0.22s 短按 Click",
+                shortRelease && relaxedThresholdRequest.HasBufferedClick &&
+                relaxedThresholdRequest.HasBufferedRelease);
+
+            InputRequestHandle staleClickHandle = relaxedThresholdRequest.ClickHandle;
+            InputRequestHandle releaseHandle = relaxedThresholdRequest.ReleaseHandle;
+            bool duplicateRelease = relaxedThresholdRequest.Release(100.23d);
+            bool releaseConsumed = relaxedThresholdRequest.TryConsume(releaseHandle);
+            bool releaseConsumedTwice = relaxedThresholdRequest.TryConsume(releaseHandle);
+            bool clickConsumed = relaxedThresholdRequest.TryConsume(staleClickHandle);
+            bool clickConsumedTwice = relaxedThresholdRequest.TryConsume(staleClickHandle);
+            ExpectTest("Release 与 Click 独立消费且各自只能消费一次",
+                !duplicateRelease && releaseConsumed && !releaseConsumedTwice &&
+                clickConsumed && !clickConsumedTwice);
+
+            var strictThresholdRequest = new PlayerInputRequest(PlayerInputType.Sprint);
+            strictThresholdRequest.Perform(0.2f, 0.1f, 0.2f, 0.2f, 20, 200d);
+            strictThresholdRequest.Release(200.2d);
+            ExpectTest("达到 0.20s 边界不生成 Click",
+                !strictThresholdRequest.HasBufferedClick);
+
+            var longPressRequest = new PlayerInputRequest(PlayerInputType.Sprint);
+            longPressRequest.Perform(0.2f, 0.1f, 0.2f, 0.2f, 30, 300d);
+            longPressRequest.Release(300.25d);
+            ExpectTest("超过 Click 阈值的长按不生成 Click",
+                !longPressRequest.HasBufferedClick);
+
+            var expiringRequest = new PlayerInputRequest(PlayerInputType.Sprint);
+            expiringRequest.Perform(0.2f, 0.1f, 0.25f, 0.1f, 40, 400d);
+            expiringRequest.Release(400.05d);
+            expiringRequest.Tick(41, 400.15d);
+            ExpectTest("Click 缓冲到期后清除待消费状态", !expiringRequest.HasBufferedClick);
+
+            var replacedGestureRequest = new PlayerInputRequest(PlayerInputType.Sprint);
+            replacedGestureRequest.Perform(0.2f, 0.1f, 0.25f, 0.2f, 50, 500d);
+            replacedGestureRequest.Release(500.05d);
+            InputRequestHandle previousGestureClick = replacedGestureRequest.ClickHandle;
+            replacedGestureRequest.Perform(0.2f, 0.1f, 0.2f, 0.2f, 51, 501d);
+            ExpectTest("新手势淘汰旧 Click 句柄并采用新阈值快照",
+                !replacedGestureRequest.HasBufferedClick &&
+                !replacedGestureRequest.TryConsume(previousGestureClick) &&
+                Mathf.Approximately(replacedGestureRequest.ClickMaxHeldDuration, 0.2f));
+
+            var removedRequest = new PlayerInputRequest(PlayerInputType.Sprint);
+            removedRequest.Perform(0.2f, 0.1f, 0.25f, 0.2f, 60, 600d);
+            removedRequest.Release(600.05d);
+            InputRequestHandle removedRequestClick = removedRequest.ClickHandle;
+            var recreatedRequest = new PlayerInputRequest(PlayerInputType.Sprint);
+            recreatedRequest.Perform(0.2f, 0.1f, 0.25f, 0.2f, 61, 601d);
+            recreatedRequest.Release(601.05d);
+            InputRequestHandle recreatedRequestClick = recreatedRequest.ClickHandle;
+            bool staleHandleAccepted = recreatedRequest.TryConsume(removedRequestClick);
+            ExpectTest("Request 对象被移除重建后仍拒绝旧 Click Handle",
+                !staleHandleAccepted && recreatedRequest.HasBufferedClick &&
+                recreatedRequest.TryConsume(recreatedRequestClick));
+
+            Debug.Log("[InputTest] Click 手势生命周期检查全部通过。", this);
+        }
+
+        /// <summary>在手动 Odin 测试失败时抛出带场景上下文的断言信息。</summary>
+        /// <param name="label">当前检查的行为名称。</param>
+        /// <param name="passed">检查是否通过。</param>
+        private static void ExpectTest(string label, bool passed)
+        {
+            if (!passed) throw new InvalidOperationException($"[InputTest] {label}：检查失败。");
+            Debug.Log($"[InputTest] {label}：通过。");
+        }
         #endregion
 
         #region OnGUI 调试面板
@@ -217,17 +316,21 @@ namespace RPG.PlayerInputSystem.Tests
             GUILayout.Label($"Mode: {consumeMode} | Frame: {Time.frameCount}");
             GUILayout.Label($"Interval: {intervalElapsed:F3}/{consumeInterval:F3}s | Held Threshold: {heldThreshold:F3}s");
             GUILayout.Label($"Tag Database: {(tagManager.IsInitialized ? tagManager.Database.name : "未初始化")}");
-            GUILayout.Label($"Tag Valid: Press={tagManager.IsValidTag(pressIntentTag)}, Release={tagManager.IsValidTag(releaseIntentTag)}");
+            GUILayout.Label($"Tag Valid: Press={tagManager.IsValidTag(pressIntentTag)}, " +
+                            $"Release={tagManager.IsValidTag(releaseIntentTag)}, Click={tagManager.IsValidTag(clickIntentTag)}");
             GUILayout.Label($"Registered Arbiters: {playerController.InputIntentArbiterManager.Arbiters.Count}");
             GUILayout.Label($"Current Press Intent: {blackboard.HasIntent(pressIntentTag)} ({pressIntentTag})");
             GUILayout.Label($"Current Release Intent: {blackboard.HasIntent(releaseIntentTag)} ({releaseIntentTag})");
+            GUILayout.Label($"Current Click Intent: {blackboard.HasIntent(clickIntentTag)} ({clickIntentTag})");
             GUILayout.Label($"Move World Input: {blackboard.MoveWorldInput}", GUI.skin.box);
             GUILayout.Label($"Last Press Confirmation: {lastPressConfirmationResult}", GUI.skin.box);
             GUILayout.Label($"Last Release Confirmation: {lastReleaseConfirmationResult}", GUI.skin.box);
+            GUILayout.Label($"Last Click Confirmation: {lastClickConfirmationResult}", GUI.skin.box);
             GUILayout.Label($"Last Confirm Summary: {lastConfirmationResult}");
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Confirm Press")) ConfirmIntentFromGui(pressIntentTag, "Press");
             if (GUILayout.Button("Confirm Release")) ConfirmIntentFromGui(releaseIntentTag, "Release");
+            if (GUILayout.Button("Confirm Click")) ConfirmIntentFromGui(clickIntentTag, "Click");
             GUILayout.EndHorizontal();
             GUILayout.Space(8f);
             GUILayout.Label($"Active Requests: {inputController.Requests.Count}");
@@ -244,12 +347,15 @@ namespace RPG.PlayerInputSystem.Tests
             GUILayout.Label($"{request.InputType} | {request.PhysicalState} | Held {request.HeldDuration:F3}s");
             GUILayout.Label($"Press: {request.HasBufferedPress} | {request.PressBufferRemaining:F3}s | {request.PressHandle}");
             GUILayout.Label($"Release: {request.HasBufferedRelease} | {request.ReleaseBufferRemaining:F3}s | {request.ReleaseHandle}");
+            GUILayout.Label($"Click: {request.HasBufferedClick} | threshold={request.ClickMaxHeldDuration:F3}s | " +
+                            $"{request.ClickBufferRemaining:F3}s | {request.ClickHandle}");
             float requiredWait = consumeMode == IntentConsumeTestMode.Interval
                 ? Mathf.Max(0f, consumeInterval - intervalElapsed)
                 : Mathf.Max(0f, heldThreshold - request.HeldDuration);
             if (consumeMode != IntentConsumeTestMode.Manual &&
                 ((request.HasBufferedPress && request.PressBufferRemaining < requiredWait) ||
-                 (request.HasBufferedRelease && request.ReleaseBufferRemaining < requiredWait)))
+                 (request.HasBufferedRelease && request.ReleaseBufferRemaining < requiredWait) ||
+                 (request.HasBufferedClick && request.ClickBufferRemaining < requiredWait)))
                 GUILayout.Label("警告：Buffer 剩余时间短于当前自动消费等待时间。", GUI.skin.box);
             GUILayout.EndVertical();
         }
@@ -267,6 +373,7 @@ namespace RPG.PlayerInputSystem.Tests
         /// <summary>把真实 Request 映射为测试 Intent，并执行 HeldThreshold 发布门槛。</summary>
         private sealed class TestIntentArbiter : GameplayInputIntentArbiter
         {
+            // 依赖字段：仲裁策略读取测试器当前的 Tag 与消费门槛配置。
             private readonly GameplayInputOdinTester owner;
 
             /// <summary>创建读取指定测试器配置的仲裁策略。</summary>
@@ -288,6 +395,8 @@ namespace RPG.PlayerInputSystem.Tests
                         request.HasBufferedPress, stateBlackboard);
                     Publish(request, PlayerInputRequestStage.Release, request.ReleaseHandle,
                         request.HasBufferedRelease, stateBlackboard);
+                    Publish(request, PlayerInputRequestStage.Click, request.ClickHandle,
+                        request.HasBufferedClick, stateBlackboard);
                 }
             }
 
@@ -303,7 +412,9 @@ namespace RPG.PlayerInputSystem.Tests
                 if (!buffered) return;
                 GameplayTag intentTag = stage == PlayerInputRequestStage.Press
                     ? owner.pressIntentTag
-                    : owner.releaseIntentTag;
+                    : stage == PlayerInputRequestStage.Release
+                        ? owner.releaseIntentTag
+                        : owner.clickIntentTag;
                 if (!intentTag.IsValid) return;
                 if (owner.consumeMode == IntentConsumeTestMode.HeldThreshold &&
                     (request.HeldDuration < owner.heldThreshold ||

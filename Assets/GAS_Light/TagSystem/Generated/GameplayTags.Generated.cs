@@ -66,6 +66,12 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_Skill_NormalAttack_Three = new GameplayTag(173);
         /// <summary>Skill.NormalAttack.Two</summary>
         public static readonly GameplayTag Tag_Skill_NormalAttack_Two = new GameplayTag(166);
+        /// <summary>Skill.QuickShift</summary>
+        public static readonly GameplayTag Tag_Skill_QuickShift = new GameplayTag(181);
+        /// <summary>Skill.QuickShift.DirX</summary>
+        public static readonly GameplayTag Tag_Skill_QuickShift_DirX = new GameplayTag(182);
+        /// <summary>Skill.QuickShift.DirY</summary>
+        public static readonly GameplayTag Tag_Skill_QuickShift_DirY = new GameplayTag(183);
         /// <summary>Skill.Window</summary>
         public static readonly GameplayTag Tag_Skill_Window = new GameplayTag(168);
         /// <summary>Skill.Window.CancelBy</summary>

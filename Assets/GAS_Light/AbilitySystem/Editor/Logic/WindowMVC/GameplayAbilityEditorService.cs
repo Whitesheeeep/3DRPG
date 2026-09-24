@@ -260,7 +260,8 @@ namespace WS_Modules.GAS.Editor
             ValidateCooldownTags(ability.CooldownEffect, issues);
 
             ValidateEffectReferences(ability.Effects, issues);
-            ValidateDamageMultiplier(ability, issues);
+            if (ability is DamageGameplayAbilityData damageAbility)
+                ValidateDamageMultiplier(damageAbility, issues);
             ValidateAbilityTags(ability.AbilityTags, "AbilityTags", issues, true);
             ValidateAbilityTags(ability.CancelTags, "CancelTags", issues, true);
             ValidateAbilityTags(ability.BlockAbilityTags, "BlockAbilityTags", issues, true);
@@ -279,17 +280,14 @@ namespace WS_Modules.GAS.Editor
         }
 
         /// <summary>校验 GA 的等级倍率配置，避免非法曲线值进入 GE Spec。</summary>
-        /// <param name="ability">待校验的 Ability 资产。</param>
+        /// <param name="ability">待校验的伤害型 Ability 资产。</param>
         /// <param name="issues">接收校验结果的集合。</param>
         private static void ValidateDamageMultiplier(
-            GameplayAbilityData ability,
+            DamageGameplayAbilityData ability,
             ICollection<GameplayAbilityValidationIssue> issues)
         {
-            if (ability.DamageMultiplier == null)
-            {
-                issues.Add(Error("Damage Multiplier 不能为 null。"));
-                return;
-            }
+            // 空配置在运行时等价于常量倍率 1，因此只需校验作者实际提供的自定义配置。
+            if (ability.DamageMultiplier == null) return;
 
             if (!ability.TryEvaluateDamageMultiplier(1, out _))
                 issues.Add(Error("Damage Multiplier 在 Ability Level 1 下必须产生有限且不小于零的结果。"));

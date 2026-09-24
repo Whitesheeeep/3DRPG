@@ -97,7 +97,10 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
 
         #region 子类业务逻辑
         // 具体 Task 在这里启动同步逻辑或取得外部资源；逐帧逻辑由下方各阶段钩子承载。
-        protected abstract void OnStart();
+        protected virtual void OnStart()
+        {
+
+        }
 
         // 具体 Task 在正常提前结束时释放注册。
         protected virtual void OnStop()

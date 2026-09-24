@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
-using WS_Modules.GAS.Generated;
 using WS_Modules.GAS.GameplayEffect;
 using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.TAG;
@@ -38,8 +37,6 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private GameplayEffectData costEffect;
         [SerializeField, Tooltip("激活时应用到 Source 的 Duration 或 Infinite Cooldown GE；可为空。")]
         private GameplayEffectData cooldownEffect;
-        [SerializeField, Tooltip("根据 Ability Level 求值的技能伤害倍率；最终会写入 Data.Damage.Multiplier。")]
-        private GameplayScalableFloat damageMultiplier = new(1f);
         [SerializeField, Tooltip("Ability 的统一结果 GE 列表，由具体 Data 或 Task 决定应用时机。")]
         private List<GameplayEffectData> effects = new();
         [SerializeField, Tooltip("Ability 成功执行后发布的 GameplayCueTag 列表。")]
@@ -70,8 +67,6 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         public GameplayEffectData CostEffect => costEffect;
         /// <summary>获取激活时应用到 Source 的 Cooldown GE。</summary>
         public GameplayEffectData CooldownEffect => cooldownEffect;
-        /// <summary>获取根据 Ability Level 求值的技能伤害倍率配置。</summary>
-        public GameplayScalableFloat DamageMultiplier => damageMultiplier;
         /// <summary>获取该 Ability 配置的统一结果 GE 列表。</summary>
         public IReadOnlyList<GameplayEffectData> Effects => effects;
         /// <summary>获取 Ability 配置的 CueTag 列表。</summary>
@@ -111,30 +106,21 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             IReadOnlyDictionary<GameplayTag, float> setByCaller);
         #endregion
 
+        #region SetByCaller 构建
+
+        /// <summary>
+        /// 为即将创建的结果 GE Spec 补充由具体 Ability 定义的动态数值。
+        /// </summary>
+        /// <param name="abilityLevel">本次 Ability 激活等级快照。</param>
+        /// <param name="setByCallerMagnitudeByTagMap">已复制激活输入、等待具体 Ability 补充的可变数据。</param>
+        /// <returns>补充成功时返回 true；返回 false 时终止本次 Spec 创建。</returns>
+        protected virtual bool TryPopulateConfiguredEffectSetByCaller(
+            int abilityLevel,
+            IDictionary<GameplayTag, float> setByCallerMagnitudeByTagMap) => true;
+
+        #endregion
+
         #region 效果与 Cue 提交
-
-        /// <summary>使用 Ability Level 求出本次激活的最终伤害倍率。</summary>
-        /// <param name="abilityLevel">本次 Ability 激活等级。</param>
-        /// <param name="multiplier">求值成功时返回最终倍率。</param>
-        /// <returns>配置存在、求值有限且不小于零时返回 true。</returns>
-        public bool TryEvaluateDamageMultiplier(int abilityLevel, out float multiplier)
-        {
-            if (damageMultiplier == null)
-            {
-                multiplier = default;
-                return false;
-            }
-
-            if (!damageMultiplier.TryEvaluate(abilityLevel, out multiplier) ||
-                float.IsNaN(multiplier) || float.IsInfinity(multiplier) || multiplier < 0f)
-            {
-                multiplier = default;
-                return false;
-            }
-
-            return true;
-        }
-
         /// <summary>
         /// 根据本次 Ability 的等级和 SetByCaller 创建并封存所有结果 GE Spec。
         /// </summary>
@@ -150,16 +136,19 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             out IReadOnlyList<GameplayEffectSpec> specs)
         {
             specs = Array.Empty<GameplayEffectSpec>();
-            if (source == null || abilityLevel < 1 ||
-                !TryEvaluateDamageMultiplier(abilityLevel, out float multiplier))
+            if (source == null || abilityLevel < 1)
                 return false;
 
-            // key：SetByCaller GameplayTag；value：本次激活冻结的输入值。
+            // 先复制激活快照，再允许具体 Ability 写入本次效果专属的动态数据，避免修改 Runtime 持有的只读输入。
             var setByCallerMagnitudeByTagMap = new Dictionary<GameplayTag, float>();
+            // 先将 GA 中已有的 SetByCaller 写入，避免被具体 Ability 覆盖。
             if (activationSetByCaller != null)
                 foreach (KeyValuePair<GameplayTag, float> pair in activationSetByCaller)
                     setByCallerMagnitudeByTagMap[pair.Key] = pair.Value;
-            setByCallerMagnitudeByTagMap[GameplayTags.Tag_Data_Damage_Multiplier] = multiplier;
+            if (!TryPopulateConfiguredEffectSetByCaller(
+                    abilityLevel,
+                    setByCallerMagnitudeByTagMap))
+                return false;
 
             var createdSpecs = new List<GameplayEffectSpec>(effects?.Count ?? 0);
             if (effects == null)
@@ -190,7 +179,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             return true;
         }
 
-        /// <summary>向指定 Target 应用统一结果 GE 列表，但不决定激活、命中等业务时机。</summary>
+        /// <summary>向指定 Target 应用统一结果 GE 列表，但不决定激活、命中等业务时机。这是一个快捷使用方式，如果是像投射物这类需脱离 GAData 的场景，需自己拿到 GE Spec 后进行应用。</summary>
         /// <param name="source">本次 GE 的来源 ASC。</param>
         /// <param name="target">接收 GE 的目标 ASC。</param>
         /// <param name="level">Ability 激活等级快照。</param>

@@ -229,7 +229,7 @@ FallLand 根据 `CurrentFallHeight` 在配置的 1h/2h/3h 动画中选择，Walk
 | Choice 导航、提交、点击 | Unity EventSystem      | 直接驱动交互 UI                                                     |
 | 复杂未来输入            | 可选自定义 Arbiter     | 写入通用 Frame Intent                                               |
 
-固定离散输入使用 `IPlayerInputRequestBuffer.TryGetRequest`，不遍历 `Requests` 列表。Press、Held 和 Release 保持独立生命周期，为后续蓄力技能提供 `HeldDuration`、`PhysicalState` 和 `ReleaseHandle`。
+固定离散输入使用 `IPlayerInputRequestBuffer.TryGetRequest`，不遍历 `Requests` 列表。Press、Held、Release 和 Click 保持独立生命周期，为蓄力、短按与按住技能提供 `HeldDuration`、`PhysicalState` 及阶段句柄。
 
 角色战斗输入不经过 Frame Intent。`CharacterConfig.CombatConfig` 保存有序普通攻击列表和 Secondary、Skill1-4 技能槽位；PlayerController.Start（以及 CharacterActor.Start 的幂等兜底）在 ASC 完成 Awake 后初始化属性，再让每个 CharacterActor 自己的 CombatSystem 去重授予 Ability，并建立普攻顺序与技能输入到 `GameplayAbilityHandle` 的运行时索引。
 
@@ -319,7 +319,7 @@ stateDiagram-v2
 - `MoveWorldInput`；
 - Blackboard Frame Intent；
 - InputController 中其他尚未消费的 Request；
-- Press 或 Release 的生命周期数据。
+- Press、Release 或 Click 的生命周期数据。
 
 ## MotionDriver 边界
 

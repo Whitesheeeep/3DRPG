@@ -87,7 +87,9 @@ MonoBehaviour:
     - {fileID: 11400000, guid: a5f4af29fcb07fc4db4c0235ea89f01b, type: 2}
     - {fileID: 11400000, guid: 5b1b22e4d2c647a09c12aac149412fd1, type: 2}
     - {fileID: 11400000, guid: bc0c2362d9e535b4d9969d4824d2f393, type: 2}
-    skillInputBindings: []
+    skillInputBindings:
+    - inputType: 15
+      ability: {fileID: 11400000, guid: 8dd9cbf03c2d4dcf8b0b9276fb7fc9b1, type: 2}
   locomotion:
     gravity: 9.81
     locomotionTransition: {fileID: 11400000, guid: 8b2e9e80cfd84d94b68a1f7f15d89b21, type: 2}

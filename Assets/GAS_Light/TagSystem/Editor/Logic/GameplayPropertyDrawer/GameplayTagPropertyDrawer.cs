@@ -114,6 +114,7 @@ namespace WS_Modules.GAS.Editor
                     string path = GetPath(node);
                     if (string.IsNullOrEmpty(path)) continue;
 
+                    // 通过将 Path 按 '.' 分段，逐层创建或复用 DropdownNode，最终叶子节点绑定 TagId。
                     string[] segments = path.Split('.');
                     DropdownNode current = modelRoot;
                     for (int i = 0; i < segments.Length; i++)
@@ -122,8 +123,8 @@ namespace WS_Modules.GAS.Editor
                         {
                             child = new DropdownNode(segments[i]);
                             current.Children.Add(segments[i], child);
+                            child.FullPath = string.Join(".", segments, 0, i + 1);
                         }
-
                         current = child;
                     }
 
@@ -140,7 +141,7 @@ namespace WS_Modules.GAS.Editor
             // 递归生成 Dropdown；中间 Tag 使用额外叶子项选择自身，避免父项点击只执行导航。
             private AdvancedDropdownItem BuildDropdownItem(DropdownNode node)
             {
-                var item = new AdvancedDropdownItem(node.Name) { id = NextDropdownId() };
+                var item = new AdvancedDropdownItem(node.Name + " (" + node.FullPath + ")") { id = NextDropdownId() };
                 bool hasChildren = node.Children.Count > 0;
 
                 // 叶子节点
@@ -213,6 +214,11 @@ namespace WS_Modules.GAS.Editor
 
                 /// <summary>获取当前层级的局部名称。</summary>
                 public string Name { get; }
+
+                /// <summary>
+                /// 获取当前层级的完整路径，按 '.' 分段；仅用于调试和显示，不写入运行时数据。
+                /// </summary>
+                public string FullPath { get; set; }
 
                 /// <summary>获取按名称稳定排序的子节点。</summary>
                 public SortedDictionary<string, DropdownNode> Children { get; } =

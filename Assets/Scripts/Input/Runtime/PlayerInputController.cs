@@ -11,8 +11,6 @@ namespace RPG.PlayerInputSystem
     public sealed class PlayerInputController : MonoBehaviour, IPlayerInputRequestBuffer
     {
         #region 序列化配置
-        [SerializeField, MinValue(0f)] private float defaultPressBufferDuration = 0.2f;
-        [SerializeField, MinValue(0f)] private float defaultReleaseBufferDuration = 0.1f;
         [SerializeField] private List<PlayerInputBinding> bindings = new();
         // 连续移动输入仅由本组件采样，离散 Request 的缓冲与消费不共用该状态。
         [SerializeField] private InputActionReference moveAction;
@@ -20,8 +18,9 @@ namespace RPG.PlayerInputSystem
         #endregion
 
         #region 请求状态
-        // inputAction -> ResolvedBinding / ResolvedBinding.PlayerInputType -> PlayerInputRequest
+        // key：PlayerInputType；value：该输入当前手势的 Request。
         private readonly Dictionary<PlayerInputType, PlayerInputRequest> requestsByType = new();
+        // key：InputAction；value：该动作唯一对应的输入绑定资产。
         private readonly Dictionary<InputAction, ResolvedBinding> bindingsByAction = new();
         private readonly List<PlayerInputRequest> requests = new();
         private InputAction resolvedMoveAction;
@@ -62,8 +61,10 @@ namespace RPG.PlayerInputSystem
         {
             BuildBindingLookup();
             // Move 必须由 Inspector 配置对象引用，避免重复维护 Action 名称字符串。
-            resolvedMoveAction = moveAction?.action ?? throw new InvalidOperationException(
-                $"[PlayerInputController] '{name}' 未配置有效的 Move InputActionReference。 ");
+            resolvedMoveAction = moveAction?.action;
+            if (resolvedMoveAction == null)
+                throw CreateConfigurationException(
+                    $"[PlayerInputController] '{name}' 未配置有效的 Move InputActionReference。");
         }
 
         /// <summary>订阅并启用由当前 Controller 独占管理的全部离散动作。</summary>
@@ -76,12 +77,13 @@ namespace RPG.PlayerInputSystem
                 action.Enable();
             }
             resolvedMoveAction?.Enable();
+            Debug.Log($"[PlayerInputController] 已启用输入监听，bindingCount={bindings.Count}。", this);
         }
 
         /// <summary>在 Intent 仲裁前按真实时间推进全部输入 Request。</summary>
         private void Update()
         {
-            Advance(Time.unscaledDeltaTime, Time.frameCount);
+            Advance(Time.frameCount);
             // 连续输入是状态快照，不走离散 Request 的消费生命周期，供多个 FixedUpdate 读取。
             Vector2 value = resolvedMoveAction == null ? Vector2.zero : resolvedMoveAction.ReadValue<Vector2>();
             MoveInput = value.sqrMagnitude <= moveDeadzone * moveDeadzone
@@ -103,6 +105,7 @@ namespace RPG.PlayerInputSystem
             MoveInput = Vector2.zero;
 
             Clear();
+            Debug.Log($"[PlayerInputController] 已停用输入监听并清空 Request。", this);
         }
 
         /// <summary>清除连续输入，使失焦、停用和场景迁移不会复用旧摇杆状态。</summary>
@@ -124,7 +127,10 @@ namespace RPG.PlayerInputSystem
                 return;
             }
 
-            NotifyPerformed(binding.InputType, binding.PressDuration);
+            // 每次开始新手势都从 SO 复制时长；进行中的 request 随后不再依赖可编辑资产。
+            NotifyPerformed(binding.InputType, binding.Binding.PressBufferDuration,
+                binding.Binding.ReleaseBufferDuration, binding.Binding.ClickMaxHeldDuration,
+                binding.Binding.ClickBufferDuration);
         }
 
         /// <summary>把缓冲输入的真实 canceled 回调转换为 Release Request。</summary>
@@ -133,7 +139,12 @@ namespace RPG.PlayerInputSystem
         {
             ResolvedBinding binding = bindingsByAction[context.action];
             if (binding.DeliveryMode == PlayerInputDeliveryMode.ImmediateNotification) return;
-            NotifyCanceled(binding.InputType, binding.ReleaseDuration);
+            bool released = NotifyCanceled(binding.InputType);
+            if (released && TryGetRequest(binding.InputType, out IReadOnlyPlayerInputRequest request))
+                Debug.Log(
+                    $"[PlayerInputController] 输入 {binding.InputType} 松开，held={request.HeldDuration:F3}s，" +
+                    $"clickBuffered={request.HasBufferedClick}，clickRemaining={request.ClickBufferRemaining:F3}s。",
+                    this);
         }
         #endregion
 
@@ -141,57 +152,77 @@ namespace RPG.PlayerInputSystem
 
         // 生产或者刷新 Handle 方法
         /// <inheritdoc />
-        public void NotifyPerformed(PlayerInputType inputType, float pressBufferDuration)
+        public void NotifyPerformed(PlayerInputType inputType, float pressBufferDuration,
+            float releaseBufferDuration, float clickMaxHeldDuration, float clickBufferDuration)
         {
             ValidateDuration(pressBufferDuration, nameof(pressBufferDuration));
+            ValidateDuration(releaseBufferDuration, nameof(releaseBufferDuration));
+            ValidateDuration(clickMaxHeldDuration, nameof(clickMaxHeldDuration));
+            ValidateDuration(clickBufferDuration, nameof(clickBufferDuration));
             if (!requestsByType.TryGetValue(inputType, out PlayerInputRequest request))
             {
                 request = new PlayerInputRequest(inputType);
                 requestsByType.Add(inputType, request);
                 requests.Add(request);
             }
-#if UNITY_EDITOR
-            Debug.Log($"PlayerInputController '{name}' 收到 {inputType} Pressed，持续 {pressBufferDuration:F3} 秒。");
-
-#endif
-            request.Perform(pressBufferDuration, Time.frameCount);
+            Debug.Log($"[PlayerInputController] 收到 {inputType} Pressed，pressBuffer={pressBufferDuration:F3}s，" +
+                      $"releaseBuffer={releaseBufferDuration:F3}s，" +
+                      $"clickThreshold={clickMaxHeldDuration:F3}s，clickBuffer={clickBufferDuration:F3}s。", this);
+            request.Perform(pressBufferDuration, releaseBufferDuration, clickMaxHeldDuration, clickBufferDuration,
+                Time.frameCount, Time.realtimeSinceStartupAsDouble);
         }
 
         /// <inheritdoc />
-        public bool NotifyCanceled(PlayerInputType inputType, float releaseBufferDuration)
+        public bool NotifyCanceled(PlayerInputType inputType)
         {
-            ValidateDuration(releaseBufferDuration, nameof(releaseBufferDuration));
             if (!requestsByType.TryGetValue(inputType, out PlayerInputRequest request)) return false;
-            request.Release(releaseBufferDuration);
-            return true;
+            return request.Release(Time.realtimeSinceStartupAsDouble);
         }
 
         // 消费 Handle 方法
         /// <inheritdoc />
-        public bool TryConfirmConsumed(InputRequestHandle handle) =>
-            requestsByType.TryGetValue(handle.InputType, out PlayerInputRequest request) && request.TryConsume(handle);
+        public bool TryConfirmConsumed(InputRequestHandle handle)
+        {
+            if (!requestsByType.TryGetValue(handle.InputType, out PlayerInputRequest request) ||
+                !request.TryConsume(handle))
+                return false;
+
+            Debug.Log($"[PlayerInputController] 已消费输入阶段 {handle}。", this);
+            return true;
+        }
 
         /// <inheritdoc />
         public void Clear()
         {
+            int requestCount = requests.Count;
             requestsByType.Clear();
             requests.Clear();
+            if (requestCount > 0)
+                Debug.Log($"[PlayerInputController] 已清除 {requestCount} 个输入 Request。", this);
         }
 
-        /// <summary>按指定真实时间推进 Request，供运行时 Update 和诊断代码复用。</summary>
-        /// <param name="unscaledDeltaTime">不受 timeScale 影响的真实时间增量。</param>
+        /// <summary>按当前单调真实时间推进 Request，供运行时 Update 和诊断代码复用。</summary>
         /// <param name="frame">用于 Pressed 转 Held 的 Unity 帧号。</param>
-        public void Advance(float unscaledDeltaTime, int frame)
+        public void Advance(int frame)
         {
-            ValidateDuration(unscaledDeltaTime, nameof(unscaledDeltaTime));
+            double realtime = Time.realtimeSinceStartupAsDouble;
             for (int i = requests.Count - 1; i >= 0; i--)
             {
                 PlayerInputRequest request = requests[i];
-                request.Tick(unscaledDeltaTime, frame);
+                request.Tick(frame, realtime);
                 if (!request.CanRemove) continue;
                 requestsByType.Remove(request.InputType);
                 requests.RemoveAt(i);
             }
+        }
+
+        /// <summary>兼容原诊断入口；阶段期限使用回调真实时间戳，不累计调用方估算的帧间隔。</summary>
+        /// <param name="unscaledDeltaTime">用于兼容调用方校验的非负帧间隔。</param>
+        /// <param name="frame">用于 Pressed 转 Held 的 Unity 帧号。</param>
+        public void Advance(float unscaledDeltaTime, int frame)
+        {
+            ValidateDuration(unscaledDeltaTime, nameof(unscaledDeltaTime));
+            Advance(frame);
         }
         #endregion
 
@@ -199,31 +230,47 @@ namespace RPG.PlayerInputSystem
         /// <summary>建立动作映射，并拒绝缺失引用、重复动作或重复输入类型。</summary>
         private void BuildBindingLookup()
         {
-            ValidateDuration(defaultPressBufferDuration, nameof(defaultPressBufferDuration));
-            ValidateDuration(defaultReleaseBufferDuration, nameof(defaultReleaseBufferDuration));
             bindingsByAction.Clear();
-            if (bindings.Count == 0)
-                throw new InvalidOperationException("PlayerInputController 至少需要一个显式 PlayerInputBinding。");
+            if (bindings == null || bindings.Count == 0)
+                throw CreateConfigurationException(
+                    "[PlayerInputController] 至少需要一个显式 PlayerInputBinding。");
 
             var inputTypes = new HashSet<PlayerInputType>();
             for (int i = 0; i < bindings.Count; i++)
             {
                 PlayerInputBinding binding = bindings[i] ??
-                    throw new InvalidOperationException($"输入绑定 {i} 未配置。");
+                    throw CreateConfigurationException($"[PlayerInputController] 输入绑定 {i} 未配置。");
                 InputAction action = binding.Action?.action;
                 if (action == null)
-                    throw new InvalidOperationException($"输入绑定 {binding.InputType} 缺少有效 InputActionReference。");
-                var resolved = new ResolvedBinding(binding.InputType,
-                    binding.ResolvePressDuration(defaultPressBufferDuration),
-                    binding.ResolveReleaseDuration(defaultReleaseBufferDuration),
-                    binding.DeliveryMode);
-                ValidateDuration(resolved.PressDuration, $"bindings[{i}].PressDuration");
-                ValidateDuration(resolved.ReleaseDuration, $"bindings[{i}].ReleaseDuration");
+                    throw CreateConfigurationException(
+                        $"[PlayerInputController] 输入绑定 {binding.InputType} 缺少有效 InputActionReference。");
+                if (!Enum.IsDefined(typeof(PlayerInputType), binding.InputType))
+                    throw CreateConfigurationException(
+                        $"[PlayerInputController] 输入绑定 {i} 使用未知 PlayerInputType 值 {(int)binding.InputType}。");
+                if (!Enum.IsDefined(typeof(PlayerInputDeliveryMode), binding.DeliveryMode))
+                    throw CreateConfigurationException(
+                        $"[PlayerInputController] 输入绑定 {binding.InputType} 使用未知交付模式 {(int)binding.DeliveryMode}。");
+                ValidateDuration(binding.PressBufferDuration, $"bindings[{i}].PressBufferDuration");
+                ValidateDuration(binding.ReleaseBufferDuration, $"bindings[{i}].ReleaseBufferDuration");
+                ValidateDuration(binding.ClickMaxHeldDuration, $"bindings[{i}].ClickMaxHeldDuration");
+                ValidateDuration(binding.ClickBufferDuration, $"bindings[{i}].ClickBufferDuration");
+                var resolved = new ResolvedBinding(binding);
                 if (!bindingsByAction.TryAdd(action, resolved))
-                    throw new InvalidOperationException($"Input Action {action.name} 被重复绑定。");
+                    throw CreateConfigurationException(
+                        $"[PlayerInputController] Input Action {action.name} 被重复绑定。");
                 if (!inputTypes.Add(binding.InputType))
-                    throw new InvalidOperationException($"输入类型 {binding.InputType} 被重复绑定。");
+                    throw CreateConfigurationException(
+                        $"[PlayerInputController] 输入类型 {binding.InputType} 被重复绑定。");
             }
+        }
+
+        /// <summary>记录配置边界校验失败并返回附带业务上下文的异常。</summary>
+        /// <param name="message">包含失败配置与原因的错误消息。</param>
+        /// <returns>由调用点立即抛出的配置异常。</returns>
+        private InvalidOperationException CreateConfigurationException(string message)
+        {
+            Debug.LogError(message, this);
+            return new InvalidOperationException(message);
         }
 
         /// <summary>拒绝来自序列化配置或诊断入口的非法时间。</summary>
@@ -232,38 +279,32 @@ namespace RPG.PlayerInputSystem
         private static void ValidateDuration(float duration, string parameterName)
         {
             if (duration < 0f || float.IsNaN(duration) || float.IsInfinity(duration))
+            {
+                Debug.LogError(
+                    $"[PlayerInputController] 输入时长非法，parameter={parameterName}，duration={duration}。");
                 throw new ArgumentOutOfRangeException(parameterName, duration, "Duration 必须是有限非负数。");
+            }
         }
         #endregion
 
         #region 嵌套类型
-        /// <summary>缓存一次校验后可直接用于回调的输入类型与两阶段时间。</summary>
+        /// <summary>缓存校验后的绑定资产与 Action 身份；时长在新手势开始时从资产快照。</summary>
         private readonly struct ResolvedBinding
         {
-            /// <summary>获取输入类型。</summary>
+            /// <summary>获取完整的每项输入设置资产。</summary>
+            public PlayerInputBinding Binding { get; }
+            /// <summary>获取建立监听时校验过的输入类型。</summary>
             public PlayerInputType InputType { get; }
-            /// <summary>获取 Press Buffer 秒数。</summary>
-            public float PressDuration { get; }
-            /// <summary>获取 Release Buffer 秒数。</summary>
-            public float ReleaseDuration { get; }
             /// <summary>获取 InputAction 触发后的交付方式。</summary>
             public PlayerInputDeliveryMode DeliveryMode { get; }
 
-            /// <summary>创建已解析且无需在输入回调中再次访问配置的绑定。</summary>
-            /// <param name="inputType">输入类型。</param>
-            /// <param name="pressDuration">Press Buffer 秒数。</param>
-            /// <param name="releaseDuration">Release Buffer 秒数。</param>
-            /// <param name="deliveryMode">InputAction 触发后的交付方式。</param>
-            public ResolvedBinding(
-                PlayerInputType inputType,
-                float pressDuration,
-                float releaseDuration,
-                PlayerInputDeliveryMode deliveryMode)
+            /// <summary>创建已校验的绑定身份；本次手势的时长仍从资产复制快照。</summary>
+            /// <param name="binding">本项输入配置资产。</param>
+            public ResolvedBinding(PlayerInputBinding binding)
             {
-                InputType = inputType;
-                PressDuration = pressDuration;
-                ReleaseDuration = releaseDuration;
-                DeliveryMode = deliveryMode;
+                Binding = binding;
+                InputType = binding.InputType;
+                DeliveryMode = binding.DeliveryMode;
             }
         }
         #endregion

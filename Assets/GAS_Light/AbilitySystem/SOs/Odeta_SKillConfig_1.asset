@@ -23,8 +23,8 @@ MonoBehaviour:
     startFrame: 3
     durationFrames: 12
     localPosition: {x: 0, y: 0.85, z: -0.009812593}
-    localEulerAngles: {x: 0.17345357, y: 352.64566, z: 237.50528}
-    localScale: {x: 1.0000002, y: 1.0000004, z: 0.99999994}
+    localEulerAngles: {x: 0.17345399, y: 352.64563, z: 237.50528}
+    localScale: {x: 0.68999994, y: 0.69, z: 0.68999994}
     playbackSpeed: 0.5
     followMode: 0
     stopMode: 1
@@ -80,7 +80,46 @@ MonoBehaviour:
   - {fileID: -4388608533994166433}
   - {fileID: -6709007604513639831}
   - {fileID: 5758986295678147905}
+  - {fileID: 4563315953894059882}
   - {fileID: 5272139328147717069}
+--- !u!114 &4563315953894059882
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977a117e6397476dafe68fee63f8f607, type: 3}
+  m_Name: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: b7ff3f370c57436cb5b6f7b8920cd65b
+  muted: 0
+  displayName: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: 5035a4aaa8a047f49c94bb807e8ab443
+    startFrame: 8
+    durationFrames: 3
+    sampleIntervalFrames: 1
+    detectionId: 0
+    markerKey: {fileID: 0}
+    followMode: 1
+    detectionData:
+      rid: 2645455169077903366
+  references:
+    version: 2
+    RefIds:
+    - rid: 2645455169077903366
+      type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        localPosition: {x: 0, y: 0.52211297, z: 0}
+        localEulerAngles: {x: 0, y: 0, z: 0}
+        innerRadius: 0.52
+        outerRadius: 1.69
+        angle: 90
+        height: 1
 --- !u!114 &5272139328147717069
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -116,26 +155,21 @@ MonoBehaviour:
   editorLocked: 0
   clips:
   - id: 324fa94c25724296ab282c104f1e087f
-    startFrame: 4
-    durationFrames: 21
+    startFrame: 8
+    durationFrames: 3
     sampleIntervalFrames: 1
     detectionId: 0
     markerKey: {fileID: 0}
     followMode: 1
     detectionData:
-      rid: 2645455145564635153
+      rid: 2645455169077903360
   references:
     version: 2
     RefIds:
-    - rid: 2645455145564635153
-      type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+    - rid: 2645455169077903360
+      type: {class: WeaponTraceAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
-        localPosition: {x: 0, y: 0, z: 0}
-        localEulerAngles: {x: 0, y: 0, z: 0}
-        innerRadius: 0
-        outerRadius: 2
-        angle: 90
-        height: 1
+        samplePointCount: 4
 --- !u!114 &7164354311166982050
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -173,7 +207,7 @@ MonoBehaviour:
     startFrame: 15
     durationFrames: 12
     phase: 3
-    isCancelable: 0
+    isCancelable: 1
     runtimeTags:
     - id: 170
     - id: 171

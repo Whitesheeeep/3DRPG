@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using Animancer;
 using RPG.SkillSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
@@ -290,6 +291,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private SelfChannelGameplayAbilityData selfChannelSkill;
         [SerializeField, AssetsOnly, Tooltip("再次激活时关闭的 Toggle Skill SO。")]
         private ToggleGameplayAbilityData toggleSkill;
+        [SerializeField, AssetsOnly, Tooltip("使用异步 SprintGATask 的 QuickShift 冲刺 Ability SO。")]
+        private AsynchronousGameplayAbilityData quickShiftSkill;
         #endregion
 
         #region Odin 测试
@@ -598,6 +601,87 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             Expect("Projectile 三发中心为 0 度", Mathf.Abs(Vector3.SignedAngle(Vector3.forward, center.Direction, Vector3.up)) <= 0.01f);
             Expect("Projectile 三发右侧为 +15 度", Mathf.Abs(Vector3.SignedAngle(Vector3.forward, right.Direction, Vector3.up) - 15f) <= 0.01f);
             DestroyImmediate(originObject);
+            LogSummary();
+        }
+
+        /// <summary>验证 QuickShift 八方向资源、共享位移事件、事件窗口和 Ability 身份。</summary>
+        [Button("验证 QuickShift 配置")]
+        public void TestQuickShiftConfiguration()
+        {
+            CleanupSource();
+            passed = 0;
+            failed = 0;
+
+            AsynchronousGameplayAbilityData data = quickShiftSkill;
+            Expect("QuickShift 异步 Ability SO 已配置", data != null);
+            if (data == null)
+            {
+                LogSummary();
+                return;
+            }
+
+            bool hasQuickShiftTag = false;
+            for (int index = 0; index < data.AbilityTags.Count; index++)
+                if (data.AbilityTags[index] == GameplayTags.Tag_Skill_QuickShift)
+                {
+                    hasQuickShiftTag = true;
+                    break;
+                }
+
+            Expect("QuickShift 已绑定专属 Ability Tag", hasQuickShiftTag);
+            Expect("QuickShift Root Task 为 SprintGATaskConfig",
+                data.RootTask is SprintGATaskConfig);
+            if (data.RootTask is not SprintGATaskConfig config)
+            {
+                LogSummary();
+                return;
+            }
+
+            HashSet<SprintAnimationDirection> configuredDirections = new();
+            HashSet<TransitionAsset> configuredTransitions = new();
+            bool directionsAreUnique = true;
+            bool transitionsAreUnique = true;
+            for (int index = 0; index < config.DirectionalTransitions.Count; index++)
+            {
+                SprintDirectionTransitionBinding binding = config.DirectionalTransitions[index];
+                if (binding == null)
+                {
+                    directionsAreUnique = false;
+                    transitionsAreUnique = false;
+                    continue;
+                }
+
+                directionsAreUnique &= configuredDirections.Add(binding.Direction);
+                if (binding.Transition == null)
+                {
+                    transitionsAreUnique = false;
+                    continue;
+                }
+
+                transitionsAreUnique &= configuredTransitions.Add(binding.Transition);
+            }
+
+            Expect("QuickShift 配置了八个方向", config.DirectionalTransitions.Count == 8);
+            Expect("QuickShift 八方向枚举无重复", directionsAreUnique && configuredDirections.Count == 8);
+            Expect("QuickShift 每个方向使用独立 Transition", transitionsAreUnique && configuredTransitions.Count == 8);
+            Expect("QuickShift 共享开启位移事件名",
+                config.MovementStartEvent != null && config.MovementStartEvent.name == "QuickShiftMoveStart");
+            Expect("QuickShift 共享停止位移事件名",
+                config.MovementStopEvent != null && config.MovementStopEvent.name == "QuickShiftMoveStop");
+            Expect("QuickShift 淡出时长有效",
+                config.FadeOutDuration >= 0f && !float.IsNaN(config.FadeOutDuration) &&
+                !float.IsInfinity(config.FadeOutDuration));
+            Expect("Forward 输入选择 Forward 动画",
+                SprintGATaskConfig.GetClosestDirection(Vector3.forward) == SprintAnimationDirection.Forward);
+            Expect("左前输入选择 ForwardLeft 动画",
+                SprintGATaskConfig.GetClosestDirection(new Vector3(-1f, 0f, 1f)) ==
+                SprintAnimationDirection.ForwardLeft);
+            Expect("无方向输入回退 Forward 动画",
+                SprintGATaskConfig.GetClosestDirection(Vector3.zero) == SprintAnimationDirection.Forward);
+            Expect("QuickShift 八个方向事件窗口与 Runtime 配置均有效",
+                data.IsRuntimeConfigurationValid);
+            Expect("QuickShift 已 Bake 稳定 AbilityId",
+                data.AbilityId != GameplayAbilityData.InvalidId);
             LogSummary();
         }
 
@@ -930,6 +1014,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         [Button("执行完整 GA 多态测试", ButtonSizes.Large)]
         public void RunAll()
         {
+            TestQuickShiftConfiguration();
             TestStableAbilityId();
             TestInstantSkill();
             TestAbilityTagCancellation();

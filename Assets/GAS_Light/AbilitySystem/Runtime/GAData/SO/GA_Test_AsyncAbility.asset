@@ -28,6 +28,14 @@ MonoBehaviour:
   cooldownEffect: {fileID: 11400000, guid: c4005860abd1f1a47be545ea558a6a3c, type: 2}
   effects: []
   cueTags: []
+  damageMultiplier:
+    baseValue: 1
+    levelCurve:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
   rootTask:
     rid: 3428733655084433420
   references:

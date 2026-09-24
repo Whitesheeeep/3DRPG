@@ -37,7 +37,6 @@
                     <ui:Label text="Commit" class="ga-section-title ga-section-gap" />
                     <uie:PropertyField binding-path="costEffect" label="Cost Effect" />
                     <uie:PropertyField binding-path="cooldownEffect" label="Cooldown Effect" />
-                    <uie:PropertyField binding-path="damageMultiplier" label="Damage Multiplier" />
                     <uie:PropertyField binding-path="effects" label="Effects" />
                     <uie:PropertyField binding-path="cueTags" label="Cue Tags" />
                     <ui:Label text="Specific Ability" class="ga-section-title ga-section-gap" />

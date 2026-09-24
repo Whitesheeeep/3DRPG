@@ -12,10 +12,18 @@ namespace RPG.PlayerInputSystem
         /// <param name="request">找到时返回该输入类型的只读请求。</param>
         /// <returns>当前存在该输入类型请求时返回 true。</returns>
         bool TryGetRequest(PlayerInputType inputType, out IReadOnlyPlayerInputRequest request);
-        /// <summary>开始或刷新指定输入的 Press 阶段。</summary>
-        void NotifyPerformed(PlayerInputType inputType, float pressBufferDuration);
-        /// <summary>为指定输入的现有手势创建 Release 阶段。</summary>
-        bool NotifyCanceled(PlayerInputType inputType, float releaseBufferDuration);
+        /// <summary>开始指定输入手势，并快照本次手势的全部时间配置。</summary>
+        /// <param name="inputType">输入类型。</param>
+        /// <param name="pressBufferDuration">Press 缓冲秒数。</param>
+        /// <param name="releaseBufferDuration">Release 缓冲秒数。</param>
+        /// <param name="clickMaxHeldDuration">Click 与长按的分界秒数。</param>
+        /// <param name="clickBufferDuration">Click 缓冲秒数。</param>
+        void NotifyPerformed(PlayerInputType inputType, float pressBufferDuration,
+            float releaseBufferDuration, float clickMaxHeldDuration, float clickBufferDuration);
+        /// <summary>为指定输入的现有手势创建 Release 阶段，并按快照阈值判断 Click。</summary>
+        /// <param name="inputType">输入类型。</param>
+        /// <returns>存在未释放的当前手势并成功处理松开时返回 true。</returns>
+        bool NotifyCanceled(PlayerInputType inputType);
         /// <summary>确认一个来源句柄对应的阶段已被业务消费。</summary>
         bool TryConfirmConsumed(InputRequestHandle handle);
         /// <summary>清除全部请求。</summary>

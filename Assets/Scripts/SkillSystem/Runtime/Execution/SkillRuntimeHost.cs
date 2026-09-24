@@ -13,7 +13,6 @@ namespace RPG.SkillSystem
     public sealed class SkillRuntimeHost : MonoBehaviour, ISkillRuntimeHost
     {
         #region 配置与状态
-
         [SerializeField, Tooltip("技能检测与无挂点表现使用的空间基准；为空时使用当前 Transform。")]
         private Transform origin;
         [SerializeField, InfoBox("AnimationController 通过当前对象及其子对象查找；缺失时仅适用于不需要技能动画的角色。"),
@@ -21,6 +20,13 @@ namespace RPG.SkillSystem
         private AnimationController animationController;
         [SerializeField, Tooltip("角色语义挂点提供器；不使用挂点时可以为空。")]
         private MarkerProvider markerProvider;
+
+        [Title("武器挂点配置"), Space(4f), InfoBox("WeaponTrace 通过挂点获取武器刀根和刀尖的 Transform；；不使用挂点时可以为空。")]
+        [SerializeField]
+        private MarkerKey weaponRootMarkerKey;
+        [SerializeField]
+        private MarkerKey weaponTipMarkerKey;
+
         [SerializeField, Tooltip("技能动画使用的固定语义层。")]
         private AnimationLayerType animationLayer = AnimationLayerType.Action;
         [SerializeField, Tooltip("攻击检测使用的 Physics LayerMask。")]
@@ -58,11 +64,9 @@ namespace RPG.SkillSystem
         public bool DrawAttackDetectionDebug => module.DrawAttackDetectionDebug;
         /// <summary>获取攻击检测调试线框保留秒数；零表示当前帧。</summary>
         public float AttackDetectionDebugDuration => module.AttackDetectionDebugDuration;
-
         #endregion
 
         #region 事件
-
         /// <summary>在共享 Module 产生有效命中后发送。</summary>
         public event Action<SkillHitEventArgs> HitDetected
         {
@@ -90,11 +94,9 @@ namespace RPG.SkillSystem
             add => module.ProjectileSpawnRequested += value;
             remove => module.ProjectileSpawnRequested -= value;
         }
-
         #endregion
 
         #region Unity 生命周期
-
         /// <summary>使用角色稳定依赖初始化共享 Module，但不主动推进任何 Unity 阶段。</summary>
         private void Awake()
         {
@@ -112,6 +114,14 @@ namespace RPG.SkillSystem
                 targetFilter);
             module.Initialize(actor, attack);
             module.SetAttackDetectionDebug(drawAttackDetectionDebug, attackDetectionDebugDuration);
+
+            // TODO: 这里的武器挂点解析逻辑可能需要在运行时动态更新，尤其是当角色切换武器时。
+            if (weaponRootMarkerKey != null && markerProvider != null)
+            {
+                markerProvider.TryGetMarker(weaponRootMarkerKey, out weaponRoot);
+                markerProvider.TryGetMarker(weaponTipMarkerKey, out weaponTip);
+            }
+
             initialized = true;
         }
 
@@ -121,11 +131,9 @@ namespace RPG.SkillSystem
             initialized = false;
             module.Dispose();
         }
-
         #endregion
 
         #region 配置与播放
-
         /// <summary>替换后续 SkillExecution 使用的业务目标过滤器。</summary>
         /// <param name="filter">新的目标解析和合法性过滤器。</param>
         public void SetAttackTargetFilter(ISkillAttackTargetFilter filter)
@@ -189,7 +197,6 @@ namespace RPG.SkillSystem
 
         /// <summary>按立即取消语义结束当前时间轴。</summary>
         public void Cancel() => module.Cancel();
-
         #endregion
     }
 }

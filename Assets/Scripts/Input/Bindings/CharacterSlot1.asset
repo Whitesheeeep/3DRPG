@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca76c19e8f7c66b4ca40df5b5ff980ba, type: 3}
+  m_Name: CharacterSlot1
+  m_EditorClassIdentifier:
+  action: {fileID: -1641466239674093629, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+  inputType: 11
+  pressBufferDuration: 0.2
+  releaseBufferDuration: 0.1
+  clickMaxHeldDuration: 0.2
+  clickBufferDuration: 0.2
+  deliveryMode: 0
