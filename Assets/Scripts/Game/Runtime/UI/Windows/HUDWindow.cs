@@ -57,6 +57,7 @@ namespace WS_Modules.UIModule
 		/// </summary>
 		public override void OnDestroy()
 		{
+			controller?.Dispose();
 			base.OnDestroy();
 		}
 

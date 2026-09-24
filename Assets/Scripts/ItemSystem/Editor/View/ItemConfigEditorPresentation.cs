@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -146,6 +147,39 @@ namespace RPG.ItemSystem.Editor
                         label.text = $"{elementLabel} {index + 1}";
                     }
                 });
+            });
+        }
+
+        /// <summary>配置 Unity 原生序列化集合的标题、长度框和操作页脚。</summary>
+        /// <param name="propertyField">由 SerializedObject 原生绑定的集合 PropertyField。</param>
+        /// <param name="headerText">从对应 UXML PropertyField 缓存的标题。</param>
+        /// <param name="expandedListViewSet">记录已显示过标题的 ListView，以保留用户折叠状态。</param>
+        internal static void ConfigureNativeCollectionHeader(
+            PropertyField propertyField,
+            string headerText,
+            HashSet<ListView> expandedListViewSet)
+        {
+            if (propertyField == null || string.IsNullOrEmpty(headerText)) return;
+
+            propertyField.Query<ListView>().ForEach(listView =>
+            {
+                // 只调整 Unity 公开的列表呈现选项，集合创建、绑定和虚拟化仍由原生序列化系统管理。
+                if (listView.showBoundCollectionSize) listView.showBoundCollectionSize = false;
+                if (!listView.showFoldoutHeader) listView.showFoldoutHeader = true;
+                if (!listView.showAddRemoveFooter) listView.showAddRemoveFooter = true;
+                if (!listView.reorderable) listView.reorderable = true;
+                if (listView.reorderMode != ListViewReorderMode.Simple)
+                    listView.reorderMode = ListViewReorderMode.Simple;
+
+                Foldout foldout = listView.Q<Foldout>();
+                if (foldout == null) return;
+
+                if (!string.Equals(foldout.text, headerText, StringComparison.Ordinal))
+                    foldout.text = headerText;
+
+                // 只在每个新生成的 ListView 首次出现标题时展开；重绑定和布局刷新保留用户选择。
+                if (expandedListViewSet.Add(listView))
+                    foldout.SetValueWithoutNotify(true);
             });
         }
     }

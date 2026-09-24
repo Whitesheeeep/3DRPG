@@ -102,14 +102,31 @@ namespace RPG.Character
             {
                 if (root == null || driver == null || controller == null || blackboard == null)
                     throw new ArgumentNullException(nameof(CharacterManager), "CharacterManager 初始化依赖不能为空。");
+                CharacterPartyManager partyManager = GameArchitecture.Interface.GetManager<CharacterPartyManager>();
                 if (initialCharacterIds == null || initialCharacterIds.Length == 0)
                     throw new InvalidOperationException("[CharacterManager] 未配置初始 CharacterId。");
 
+                bool hasConfiguredParty = false;
+                if (partyManager.Party != null)
+                {
+                    IReadOnlyList<CharacterId> restoredPartyIds = partyManager.CreateSnapshot();
+                    for (int slotIndex = 0; slotIndex < restoredPartyIds.Count; slotIndex++)
+                        hasConfiguredParty |= restoredPartyIds[slotIndex].IsValid;
+                }
+                if (!hasConfiguredParty) partyManager.ConfigureInitialParty(initialCharacterIds);
+
+                IReadOnlyList<CharacterId> partyCharacterIds = partyManager.CreateSnapshot();
+                var configuredCharacterIds = new List<CharacterId>(partyCharacterIds.Count);
+                for (int slotIndex = 0; slotIndex < partyCharacterIds.Count; slotIndex++)
+                    if (partyCharacterIds[slotIndex].IsValid) configuredCharacterIds.Add(partyCharacterIds[slotIndex]);
+                if (configuredCharacterIds.Count == 0)
+                    throw new InvalidOperationException("[CharacterManager] 唯一队伍没有有效角色。");
+
                 // 先校验队伍输入，避免空新档在发现重复角色后留下部分已获得实例。
                 var ids = new HashSet<CharacterId>();
-                for (int index = 0; index < initialCharacterIds.Length; index++)
+                for (int index = 0; index < configuredCharacterIds.Count; index++)
                 {
-                    CharacterId characterId = initialCharacterIds[index];
+                    CharacterId characterId = configuredCharacterIds[index];
                     if (!characterId.IsValid || !ids.Add(characterId))
                         throw new InvalidOperationException($"[CharacterManager] 初始 CharacterId 无效或重复：{characterId}。");
                 }
@@ -118,25 +135,25 @@ namespace RPG.Character
                 if (rosterManager.GetInstances().Count == 0)
                 {
                     // 当前尚无独立 Party 存档时，初始队伍同时承担空新档的角色获得入口。
-                    for (int index = 0; index < initialCharacterIds.Length; index++)
+                    for (int index = 0; index < configuredCharacterIds.Count; index++)
                     {
-                        CharacterAcquisitionResult acquisition = rosterManager.AcquireCharacter(initialCharacterIds[index]);
+                        CharacterAcquisitionResult acquisition = rosterManager.AcquireCharacter(configuredCharacterIds[index]);
                         if (!acquisition.Succeeded && acquisition.Status != CharacterAcquisitionStatus.AlreadyOwned)
-                            throw new InvalidOperationException($"[CharacterManager] 无法初始化初始角色 {initialCharacterIds[index]}：{acquisition.Status}。");
+                            throw new InvalidOperationException($"[CharacterManager] 无法初始化初始角色 {configuredCharacterIds[index]}：{acquisition.Status}。");
                     }
                     Debug.Log($"[CharacterManager] 空角色档已按初始队伍创建，count={initialCharacterIds.Length}。");
                 }
                 else
                 {
-                    for (int index = 0; index < initialCharacterIds.Length; index++)
-                        if (!rosterManager.IsOwned(initialCharacterIds[index]))
-                            throw new InvalidOperationException($"[CharacterManager] 已有角色档缺少队伍角色：{initialCharacterIds[index]}。");
+                    for (int index = 0; index < configuredCharacterIds.Count; index++)
+                        if (!rosterManager.IsOwned(configuredCharacterIds[index]))
+                            throw new InvalidOperationException($"[CharacterManager] 已有角色档缺少队伍角色：{configuredCharacterIds[index]}。");
                 }
 
-                var configs = new CharacterConfig[initialCharacterIds.Length];
-                for (int index = 0; index < initialCharacterIds.Length; index++)
+                var configs = new CharacterConfig[configuredCharacterIds.Count];
+                for (int index = 0; index < configuredCharacterIds.Count; index++)
                 {
-                    CharacterId characterId = initialCharacterIds[index];
+                    CharacterId characterId = configuredCharacterIds[index];
                     // Prefab 地址和静态配置从稳定 Instance 读取，避免队伍加载绕过 Roster 的 Config 权威。
                     configs[index] = rosterManager.GetRequiredInstance(characterId).Config;
                     configs[index].Validate();

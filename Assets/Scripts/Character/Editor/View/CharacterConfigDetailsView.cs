@@ -8,7 +8,7 @@ using WS_Modules.EditorExtensions;
 
 namespace RPG.Character.Editor
 {
-    /// <summary>角色配置编辑器右侧摘要卡、分区详情和头像提交 View。</summary>
+    /// <summary>角色配置编辑器右侧摘要卡、分区详情和角色图片选择 View。</summary>
     internal sealed class CharacterConfigDetailsView : IDisposable
     {
         #region 依赖字段
@@ -26,10 +26,13 @@ namespace RPG.Character.Editor
         private SerializedObject serializedObject;
         private ObjectField sideIconField;
         private ObjectField avatarField;
+        private ObjectField fullBodyPortraitField;
         private Image sideIconPreviewImage;
         private Label sideIconPreviewFallback;
         private Image avatarPreviewImage;
         private Label avatarPreviewFallback;
+        private Image fullBodyPortraitPreviewImage;
+        private Label fullBodyPortraitPreviewFallback;
         private HelpBox emptyNormalAttackWarning;
         private bool suppressCallbacks;
         private bool disposed;
@@ -45,10 +48,8 @@ namespace RPG.Character.Editor
 
         #region 事件
 
-        /// <summary>侧面头像选择变化事件。</summary>
-        internal event Action<CharacterConfig, Sprite> SideIconChanged;
-        /// <summary>角色头像选择变化事件。</summary>
-        internal event Action<CharacterConfig, Sprite> AvatarChanged;
+        /// <summary>任一角色预览 Sprite 选择变化事件。</summary>
+        internal event Action<CharacterConfig, Sprite, CharacterPreviewSpriteSlot> PreviewSpriteChanged;
         /// <summary>角色配置序列化字段变化事件。</summary>
         internal event Action<CharacterConfig, string> PropertiesChanged;
         /// <summary>请求烘焙角色成长表。</summary>
@@ -76,13 +77,14 @@ namespace RPG.Character.Editor
             SetVisible(false);
         }
 
-        /// <summary>解除绑定、取消头像回调并释放当前 SerializedObject。</summary>
+        /// <summary>解除绑定、取消图片回调并释放当前 SerializedObject。</summary>
         public void Dispose()
         {
             if (disposed) return;
             disposed = true;
             if (sideIconField != null) sideIconField.UnregisterValueChangedCallback(OnSideIconFieldChanged);
             if (avatarField != null) avatarField.UnregisterValueChangedCallback(OnAvatarFieldChanged);
+            if (fullBodyPortraitField != null) fullBodyPortraitField.UnregisterValueChangedCallback(OnFullBodyPortraitFieldChanged);
             detailsScrollView.UnregisterCallback<SerializedPropertyChangeEvent>(OnSerializedPropertyChanged);
             growthDetailsView?.Dispose();
             growthDetailsView = null;
@@ -127,13 +129,17 @@ namespace RPG.Character.Editor
                 growthDetailsView.ViewBakedResultRequested += OnViewBakedResultRequested;
                 sideIconField = Require<ObjectField>(detailsScrollView, "SideIconField");
                 avatarField = Require<ObjectField>(detailsScrollView, "AvatarField");
+                fullBodyPortraitField = Require<ObjectField>(detailsScrollView, "FullBodyPortraitField");
                 sideIconPreviewImage = Require<Image>(detailsScrollView, "SideIconPreviewImage");
                 sideIconPreviewFallback = Require<Label>(detailsScrollView, "SideIconPreviewFallback");
                 avatarPreviewImage = Require<Image>(detailsScrollView, "AvatarPreviewImage");
                 avatarPreviewFallback = Require<Label>(detailsScrollView, "AvatarPreviewFallback");
+                fullBodyPortraitPreviewImage = Require<Image>(detailsScrollView, "FullBodyPortraitPreviewImage");
+                fullBodyPortraitPreviewFallback = Require<Label>(detailsScrollView, "FullBodyPortraitPreviewFallback");
                 emptyNormalAttackWarning = Require<HelpBox>(detailsScrollView, "EmptyNormalAttackWarning");
-                ConfigurePreviewField(sideIconField, config.EditorSideIcon, true);
-                ConfigurePreviewField(avatarField, config.EditorAvatar, false);
+                ConfigurePreviewField(sideIconField, config.EditorSideIcon, CharacterPreviewSpriteSlot.SideIcon);
+                ConfigurePreviewField(avatarField, config.EditorAvatar, CharacterPreviewSpriteSlot.Avatar);
+                ConfigurePreviewField(fullBodyPortraitField, config.EditorFullBodyPortrait, CharacterPreviewSpriteSlot.FullBodyPortrait);
 
                 PropertyField characterIdField = detailsScrollView.Q<PropertyField>("CharacterIdField");
                 characterIdField?.SetEnabled(false);
@@ -165,6 +171,7 @@ namespace RPG.Character.Editor
                 serializedObject.UpdateIfRequiredOrScript();
                 sideIconField?.SetValueWithoutNotify(selectedConfig.EditorSideIcon);
                 avatarField?.SetValueWithoutNotify(selectedConfig.EditorAvatar);
+                fullBodyPortraitField?.SetValueWithoutNotify(selectedConfig.EditorFullBodyPortrait);
                 RefreshCombatWarnings();
                 RefreshPreviewImages();
                 RefreshSummary();
@@ -176,13 +183,26 @@ namespace RPG.Character.Editor
             }
         }
 
-        /// <summary>恢复指定头像字段的模型引用。</summary>
-        /// <param name="sideIcon">是否恢复侧面头像。</param>
-        internal void RestorePreview(bool sideIcon)
+        /// <summary>恢复指定图片选择器的模型引用。</summary>
+        /// <param name="slot">需要恢复的预览资源槽。</param>
+        /// <exception cref="ArgumentOutOfRangeException">预览资源槽不是受支持的角色图片槽时抛出。</exception>
+        internal void RestorePreview(CharacterPreviewSpriteSlot slot)
         {
             if (selectedConfig == null) return;
-            if (sideIcon) sideIconField?.SetValueWithoutNotify(selectedConfig.EditorSideIcon);
-            else avatarField?.SetValueWithoutNotify(selectedConfig.EditorAvatar);
+            switch (slot)
+            {
+                case CharacterPreviewSpriteSlot.SideIcon:
+                    sideIconField?.SetValueWithoutNotify(selectedConfig.EditorSideIcon);
+                    break;
+                case CharacterPreviewSpriteSlot.Avatar:
+                    avatarField?.SetValueWithoutNotify(selectedConfig.EditorAvatar);
+                    break;
+                case CharacterPreviewSpriteSlot.FullBodyPortrait:
+                    fullBodyPortraitField?.SetValueWithoutNotify(selectedConfig.EditorFullBodyPortrait);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(slot), slot, "未知的角色预览 Sprite 槽位。");
+            }
             RefreshPreviewImages();
         }
 
@@ -244,23 +264,37 @@ namespace RPG.Character.Editor
         /// <summary>配置不直接绑定运行时字段的预览 ObjectField。</summary>
         /// <param name="field">UXML 中的预览字段。</param>
         /// <param name="sprite">当前 Sprite。</param>
-        /// <param name="sideIcon">是否为侧面头像。</param>
-        private void ConfigurePreviewField(ObjectField field, Sprite sprite, bool sideIcon)
+        /// <param name="slot">当前选择器对应的角色图片槽。</param>
+        /// <exception cref="ArgumentOutOfRangeException">预览资源槽不是受支持的角色图片槽时抛出。</exception>
+        private void ConfigurePreviewField(ObjectField field, Sprite sprite, CharacterPreviewSpriteSlot slot)
         {
             if (field == null) return;
             field.objectType = typeof(Sprite);
             field.allowSceneObjects = false;
             field.SetValueWithoutNotify(sprite);
             // 显式选择回调，避免 Unity 旧版 C# 编译器对条件方法组推断不一致。
-            if (sideIcon) field.RegisterValueChangedCallback(OnSideIconFieldChanged);
-            else field.RegisterValueChangedCallback(OnAvatarFieldChanged);
+            switch (slot)
+            {
+                case CharacterPreviewSpriteSlot.SideIcon:
+                    field.RegisterValueChangedCallback(OnSideIconFieldChanged);
+                    break;
+                case CharacterPreviewSpriteSlot.Avatar:
+                    field.RegisterValueChangedCallback(OnAvatarFieldChanged);
+                    break;
+                case CharacterPreviewSpriteSlot.FullBodyPortrait:
+                    field.RegisterValueChangedCallback(OnFullBodyPortraitFieldChanged);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(slot), slot, "未知的角色预览 Sprite 槽位。");
+            }
         }
 
-        /// <summary>刷新两张图片卡片中的大图和空状态。</summary>
+        /// <summary>刷新三张图片卡片中的大图和空状态。</summary>
         private void RefreshPreviewImages()
         {
             RefreshPreviewImage(sideIconPreviewImage, sideIconPreviewFallback, selectedConfig?.EditorSideIcon, "未选择侧面头像");
             RefreshPreviewImage(avatarPreviewImage, avatarPreviewFallback, selectedConfig?.EditorAvatar, "未选择角色头像");
+            RefreshPreviewImage(fullBodyPortraitPreviewImage, fullBodyPortraitPreviewFallback, selectedConfig?.EditorFullBodyPortrait, "未选择全身立绘");
         }
 
         /// <summary>设置指定预览框的 Sprite、缩放模式和空状态。</summary>
@@ -294,13 +328,19 @@ namespace RPG.Character.Editor
         /// <summary>转发侧面头像变化。</summary>
         private void OnSideIconFieldChanged(ChangeEvent<UnityEngine.Object> eventData)
         {
-            if (!suppressCallbacks) SideIconChanged?.Invoke(selectedConfig, eventData.newValue as Sprite);
+            if (!suppressCallbacks) PreviewSpriteChanged?.Invoke(selectedConfig, eventData.newValue as Sprite, CharacterPreviewSpriteSlot.SideIcon);
         }
 
         /// <summary>转发角色头像变化。</summary>
         private void OnAvatarFieldChanged(ChangeEvent<UnityEngine.Object> eventData)
         {
-            if (!suppressCallbacks) AvatarChanged?.Invoke(selectedConfig, eventData.newValue as Sprite);
+            if (!suppressCallbacks) PreviewSpriteChanged?.Invoke(selectedConfig, eventData.newValue as Sprite, CharacterPreviewSpriteSlot.Avatar);
+        }
+
+        /// <summary>转发全身立绘选择变化。</summary>
+        private void OnFullBodyPortraitFieldChanged(ChangeEvent<UnityEngine.Object> eventData)
+        {
+            if (!suppressCallbacks) PreviewSpriteChanged?.Invoke(selectedConfig, eventData.newValue as Sprite, CharacterPreviewSpriteSlot.FullBodyPortrait);
         }
 
         /// <summary>转发角色成长烘焙请求。</summary>

@@ -11,6 +11,17 @@ using WS_Modules.EditorExtensions;
 
 namespace RPG.Character.Editor
 {
+    /// <summary>标识角色配置中由 Sprite 选择器维护的预览资源槽。</summary>
+    public enum CharacterPreviewSpriteSlot
+    {
+        /// <summary>角色列表使用的侧面头像。</summary>
+        SideIcon,
+        /// <summary>角色方形头像。</summary>
+        Avatar,
+        /// <summary>角色窗口中央显示的全身立绘。</summary>
+        FullBodyPortrait
+    }
+
     /// <summary>集中执行 CharacterDatabase 和 CharacterConfig 的编辑器事务。</summary>
     public sealed class CharacterConfigEditorService
     {
@@ -256,14 +267,49 @@ namespace RPG.Character.Editor
 
         #region 字段提交
 
-        /// <summary>反查 Sprite 所属图集并提交预览、Address 与运行时名称。</summary>
+        /// <summary>反查 Sprite 所属图集并提交对应预览、Address 与运行时名称。</summary>
         /// <param name="config">角色配置。</param>
         /// <param name="sprite">新的 Sprite，可为空表示清空。</param>
-        /// <param name="sideIcon">是否为侧面头像。</param>
+        /// <param name="slot">需要更新的预览资源槽。</param>
         /// <returns>包含自动解析结果的中文状态。</returns>
-        public string SetPreviewSprite(CharacterConfig config, Sprite sprite, bool sideIcon)
+        /// <exception cref="ArgumentNullException">角色配置为空时抛出。</exception>
+        /// <exception cref="InvalidOperationException">Sprite 未被唯一图集收录或图集未注册时抛出。</exception>
+        /// <exception cref="ArgumentOutOfRangeException">预览资源槽不是受支持的角色图片槽时抛出。</exception>
+        public string SetPreviewSprite(CharacterConfig config, Sprite sprite, CharacterPreviewSpriteSlot slot)
         {
             if (config == null) throw new ArgumentNullException(nameof(config));
+            string editorPreviewProperty;
+            string atlasAddressProperty;
+            string spriteNameProperty;
+            string undoLabel;
+            string slotLabel;
+            switch (slot)
+            {
+                case CharacterPreviewSpriteSlot.SideIcon:
+                    editorPreviewProperty = "editorSideIcon";
+                    atlasAddressProperty = "presentation.sideIconAddress";
+                    spriteNameProperty = "presentation.sideIconSpriteName";
+                    undoLabel = "修改侧面头像";
+                    slotLabel = "侧面头像";
+                    break;
+                case CharacterPreviewSpriteSlot.Avatar:
+                    editorPreviewProperty = "editorAvatar";
+                    atlasAddressProperty = "presentation.avatarAddress";
+                    spriteNameProperty = "presentation.avatarSpriteName";
+                    undoLabel = "修改角色头像";
+                    slotLabel = "角色头像";
+                    break;
+                case CharacterPreviewSpriteSlot.FullBodyPortrait:
+                    editorPreviewProperty = "editorFullBodyPortrait";
+                    atlasAddressProperty = "presentation.fullBodyPortraitAddress";
+                    spriteNameProperty = "presentation.fullBodyPortraitSpriteName";
+                    undoLabel = "修改角色全身立绘";
+                    slotLabel = "角色全身立绘";
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(slot), slot, "未知的角色预览 Sprite 槽位。");
+            }
+
             string atlasAddress = string.Empty;
             string spriteName = string.Empty;
             if (sprite != null)
@@ -277,16 +323,18 @@ namespace RPG.Character.Editor
                 spriteName = lookup.SpriteName;
             }
 
-            Undo.RecordObject(config, sideIcon ? "修改侧面头像" : "修改角色头像");
+            // 预先完成 Atlas 唯一性与 Address 校验，再以同一个 Undo 事务提交预览和运行时引用。
+            Undo.RecordObject(config, undoLabel);
             SerializedObject serializedObject = new SerializedObject(config);
-            serializedObject.FindProperty(sideIcon ? "editorSideIcon" : "editorAvatar").objectReferenceValue = sprite;
-            serializedObject.FindProperty(sideIcon ? "presentation.sideIconAddress" : "presentation.avatarAddress").stringValue = atlasAddress;
-            serializedObject.FindProperty(sideIcon ? "presentation.sideIconSpriteName" : "presentation.avatarSpriteName").stringValue = spriteName;
+            serializedObject.FindProperty(editorPreviewProperty).objectReferenceValue = sprite;
+            serializedObject.FindProperty(atlasAddressProperty).stringValue = atlasAddress;
+            serializedObject.FindProperty(spriteNameProperty).stringValue = spriteName;
             serializedObject.ApplyModifiedProperties();
             EditorUtility.SetDirty(config);
             AssetDatabase.SaveAssets();
+            Debug.Log($"[CharacterConfigEditor] 已更新角色 {config.CharacterId} 的{slotLabel}引用，Sprite={(sprite == null ? "空" : spriteName)}，Atlas={(sprite == null ? "空" : atlasAddress)}。");
             return sprite == null
-                ? $"已清除{(sideIcon ? "侧面头像" : "角色头像")}及其 Address 和 SpriteName。"
+                ? $"已清除{slotLabel}及其 Address 和 SpriteName。"
                 : $"已自动填充图集“{atlasAddress}”和 Sprite“{spriteName}”。";
         }
 
@@ -306,6 +354,9 @@ namespace RPG.Character.Editor
                 throw new InvalidOperationException($"角色资产身份不一致：文件名和对象名必须等于 CharacterId '{config.CharacterId}'。");
             ValidateSpriteReference(config.SideIconAddress, config.SideIconSpriteName, "侧面头像");
             ValidateSpriteReference(config.AvatarAddress, config.AvatarSpriteName, "角色头像");
+            // 全身立绘对角色配置保持可选；一旦填写 SpriteName，就必须确保运行时图集引用可解析。
+            if (!string.IsNullOrWhiteSpace(config.FullBodyPortraitSpriteName))
+                ValidateSpriteReference(config.FullBodyPortraitAddress, config.FullBodyPortraitSpriteName, "全身立绘");
             ValidatePrefab(config);
         }
 

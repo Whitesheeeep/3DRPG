@@ -21,7 +21,7 @@ namespace RPG.Game.UI.Controllers
 
         #region 生命周期
 
-        /// <summary>创建并注册 HUD 锁和 Bag 跨窗口两个子协调器。</summary>
+        /// <summary>创建并注册 HUD 锁、Bag 和 Character 跨窗口子协调器。</summary>
         private void Awake()
         {
             if (subCoordinators != null) return;
@@ -29,12 +29,13 @@ namespace RPG.Game.UI.Controllers
             subCoordinators = new IGameWindowSubCoordinator[]
             {
                 new HudWindowLockCoordinator(),
-                new BagWindowFlowCoordinator()
+                new BagWindowFlowCoordinator(),
+                new CharacterWindowFlowCoordinator()
             };
             for (int index = 0; index < subCoordinators.Length; index++)
                 subCoordinators[index].Register();
 
-            WSLog.Log("[GameWindowFlowCoordinator] 已注册 HUD 锁与 Bag 流程子协调器。");
+            WSLog.Log("[GameWindowFlowCoordinator] 已注册 HUD 锁、Bag 与 Character 流程子协调器。");
         }
 
         /// <summary>按注册逆序释放所有子协调器和其事件订阅。</summary>

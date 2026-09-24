@@ -45,6 +45,8 @@ namespace RPG.Game
             // 角色实例先于装备 Manager 注册，后续角色装备关系存档会在三类实例存档之后恢复。
             CharacterRosterManager characterRosterManager = new CharacterRosterManager(saveManager);
             RegisterManager(characterRosterManager);
+            CharacterPartyManager characterPartyManager = new CharacterPartyManager(saveManager, characterRosterManager);
+            RegisterManager(characterPartyManager);
 
             // 业务配置由统一 Provider 建立类型索引；RedDotSystem 负责正式树的运行时组装和校验。
             BagRedDotConfig bagRedDotConfig =
@@ -89,6 +91,7 @@ namespace RPG.Game
             TaskSaveModule taskSaveModule = new TaskSaveModule(TaskManager.Instance);
             snapshotTypeRegistry.Register<TaskSaveSnapshot>(taskSaveModule.ModuleId, taskSaveModule.CurrentVersion);
             snapshotTypeRegistry.Register<CharacterRosterSaveSnapshot>(CharacterRosterSaveModule.StableModuleId, 2);
+            snapshotTypeRegistry.Register<CharacterPartySaveSnapshot>(new SaveModuleId("character-party"), 1);
             snapshotTypeRegistry.Register<ItemDiscoverySaveSnapshot>(ItemDiscoverySaveModule.StableModuleId, 1);
             snapshotTypeRegistry.Register<StackableInventorySaveSnapshot>(new SaveModuleId("stackable-inventory"), 1);
             snapshotTypeRegistry.Register<WeaponInventorySaveSnapshot>(new SaveModuleId("weapon-inventory"), 1);

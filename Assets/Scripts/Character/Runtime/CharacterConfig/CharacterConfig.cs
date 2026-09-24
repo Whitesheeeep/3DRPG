@@ -43,6 +43,8 @@ namespace RPG.Character
         private Sprite editorSideIcon;
         [SerializeField, HideInInspector]
         private Sprite editorAvatar;
+        [SerializeField, HideInInspector]
+        private Sprite editorFullBodyPortrait;
 #endif
         #endregion
 
@@ -63,6 +65,10 @@ namespace RPG.Character
         public string AvatarAddress => presentation.AvatarAddress;
         /// <summary>获取角色头像图集内的 Sprite 名称。</summary>
         public string AvatarSpriteName => presentation.AvatarSpriteName;
+        /// <summary>获取角色全身立绘 SpriteAtlas 的 Addressable Address。</summary>
+        public string FullBodyPortraitAddress => presentation.FullBodyPortraitAddress;
+        /// <summary>获取全身立绘图集内的 Sprite 名称；未配置时角色详情仍可正常打开。</summary>
+        public string FullBodyPortraitSpriteName => presentation.FullBodyPortraitSpriteName;
         /// <summary>获取角色允许装备的武器类型位掩码。</summary>
         public WeaponTypeFlags AllowedWeaponTypes => equipmentRules.AllowedWeaponTypes;
         /// <summary>获取新角色生成默认武器时使用的武器类型。</summary>
@@ -109,6 +115,8 @@ namespace RPG.Character
         public Sprite EditorSideIcon => editorSideIcon;
         /// <summary>获取 Editor 预览用角色头像。</summary>
         public Sprite EditorAvatar => editorAvatar;
+        /// <summary>获取 Editor 预览用角色全身立绘。</summary>
+        public Sprite EditorFullBodyPortrait => editorFullBodyPortrait;
 #endif
         #endregion
 

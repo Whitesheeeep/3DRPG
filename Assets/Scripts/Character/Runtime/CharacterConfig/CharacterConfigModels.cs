@@ -36,6 +36,10 @@ namespace RPG.Character
         [SerializeField, WSAddressableKey("UISpriteAtlas"), LabelText("角色头像图集 Address")] private string avatarAddress = CharacterAssetAddresses.AvatarAtlas;
         /// <summary>角色头像 Sprite 名称。</summary>
         [SerializeField, LabelText("角色头像 Sprite 名称")] private string avatarSpriteName;
+        /// <summary>角色全身立绘图集 Address。</summary>
+        [SerializeField, WSAddressableKey("UISpriteAtlas"), LabelText("全身立绘图集 Address")] private string fullBodyPortraitAddress = CharacterAssetAddresses.FullBodyPortraitsAtlas;
+        /// <summary>角色全身立绘 Sprite 名称。</summary>
+        [SerializeField, LabelText("全身立绘 Sprite 名称")] private string fullBodyPortraitSpriteName;
         /// <summary>读取 Prefab 地址。</summary>
         public string PrefabAddress => prefabAddress;
         /// <summary>读取侧面头像地址。</summary>
@@ -46,6 +50,10 @@ namespace RPG.Character
         public string AvatarAddress => avatarAddress;
         /// <summary>读取头像名称。</summary>
         public string AvatarSpriteName => avatarSpriteName;
+        /// <summary>读取全身立绘图集地址。</summary>
+        public string FullBodyPortraitAddress => fullBodyPortraitAddress;
+        /// <summary>读取全身立绘 Sprite 名称。</summary>
+        public string FullBodyPortraitSpriteName => fullBodyPortraitSpriteName;
     }
 
     /// <summary>角色武器装备规则配置组。</summary>

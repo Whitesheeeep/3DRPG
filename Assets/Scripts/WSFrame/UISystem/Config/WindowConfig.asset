@@ -23,3 +23,5 @@ MonoBehaviour:
     windowPrefabPath: BagWindow
   - windowName: EquipmentDevelopmentWindow
     windowPrefabPath: EquipmentDevelopmentWindow
+  - windowName: CharacterWindow
+    windowPrefabPath: CharacterWindow

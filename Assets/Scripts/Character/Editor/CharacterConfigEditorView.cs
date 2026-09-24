@@ -40,10 +40,8 @@ namespace RPG.Character.Editor
         internal event Action<CharacterConfig, CharacterConfigCommand> CharacterCommandRequested;
         /// <summary>列表空白区域新建角色事件。</summary>
         public event Action NewCharacterRequested;
-        /// <summary>侧面头像变化事件。</summary>
-        public event Action<CharacterConfig, Sprite> SideIconChanged;
-        /// <summary>角色头像变化事件。</summary>
-        public event Action<CharacterConfig, Sprite> AvatarChanged;
+        /// <summary>角色预览 Sprite 变化事件。</summary>
+        public event Action<CharacterConfig, Sprite, CharacterPreviewSpriteSlot> PreviewSpriteChanged;
         /// <summary>角色配置序列化字段变化事件。</summary>
         internal event Action<CharacterConfig, string> PropertiesChanged;
         /// <summary>新建按钮事件。</summary>
@@ -96,8 +94,7 @@ namespace RPG.Character.Editor
             listView.CharacterSelected += OnCharacterSelected;
             listView.CharacterCommandRequested += OnCharacterCommandRequested;
             listView.NewCharacterRequested += OnNewCharacterRequested;
-            detailsView.SideIconChanged += OnSideIconChanged;
-            detailsView.AvatarChanged += OnAvatarChanged;
+            detailsView.PreviewSpriteChanged += OnPreviewSpriteChanged;
             detailsView.PropertiesChanged += OnPropertiesChanged;
             detailsView.BakeGrowthRequested += OnBakeGrowthRequested;
             detailsView.ViewBakedResultRequested += OnViewBakedResultRequested;
@@ -122,8 +119,7 @@ namespace RPG.Character.Editor
             listView.CharacterSelected -= OnCharacterSelected;
             listView.CharacterCommandRequested -= OnCharacterCommandRequested;
             listView.NewCharacterRequested -= OnNewCharacterRequested;
-            detailsView.SideIconChanged -= OnSideIconChanged;
-            detailsView.AvatarChanged -= OnAvatarChanged;
+            detailsView.PreviewSpriteChanged -= OnPreviewSpriteChanged;
             detailsView.PropertiesChanged -= OnPropertiesChanged;
             detailsView.BakeGrowthRequested -= OnBakeGrowthRequested;
             detailsView.ViewBakedResultRequested -= OnViewBakedResultRequested;
@@ -188,9 +184,10 @@ namespace RPG.Character.Editor
             listView.RefreshItems();
         }
 
-        /// <summary>恢复当前详情中的头像预览字段。</summary>
-        /// <param name="sideIcon">是否恢复侧面头像。</param>
-        public void RestorePreview(bool sideIcon) => detailsView.RestorePreview(sideIcon);
+        /// <summary>恢复当前详情中的指定角色图片预览字段。</summary>
+        /// <param name="slot">需要恢复的预览资源槽。</param>
+        /// <exception cref="ArgumentOutOfRangeException">预览资源槽不是受支持的角色图片槽时抛出。</exception>
+        public void RestorePreview(CharacterPreviewSpriteSlot slot) => detailsView.RestorePreview(slot);
 
         /// <summary>显示状态或错误消息。</summary>
         /// <param name="message">状态文本。</param>
@@ -208,10 +205,11 @@ namespace RPG.Character.Editor
         private void OnCharacterCommandRequested(CharacterConfig config, CharacterConfigCommand command) { if (!suppressCallbacks) CharacterCommandRequested?.Invoke(config, command); }
         /// <summary>转发列表空白区域新建角色。</summary>
         private void OnNewCharacterRequested() { if (!suppressCallbacks) NewCharacterRequested?.Invoke(); }
-        /// <summary>转发侧面头像变化。</summary>
-        private void OnSideIconChanged(CharacterConfig config, Sprite sprite) { if (!suppressCallbacks) SideIconChanged?.Invoke(config, sprite); }
-        /// <summary>转发角色头像变化。</summary>
-        private void OnAvatarChanged(CharacterConfig config, Sprite sprite) { if (!suppressCallbacks) AvatarChanged?.Invoke(config, sprite); }
+        /// <summary>转发角色预览 Sprite 变化。</summary>
+        private void OnPreviewSpriteChanged(CharacterConfig config, Sprite sprite, CharacterPreviewSpriteSlot slot)
+        {
+            if (!suppressCallbacks) PreviewSpriteChanged?.Invoke(config, sprite, slot);
+        }
         /// <summary>转发角色序列化字段变化。</summary>
         private void OnPropertiesChanged(CharacterConfig config, string propertyPath) { if (!suppressCallbacks) PropertiesChanged?.Invoke(config, propertyPath); }
         /// <summary>转发新建按钮。</summary>

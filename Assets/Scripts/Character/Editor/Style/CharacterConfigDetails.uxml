@@ -32,6 +32,17 @@
                 <uie:PropertyField name="AvatarSpriteNameField" binding-path="presentation.avatarSpriteName" label="SpriteName" class="config-editor-property-field character-config-property-field" />
             </ui:VisualElement>
         </ui:VisualElement>
+        <ui:VisualElement name="FullBodyPortraitRow" class="character-config-preview-row">
+            <ui:VisualElement class="character-config-preview-frame character-config-preview-frame--portrait">
+                <ui:Image name="FullBodyPortraitPreviewImage" class="character-config-preview-image character-config-preview-image--portrait" picking-mode="Ignore" />
+                <ui:Label name="FullBodyPortraitPreviewFallback" text="未选择" class="character-config-preview-fallback character-config-preview-fallback--portrait" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:VisualElement class="character-config-preview-fields">
+                <uie:ObjectField name="FullBodyPortraitField" label="编辑器预览 Sprite" class="config-editor-property-field character-config-preview-field" />
+                <uie:PropertyField name="FullBodyPortraitAddressField" binding-path="presentation.fullBodyPortraitAddress" label="全身立绘图集 Address" class="config-editor-property-field character-config-property-field" />
+                <uie:PropertyField name="FullBodyPortraitSpriteNameField" binding-path="presentation.fullBodyPortraitSpriteName" label="SpriteName" class="config-editor-property-field character-config-property-field" />
+            </ui:VisualElement>
+        </ui:VisualElement>
         <ui:Label text="初始属性" class="config-editor-section-title character-config-section-title" />
         <uie:PropertyField name="InitialAttributeSetsField" binding-path="progression.initialAttributeSets" label="初始属性集" class="config-editor-property-field character-config-property-field" />
         <ui:Label text="战斗配置" class="config-editor-section-title character-config-section-title" />

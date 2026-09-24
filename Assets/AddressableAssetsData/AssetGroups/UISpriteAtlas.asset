@@ -29,6 +29,18 @@ MonoBehaviour:
     m_SerializedLabels:
     - Bag
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 223d112080ec461685eca72fd0857dd7
+    m_Address: ItemIcons_FoodMaterial
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bag
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3d5befd53007469db4b7bf516a47ea1a
+    m_Address: ItemIcons_CharacterCard
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bag
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 3ee4ca1394842684bac3793fe4bf40bc
     m_Address: Bag
     m_ReadOnly: 0
@@ -37,6 +49,17 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 69dcc93922afd9243bc01176e792c762
     m_Address: CharacterSideIcons
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bag
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 797af4d0d3bb56241a31ff627c330096
+    m_Address: CharacterFullBody
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8fe1b44418a347339a2b9cca0532cbe6
+    m_Address: ItemIcons_BuffItem
     m_ReadOnly: 0
     m_SerializedLabels:
     - Bag
@@ -53,32 +76,8 @@ MonoBehaviour:
     m_SerializedLabels:
     - Bag
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: f080c0dd2bbafd94fb114d6376f62bc1
-    m_Address: WeaponIcons
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - Bag
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: b5eff0303a994f628c9da6fb73246abb
     m_Address: ItemIcons_Common
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - Bag
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 8fe1b44418a347339a2b9cca0532cbe6
-    m_Address: ItemIcons_BuffItem
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - Bag
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 3d5befd53007469db4b7bf516a47ea1a
-    m_Address: ItemIcons_CharacterCard
-    m_ReadOnly: 0
-    m_SerializedLabels:
-    - Bag
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: e40cd2a47a6640d0a7ee386cf59cc880
-    m_Address: ItemIcons_DevelopmentMaterial
     m_ReadOnly: 0
     m_SerializedLabels:
     - Bag
@@ -89,8 +88,14 @@ MonoBehaviour:
     m_SerializedLabels:
     - Bag
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 223d112080ec461685eca72fd0857dd7
-    m_Address: ItemIcons_FoodMaterial
+  - m_GUID: e40cd2a47a6640d0a7ee386cf59cc880
+    m_Address: ItemIcons_DevelopmentMaterial
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bag
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f080c0dd2bbafd94fb114d6376f62bc1
+    m_Address: WeaponIcons
     m_ReadOnly: 0
     m_SerializedLabels:
     - Bag

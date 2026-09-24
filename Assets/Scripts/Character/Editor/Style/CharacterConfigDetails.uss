@@ -21,7 +21,13 @@
     border-width: 1px;
     border-color: rgb(95, 95, 95);
 }
+.character-config-preview-frame--portrait {
+    height: 164px;
+    min-height: 164px;
+}
 .character-config-preview-image { width: 92px; height: 92px; }
+.character-config-preview-image--portrait { width: 92px; height: 156px; }
+.character-config-preview-fallback--portrait { width: 92px; height: 156px; }
 .character-config-preview-fallback {
     width: 92px;
     height: 92px;

@@ -80,4 +80,14 @@ namespace RPG.Game.UI.Escape
                 window.CloseSelectionPanelFromCommand();
         }
     }
+
+    /// <summary>请求通过 UIManager 关闭 CharacterWindow。</summary>
+    public sealed class CloseCharacterWindowCommand : AbstractCommand
+    {
+        /// <summary>执行 CharacterWindow 隐藏流程。</summary>
+        protected override void OnExecute()
+        {
+            UIManager.Instance.HideWindowAsync<CharacterWindow>().Forget();
+        }
+    }
 }

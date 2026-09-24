@@ -28,8 +28,10 @@ MonoBehaviour:
   maxAscensionRank: 6
   maxRefinementRank: 5
   growthProfile: {fileID: 11400000, guid: 28d498b19f3930b4c822ae935539a474, type: 2}
-  levelEffects: []
-  refinementEffects: []
+  levelEffects:
+  - {fileID: 11400000, guid: e3e7b6691b7b6ec42973ee3b2fe6530c, type: 2}
+  refinementEffects:
+  - {fileID: 11400000, guid: 2d868042d8cf3ef4e9ea08b3c5b61671, type: 2}
   ascensionStages:
   - requiredLevel: 20
     maxLevelAfter: 40

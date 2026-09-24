@@ -37,8 +37,7 @@ namespace RPG.Character.Editor
             view.CharacterSelected += OnCharacterSelected;
             view.CharacterCommandRequested += OnCharacterCommandRequested;
             view.NewCharacterRequested += OnNewCharacterRequested;
-            view.SideIconChanged += OnSideIconChanged;
-            view.AvatarChanged += OnAvatarChanged;
+            view.PreviewSpriteChanged += OnPreviewSpriteChanged;
             view.PropertiesChanged += OnPropertiesChanged;
             view.ApplyDefaultsRequested += OnApplyDefaultsRequested;
             view.BakeGrowthRequested += OnBakeGrowthRequested;
@@ -74,8 +73,7 @@ namespace RPG.Character.Editor
                 view.CharacterSelected -= OnCharacterSelected;
                 view.CharacterCommandRequested -= OnCharacterCommandRequested;
                 view.NewCharacterRequested -= OnNewCharacterRequested;
-                view.SideIconChanged -= OnSideIconChanged;
-                view.AvatarChanged -= OnAvatarChanged;
+                view.PreviewSpriteChanged -= OnPreviewSpriteChanged;
                 view.PropertiesChanged -= OnPropertiesChanged;
                 view.ApplyDefaultsRequested -= OnApplyDefaultsRequested;
                 view.BakeGrowthRequested -= OnBakeGrowthRequested;
@@ -224,11 +222,8 @@ namespace RPG.Character.Editor
         /// <summary>处理列表空白区域的新建角色请求。</summary>
         private void OnNewCharacterRequested() => OnCreateRequested();
 
-        /// <summary>提交侧面头像预览。</summary>
-        private void OnSideIconChanged(CharacterConfig config, Sprite sprite) => SetPreview(config, sprite, true);
-
-        /// <summary>提交角色头像预览。</summary>
-        private void OnAvatarChanged(CharacterConfig config, Sprite sprite) => SetPreview(config, sprite, false);
+        /// <summary>提交侧面头像、角色头像或全身立绘预览。</summary>
+        private void OnPreviewSpriteChanged(CharacterConfig config, Sprite sprite, CharacterPreviewSpriteSlot slot) => SetPreview(config, sprite, slot);
 
         /// <summary>将角色数据库默认值应用到当前角色。</summary>
         private void OnApplyDefaultsRequested() => OnCharacterCommandRequested(selectedConfig, CharacterConfigCommand.ApplyDefaults);
@@ -256,19 +251,22 @@ namespace RPG.Character.Editor
                 BakedResultViewerWindow.Open(source);
         }
 
-        /// <summary>调用 Service 同步 SpriteName，失败时恢复预览控件。</summary>
-        private void SetPreview(CharacterConfig config, Sprite sprite, bool sideIcon)
+        /// <summary>调用 Service 同步 SpriteName，失败时恢复对应预览控件。</summary>
+        /// <param name="config">目标角色配置。</param>
+        /// <param name="sprite">用户选择的 Sprite；为空时清除当前引用。</param>
+        /// <param name="slot">需要提交的预览资源槽。</param>
+        private void SetPreview(CharacterConfig config, Sprite sprite, CharacterPreviewSpriteSlot slot)
         {
             if (config == null || config != selectedConfig) return;
             try
             {
-                string message = service.SetPreviewSprite(config, sprite, sideIcon);
+                string message = service.SetPreviewSprite(config, sprite, slot);
                 view.RefreshSelectedConfig();
                 view.SetStatus(message);
             }
             catch (Exception exception)
             {
-                view.RestorePreview(sideIcon);
+                view.RestorePreview(slot);
                 view.SetStatus($"Sprite 设置失败：{exception.Message}");
             }
         }

@@ -22,6 +22,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2d731c52b9ad2b848b54c0dac7487fef
+    m_Address: CharacterWindow
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 2d9160d59cd222943ab947bccbef21b0
     m_Address: HUDWindow
     m_ReadOnly: 0

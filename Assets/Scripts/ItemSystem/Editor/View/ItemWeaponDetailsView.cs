@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -20,6 +21,11 @@ namespace RPG.ItemSystem.Editor
         private readonly VisualElement ascensionStageHost;
         private readonly VisualElement refinementStageHost;
         private readonly VisualElement growthProfileContent;
+        private readonly PropertyField levelEffectsField;
+        private readonly PropertyField refinementEffectsField;
+        private readonly string levelEffectsHeader;
+        private readonly string refinementEffectsHeader;
+        private readonly HashSet<ListView> expandedEffectListViewSet = new();
         private readonly Label ascensionStageTitle;
         private readonly Label refinementStageTitle;
         private readonly PropertyField growthProfileMaxLevelField;
@@ -73,6 +79,10 @@ namespace RPG.ItemSystem.Editor
             ascensionStageHost = Require<VisualElement>("AscensionStageHost");
             refinementStageHost = Require<VisualElement>("RefinementStageHost");
             growthProfileContent = Require<VisualElement>("GrowthProfileContent");
+            levelEffectsField = Require<PropertyField>("LevelEffectsField");
+            refinementEffectsField = Require<PropertyField>("RefinementEffectsField");
+            levelEffectsHeader = levelEffectsField.label;
+            refinementEffectsHeader = refinementEffectsField.label;
             ascensionStageTitle = Require<Label>("AscensionStageTitle");
             refinementStageTitle = Require<Label>("RefinementStageTitle");
             missingGrowthProfileWarning = Require<VisualElement>("MissingGrowthProfileWarning");
@@ -100,6 +110,7 @@ namespace RPG.ItemSystem.Editor
             bakeButton.clicked -= OnBakeButtonClicked;
             viewBakedResultButton.clicked -= OnViewBakedResultButtonClicked;
             Unbind();
+            expandedEffectListViewSet.Clear();
             BakeGrowthRequested = null;
             ViewBakedResultRequested = null;
             PropertiesChanged = null;
@@ -175,7 +186,7 @@ namespace RPG.ItemSystem.Editor
             ScheduleVisibleFieldLabelRefresh();
         }
 
-        /// <summary>合并当前绑定版本的可见字段标签刷新，不介入 ListView 原生绑定。</summary>
+        /// <summary>合并当前绑定版本的可见标签与原生集合标题刷新。</summary>
         private void ScheduleVisibleFieldLabelRefresh()
         {
             if (disposed || boundWeapon == null || labelRefreshScheduled) return;
@@ -185,7 +196,16 @@ namespace RPG.ItemSystem.Editor
             {
                 labelRefreshScheduled = false;
                 if (disposed || scheduledVersion != bindingVersion || boundWeapon == null) return;
-                // 只改已经生成的字段 Label；Unity 仍独占数组 ListView 的 bindItem 和序列化上下文。
+                // 列表绑定完成后只设置原生展示属性和 Foldout 标题，不替换 Unity 的 bindItem。
+                ItemConfigEditorPresentation.ConfigureNativeCollectionHeader(
+                    levelEffectsField,
+                    levelEffectsHeader,
+                    expandedEffectListViewSet);
+                ItemConfigEditorPresentation.ConfigureNativeCollectionHeader(
+                    refinementEffectsField,
+                    refinementEffectsHeader,
+                    expandedEffectListViewSet);
+                // 动态字段标签只更新当前已生成节点，数组元素标题与空状态保留 Unity 默认值。
                 VisibleSerializedFieldLabelLocalizer.Apply(pageRoot);
             });
         }

@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -19,6 +20,9 @@ namespace RPG.ItemSystem.Editor
         private readonly VisualElement artifactBaseFields;
         private readonly VisualElement artifactGrowthProfileContent;
         private readonly VisualElement missingGrowthProfileWarning;
+        private readonly PropertyField levelEffectsField;
+        private readonly string levelEffectsHeader;
+        private readonly HashSet<ListView> expandedEffectListViewSet = new();
         private readonly PropertyField growthProfileMaxLevelField;
         private readonly Label bakedSummaryLabel;
         private readonly Button bakeButton;
@@ -68,6 +72,8 @@ namespace RPG.ItemSystem.Editor
             artifactBaseFields = Require<VisualElement>("ArtifactBaseFields");
             artifactGrowthProfileContent = Require<VisualElement>("ArtifactGrowthProfileContent");
             missingGrowthProfileWarning = Require<VisualElement>("MissingArtifactGrowthProfileWarning");
+            levelEffectsField = Require<PropertyField>("ArtifactLevelEffectsField");
+            levelEffectsHeader = levelEffectsField.label;
             growthProfileMaxLevelField = Require<PropertyField>("ArtifactGrowthProfileMaxLevelField");
             growthProfileMaxLevelField.SetEnabled(false);
             bakedSummaryLabel = Require<VisualElement>("ArtifactBakedSummary").Q<Label>("ArtifactBakedSummaryLabel");
@@ -92,6 +98,7 @@ namespace RPG.ItemSystem.Editor
             bakeButton.clicked -= OnBakeButtonClicked;
             viewBakedResultButton.clicked -= OnViewBakedResultButtonClicked;
             Unbind();
+            expandedEffectListViewSet.Clear();
             BakeGrowthRequested = null;
             ViewBakedResultRequested = null;
             PropertiesChanged = null;
@@ -160,7 +167,7 @@ namespace RPG.ItemSystem.Editor
             ScheduleVisibleFieldLabelRefresh();
         }
 
-        /// <summary>合并当前绑定版本的可见字段标签刷新，不介入 ListView 原生绑定。</summary>
+        /// <summary>合并当前绑定版本的可见标签与原生集合标题刷新。</summary>
         private void ScheduleVisibleFieldLabelRefresh()
         {
             if (disposed || boundArtifact == null || labelRefreshScheduled) return;
@@ -170,6 +177,12 @@ namespace RPG.ItemSystem.Editor
             {
                 labelRefreshScheduled = false;
                 if (disposed || scheduledVersion != bindingVersion || boundArtifact == null) return;
+                // 列表绑定完成后只设置原生展示属性和 Foldout 标题，不替换 Unity 的 bindItem。
+                ItemConfigEditorPresentation.ConfigureNativeCollectionHeader(
+                    levelEffectsField,
+                    levelEffectsHeader,
+                    expandedEffectListViewSet);
+                // 动态字段标签只更新当前已生成节点，数组元素标题与空状态保留 Unity 默认值。
                 VisibleSerializedFieldLabelLocalizer.Apply(pageRoot);
             });
         }

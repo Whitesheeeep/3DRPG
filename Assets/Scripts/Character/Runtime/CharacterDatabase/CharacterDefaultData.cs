@@ -62,6 +62,9 @@ namespace RPG.Character
         /// <summary>获取默认角色头像图集 Address。</summary>
         public string DefaultAvatarAddress => defaultAvatarAddress;
 
+        /// <summary>获取新角色使用的全身立绘图集 Address。</summary>
+        public string DefaultFullBodyPortraitAddress => CharacterAssetAddresses.FullBodyPortraitsAtlas;
+
         /// <summary>获取默认重力。</summary>
         public float DefaultGravity => defaultGravity;
 
@@ -146,12 +149,14 @@ namespace RPG.Character
             SerializedProperty rarity = RequireProperty(serializedObject, "identity.rarity");
             SerializedProperty sideIconAddress = RequireProperty(serializedObject, "presentation.sideIconAddress");
             SerializedProperty avatarAddress = RequireProperty(serializedObject, "presentation.avatarAddress");
+            SerializedProperty fullBodyPortraitAddress = RequireProperty(serializedObject, "presentation.fullBodyPortraitAddress");
             SerializedProperty gravity = RequireProperty(serializedObject, "locomotion.gravity");
             SerializedProperty maxLevel = RequireProperty(serializedObject, "progression.maxLevel");
             SerializedProperty maxAscensionRank = RequireProperty(serializedObject, "progression.maxAscensionRank");
             rarity.intValue = (int)DefaultRarity;
             sideIconAddress.stringValue = DefaultSideIconAddress;
             avatarAddress.stringValue = DefaultAvatarAddress;
+            fullBodyPortraitAddress.stringValue = DefaultFullBodyPortraitAddress;
             gravity.floatValue = DefaultGravity;
             maxLevel.intValue = DefaultMaxLevel;
             maxAscensionRank.intValue = DefaultMaxAscensionRank;

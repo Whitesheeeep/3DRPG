@@ -29,6 +29,14 @@ MonoBehaviour:
     banedTags: []
   costEffect: {fileID: 0}
   cooldownEffect: {fileID: 0}
+  damageMultiplier:
+    baseValue: 1
+    levelCurve:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
   effects: []
   cueTags:
   - id: 57
