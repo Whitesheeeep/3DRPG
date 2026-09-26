@@ -35,7 +35,7 @@ MonoBehaviour:
       Data: 
     - Name: 
       Entry: 12
-      Data: 57
+      Data: 59
     - Name: 
       Entry: 7
       Data: 
@@ -3745,6 +3745,135 @@ MonoBehaviour:
       Entry: 8
       Data: 
     - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 184
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: $v
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTagNode, Assembly-CSharp
+    - Name: tag
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 184
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: parent
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 126
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: ancestors
+      Entry: 7
+      Data: 55|WS_Modules.GAS.TAG.GameplayTag[], Assembly-CSharp
+    - Name: 
+      Entry: 12
+      Data: 1
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 126
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 185
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: $v
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTagNode, Assembly-CSharp
+    - Name: tag
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 185
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: parent
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 184
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: ancestors
+      Entry: 7
+      Data: 56|WS_Modules.GAS.TAG.GameplayTag[], Assembly-CSharp
+    - Name: 
+      Entry: 12
+      Data: 2
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 184
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: WS_Modules.GAS.TAG.GameplayTag, Assembly-CSharp
+    - Name: id
+      Entry: 3
+      Data: 126
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
       Entry: 13
       Data: 
     - Name: 
@@ -3752,18 +3881,18 @@ MonoBehaviour:
       Data: 
     - Name: bakedIdHistory
       Entry: 7
-      Data: 55|System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Int32,
+      Data: 57|System.Collections.Generic.Dictionary`2[[System.String, mscorlib],[System.Int32,
         mscorlib]], mscorlib
     - Name: comparer
       Entry: 7
-      Data: 56|System.Collections.Generic.GenericEqualityComparer`1[[System.String,
+      Data: 58|System.Collections.Generic.GenericEqualityComparer`1[[System.String,
         mscorlib]], mscorlib
     - Name: 
       Entry: 8
       Data: 
     - Name: 
       Entry: 12
-      Data: 57
+      Data: 59
     - Name: 
       Entry: 7
       Data: 
@@ -4449,6 +4578,30 @@ MonoBehaviour:
       Entry: 8
       Data: 
     - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 1
+      Data: 41e88775129946fc9bc1dae97e26789f
+    - Name: $v
+      Entry: 3
+      Data: 184
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 1
+      Data: db46f16046b64ffd8468635d26c08b7e
+    - Name: $v
+      Entry: 3
+      Data: 185
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
       Entry: 13
       Data: 
     - Name: 
@@ -4683,6 +4836,14 @@ MonoBehaviour:
     name: DirY
     description: 
     parentGuid: e61fa97669d24dc6adac0a717bf9d7de
+  - guid: 41e88775129946fc9bc1dae97e26789f
+    name: CD
+    description: 
+    parentGuid: e94da156039642949baf88857957bad5
+  - guid: db46f16046b64ffd8468635d26c08b7e
+    name: QuickShift
+    description: 
+    parentGuid: 41e88775129946fc9bc1dae97e26789f
   retiredTagIds: 4700000056000000660000006700000068000000690000006a0000006b0000006c0000006d0000006e0000006f0000007f0000008000000083000000840000008500000086000000870000008800000089000000
-  nextTagId: 184
+  nextTagId: 186
   bakeDirty: 0

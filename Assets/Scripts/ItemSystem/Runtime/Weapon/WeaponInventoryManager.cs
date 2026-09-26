@@ -296,6 +296,7 @@ namespace RPG.ItemSystem
         #endregion
 
         #region 状态修改与存档
+
         /// <summary>更新武器等级、经验、突破和精炼状态。</summary>
         /// <param name="instanceId">实例标识。</param>
         /// <param name="update">目标状态。</param>

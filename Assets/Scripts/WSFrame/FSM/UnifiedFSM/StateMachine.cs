@@ -120,6 +120,19 @@ namespace WS_Modules.FSM
         /// </summary>
         public bool ChangeState(TStateId stateId)
         {
+            return ChangeState(stateId, null);
+        }
+
+        /// <summary>
+        /// 在当前状态机的直接子状态中执行切换，并通知已完成进入的目标实例。
+        /// </summary>
+        /// <param name="stateId">目标直接子状态 ID。</param>
+        /// <param name="onCommitted">切换成功后接收目标状态实例的回调。</param>
+        /// <returns>目标通过预检并完成切换时返回 true。</returns>
+        public bool ChangeState(
+            TStateId stateId,
+            Action<IState<TStateId, TOwner>> onCommitted)
+        {
             if (!mStates.TryGetValue(stateId, out var nextState))
                 return false;
 
@@ -131,6 +144,7 @@ namespace WS_Modules.FSM
                 return false;
 
             CommitStateChange(nextState, false);
+            onCommitted?.Invoke(nextState);
             return true;
         }
 
@@ -158,14 +172,29 @@ namespace WS_Modules.FSM
         /// <returns>路径完整有效并完成切换时返回 true。</returns>
         public bool ChangeStatePath(params TStateId[] statePath)
         {
-            return ChangeStatePathInternal(statePath);
+            return ChangeStatePath(null, statePath);
+        }
+
+        /// <summary>
+        /// 按完整状态路径执行切换，并在最终目标完成 OnEnter 后通知调用方。
+        /// </summary>
+        /// <param name="onCommitted">路径成功提交后接收最终目标状态实例的回调。</param>
+        /// <param name="statePath">从当前状态机开始的直接子状态路径。</param>
+        /// <returns>路径通过预检并完成切换时返回 true。</returns>
+        public bool ChangeStatePath(
+            Action<IState<TStateId, TOwner>> onCommitted,
+            params TStateId[] statePath)
+        {
+            return ChangeStatePathInternal(statePath, onCommitted);
         }
 
         /// <summary>按只读路径执行层级切换的内部实现。</summary>
         /// <param name="statePath">从当前状态机开始、依次指向嵌套子状态的直接子状态 ID。</param>
+        /// <param name="onCommitted">路径提交后接收最终目标状态实例的可选回调。</param>
         /// <returns>路径完整有效并完成切换时返回 true。</returns>
         private bool ChangeStatePathInternal(
-            IReadOnlyList<TStateId> statePath)
+            IReadOnlyList<TStateId> statePath,
+            Action<IState<TStateId, TOwner>> onCommitted = null)
         {
             if (!TryCollectStatePath(statePath, out List<StateMachine<TStateId, TOwner>> machines,
                     out List<IState<TStateId, TOwner>> targets))
@@ -192,6 +221,7 @@ namespace WS_Modules.FSM
                 machine.CommitStateChange(targets[index], index < targets.Count - 1);
             }
 
+            onCommitted?.Invoke(targets[targets.Count - 1]);
             return true;
         }
         /// <summary>

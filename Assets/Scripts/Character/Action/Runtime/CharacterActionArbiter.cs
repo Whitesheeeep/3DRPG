@@ -10,7 +10,7 @@ using WS_Modules.GAS.GameplayAbilitySystem;
 namespace RPG.Character
 {
     /// <summary>按 Ability、Jump、Move 顺序仲裁当前角色的 FullBody 转换候选。</summary>
-    internal sealed class CharacterActionArbiter : IFullBodyActionArbiter, IDisposable
+    internal sealed class CharacterActionArbiter : IFullBodyActionArbiter, IFullBodyActionRegistrationOwner, IDisposable
     {
         #region 依赖字段
 
@@ -128,6 +128,11 @@ namespace RPG.Character
                 $"[CharacterActionArbiter] 角色 '{owner.name}' 注销 FullBody Ability，ActivationId={activationId}。",
                 owner);
         }
+
+        /// <summary>实现 Handle 所需的注销契约并保留当前玩家仲裁器的清理路径。</summary>
+        /// <param name="registrationId">待注销的注册标识。</param>
+        void IFullBodyActionRegistrationOwner.UnregisterFullBodyAction(int registrationId) =>
+            UnregisterFullBodyAction(registrationId);
 
         /// <summary>销毁角色动作环境时清理当前注册和共享 Blackboard 占据。</summary>
         public void Dispose()

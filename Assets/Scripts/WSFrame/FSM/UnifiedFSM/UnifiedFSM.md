@@ -359,6 +359,41 @@ root.ChangeStatePath(PlayerState.Grounded, PlayerState.Run);
 
 `ChangeStatePath` 会先收集目标路径、计算最长公共前缀并预检所有分歧节点的 `CanEnter()`；预检失败时不会退出当前状态。完整路径相同返回 `false`。状态机可通过 `CurrentLeafState` 与 `CurrentStatePath` 读取当前活动叶节点和路径快照。
 
+### 成功切换回调
+
+需要在状态已经完成 `OnEnter()` 后继续设置运行时数据时，可以传入成功回调：
+
+```csharp
+root.ChangeState(PlayerState.Run, enteredState =>
+{
+    RunState runState = (RunState)enteredState;
+    runState.SetTargetSpeed();
+});
+
+root.ChangeStatePath(enteredState =>
+{
+    Debug.Log($"已进入 {enteredState.StateId}");
+}, PlayerState.Grounded, PlayerState.Run);
+```
+
+```mermaid
+sequenceDiagram
+    participant Caller as 调用方
+    participant FSM as StateMachine
+    participant Target as 目标状态
+    Caller->>FSM: ChangeState / ChangeStatePath
+    FSM->>FSM: 解析路径并预检 CanEnter
+    alt 预检失败或路径重复
+        FSM-->>Caller: false，不执行回调
+    else 路径提交成功
+        FSM->>Target: OnEnter
+        FSM->>Caller: 回调(已进入的目标实例)
+        FSM-->>Caller: true
+    end
+```
+
+回调只表示一次真实状态提交。目标不存在、路径预检失败和重复切换都不会调用它；回调中的异常不会被状态机吞掉。
+
 推荐让状态只发起语义化的状态请求，不直接访问 `Machine.Machine`。父状态机仍然可以通过 `Transition` 或 `AnyTransition` 处理死亡、受击等全局打断。
 
 ## 自定义 CanEnter 示例

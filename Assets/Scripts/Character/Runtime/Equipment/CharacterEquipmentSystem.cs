@@ -204,7 +204,7 @@ namespace RPG.Character
 
         #region 存档恢复
 
-        /// <summary>由独立存档模块整体恢复角色装备状态并发布一次完成事件。</summary>
+        /// <summary>将所有角色装备关系提交到角色状态并发布一次完成事件。</summary>
         /// <param name="equipmentByCharacterIdMap">已校验装备关系。</param>
         internal void RestoreEquipmentState(System.Collections.Generic.IReadOnlyDictionary<CharacterId, CharacterEquipmentState> equipmentByCharacterIdMap)
         {

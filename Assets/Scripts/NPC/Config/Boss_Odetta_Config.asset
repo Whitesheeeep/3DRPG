@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f8e364e39bb583844b37986ef4ec2a0e, type: 3}
+  m_Name: Boss_Odetta_Config
+  m_EditorClassIdentifier: 
+  initialAttributeSets:
+  - {fileID: 11400000, guid: fa050d1171257b24bbba13162066da88, type: 2}
+  grantedAbilities:
+  - {fileID: 11400000, guid: 9245d8261e9c9f54192f88a26171d000, type: 2}
+  idleTransition: {fileID: 11400000, guid: fba2de96f2c9c704d9b02f1f20b43088, type: 2}
+  moveTransition: {fileID: 11400000, guid: ee0cb3205a1d90547980dbc7aee1615f, type: 2}
+  moveParameterX: {fileID: 11400000, guid: bf95c5c8b0cc5d441b7abe5dc3e7977e, type: 2}

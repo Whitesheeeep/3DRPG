@@ -138,7 +138,19 @@ namespace RPG.TaskSystem
     /// </summary>
     public sealed class TaskSaveModule : SaveModule<TaskSaveSnapshot>
     {
+        #region 模块标识
+
+        /// <summary>任务存档模块的稳定 ID。</summary>
+        public static readonly SaveModuleId StableModuleId = new SaveModuleId("task");
+
+        #endregion
+
+        #region 依赖字段
+
+        // 依赖字段：任务事实仍由 TaskManager 持有，模块只负责转换快照。
         private readonly TaskManager taskManager;
+
+        #endregion
 
         /// <summary>
         /// 创建任务存档模块。
@@ -147,18 +159,21 @@ namespace RPG.TaskSystem
         /// <exception cref="ArgumentNullException">Manager 为空时抛出。</exception>
         public TaskSaveModule(TaskManager taskManager)
             : base(
-                new SaveModuleId("task"),
+                StableModuleId,
                 1,
                 SaveMissingModulePolicy.Required)
         {
             this.taskManager = taskManager ?? throw new ArgumentNullException(nameof(taskManager));
         }
 
-        /// <summary>
-        /// 在主线程采集任务状态快照。
-        /// </summary>
-        /// <returns>任务存档快照。</returns>
+        /// <summary>从任务 Manager 采集强类型任务状态快照。</summary>
+        /// <returns>当前任务快照。</returns>
         protected override TaskSaveSnapshot CaptureTypedSnapshot() => taskManager.CaptureSnapshot();
+
+        /// <summary>将已校验的任务快照恢复到任务 Manager。</summary>
+        /// <param name="snapshot">已校验的当前版本快照。</param>
+        protected override void RestoreTypedSnapshot(TaskSaveSnapshot snapshot) =>
+            taskManager.RestoreSnapshot(snapshot);
 
         /// <summary>
         /// 校验任务快照的结构约束，不改变运行时状态。
@@ -174,11 +189,5 @@ namespace RPG.TaskSystem
             snapshot.ValidateShape();
         }
 
-        /// <summary>
-        /// 将已验证的任务快照恢复到 TaskManager；运行时订阅由 TaskProgressSystem 后续重建。
-        /// </summary>
-        /// <param name="snapshot">已验证快照。</param>
-        protected override void RestoreTypedSnapshot(TaskSaveSnapshot snapshot) =>
-            taskManager.RestoreSnapshot(snapshot);
     }
 }

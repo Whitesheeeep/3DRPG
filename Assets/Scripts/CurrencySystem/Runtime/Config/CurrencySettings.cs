@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
-namespace RPG.CurrencySystem
+namespace RPG.CurrencySystemNS
 {
     /// <summary>账号货币的初始值与 int 上限配置。</summary>
     [CreateAssetMenu(fileName = "CurrencySettings", menuName = "RPG/Currency/Currency Settings", order = 0)]

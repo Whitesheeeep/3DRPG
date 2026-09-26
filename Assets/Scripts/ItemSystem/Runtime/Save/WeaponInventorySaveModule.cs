@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using RPG.SaveSystem;
+using UnityEngine;
 
 namespace RPG.ItemSystem
 {
@@ -80,6 +81,13 @@ namespace RPG.ItemSystem
     /// <summary>将武器实例状态接入 SaveSystem。</summary>
     public sealed class WeaponInventorySaveModule : SaveModule<WeaponInventorySaveSnapshot>
     {
+        #region 模块标识
+
+        /// <summary>武器库存存档模块的稳定 ID。</summary>
+        public static readonly SaveModuleId StableModuleId = new SaveModuleId("weapon-inventory");
+
+        #endregion
+
         #region 依赖字段
 
         private readonly WeaponInventoryManager manager;
@@ -88,26 +96,30 @@ namespace RPG.ItemSystem
 
         /// <summary>创建武器实例存档模块。</summary>
         /// <param name="manager">武器 Manager。</param>
+        /// <exception cref="ArgumentNullException">Manager 为空时抛出。</exception>
         public WeaponInventorySaveModule(WeaponInventoryManager manager)
-            : base(new SaveModuleId("weapon-inventory"), 1, SaveMissingModulePolicy.Required,
+            : base(StableModuleId, 1, SaveMissingModulePolicy.Required,
                 new[] { ItemDiscoverySaveModule.StableModuleId })
         {
             this.manager = manager ?? throw new ArgumentNullException(nameof(manager));
         }
 
-        /// <summary>采集武器实例状态。</summary>
-        /// <returns>武器实例快照。</returns>
+        /// <summary>采集武器实例、新获得 Definition 和序号状态。</summary>
+        /// <returns>武器库存快照。</returns>
         protected override WeaponInventorySaveSnapshot CaptureTypedSnapshot()
         {
             var snapshot = new WeaponInventorySaveSnapshot();
             IReadOnlyList<ItemId> newDefinitionIds = manager.GetNewDefinitionIds();
+            // Definition 级 New 提示与具体实例分开保存，保留原库存状态结构。
             for (int index = 0; index < newDefinitionIds.Count; index++)
-                snapshot.NewDefinitionIds.Add(newDefinitionIds[index].Value);
-
-            IReadOnlyList<WeaponInstance> instances = manager.GetInstances();
-            for (int index = 0; index < instances.Count; index++)
             {
-                WeaponInstance instance = instances[index];
+                snapshot.NewDefinitionIds.Add(newDefinitionIds[index].Value);
+            }
+
+            IReadOnlyList<WeaponInstance> currentInstances = manager.GetInstances();
+            for (int index = 0; index < currentInstances.Count; index++)
+            {
+                WeaponInstance instance = currentInstances[index];
                 snapshot.Instances.Add(new WeaponInventorySaveEntry
                 {
                     InstanceId = instance.InstanceId.Value,
@@ -123,6 +135,32 @@ namespace RPG.ItemSystem
 
             snapshot.NextAcquisitionSequence = manager.NextAcquisitionSequence;
             return snapshot;
+        }
+
+        /// <summary>将已校验的武器实例和 New 状态整体恢复，并发布恢复事件。</summary>
+        /// <param name="snapshot">已校验的当前版本快照。</param>
+        protected override void RestoreTypedSnapshot(WeaponInventorySaveSnapshot snapshot)
+        {
+            var restoredInstances = new List<WeaponInstance>(snapshot.Instances.Count);
+            // 先重建所有运行时实例和提示状态，再整体提交并广播恢复完成事件。
+            for (int index = 0; index < snapshot.Instances.Count; index++)
+            {
+                WeaponInventorySaveEntry entry = snapshot.Instances[index];
+                restoredInstances.Add(new WeaponInstance(
+                    new EquipmentInstanceId(entry.InstanceId), new ItemId(entry.DefinitionId), entry.Level,
+                    entry.CurrentExperience, entry.AscensionRank, entry.RefinementRank, entry.IsLocked,
+                    entry.AcquisitionSequence));
+            }
+
+            var restoredNewDefinitionIds = new List<ItemId>(snapshot.NewDefinitionIds.Count);
+            for (int index = 0; index < snapshot.NewDefinitionIds.Count; index++)
+            {
+                restoredNewDefinitionIds.Add(new ItemId(snapshot.NewDefinitionIds[index]));
+            }
+
+            manager.RestoreState(restoredInstances, restoredNewDefinitionIds, snapshot.NextAcquisitionSequence);
+            manager.PublishRestored();
+            Debug.Log($"[WeaponInventorySaveModule] 已恢复武器库存，instanceCount={restoredInstances.Count}。");
         }
 
         /// <summary>验证武器定义和成长状态。</summary>
@@ -144,25 +182,5 @@ namespace RPG.ItemSystem
             }
         }
 
-        /// <summary>恢复已验证的武器实例，装备关系由独立模块随后恢复。</summary>
-        /// <param name="snapshot">已经完成验证的快照。</param>
-        protected override void RestoreTypedSnapshot(WeaponInventorySaveSnapshot snapshot)
-        {
-            var instances = new List<WeaponInstance>(snapshot.Instances.Count);
-            for (int index = 0; index < snapshot.Instances.Count; index++)
-            {
-                WeaponInventorySaveEntry entry = snapshot.Instances[index];
-                instances.Add(new WeaponInstance(new EquipmentInstanceId(entry.InstanceId), new ItemId(entry.DefinitionId),
-                    entry.Level, entry.CurrentExperience, entry.AscensionRank, entry.RefinementRank,
-                    entry.IsLocked, entry.AcquisitionSequence));
-            }
-
-            var newDefinitionIds = new List<ItemId>(snapshot.NewDefinitionIds.Count);
-            for (int index = 0; index < snapshot.NewDefinitionIds.Count; index++)
-                newDefinitionIds.Add(new ItemId(snapshot.NewDefinitionIds[index]));
-
-            manager.RestoreState(instances, newDefinitionIds, snapshot.NextAcquisitionSequence);
-            manager.PublishRestored();
-        }
     }
 }

@@ -1,7 +1,7 @@
 using RPG.SaveSystem;
 using WS_Modules.BusinessArchitecture;
 
-namespace RPG.CurrencySystem
+namespace RPG.CurrencySystemNS
 {
     /// <summary>连接货币 Manager 与 SaveManager 的业务 System。</summary>
     public sealed class CurrencySystem : AbstractSystem

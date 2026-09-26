@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using RPG.SaveSystem;
+using UnityEngine;
 
 namespace RPG.ItemSystem
 {
@@ -73,13 +74,25 @@ namespace RPG.ItemSystem
     /// <summary>将 ArtifactInventoryManager 状态接入 SaveSystem。</summary>
     public sealed class ArtifactInventorySaveModule : SaveModule<ArtifactInventorySaveSnapshot>
     {
+        #region 模块标识
+
+        /// <summary>圣遗物库存存档模块的稳定 ID。</summary>
+        public static readonly SaveModuleId StableModuleId = new SaveModuleId("artifact-inventory");
+
+        #endregion
+
+        #region 依赖字段
+
         private readonly ArtifactInventoryManager manager;
+
+        #endregion
 
         /// <summary>创建圣遗物实例存档模块。</summary>
         /// <param name="manager">圣遗物 Manager。</param>
+        /// <exception cref="ArgumentNullException">Manager 为空时抛出。</exception>
         public ArtifactInventorySaveModule(ArtifactInventoryManager manager)
             : base(
-                new SaveModuleId("artifact-inventory"),
+                StableModuleId,
                 1,
                 SaveMissingModulePolicy.Required,
                 new[] { ItemDiscoverySaveModule.StableModuleId })
@@ -87,30 +100,65 @@ namespace RPG.ItemSystem
             this.manager = manager ?? throw new ArgumentNullException(nameof(manager));
         }
 
-        /// <summary>采集圣遗物实例状态。</summary>
-        /// <returns>快照。</returns>
+        /// <summary>采集圣遗物实例、新获得 Definition 和下一个获得顺序。</summary>
+        /// <returns>圣遗物库存快照。</returns>
         protected override ArtifactInventorySaveSnapshot CaptureTypedSnapshot()
         {
             var snapshot = new ArtifactInventorySaveSnapshot();
             IReadOnlyList<ItemId> newDefinitionIds = manager.GetNewDefinitionIds();
+            // 先保存 Definition 级 New 提示，再保存实例及获得顺序。
             for (int index = 0; index < newDefinitionIds.Count; index++)
-                snapshot.NewDefinitionIds.Add(newDefinitionIds[index].Value);
-
-            IReadOnlyList<ArtifactInstance> instances = manager.GetInstances();
-            long nextSequence = 1;
-            for (int index = 0; index < instances.Count; index++)
             {
-                ArtifactInstance instance = instances[index];
+                snapshot.NewDefinitionIds.Add(newDefinitionIds[index].Value);
+            }
+
+            IReadOnlyList<ArtifactInstance> currentInstances = manager.GetInstances();
+            long nextSequence = 1;
+            for (int index = 0; index < currentInstances.Count; index++)
+            {
+                ArtifactInstance instance = currentInstances[index];
                 snapshot.Instances.Add(new ArtifactInventorySaveEntry
                 {
-                    InstanceId = instance.InstanceId.Value, DefinitionId = instance.DefinitionId.Value, Level = instance.Level,
-                    CurrentExperience = instance.CurrentExperience, IsLocked = instance.IsLocked,
+                    InstanceId = instance.InstanceId.Value,
+                    DefinitionId = instance.DefinitionId.Value,
+                    Level = instance.Level,
+                    CurrentExperience = instance.CurrentExperience,
+                    IsLocked = instance.IsLocked,
                     AcquisitionSequence = instance.AcquisitionSequence
                 });
-                if (instance.AcquisitionSequence >= nextSequence) nextSequence = instance.AcquisitionSequence + 1;
+                if (instance.AcquisitionSequence >= nextSequence)
+                {
+                    nextSequence = instance.AcquisitionSequence + 1;
+                }
             }
+
             snapshot.NextAcquisitionSequence = nextSequence;
             return snapshot;
+        }
+
+        /// <summary>将已校验的圣遗物实例和 New 状态整体恢复，并发布恢复事件。</summary>
+        /// <param name="snapshot">已校验的当前版本快照。</param>
+        protected override void RestoreTypedSnapshot(ArtifactInventorySaveSnapshot snapshot)
+        {
+            var restoredInstances = new List<ArtifactInstance>(snapshot.Instances.Count);
+            // 将存档 ID 转回实例值对象后一次性提交，事件只在状态完整替换后发送。
+            for (int index = 0; index < snapshot.Instances.Count; index++)
+            {
+                ArtifactInventorySaveEntry entry = snapshot.Instances[index];
+                restoredInstances.Add(new ArtifactInstance(new EquipmentInstanceId(entry.InstanceId),
+                    new ItemId(entry.DefinitionId), entry.Level, entry.CurrentExperience, entry.IsLocked,
+                    entry.AcquisitionSequence));
+            }
+
+            var restoredNewDefinitionIds = new List<ItemId>(snapshot.NewDefinitionIds.Count);
+            for (int index = 0; index < snapshot.NewDefinitionIds.Count; index++)
+            {
+                restoredNewDefinitionIds.Add(new ItemId(snapshot.NewDefinitionIds[index]));
+            }
+
+            manager.RestoreState(restoredInstances, restoredNewDefinitionIds, snapshot.NextAcquisitionSequence);
+            manager.PublishRestored();
+            Debug.Log($"[ArtifactInventorySaveModule] 已恢复圣遗物库存，instanceCount={restoredInstances.Count}。");
         }
 
         /// <summary>验证圣遗物实例快照。</summary>
@@ -129,24 +177,5 @@ namespace RPG.ItemSystem
             }
         }
 
-        /// <summary>恢复已验证的圣遗物实例。</summary>
-        /// <param name="snapshot">快照。</param>
-        protected override void RestoreTypedSnapshot(ArtifactInventorySaveSnapshot snapshot)
-        {
-            var instances = new List<ArtifactInstance>(snapshot.Instances.Count);
-            for (int index = 0; index < snapshot.Instances.Count; index++)
-            {
-                ArtifactInventorySaveEntry entry = snapshot.Instances[index];
-                instances.Add(new ArtifactInstance(new EquipmentInstanceId(entry.InstanceId), new ItemId(entry.DefinitionId), entry.Level,
-                    entry.CurrentExperience, entry.IsLocked, entry.AcquisitionSequence));
-            }
-
-            var newDefinitionIds = new List<ItemId>(snapshot.NewDefinitionIds.Count);
-            for (int index = 0; index < snapshot.NewDefinitionIds.Count; index++)
-                newDefinitionIds.Add(new ItemId(snapshot.NewDefinitionIds[index]));
-
-            manager.RestoreState(instances, newDefinitionIds, snapshot.NextAcquisitionSequence);
-            manager.PublishRestored();
-        }
     }
 }

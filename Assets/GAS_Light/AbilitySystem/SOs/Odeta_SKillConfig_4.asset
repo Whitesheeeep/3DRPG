@@ -61,10 +61,18 @@ MonoBehaviour:
     blockAbilityTags: []
   - id: bbbd45ca978847b8b2b2b41a5681d8c4
     startFrame: 3
-    durationFrames: 42
+    durationFrames: 30
     phase: 2
     isCancelable: 0
     runtimeTags: []
+    blockAbilityTags: []
+  - id: 63603befc461484da97f2b6bfefb605f
+    startFrame: 33
+    durationFrames: 12
+    phase: 3
+    isCancelable: 1
+    runtimeTags:
+    - id: 170
     blockAbilityTags: []
   - id: 8f4e668f4aa54f85941f0fa87e4480a8
     startFrame: 45

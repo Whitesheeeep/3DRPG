@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace RPG.CurrencySystem
+namespace RPG.CurrencySystemNS
 {
     /// <summary>向商店、强化和奖励系统提供的货币钱包边界。</summary>
     public interface ICurrencyWallet

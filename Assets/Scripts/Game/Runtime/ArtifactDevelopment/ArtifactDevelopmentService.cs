@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using RPG.CurrencySystem;
+using RPG.CurrencySystemNS;
 using RPG.Game.Runtime.EquipmentDevelopment;
 using RPG.ItemSystem;
 using UnityEngine;

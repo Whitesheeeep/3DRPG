@@ -87,16 +87,20 @@ namespace RPG.SaveSystem
     #region 泛型模块基类
 
     /// <summary>
-    /// 将非泛型模块入口安全转发给强类型快照实现。
+    /// 将非泛型模块入口转发给具名模块实现的强类型快照逻辑。
     /// </summary>
     /// <typeparam name="TSnapshot">模块当前版本快照类型。</typeparam>
     public abstract class SaveModule<TSnapshot> : ISaveModule
         where TSnapshot : class, ISaveModuleSnapshot
     {
+        #region 模块元数据字段
+
         private readonly SaveModuleId moduleId;
         private readonly int currentVersion;
         private readonly SaveMissingModulePolicy missingModulePolicy;
         private readonly IReadOnlyList<SaveModuleId> restoreDependencies;
+
+        #endregion
 
         /// <summary>
         /// 初始化强类型存档模块。
@@ -155,7 +159,7 @@ namespace RPG.SaveSystem
         public IReadOnlyList<SaveModuleId> RestoreDependencies => restoreDependencies;
 
         /// <summary>
-        /// 采集强类型当前快照。
+        /// 从具名模块负责的业务 API 采集强类型当前快照。
         /// </summary>
         /// <returns>非空当前版本快照。</returns>
         protected abstract TSnapshot CaptureTypedSnapshot();
@@ -175,7 +179,7 @@ namespace RPG.SaveSystem
         protected abstract void ValidateTypedSnapshot(TSnapshot snapshot);
 
         /// <summary>
-        /// 将已经通过校验的强类型快照恢复到模块。
+        /// 将已经通过校验的强类型快照应用到具名模块负责的业务 API。
         /// </summary>
         /// <param name="snapshot">当前版本快照。</param>
         protected abstract void RestoreTypedSnapshot(TSnapshot snapshot);

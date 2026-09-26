@@ -7,12 +7,14 @@
 // 6. 当 UI 删除、重命名或修改组件类型时，旧事件方法不会自动删除，请手动清理。
 using DG.Tweening;
 using RPG.Game.UI.Controllers;
+using Sirenix.OdinInspector;
 
 namespace WS_Modules.UIModule
 {
 	/// <summary>
 	/// HUD 主界面窗口，负责 HUD 自身的生命周期回调、按钮意图转发和隐藏视觉效果。
 	/// </summary>
+	[InfoBox("依赖 HUD 根节点上的 HUDWindowDataComponent 与 HUDWindowController；Prefab 必须绑定其窗口数据和事件组件。")]
 	public partial class HUDWindow : WindowBase
 	{
 		#region 依赖字段
@@ -42,6 +44,7 @@ namespace WS_Modules.UIModule
 		public override void OnShow()
 		{
 			base.OnShow();
+			controller?.HandleWindowShown();
 		}
 
 		/// <summary>

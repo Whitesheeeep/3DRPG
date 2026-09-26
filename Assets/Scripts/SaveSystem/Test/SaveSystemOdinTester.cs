@@ -202,6 +202,31 @@ namespace RPG.SaveSystem.Tests
                 phase = "比较恢复后的测试快照字段";
                 CompareSnapshot(expectedSnapshot, testModule.CurrentState, phase);
 
+                phase = "验证无效快照在恢复前被拒绝";
+                SaveTestSnapshot stateBeforeInvalidSnapshot = testModule.CurrentState;
+                var invalidSnapshot = new SaveTestSnapshot
+                {
+                    Label = "Invalid snapshot",
+                    Score = -2,
+                    CompletedTaskIds = null
+                };
+                string validationError = string.Empty;
+                try
+                {
+                    ((ISaveModule)testModule).ValidateSnapshot(invalidSnapshot);
+                }
+                catch (InvalidOperationException exception)
+                {
+                    validationError = exception.Message;
+                }
+
+                Ensure(
+                    validationError == "测试快照的 CompletedTaskIds 不能为 null。",
+                    phase,
+                    "无效快照未被预期的结构校验拒绝。");
+                CompareSnapshot(stateBeforeInvalidSnapshot, testModule.CurrentState, phase);
+                Debug.Log("[SaveSystemTest] 无效快照已被拒绝，测试模块状态保持不变。", this);
+
                 phase = "验证 Handle 释放底层流";
                 Stream payloadStreamAfterDispose = OpenAndDisposePayload(TestSlotId, phase);
                 EnsureDisposedStream(payloadStreamAfterDispose, phase);
@@ -571,12 +596,12 @@ namespace RPG.SaveSystem.Tests
             /// <param name="directory">测试存档目录。</param>
             internal static void Configure(string directory)
             {
+                // Interface 是惰性初始化入口，因此必须先提供 Init 所需的存档目录。
+                testDirectory = directory;
                 if (Interface != null)
                 {
                     return;
                 }
-
-                testDirectory = directory;
             }
 
             /// <summary>
@@ -594,7 +619,9 @@ namespace RPG.SaveSystem.Tests
                 var serializerRegistry = new SaveSerializerRegistry(
                     new ISaveSerializer[] { serializer });
                 var snapshotTypeRegistry = new SaveSnapshotTypeRegistry();
-                TestModule = new SaveTestModule(TestModuleId, TestModuleVersion);
+                TestModule = new SaveTestModule(
+                    TestModuleId,
+                    TestModuleVersion);
 
                 RegisterManager(new SaveManager(
                     new SaveManagerOptions(serializer.FormatId, 1),
@@ -646,11 +673,15 @@ namespace RPG.SaveSystem.Tests
         }
 
         /// <summary>
-        /// 将测试快照接入 SaveModule 契约并保存可观察的恢复状态。
+        /// 由测试模块持有可观察状态，验证强类型快照处理和快照结构校验。
         /// </summary>
         private sealed class SaveTestModule : SaveModule<SaveTestSnapshot>
         {
+            #region 测试状态字段
+
             private SaveTestSnapshot state = new SaveTestSnapshot();
+
+            #endregion
 
             /// <summary>
             /// 创建测试存档模块。
@@ -676,11 +707,13 @@ namespace RPG.SaveSystem.Tests
                 state = Clone(snapshot);
             }
 
-            /// <summary>
-            /// 采集当前测试状态。
-            /// </summary>
-            /// <returns>独立的测试快照。</returns>
+            /// <summary>复制当前测试状态，避免 SaveManager 持有运行时对象引用。</summary>
+            /// <returns>测试状态的独立快照。</returns>
             protected override SaveTestSnapshot CaptureTypedSnapshot() => Clone(state);
+
+            /// <summary>恢复已经通过校验的测试快照。</summary>
+            /// <param name="snapshot">待恢复测试快照。</param>
+            protected override void RestoreTypedSnapshot(SaveTestSnapshot snapshot) => state = Clone(snapshot);
 
             /// <summary>
             /// 创建测试模块默认状态。
@@ -700,18 +733,7 @@ namespace RPG.SaveSystem.Tests
                 }
             }
 
-            /// <summary>
-            /// 将测试快照恢复为模块当前状态。
-            /// </summary>
-            /// <param name="snapshot">已校验测试快照。</param>
-            protected override void RestoreTypedSnapshot(SaveTestSnapshot snapshot)
-            {
-                state = Clone(snapshot);
-            }
-
-            /// <summary>
-            /// 复制测试快照及其有序列表，隔离运行时状态和序列化对象。
-            /// </summary>
+            /// <summary>复制测试快照及其有序列表，隔离运行时状态和序列化对象。</summary>
             /// <param name="snapshot">源快照。</param>
             /// <returns>独立副本。</returns>
             private static SaveTestSnapshot Clone(SaveTestSnapshot snapshot)
@@ -730,6 +752,7 @@ namespace RPG.SaveSystem.Tests
                         : new List<string>(snapshot.CompletedTaskIds)
                 };
             }
+
         }
 
         #endregion
