@@ -35,6 +35,8 @@ flowchart LR
 
 `PlayerController` 会在 `Awake` 解析同一 Player 上的 `PlayerInputController`；缺少该组件时会立即暴露配置错误。CharacterManager 和 CharacterActor 在 PlayerController 的显式 Tick 阶段直接读取输入 Request。
 
+`PlayerInputController.Instance` 与 `PlayerController.Instance` 分别指向当前唯一 Player 对象上的实例；两个控制器只会在完成各自依赖校验后注册。重复 Player 对象会被停用并销毁，控制器销毁时会清空自己的静态入口。需要访问玩家输入或角色编排的场景系统使用对应的 `Instance`，不要通过场景 `Find` 重复搜索 Player。
+
 ### 2.2 配置输入绑定
 
 在 `Assets/Scripts/Input/Bindings` 为每个动作创建独立 `PlayerInputBinding` 资产，再将资产引用加入 `PlayerInputController.bindings`。每项配置包括：

@@ -12,6 +12,7 @@ using WS_Modules;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.TAG;
 using WS_Modules.LogModule;
+using WS_Modules.Singleton;
 
 namespace RPG.Character
 {
@@ -19,7 +20,7 @@ namespace RPG.Character
     [DefaultExecutionOrder(-800), DisallowMultipleComponent]
     [InfoBox(
         "依赖 Player 上的 PlayerInputController、DialogueParticipant，以及 CharacterRoot 上的 CharacterManager 和唯一 CharacterController；cameraTransform 可由常驻摄像机系统注入。")]
-    public sealed class PlayerController : MonoBehaviour, ILooseGameplayTagEventTarget
+    public sealed class PlayerController : SingletonMonoBase<PlayerController>, ILooseGameplayTagEventTarget
     {
         #region 配置与运行时状态
         // 稳定 Player 依赖：这些引用只在 Awake 解析一次，角色切换不重建控制器。
@@ -72,9 +73,18 @@ namespace RPG.Character
         #endregion
 
         #region Unity 生命周期与阶段编排
-        /// <summary>解析稳定玩家依赖并建立输入、Blackboard 与唯一运动出口。</summary>
-        private void Awake()
+        /// <summary>解析 Player 依赖并建立运行时协调器，依赖完整后再注册单例。</summary>
+        protected override void Awake()
         {
+            if (Instance != null && Instance != this)
+            {
+                Debug.LogError($"[PlayerController] 检测到重复 Player 控制器，销毁对象 '{name}'。", this);
+                gameObject.SetActive(false);
+                // 基类发现已有实例后负责安排重复 Player 根对象销毁。
+                base.Awake();
+                return;
+            }
+
             // 依赖解析只发生在稳定 Player 上；角色切换或普通场景切换不会重新寻找这些对象。
             if (inputController == null) inputController = GetComponent<PlayerInputController>();
             if (dialogueParticipant == null) dialogueParticipant = GetComponent<DialogueParticipant>();
@@ -85,7 +95,6 @@ namespace RPG.Character
                 characterRoot == null)
                 throw new InvalidOperationException(
                     $"PlayerController '{name}' 缺少输入、CharacterRoot、CharacterManager 或 CharacterController。");
-            DontDestroyOnLoad(gameObject);
             characterManager.InitializationFailed += OnCharacterInitializationFailed;
 
             // MotionDriver 只绑定共享 CharacterController；Tag 来源稍后随 ActiveCharacter 注入。
@@ -104,6 +113,10 @@ namespace RPG.Character
                 StateBlackboard);
             InputIntentArbiterManager.RegisterDefaultArbiters();
             looseGameplayTagEventBridge = new LooseGameplayTagEventBridge(this);
+
+            // 基类在硬依赖和协调器均初始化后发布单例并保留 Player 根对象。
+            base.Awake();
+            Debug.Log($"[PlayerController] 已注册并常驻 Player 单例，player={gameObject.name}。", this);
         }
 
         /// <summary>启动角色配置的异步加载；输入和 Blackboard 不等待该任务。</summary>
@@ -167,6 +180,8 @@ namespace RPG.Character
         /// <summary>恢复输入消费回传、LooseTag 桥接和帧末清理。</summary>
         private void OnEnable()
         {
+            if (Instance != this) return;
+
             looseGameplayTagEventBridge?.Enable();
             if (StateBlackboard == null) return;
             lastAnimatorMoveFrame = -1;
@@ -181,6 +196,8 @@ namespace RPG.Character
         /// <summary>停止帧级协调并丢弃未结算的瞬时状态。</summary>
         private void OnDisable()
         {
+            if (Instance != this) return;
+
             looseGameplayTagEventBridge?.Disable();
             lastAnimatorMoveFrame = -1;
             inputController?.ClearMoveInput();
@@ -193,8 +210,8 @@ namespace RPG.Character
             motionDriver.Suspend();
         }
 
-        /// <summary>释放事件订阅与全局事件桥。</summary>
-        private void OnDestroy()
+        /// <summary>释放 Player 事件资源并由基类注销静态单例引用。</summary>
+        protected override void OnDestroy()
         {
             if (characterManager != null) characterManager.ActiveCharacterChanged -= OnActiveCharacterChanged;
             if (characterManager != null) characterManager.InitializationFailed -= OnCharacterInitializationFailed;
@@ -202,6 +219,9 @@ namespace RPG.Character
             initializationCancellationSource?.Dispose();
             characterManager?.CancelInitialization();
             looseGameplayTagEventBridge?.Dispose();
+            if (Instance == this)
+                Debug.Log($"[PlayerController] 已注销 Player 单例，player={gameObject.name}。", this);
+            base.OnDestroy();
         }
 
         private void OnDrawGizmosSelected()
