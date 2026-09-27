@@ -316,6 +316,7 @@ namespace RPG.Game.UI.Controllers
         /// <summary>读取当前 ASC 快照并刷新 Active 主血条及全部队伍槽位。</summary>
         private void RefreshAllViews()
         {
+            // 清楚所有视图
             if (healthView == null || characterManager == null || !characterManager.IsReady)
             {
                 healthView?.Clear();
