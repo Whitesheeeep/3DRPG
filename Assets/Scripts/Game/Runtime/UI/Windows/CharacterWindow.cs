@@ -81,6 +81,13 @@ namespace WS_Modules.UIModule
             return controller.PrepareOpenAsync();
         }
 
+        /// <summary>供 Esc Command 优先关闭装备候选层；没有候选层时保留窗口正常关闭流程。</summary>
+        /// <returns>存在并已收起候选层时返回 true。</returns>
+        public bool CloseSelectionModeFromCommand()
+        {
+            return controller.CloseSelectionModeFromCommand();
+        }
+
         #endregion
 
         #region 内部辅助

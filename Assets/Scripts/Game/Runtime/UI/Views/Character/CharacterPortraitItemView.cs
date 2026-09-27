@@ -15,7 +15,6 @@ namespace RPG.Game.UI.Views.Character
 
         [SerializeField] private Button button;
         [SerializeField] private Image sideIcon;
-        [SerializeField] private Image qualityFrame;
         [SerializeField] private GameObject selectedRing;
         [SerializeField] private GameObject selectedUnderline;
         [SerializeField] private Image activeCharacterMarkImage;
@@ -68,7 +67,6 @@ namespace RPG.Game.UI.Views.Character
                 fallbackNameText.text = data.Instance.Config.Name;
                 fallbackNameText.gameObject.SetActive(data.SideIcon == null);
             }
-            if (qualityFrame != null) qualityFrame.color = GetRarityColor(data.Rarity);
             if (selectedRing != null) selectedRing.SetActive(data.Selected);
             if (selectedUnderline != null) selectedUnderline.SetActive(data.Selected);
             if (activeCharacterMarkImage != null)
@@ -88,7 +86,6 @@ namespace RPG.Game.UI.Views.Character
             if (boundClick != null && button != null) button.onClick.RemoveListener(boundClick);
             boundClick = null;
             if (sideIcon != null) sideIcon.sprite = null;
-            if (qualityFrame != null) qualityFrame.color = Color.clear;
             if (selectedRing != null) selectedRing.SetActive(false);
             if (selectedUnderline != null) selectedUnderline.SetActive(false);
             if (activeCharacterMarkImage != null)
@@ -107,21 +104,6 @@ namespace RPG.Game.UI.Views.Character
         #endregion
 
         #region 内部辅助
-
-        /// <summary>按角色稀有度返回基础边框颜色。</summary>
-        /// <param name="rarity">一至五星稀有度。</param>
-        /// <returns>稀有度颜色。</returns>
-        private static Color GetRarityColor(int rarity)
-        {
-            switch (rarity)
-            {
-                case 5: return new Color(1f, 0.69f, 0.30f, 0.18f);
-                case 4: return new Color(0.72f, 0.43f, 0.97f, 0.18f);
-                case 3: return new Color(0.33f, 0.72f, 1f, 0.18f);
-                case 2: return new Color(0.40f, 0.83f, 0.53f, 0.18f);
-                default: return new Color(0.85f, 0.89f, 1f, 0.14f);
-            }
-        }
 
         #endregion
     }

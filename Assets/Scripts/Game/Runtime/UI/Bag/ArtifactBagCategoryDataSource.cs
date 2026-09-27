@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using RPG.Character;
 using RPG.ItemSystem;
 using UnityEngine;
 
@@ -11,6 +12,7 @@ namespace RPG.Game.UI.Bag
         #region 依赖字段
 
         private readonly ArtifactInventoryManager manager;
+        private readonly CharacterRosterManager characterRosterManager;
         private readonly Func<string, string, Sprite> spriteResolver;
 
         #endregion
@@ -20,12 +22,15 @@ namespace RPG.Game.UI.Bag
         /// <summary>创建圣遗物分类数据源。</summary>
         /// <param name="manager">由 GameArchitecture 持有的圣遗物 Manager。</param>
         /// <param name="spriteResolver">按图集地址和 Sprite 名称解析图标。</param>
+        /// <param name="characterRosterManager">提供圣遗物装备者反向索引的角色 Manager。</param>
         public ArtifactBagCategoryDataSource(
             ArtifactInventoryManager manager,
-            Func<string, string, Sprite> spriteResolver)
+            Func<string, string, Sprite> spriteResolver,
+            CharacterRosterManager characterRosterManager)
         {
             this.manager = manager ?? throw new ArgumentNullException(nameof(manager));
             this.spriteResolver = spriteResolver ?? throw new ArgumentNullException(nameof(spriteResolver));
+            this.characterRosterManager = characterRosterManager ?? throw new ArgumentNullException(nameof(characterRosterManager));
         }
 
         #endregion
@@ -65,6 +70,7 @@ namespace RPG.Game.UI.Bag
             {
                 ArtifactEntry value = values[index];
                 Sprite icon = ResolveSprite(value.Definition.IconAddress, value.Definition.IconSpriteName);
+                ResolveOwner(value.Instance.InstanceId, out Sprite ownerIcon, out string ownerText, out bool isEquipped);
                 bool showNew = manager.IsDefinitionNew(value.Instance.DefinitionId) &&
                                displayedNewDefinitionIds.Add(value.Instance.DefinitionId);
                 result.Add(new BagItemViewData(
@@ -73,11 +79,11 @@ namespace RPG.Game.UI.Bag
                     (int)value.Definition.Rarity,
                     $"+{value.Instance.Level}",
                     icon,
-                    null,
-                    string.Empty,
+                    ownerIcon,
+                    ownerText,
                     showNew,
                     value.Instance.IsLocked,
-                    false));
+                    isEquipped));
             }
 
             return result;
@@ -96,6 +102,7 @@ namespace RPG.Game.UI.Bag
                 return false;
 
             Sprite icon = ResolveSprite(artifact.IconAddress, artifact.IconSpriteName);
+            ResolveOwner(instanceId, out Sprite ownerIcon, out string ownerText, out bool isEquipped);
             IReadOnlyList<string> lines = BagGameplayEffectPresentationBuilder.BuildStaticAttributeLines(
                 artifact.LevelEffects,
                 instance.Level,
@@ -110,9 +117,9 @@ namespace RPG.Game.UI.Bag
                 string.Empty,
                 lines,
                 artifact.Description,
-                string.Empty,
-                null,
-                false,
+                ownerText,
+                ownerIcon,
+                isEquipped,
                 false,
                 true);
             return true;
@@ -182,6 +189,24 @@ namespace RPG.Game.UI.Bag
 
             instanceId = new EquipmentInstanceId(value);
             return true;
+        }
+
+        /// <summary>按角色装备反向索引投影圣遗物拥有者头像和名称。</summary>
+        /// <param name="instanceId">圣遗物实例标识。</param>
+        /// <param name="ownerIcon">拥有者侧面头像；图集未加载时为空。</param>
+        /// <param name="ownerText">拥有者角色名。</param>
+        /// <param name="isEquipped">该圣遗物是否已装备。</param>
+        private void ResolveOwner(EquipmentInstanceId instanceId, out Sprite ownerIcon,
+            out string ownerText, out bool isEquipped)
+        {
+            ownerIcon = null;
+            ownerText = string.Empty;
+            isEquipped = characterRosterManager.TryGetEquipmentOwner(instanceId, out CharacterId ownerId);
+            if (!isEquipped || !CharacterConfigManager.Instance.IsConfigured ||
+                !CharacterConfigManager.Instance.TryGetConfig(ownerId, out CharacterConfig character)) return;
+
+            ownerText = character.Name;
+            ownerIcon = ResolveSprite(character.SideIconAddress, character.SideIconSpriteName);
         }
 
         /// <summary>缓存一个圣遗物实例和定义的排序输入。</summary>

@@ -53,6 +53,8 @@ namespace RPG.Character
         public CharacterId CharacterId => characterId;
         /// <summary>获取用于编辑器和界面展示的角色名称。</summary>
         public string Name => identity.CharacterName;
+        /// <summary>获取角色详情页展示的简短介绍。</summary>
+        public string Introduction => identity.Introduction;
         /// <summary>获取角色稀有度。</summary>
         public CharacterRarity Rarity => identity.Rarity;
         /// <summary>获取 Addressables 角色 Prefab 地址。</summary>

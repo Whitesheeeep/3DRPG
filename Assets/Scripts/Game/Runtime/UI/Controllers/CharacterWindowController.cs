@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using Cysharp.Threading.Tasks;
 using RPG.Character;
+using RPG.Game.UI.Bag;
 using RPG.Game.UI.Character;
 using RPG.Game.UI.EquipmentDevelopment;
 using RPG.Game.UI.Services;
 using RPG.Game.UI.Views.Character;
+using RPG.Game.UI.Views.Common;
 using RPG.Game.UI.WeaponDevelopment;
 using RPG.ItemSystem;
 using UnityEngine;
@@ -29,8 +31,12 @@ namespace RPG.Game.UI.Controllers
         private CharacterRosterManager rosterManager;
         private CharacterPartyManager partyManager;
         private CharacterEquipmentSystem equipmentSystem;
+        private WeaponInventoryManager weaponInventoryManager;
+        private ArtifactInventoryManager artifactInventoryManager;
         private WindowSpriteAtlasLeaseService spriteAtlasLeaseService;
         private CharacterWindowPresentationBuilder presentationBuilder;
+        private CharacterEquipmentSelectionPresentationBuilder selectionPresentationBuilder;
+        private ItemSelectionPanelView selectionPanel;
         private IUnRegister characterInstanceChangedUnregister;
         private IUnRegister characterRosterRestoredUnregister;
         private IUnRegister characterEquipmentRestoredUnregister;
@@ -47,6 +53,12 @@ namespace RPG.Game.UI.Controllers
         private bool hasSelectedCharacter;
         private CharacterWindowPage currentPage = CharacterWindowPage.Attribute;
         private int selectedArtifactIndex;
+        private ItemCategory selectionCategory;
+        private BagEntryKey? selectedCandidateEntryKey;
+        private IReadOnlyList<BagItemViewData> currentSelectionEntries = Array.Empty<BagItemViewData>();
+        private BagSortMode selectionSortMode = BagSortMode.Quality;
+        private BagSortDirection selectionSortDirection = BagSortDirection.Descending;
+        private bool selectionMode;
         private bool initialized;
         private bool windowShown;
         private bool disposed;
@@ -72,10 +84,15 @@ namespace RPG.Game.UI.Controllers
             rosterManager = GameArchitecture.Interface.GetManager<CharacterRosterManager>();
             partyManager = GameArchitecture.Interface.GetManager<CharacterPartyManager>();
             equipmentSystem = GameArchitecture.Interface.GetSystem<CharacterEquipmentSystem>();
+            weaponInventoryManager = GameArchitecture.Interface.GetManager<WeaponInventoryManager>();
+            artifactInventoryManager = GameArchitecture.Interface.GetManager<ArtifactInventoryManager>();
+            selectionPanel = data.SelectionPanel;
             spriteAtlasLeaseService = new WindowSpriteAtlasLeaseService(
                 data.DynamicAtlasAddresses, data.AtlasReleaseDelaySeconds);
             presentationBuilder = new CharacterWindowPresentationBuilder(equipmentSystem, spriteAtlasLeaseService,
                 data.PartyMarkSprites);
+            selectionPresentationBuilder = new CharacterEquipmentSelectionPresentationBuilder(
+                weaponInventoryManager, artifactInventoryManager, rosterManager, ResolveSprite);
 
             view.CharacterSelected += HandleCharacterSelected;
             view.CharacterCycleRequested += HandleCharacterCycleRequested;
@@ -84,6 +101,14 @@ namespace RPG.Game.UI.Controllers
             view.WeaponDevelopmentRequested += HandleWeaponDevelopmentRequested;
             view.ArtifactSlotSelected += HandleArtifactSlotSelected;
             view.ArtifactDevelopmentRequested += HandleArtifactDevelopmentRequested;
+            view.WeaponReplaceRequested += HandleWeaponReplaceRequested;
+            view.ArtifactReplaceRequested += HandleArtifactReplaceRequested;
+            selectionPanel.EntryClicked += HandleCandidateEntryClicked;
+            selectionPanel.ReturnRequested += HandleSelectionReturnRequested;
+            selectionPanel.SortModeChanged += HandleSelectionSortModeChanged;
+            selectionPanel.SortDirectionRequested += HandleSelectionSortDirectionRequested;
+            selectionPanel.HideImmediateAndReset();
+            selectionPanel.SetSortControl(false, selectionSortMode, selectionSortDirection, "等级");
             spriteAtlasLeaseService.Released += HandleAtlasReleased;
 
             characterInstanceChangedUnregister = EventSystem.Register_Type<CharacterInstanceChangedEvent>(
@@ -111,6 +136,7 @@ namespace RPG.Game.UI.Controllers
             if (!initialized || disposed) return;
             windowShown = true;
             currentPage = CharacterWindowPage.Attribute;
+            ResetSelectionModeImmediately();
             spriteAtlasLeaseService.CancelRelease();
             SelectDefaultCharacterIfNeeded();
             Refresh();
@@ -123,6 +149,7 @@ namespace RPG.Game.UI.Controllers
         {
             if (!initialized || disposed) return;
             windowShown = false;
+            ResetSelectionModeImmediately();
             view.Clear();
             spriteAtlasLeaseService.ScheduleRelease();
             WSLog.Log("[CharacterWindowController] CharacterWindow 已隐藏，已清理页面并安排图集释放。");
@@ -140,6 +167,16 @@ namespace RPG.Game.UI.Controllers
             view.WeaponDevelopmentRequested -= HandleWeaponDevelopmentRequested;
             view.ArtifactSlotSelected -= HandleArtifactSlotSelected;
             view.ArtifactDevelopmentRequested -= HandleArtifactDevelopmentRequested;
+            view.WeaponReplaceRequested -= HandleWeaponReplaceRequested;
+            view.ArtifactReplaceRequested -= HandleArtifactReplaceRequested;
+            if (selectionPanel != null)
+            {
+                selectionPanel.EntryClicked -= HandleCandidateEntryClicked;
+                selectionPanel.ReturnRequested -= HandleSelectionReturnRequested;
+                selectionPanel.SortModeChanged -= HandleSelectionSortModeChanged;
+                selectionPanel.SortDirectionRequested -= HandleSelectionSortDirectionRequested;
+                selectionPanel.HideImmediateAndReset();
+            }
             spriteAtlasLeaseService.Released -= HandleAtlasReleased;
             characterInstanceChangedUnregister?.UnRegister();
             characterRosterRestoredUnregister?.UnRegister();
@@ -159,8 +196,12 @@ namespace RPG.Game.UI.Controllers
             spriteAtlasLeaseService?.Dispose();
             spriteAtlasLeaseService = null;
             presentationBuilder = null;
+            selectionPresentationBuilder = null;
+            selectionPanel = null;
             view = null;
             partyManager = null;
+            weaponInventoryManager = null;
+            artifactInventoryManager = null;
             WSLog.Log("[CharacterWindowController] CharacterWindow 已释放。");
         }
 
@@ -199,6 +240,7 @@ namespace RPG.Game.UI.Controllers
             if (instances.Count == 0)
             {
                 hasSelectedCharacter = false;
+                ResetSelectionModeImmediately();
                 view.Clear();
                 return;
             }
@@ -222,6 +264,8 @@ namespace RPG.Game.UI.Controllers
                 return;
             }
             view.Bind(viewData);
+            view.SetSelectionMode(selectionMode);
+            if (selectionMode) RefreshSelectionCandidates(selected);
         }
 
         /// <summary>保证当前选择仍然存在，否则选择排序后的第一名。</summary>
@@ -334,6 +378,305 @@ namespace RPG.Game.UI.Controllers
             OpenEquipmentDevelopmentAsync(EquipmentDevelopmentOpenContext.ForArtifact(instanceId)).Forget(HandleAsyncException);
         }
 
+        /// <summary>根据当前页面进入武器或圣遗物候选选择状态。</summary>
+        /// <param name="category">需要更换的装备类型。</param>
+        private void BeginSelectionMode(ItemCategory category)
+        {
+            if (!windowShown || (category != ItemCategory.Weapon && category != ItemCategory.Artifact)) return;
+            selectionCategory = category;
+            currentPage = category == ItemCategory.Weapon ? CharacterWindowPage.Weapon : CharacterWindowPage.Artifact;
+            selectionMode = true;
+            selectedCandidateEntryKey = null;
+            selectionSortMode = BagSortMode.Quality;
+            selectionSortDirection = BagSortDirection.Descending;
+            view.SetSelectionMode(true);
+            selectionPanel.SetSortControl(true, selectionSortMode, selectionSortDirection, "等级");
+            // 先激活面板，使池化网格完成 Awake 与事件初始化，再绑定候选数据。
+            selectionPanel.ShowAnimated();
+            Refresh();
+            WSLog.Log($"[CharacterWindowController] 打开装备候选面板，character={selectedCharacterId}, category={category}, artifactSlot={(ArtifactSlot)selectedArtifactIndex}。");
+        }
+
+        /// <summary>从候选模式返回角色装备页面，并清理临时候选选择。</summary>
+        private void ExitSelectionMode()
+        {
+            if (!selectionMode) return;
+            selectionMode = false;
+            selectedCandidateEntryKey = null;
+            currentSelectionEntries = Array.Empty<BagItemViewData>();
+            selectionPanel.SetSortControl(false, selectionSortMode, selectionSortDirection, "等级");
+            selectionPanel.HideAnimated();
+            view.SetSelectionMode(false);
+            Refresh();
+            WSLog.Log($"[CharacterWindowController] 退出装备候选模式，character={selectedCharacterId}, category={selectionCategory}。");
+        }
+
+        /// <summary>供窗口 Esc 栈执行；存在候选选择层时只收起该层，不关闭角色窗口。</summary>
+        /// <returns>处理了候选选择状态时返回 true。</returns>
+        public bool CloseSelectionModeFromCommand()
+        {
+            if (!selectionMode) return false;
+            ExitSelectionMode();
+            return true;
+        }
+
+        /// <summary>窗口关闭或重新打开时立即终止候选动画并清空临时选择状态。</summary>
+        private void ResetSelectionModeImmediately()
+        {
+            selectionMode = false;
+            selectedCandidateEntryKey = null;
+            currentSelectionEntries = Array.Empty<BagItemViewData>();
+            selectionPanel?.SetSortControl(false, selectionSortMode, selectionSortDirection, "等级");
+            selectionPanel?.HideImmediateAndReset();
+            view?.SetSelectionMode(false);
+        }
+
+        /// <summary>根据装备页按钮进入选择层，或提交已选择的武器候选。</summary>
+        private void HandleWeaponReplaceRequested()
+        {
+            if (!selectionMode)
+            {
+                BeginSelectionMode(ItemCategory.Weapon);
+                return;
+            }
+            if (selectionCategory == ItemCategory.Weapon) CommitSelectedCandidate();
+        }
+
+        /// <summary>根据圣遗物页按钮进入选择层，或提交已选择的部位候选。</summary>
+        private void HandleArtifactReplaceRequested()
+        {
+            if (!selectionMode)
+            {
+                BeginSelectionMode(ItemCategory.Artifact);
+                return;
+            }
+            if (selectionCategory == ItemCategory.Artifact) CommitSelectedCandidate();
+        }
+
+        /// <summary>只更新候选预览与选中框，不在网格点击时执行装备事务。</summary>
+        /// <param name="entryKey">候选条目键。</param>
+        private void HandleCandidateEntryClicked(BagEntryKey entryKey)
+        {
+            if (!selectionMode || entryKey.Category != selectionCategory || !ContainsSelectionEntry(entryKey)) return;
+            selectedCandidateEntryKey = entryKey;
+            Refresh();
+        }
+
+        /// <summary>接收排序字段变更并重建候选顺序，保留当前稳定的装备实例选择。</summary>
+        /// <param name="sortMode">目标排序字段。</param>
+        private void HandleSelectionSortModeChanged(BagSortMode sortMode)
+        {
+            if (!selectionMode) return;
+            selectionSortMode = sortMode;
+            selectionPanel.SetSortControl(true, selectionSortMode, selectionSortDirection, "等级");
+            WSLog.Log($"[CharacterWindowController] 装备候选排序字段变更，mode={selectionSortMode}, direction={selectionSortDirection}。");
+            Refresh();
+        }
+
+        /// <summary>切换装备候选升降序并保留当前稳定的装备实例选择。</summary>
+        private void HandleSelectionSortDirectionRequested()
+        {
+            if (!selectionMode) return;
+            selectionSortDirection = selectionSortDirection == BagSortDirection.Descending
+                ? BagSortDirection.Ascending
+                : BagSortDirection.Descending;
+            selectionPanel.SetSortControl(true, selectionSortMode, selectionSortDirection, "等级");
+            WSLog.Log($"[CharacterWindowController] 装备候选排序方向变更，mode={selectionSortMode}, direction={selectionSortDirection}。");
+            Refresh();
+        }
+
+        /// <summary>通用候选面板返回按钮关闭当前选择层。</summary>
+        private void HandleSelectionReturnRequested() => ExitSelectionMode();
+
+        /// <summary>将当前武器或目标圣遗物槽的库存过滤、排序并投影到共用网格。</summary>
+        /// <param name="character">当前角色实例。</param>
+        private void RefreshSelectionCandidates(CharacterInstance character)
+        {
+            currentSelectionEntries = selectionPresentationBuilder.BuildEntries(character, selectionCategory,
+                (ArtifactSlot)selectedArtifactIndex, selectionSortMode, selectionSortDirection);
+            if (selectedCandidateEntryKey.HasValue && !ContainsSelectionEntry(selectedCandidateEntryKey.Value))
+                selectedCandidateEntryKey = null;
+            if (!selectedCandidateEntryKey.HasValue && currentSelectionEntries.Count > 0)
+                selectedCandidateEntryKey = currentSelectionEntries[0].EntryKey;
+
+            BagEntryKey[] selectedKeys = selectedCandidateEntryKey.HasValue
+                ? new[] { selectedCandidateEntryKey.Value }
+                : Array.Empty<BagEntryKey>();
+            selectionPanel.SetSortControl(true, selectionSortMode, selectionSortDirection, "等级");
+            selectionPanel.Bind(currentSelectionEntries, selectedKeys, null);
+            if (!selectedCandidateEntryKey.HasValue ||
+                !selectionPresentationBuilder.TryBuildDetails(selectedCandidateEntryKey.Value,
+                    out BagDetailViewData details))
+            {
+                string emptyStatus = currentSelectionEntries.Count == 0
+                    ? (selectionCategory == ItemCategory.Weapon
+                        ? "没有符合该角色武器类型的库存装备。"
+                        : "当前部位没有可用圣遗物。")
+                    : "候选装备已失效，请重新选择。";
+                BindSelectionCandidate(null, null, false, emptyStatus);
+                return;
+            }
+
+            bool canEquip = TryGetCandidateEquipability(character, selectedCandidateEntryKey.Value,
+                out string statusText);
+            BindSelectionCandidate(selectedCandidateEntryKey, details, canEquip, statusText);
+        }
+
+        /// <summary>确认候选仍存在且属于当前槽位，并拒绝已被其他角色装备的实例。</summary>
+        /// <param name="character">当前角色实例。</param>
+        /// <param name="entryKey">要检查的候选条目。</param>
+        /// <param name="statusText">不可装备原因；可装备时为空。</param>
+        /// <returns>允许提交装备关系时返回 true。</returns>
+        private bool TryGetCandidateEquipability(CharacterInstance character, BagEntryKey entryKey,
+            out string statusText)
+        {
+            statusText = string.Empty;
+            if (!selectionPresentationBuilder.IsValidCandidate(character, selectionCategory,
+                    (ArtifactSlot)selectedArtifactIndex, entryKey) ||
+                !TryParseInstanceId(entryKey.Value, out EquipmentInstanceId instanceId))
+            {
+                statusText = "该候选已不存在或不符合当前装备槽位。";
+                return false;
+            }
+
+            if (!rosterManager.TryGetEquipmentLocation(instanceId, out CharacterEquipmentLocation location))
+                return true;
+
+            string ownerName = rosterManager.TryGetInstance(location.CharacterId, out CharacterInstance owner)
+                ? owner.Config.Name
+                : location.CharacterId.ToString();
+            if (location.CharacterId != character.CharacterId)
+            {
+                statusText = $"已装备给 {ownerName}，不能直接转移。";
+                return false;
+            }
+
+            bool alreadyInTargetSlot = selectionCategory == ItemCategory.Weapon
+                ? location.SlotKind == CharacterEquipmentSlotKind.Weapon
+                : location.SlotKind == CharacterEquipmentSlotKind.Artifact &&
+                  location.ArtifactSlot == (ArtifactSlot)selectedArtifactIndex;
+            if (alreadyInTargetSlot)
+            {
+                statusText = "该装备已经位于当前槽位。";
+                return false;
+            }
+
+            statusText = $"该装备已属于 {ownerName}，不能重复装备。";
+            return false;
+        }
+
+        /// <summary>在点击交换时重新验证候选并调用角色装备系统事务。</summary>
+        private void CommitSelectedCandidate()
+        {
+            if (!selectionMode || !selectedCandidateEntryKey.HasValue ||
+                !rosterManager.TryGetInstance(selectedCharacterId, out CharacterInstance character)) return;
+            BagEntryKey entryKey = selectedCandidateEntryKey.Value;
+            BagDetailViewData details = null;
+            string statusText = string.Empty;
+            if (!ContainsSelectionEntry(entryKey))
+            {
+                statusText = "候选装备已变化，请重新选择。";
+                BindSelectionCandidate(entryKey, details, false, statusText);
+                WSLog.LogWarning($"[CharacterWindowController] 装备候选已不在当前库存列表，character={selectedCharacterId}, candidate={entryKey}。");
+                return;
+            }
+            if (!selectionPresentationBuilder.TryBuildDetails(entryKey, out details))
+            {
+                statusText = "候选装备已不在库存中，请重新选择。";
+                BindSelectionCandidate(entryKey, details, false, statusText);
+                WSLog.LogWarning($"[CharacterWindowController] 装备候选提交前复核失败，character={selectedCharacterId}, candidate={entryKey}, reason={statusText}。");
+                return;
+            }
+
+            if (!TryGetCandidateEquipability(character, entryKey, out statusText))
+            {
+                BindSelectionCandidate(entryKey, details, false, statusText);
+                WSLog.LogWarning($"[CharacterWindowController] 装备候选提交前复核失败，character={selectedCharacterId}, candidate={entryKey}, reason={statusText}。");
+                return;
+            }
+
+            TryParseInstanceId(entryKey.Value, out EquipmentInstanceId instanceId);
+            EquipmentOperationResult result = selectionCategory == ItemCategory.Weapon
+                ? equipmentSystem.EquipWeapon(character.CharacterId, instanceId)
+                : equipmentSystem.EquipArtifact(character.CharacterId, instanceId);
+            if (!result.Succeeded)
+            {
+                statusText = GetOperationFailureText(result.Status);
+                BindSelectionCandidate(entryKey, details, false, statusText);
+                WSLog.LogWarning($"[CharacterWindowController] 装备交换事务失败，character={character.CharacterId}, candidate={instanceId}, status={result.Status}。");
+                return;
+            }
+
+            WSLog.Log($"[CharacterWindowController] 装备交换事务成功，character={character.CharacterId}, category={selectionCategory}, instance={instanceId}。");
+            ExitSelectionMode();
+            Refresh();
+        }
+
+        /// <summary>判断条目是否仍属于本轮筛选结果。</summary>
+        /// <param name="entryKey">候选稳定键。</param>
+        /// <returns>仍存在时返回 true。</returns>
+        private bool ContainsSelectionEntry(BagEntryKey entryKey)
+        {
+            for (int index = 0; index < currentSelectionEntries.Count; index++)
+                if (currentSelectionEntries[index].EntryKey == entryKey) return true;
+            return false;
+        }
+
+        /// <summary>为候选详情、BagItem 卡片及结构化属性行提供同一实例快照。</summary>
+        /// <param name="entryKey">候选稳定键；为空时显示候选空状态。</param>
+        /// <param name="details">背包详情快照。</param>
+        /// <param name="canEquip">是否可以提交装备关系。</param>
+        /// <param name="statusText">不可装备说明。</param>
+        private void BindSelectionCandidate(BagEntryKey? entryKey, BagDetailViewData details,
+            bool canEquip, string statusText)
+        {
+            BagItemViewData itemData = null;
+            IReadOnlyList<CharacterEquipmentAttributeLineViewData> attributeLines =
+                Array.Empty<CharacterEquipmentAttributeLineViewData>();
+            if (entryKey.HasValue)
+            {
+                for (int index = 0; index < currentSelectionEntries.Count; index++)
+                {
+                    if (currentSelectionEntries[index].EntryKey != entryKey.Value) continue;
+                    itemData = currentSelectionEntries[index];
+                    break;
+                }
+                attributeLines = selectionPresentationBuilder.BuildAttributeLines(
+                    entryKey.Value, selectedCharacterId);
+            }
+
+            view.BindSelectionCandidate(selectionCategory, itemData, details, attributeLines,
+                canEquip, statusText);
+        }
+
+        /// <summary>把装备事务枚举转换为候选详情区的用户可读提示。</summary>
+        /// <param name="status">装备事务结果。</param>
+        /// <returns>中文失败说明。</returns>
+        private static string GetOperationFailureText(InventoryOperationStatus status) => status switch
+        {
+            InventoryOperationStatus.InstanceEquipped => "该装备已被其他角色穿戴，不能直接转移。",
+            InventoryOperationStatus.WeaponTypeNotAllowed => "该角色不能装备此类型的武器。",
+            InventoryOperationStatus.InstanceNotFound => "该装备已不在库存中，请重新选择。",
+            InventoryOperationStatus.CharacterNotOwned => "当前角色已不在拥有列表中。",
+            InventoryOperationStatus.DefinitionTypeMismatch => "装备配置类型不匹配，无法交换。",
+            _ => $"装备交换失败：{status}。"
+        };
+
+        /// <summary>解析背包选择键中的装备实例标识。</summary>
+        /// <param name="value">稳定 ID 文本。</param>
+        /// <param name="instanceId">实例标识。</param>
+        /// <returns>解析得到有效 ID 时返回 true。</returns>
+        private static bool TryParseInstanceId(string value, out EquipmentInstanceId instanceId)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                instanceId = default;
+                return false;
+            }
+            instanceId = new EquipmentInstanceId(value);
+            return instanceId.IsValid;
+        }
+
         /// <summary>角色切换时默认选中第一件已装备圣遗物；全空时回到生之花槽位。</summary>
         /// <param name="characterId">需要查询圣遗物槽位的角色标识。</param>
         /// <returns>第一个已装备槽位下标；没有装备时返回零。</returns>
@@ -412,6 +755,18 @@ namespace RPG.Game.UI.Controllers
         {
             if (!windowShown) return;
             Refresh();
+        }
+
+        /// <summary>通过角色窗口当前持有的动态图集租约解析候选物品 Sprite。</summary>
+        /// <param name="address">Sprite 所属图集地址。</param>
+        /// <param name="spriteName">图集内 Sprite 名称。</param>
+        /// <returns>图集已加载且找到 Sprite 时返回资源，否则返回空。</returns>
+        private Sprite ResolveSprite(string address, string spriteName)
+        {
+            if (string.IsNullOrWhiteSpace(address) || string.IsNullOrWhiteSpace(spriteName) ||
+                spriteAtlasLeaseService == null)
+                return null;
+            return spriteAtlasLeaseService.TryGetSprite(address, spriteName, out Sprite sprite) ? sprite : null;
         }
 
         #endregion

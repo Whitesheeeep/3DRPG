@@ -94,6 +94,11 @@ MonoBehaviour:
     m_SerializedLabels:
     - Bag
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ecdf3ca34b47075458cea0e8f8be3d0f
+    m_Address: CharacterWindowControls
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: f080c0dd2bbafd94fb114d6376f62bc1
     m_Address: WeaponIcons
     m_ReadOnly: 0

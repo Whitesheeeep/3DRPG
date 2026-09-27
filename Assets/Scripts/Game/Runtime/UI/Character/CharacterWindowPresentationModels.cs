@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using RPG.Character;
+using RPG.Game.UI.Bag;
 using RPG.ItemSystem;
 using UnityEngine;
 
@@ -109,53 +110,75 @@ namespace RPG.Game.UI.Character
         /// <summary>创建标题数据。</summary>
         /// <param name="name">角色名称。</param>
         /// <param name="rarity">稀有度。</param>
-        /// <param name="levelText">等级文本。</param>
+        /// <param name="ascensionRank">已完成的角色突破阶数。</param>
+        /// <param name="currentLevelText">当前等级文本。</param>
+        /// <param name="levelCapText">当前阶段等级上限文本。</param>
         /// <param name="experienceText">经验文本。</param>
         /// <param name="capStateText">等级上限状态。</param>
         /// <param name="experienceProgress">当前等级内经验百分比。</param>
+        /// <param name="experiencePercentText">经验百分比标签。</param>
         /// <param name="showExperienceProgress">是否显示经验条。</param>
-        public CharacterHeaderViewData(string name, int rarity, string levelText, string experienceText,
-            string capStateText, float experienceProgress, bool showExperienceProgress)
+        /// <param name="introduction">角色介绍。</param>
+        public CharacterHeaderViewData(string name, int rarity, int ascensionRank, string currentLevelText,
+            string levelCapText, string experienceText, string capStateText, float experienceProgress,
+            string experiencePercentText, bool showExperienceProgress, string introduction)
         {
             Name = name ?? string.Empty;
             Rarity = rarity;
-            LevelText = levelText ?? string.Empty;
+            AscensionRank = ascensionRank;
+            CurrentLevelText = currentLevelText ?? string.Empty;
+            LevelCapText = levelCapText ?? string.Empty;
             ExperienceText = experienceText ?? string.Empty;
             CapStateText = capStateText ?? string.Empty;
             ExperienceProgress = Mathf.Clamp01(experienceProgress);
+            ExperiencePercentText = experiencePercentText ?? string.Empty;
             ShowExperienceProgress = showExperienceProgress;
+            Introduction = introduction ?? string.Empty;
         }
 
         /// <summary>获取角色名称。</summary>
         public string Name { get; }
         /// <summary>获取稀有度。</summary>
         public int Rarity { get; }
-        /// <summary>获取等级文本。</summary>
-        public string LevelText { get; }
+        /// <summary>获取已完成的角色突破阶数，与品质星级无关。</summary>
+        public int AscensionRank { get; }
+        /// <summary>获取突出显示的当前等级文本。</summary>
+        public string CurrentLevelText { get; }
+        /// <summary>获取弱化显示的等级上限文本。</summary>
+        public string LevelCapText { get; }
         /// <summary>获取经验文本。</summary>
         public string ExperienceText { get; }
         /// <summary>获取等级上限状态。</summary>
         public string CapStateText { get; }
         /// <summary>获取当前等级内经验进度。</summary>
         public float ExperienceProgress { get; }
+        /// <summary>获取当前等级内经验百分比标签。</summary>
+        public string ExperiencePercentText { get; }
         /// <summary>判断是否显示当前等级经验条。</summary>
         public bool ShowExperienceProgress { get; }
+        /// <summary>获取角色静态介绍文案。</summary>
+        public string Introduction { get; }
     }
 
-    /// <summary>角色静态装备投影后的 Stat 总值显示行。</summary>
+    /// <summary>角色基础 Stat 与静态装备净加成的显示行。</summary>
     public sealed class CharacterAttributeViewData
     {
-        /// <summary>创建角色 Stat 总值显示行。</summary>
+        /// <summary>创建角色基础 Stat 与静态装备净加成显示行。</summary>
+        /// <param name="attributeId">Attribute 的稳定标识，用于绑定固定 UI 行。</param>
         /// <param name="attributeName">属性名称。</param>
         /// <param name="baseValueText">角色自身基础值文本。</param>
         /// <param name="equipmentBonusText">静态装备净加成文本；为零时为空字符串。</param>
-        public CharacterAttributeViewData(string attributeName, string baseValueText, string equipmentBonusText)
+        public CharacterAttributeViewData(int attributeId, string attributeName, string baseValueText,
+            string equipmentBonusText)
         {
+            AttributeId = attributeId;
             AttributeName = attributeName ?? string.Empty;
             BaseValueText = baseValueText ?? string.Empty;
             EquipmentBonusText = equipmentBonusText ?? string.Empty;
         }
 
+        /// <summary>获取 Attribute 的稳定标识。</summary>
+        public int AttributeId { get; }
         /// <summary>获取属性名称。</summary>
         public string AttributeName { get; }
         /// <summary>获取角色自身基础值文本。</summary>
@@ -176,11 +199,13 @@ namespace RPG.Game.UI.Character
         /// <param name="rarity">稀有度。</param>
         /// <param name="levelText">等级文本。</param>
         /// <param name="refinementText">精炼文本。</param>
-        /// <param name="detailLines">武器属性和描述行。</param>
+        /// <param name="detailLines">武器静态属性行。</param>
         /// <param name="description">武器定义描述。</param>
+        /// <param name="itemCardData">复用背包样式的武器卡片数据。</param>
         public CharacterWeaponViewData(bool hasWeapon, EquipmentInstanceId instanceId, Sprite icon, string name,
             string type, int rarity, string levelText, string refinementText,
-            IReadOnlyList<string> detailLines, string description)
+            IReadOnlyList<CharacterEquipmentAttributeLineViewData> detailLines, string description,
+            BagItemViewData itemCardData)
         {
             HasWeapon = hasWeapon;
             InstanceId = instanceId;
@@ -190,8 +215,9 @@ namespace RPG.Game.UI.Character
             Rarity = rarity;
             LevelText = levelText ?? string.Empty;
             RefinementText = refinementText ?? string.Empty;
-            DetailLines = detailLines ?? Array.Empty<string>();
+            DetailLines = detailLines ?? Array.Empty<CharacterEquipmentAttributeLineViewData>();
             Description = description ?? string.Empty;
+            ItemCardData = itemCardData;
         }
 
         /// <summary>获取是否有武器。</summary>
@@ -211,9 +237,11 @@ namespace RPG.Game.UI.Character
         /// <summary>获取精炼。</summary>
         public string RefinementText { get; }
         /// <summary>获取详情行。</summary>
-        public IReadOnlyList<string> DetailLines { get; }
+        public IReadOnlyList<CharacterEquipmentAttributeLineViewData> DetailLines { get; }
         /// <summary>获取武器定义描述。</summary>
         public string Description { get; }
+        /// <summary>获取以背包 Item 视觉显示的武器卡片数据。</summary>
+        public BagItemViewData ItemCardData { get; }
     }
 
     /// <summary>五件已装备圣遗物静态属性的汇总显示数据。</summary>
@@ -221,17 +249,18 @@ namespace RPG.Game.UI.Character
     {
         /// <summary>创建圣遗物属性汇总数据。</summary>
         /// <param name="equippedCount">已装备圣遗物数量。</param>
-        /// <param name="attributeLines">合并后的属性行。</param>
-        public CharacterArtifactSummaryViewData(int equippedCount, IReadOnlyList<string> attributeLines)
+        /// <param name="attributeLines">合并后的结构化属性行。</param>
+        public CharacterArtifactSummaryViewData(int equippedCount,
+            IReadOnlyList<CharacterEquipmentAttributeLineViewData> attributeLines)
         {
             EquippedCount = equippedCount;
-            AttributeLines = attributeLines ?? Array.Empty<string>();
+            AttributeLines = attributeLines ?? Array.Empty<CharacterEquipmentAttributeLineViewData>();
         }
 
         /// <summary>获取已装备圣遗物数量。</summary>
         public int EquippedCount { get; }
         /// <summary>获取静态属性汇总行。</summary>
-        public IReadOnlyList<string> AttributeLines { get; }
+        public IReadOnlyList<CharacterEquipmentAttributeLineViewData> AttributeLines { get; }
     }
 
     /// <summary>圣遗物槽位显示数据。</summary>
@@ -287,11 +316,13 @@ namespace RPG.Game.UI.Character
         /// <param name="rarity">稀有度。</param>
         /// <param name="icon">圣遗物图标。</param>
         /// <param name="levelText">等级文本。</param>
-        /// <param name="detailLines">静态属性行。</param>
+        /// <param name="detailLines">静态结构化属性行。</param>
         /// <param name="description">描述。</param>
         /// <param name="instanceId">实例标识。</param>
+        /// <param name="itemCardData">复用背包样式的圣遗物卡片数据。</param>
         public CharacterArtifactViewData(bool hasArtifact, string name, string slotName, int rarity, Sprite icon,
-            string levelText, IReadOnlyList<string> detailLines, string description, EquipmentInstanceId instanceId)
+            string levelText, IReadOnlyList<CharacterEquipmentAttributeLineViewData> detailLines, string description,
+            EquipmentInstanceId instanceId, BagItemViewData itemCardData)
         {
             HasArtifact = hasArtifact;
             Name = name ?? string.Empty;
@@ -299,9 +330,10 @@ namespace RPG.Game.UI.Character
             Rarity = rarity;
             Icon = icon;
             LevelText = levelText ?? string.Empty;
-            DetailLines = detailLines ?? Array.Empty<string>();
+            DetailLines = detailLines ?? Array.Empty<CharacterEquipmentAttributeLineViewData>();
             Description = description ?? string.Empty;
             InstanceId = instanceId;
+            ItemCardData = itemCardData;
         }
 
         /// <summary>获取是否有圣遗物。</summary>
@@ -317,10 +349,30 @@ namespace RPG.Game.UI.Character
         /// <summary>获取等级文本。</summary>
         public string LevelText { get; }
         /// <summary>获取静态属性行。</summary>
-        public IReadOnlyList<string> DetailLines { get; }
+        public IReadOnlyList<CharacterEquipmentAttributeLineViewData> DetailLines { get; }
         /// <summary>获取描述。</summary>
         public string Description { get; }
         /// <summary>获取实例标识。</summary>
         public EquipmentInstanceId InstanceId { get; }
+        /// <summary>获取以背包 Item 视觉显示的圣遗物卡片数据。</summary>
+        public BagItemViewData ItemCardData { get; }
+    }
+
+    /// <summary>装备静态属性明细中单个属性的分栏显示数据。</summary>
+    public sealed class CharacterEquipmentAttributeLineViewData
+    {
+        /// <summary>创建装备属性明细行数据。</summary>
+        /// <param name="attributeName">属性显示名称。</param>
+        /// <param name="valueText">已格式化的静态属性值。</param>
+        public CharacterEquipmentAttributeLineViewData(string attributeName, string valueText)
+        {
+            AttributeName = attributeName ?? string.Empty;
+            ValueText = valueText ?? string.Empty;
+        }
+
+        /// <summary>获取属性显示名称。</summary>
+        public string AttributeName { get; }
+        /// <summary>获取静态属性值文本。</summary>
+        public string ValueText { get; }
     }
 }

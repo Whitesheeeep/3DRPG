@@ -169,7 +169,7 @@ RectTransform:
   m_AnchorMin: {x: 0.15, y: 0}
   m_AnchorMax: {x: 0.85, y: 0}
   m_AnchoredPosition: {x: 0, y: 0.66666603}
-  m_SizeDelta: {x: 0, y: 1.3333334}
+  m_SizeDelta: {x: 0, y: 2}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!222 &3252311978593839119
 CanvasRenderer:
@@ -192,7 +192,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.1, g: 0.9, b: 1, a: 1}
+  m_Color: {r: 0.4, g: 0.89, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -417,16 +417,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 0.55}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: afd1ea8d8cbc6d54da6154310dc38c97, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 95c5b87135419634fb74af1ccc567fa1, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -468,11 +468,11 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 3979980635457541205}
-  - {fileID: 8395895213815258511}
-  - {fileID: 2313281051126201525}
-  - {fileID: 2414555848703701620}
   - {fileID: 6902031593507548769}
+  - {fileID: 8395895213815258511}
+  - {fileID: 3979980635457541205}
+  - {fileID: 2414555848703701620}
+  - {fileID: 2313281051126201525}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
@@ -501,14 +501,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0.39215687, g: 0.4745098, b: 0.6039216, a: 0.88235295}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: a80a587589bf4ae4199bda26b990953e, type: 3}
+  m_Sprite: {fileID: 21300000, guid: ff38889f40a99d848aaa4772471bdd9a, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -576,7 +576,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   button: {fileID: 2174249184685066657}
   sideIcon: {fileID: 8146988523383415150}
-  qualityFrame: {fileID: 2445545829122800695}
   selectedRing: {fileID: 7472094606724511319}
   selectedUnderline: {fileID: 1406533885612945873}
   activeCharacterMarkImage: {fileID: 7888980319540631236}

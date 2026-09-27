@@ -1,7 +1,8 @@
 using System;
+using System.Collections.Generic;
+using RPG.Game.UI.Bag;
 using RPG.Character;
 using RPG.Game.UI.Character;
-using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
@@ -12,17 +13,16 @@ namespace RPG.Game.UI.Views.Character
     [DisallowMultipleComponent]
     public sealed class CharacterWindowView : MonoBehaviour
     {
+        #region 常量
+
+        #endregion
+
         #region 依赖字段
 
         [SerializeField] private CharacterRosterStripView rosterStrip;
         [FormerlySerializedAs("characterAvatarImage")]
         [SerializeField] private Image fullBodyPortraitImage;
-        [SerializeField] private Image rarityStars;
-        [SerializeField] private TMP_Text characterNameText;
-        [SerializeField] private TMP_Text levelText;
-        [SerializeField] private TMP_Text experienceText;
-        [SerializeField] private TMP_Text capStateText;
-        [SerializeField] private Image experienceProgressImage;
+        [SerializeField] private Image centralWeaponImage;
         [SerializeField] private Button previousCharacterButton;
         [SerializeField] private Button nextCharacterButton;
         [SerializeField] private Button closeButton;
@@ -38,10 +38,12 @@ namespace RPG.Game.UI.Views.Character
         [SerializeField] private GameObject attributePageRoot;
         [SerializeField] private GameObject weaponPageRoot;
         [SerializeField] private GameObject artifactPageRoot;
+        [SerializeField] private GameObject leftNavigationRoot;
         [SerializeField] private CharacterAttributePageView attributePage;
         [SerializeField] private CharacterWeaponPageView weaponPage;
         [SerializeField] private CharacterArtifactPageView artifactPage;
-        [SerializeField] private float rarityStarWidth = 6f;
+        private bool selectionMode;
+        private CharacterWindowPage boundPage;
 
         #endregion
 
@@ -61,6 +63,10 @@ namespace RPG.Game.UI.Views.Character
         public event Action<RPG.ItemSystem.ArtifactSlot> ArtifactSlotSelected;
         /// <summary>圣遗物培养意图。</summary>
         public event Action<RPG.ItemSystem.EquipmentInstanceId> ArtifactDevelopmentRequested;
+        /// <summary>武器页装备/交换操作意图。</summary>
+        public event Action WeaponReplaceRequested;
+        /// <summary>圣遗物页装备/交换操作意图。</summary>
+        public event Action ArtifactReplaceRequested;
 
         #endregion
 
@@ -69,16 +75,14 @@ namespace RPG.Game.UI.Views.Character
         /// <summary>校验 View 依赖并注册所有按钮事件。</summary>
         private void Awake()
         {
-            if (rosterStrip == null || fullBodyPortraitImage == null || rarityStars == null ||
-                characterNameText == null || levelText == null || experienceText == null || capStateText == null ||
-                experienceProgressImage == null ||
+            if (rosterStrip == null || fullBodyPortraitImage == null || centralWeaponImage == null ||
                 previousCharacterButton == null || nextCharacterButton == null || closeButton == null ||
                 attributeButton == null || weaponButton == null || artifactButton == null ||
                 attributeSelectedIcon == null || attributeUnselectedIcon == null ||
                 weaponSelectedIcon == null || weaponUnselectedIcon == null ||
                 artifactSelectedIcon == null || artifactUnselectedIcon == null ||
                 attributePageRoot == null || weaponPageRoot == null || artifactPageRoot == null ||
-                attributePage == null || weaponPage == null || artifactPage == null)
+                leftNavigationRoot == null || attributePage == null || weaponPage == null || artifactPage == null)
                 throw new InvalidOperationException("[CharacterWindowView] 角色窗口绑定不完整。");
             rosterStrip.CharacterSelected += HandleCharacterSelected;
             previousCharacterButton.onClick.AddListener(HandlePreviousClicked);
@@ -88,15 +92,14 @@ namespace RPG.Game.UI.Views.Character
             weaponButton.onClick.AddListener(HandleWeaponClicked);
             artifactButton.onClick.AddListener(HandleArtifactClicked);
             weaponPage.DevelopmentRequested += HandleWeaponDevelopmentRequested;
+            weaponPage.ReplaceRequested += HandleWeaponReplaceRequested;
             artifactPage.SlotSelected += HandleArtifactSlotSelected;
             artifactPage.DevelopmentRequested += HandleArtifactDevelopmentRequested;
-            rarityStars.type = Image.Type.Tiled;
-            rarityStars.raycastTarget = false;
+            artifactPage.ReplaceRequested += HandleArtifactReplaceRequested;
             fullBodyPortraitImage.preserveAspect = true;
             fullBodyPortraitImage.raycastTarget = false;
-            experienceProgressImage.type = Image.Type.Filled;
-            experienceProgressImage.fillMethod = Image.FillMethod.Horizontal;
-            experienceProgressImage.raycastTarget = false;
+            centralWeaponImage.preserveAspect = true;
+            centralWeaponImage.raycastTarget = false;
         }
 
         /// <summary>注销 View 内部事件。</summary>
@@ -110,10 +113,12 @@ namespace RPG.Game.UI.Views.Character
             if (weaponButton != null) weaponButton.onClick.RemoveListener(HandleWeaponClicked);
             if (artifactButton != null) artifactButton.onClick.RemoveListener(HandleArtifactClicked);
             if (weaponPage != null) weaponPage.DevelopmentRequested -= HandleWeaponDevelopmentRequested;
+            if (weaponPage != null) weaponPage.ReplaceRequested -= HandleWeaponReplaceRequested;
             if (artifactPage != null)
             {
                 artifactPage.SlotSelected -= HandleArtifactSlotSelected;
                 artifactPage.DevelopmentRequested -= HandleArtifactDevelopmentRequested;
+                artifactPage.ReplaceRequested -= HandleArtifactReplaceRequested;
             }
         }
 
@@ -134,27 +139,21 @@ namespace RPG.Game.UI.Views.Character
             fullBodyPortraitImage.sprite = data.FullBodyPortrait;
             // 未导入角色全身立绘时不回退成方形头像，透明保留中央角色展示区。
             fullBodyPortraitImage.enabled = data.FullBodyPortrait != null;
-            characterNameText.text = data.Header.Name;
-            levelText.text = data.Header.LevelText;
-            experienceText.text = data.Header.ExperienceText;
-            experienceText.gameObject.SetActive(string.IsNullOrWhiteSpace(data.Header.CapStateText));
-            capStateText.text = data.Header.CapStateText;
-            capStateText.gameObject.SetActive(!string.IsNullOrWhiteSpace(data.Header.CapStateText));
-            experienceProgressImage.fillAmount = data.Header.ExperienceProgress;
-            experienceProgressImage.gameObject.SetActive(data.Header.ShowExperienceProgress);
-            rarityStars.gameObject.SetActive(data.Header.Rarity > 0);
-            Vector2 starSize = rarityStars.rectTransform.sizeDelta;
-            starSize.x = rarityStarWidth * Mathf.Clamp(data.Header.Rarity, 0, 5);
-            rarityStars.rectTransform.sizeDelta = starSize;
             attributePageRoot.SetActive(data.Page == CharacterWindowPage.Attribute);
             weaponPageRoot.SetActive(data.Page == CharacterWindowPage.Weapon);
             artifactPageRoot.SetActive(data.Page == CharacterWindowPage.Artifact);
             SetNavigationState(attributeSelectedIcon, attributeUnselectedIcon, data.Page == CharacterWindowPage.Attribute);
             SetNavigationState(weaponSelectedIcon, weaponUnselectedIcon, data.Page == CharacterWindowPage.Weapon);
             SetNavigationState(artifactSelectedIcon, artifactUnselectedIcon, data.Page == CharacterWindowPage.Artifact);
-            attributePage.Bind(data.Attributes);
+            if (data.Page == CharacterWindowPage.Attribute)
+                attributePage.Bind(data.Header, data.Attributes);
+            else
+                attributePage.Clear();
             weaponPage.Bind(data.Weapon);
+            centralWeaponImage.sprite = data.Weapon != null && data.Weapon.HasWeapon ? data.Weapon.Icon : null;
             artifactPage.Bind(data.Artifacts, data.ArtifactSummary, data.SelectedArtifact);
+            boundPage = data.Page;
+            ApplySelectionModeState();
         }
 
         /// <summary>清空所有角色内容并隐藏页面。</summary>
@@ -163,12 +162,8 @@ namespace RPG.Game.UI.Views.Character
             rosterStrip.Clear();
             fullBodyPortraitImage.sprite = null;
             fullBodyPortraitImage.enabled = false;
-            characterNameText.text = levelText.text = experienceText.text = capStateText.text = string.Empty;
-            experienceText.gameObject.SetActive(false);
-            capStateText.gameObject.SetActive(false);
-            experienceProgressImage.fillAmount = 0f;
-            experienceProgressImage.gameObject.SetActive(false);
-            rarityStars.gameObject.SetActive(false);
+            centralWeaponImage.sprite = null;
+            centralWeaponImage.enabled = false;
             attributePageRoot.SetActive(false);
             weaponPageRoot.SetActive(false);
             artifactPageRoot.SetActive(false);
@@ -178,6 +173,35 @@ namespace RPG.Game.UI.Views.Character
             attributePage.Clear();
             weaponPage.Clear();
             artifactPage.Clear();
+            ApplySelectionModeState();
+        }
+
+        /// <summary>在角色更换模式下隐藏导航与角色切换控件，但保留立绘和关闭按钮。</summary>
+        /// <param name="selecting">是否显示装备选择状态。</param>
+        public void SetSelectionMode(bool selecting)
+        {
+            selectionMode = selecting;
+            ApplySelectionModeState();
+        }
+
+        /// <summary>将被点击的背包候选详情绑定到当前装备页面的右侧详情区。</summary>
+        /// <param name="category">候选装备分类。</param>
+        /// <param name="details">候选装备详情；为空时显示提示。</param>
+        /// <param name="canEquip">当前是否允许交换。</param>
+        /// <param name="statusText">装备限制原因或附加状态。</param>
+        public void BindSelectionCandidate(RPG.ItemSystem.ItemCategory category, BagItemViewData itemData,
+            BagDetailViewData details, IReadOnlyList<CharacterEquipmentAttributeLineViewData> attributeLines,
+            bool canEquip, string statusText)
+        {
+            if (category == RPG.ItemSystem.ItemCategory.Weapon)
+            {
+                weaponPage.BindCandidate(itemData, details, attributeLines, canEquip, statusText);
+                centralWeaponImage.sprite = details?.Icon;
+                centralWeaponImage.enabled = details?.Icon != null;
+                centralWeaponImage.gameObject.SetActive(details?.Icon != null);
+            }
+            else if (category == RPG.ItemSystem.ItemCategory.Artifact)
+                artifactPage.BindCandidate(itemData, details, attributeLines, canEquip, statusText);
         }
 
         #endregion
@@ -192,6 +216,23 @@ namespace RPG.Game.UI.Views.Character
         {
             selectedIcon.SetActive(selected);
             unselectedIcon.SetActive(!selected);
+        }
+
+        /// <summary>同步选择模式对角色条、翻页按钮、左导航和两个装备页操作的显隐影响。</summary>
+        private void ApplySelectionModeState()
+        {
+            if (rosterStrip != null) rosterStrip.gameObject.SetActive(!selectionMode);
+            if (previousCharacterButton != null) previousCharacterButton.gameObject.SetActive(!selectionMode);
+            if (nextCharacterButton != null) nextCharacterButton.gameObject.SetActive(!selectionMode);
+            if (leftNavigationRoot != null) leftNavigationRoot.SetActive(!selectionMode);
+            if (centralWeaponImage != null)
+            {
+                bool showWeapon = boundPage == CharacterWindowPage.Weapon && centralWeaponImage.sprite != null;
+                centralWeaponImage.gameObject.SetActive(showWeapon);
+                centralWeaponImage.enabled = showWeapon;
+            }
+            if (weaponPage != null) weaponPage.SetSelectionMode(selectionMode && boundPage == CharacterWindowPage.Weapon);
+            if (artifactPage != null) artifactPage.SetSelectionMode(selectionMode && boundPage == CharacterWindowPage.Artifact);
         }
 
         /// <summary>转发头像选择。</summary>
@@ -212,12 +253,16 @@ namespace RPG.Game.UI.Views.Character
         /// <summary>转发武器培养。</summary>
         /// <param name="instanceId">武器实例。</param>
         private void HandleWeaponDevelopmentRequested(RPG.ItemSystem.EquipmentInstanceId instanceId) => WeaponDevelopmentRequested?.Invoke(instanceId);
+        /// <summary>转发武器页装备/交换按钮意图。</summary>
+        private void HandleWeaponReplaceRequested() => WeaponReplaceRequested?.Invoke();
         /// <summary>转发圣遗物槽位。</summary>
         /// <param name="slot">圣遗物部位。</param>
         private void HandleArtifactSlotSelected(RPG.ItemSystem.ArtifactSlot slot) => ArtifactSlotSelected?.Invoke(slot);
         /// <summary>转发圣遗物培养。</summary>
         /// <param name="instanceId">圣遗物实例。</param>
         private void HandleArtifactDevelopmentRequested(RPG.ItemSystem.EquipmentInstanceId instanceId) => ArtifactDevelopmentRequested?.Invoke(instanceId);
+        /// <summary>转发圣遗物页装备/交换按钮意图。</summary>
+        private void HandleArtifactReplaceRequested() => ArtifactReplaceRequested?.Invoke();
 
         #endregion
     }

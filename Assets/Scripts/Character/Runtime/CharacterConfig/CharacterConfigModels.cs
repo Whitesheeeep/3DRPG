@@ -14,10 +14,14 @@ namespace RPG.Character
     {
         /// <summary>角色显示名称。</summary>
         [SerializeField, LabelText("角色名称")] private string characterName;
+        /// <summary>角色详情页展示的简短介绍。</summary>
+        [SerializeField, TextArea(2, 5), LabelText("角色介绍")] private string introduction;
         /// <summary>角色稀有度。</summary>
         [SerializeField, LabelText("稀有度")] private CharacterRarity rarity = CharacterRarity.Five;
         /// <summary>读取名称。</summary>
         public string CharacterName => characterName;
+        /// <summary>读取角色介绍。</summary>
+        public string Introduction => introduction;
         /// <summary>读取稀有度。</summary>
         public CharacterRarity Rarity => rarity;
     }

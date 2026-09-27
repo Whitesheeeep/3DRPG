@@ -7,6 +7,7 @@ using RPG.DialogueSystemModule;
 using RPG.PlayerInputSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using WS_Modules.GAS.Generated;
 using WS_Modules;
 using WS_Modules.GAS.AbilitySystemComponent;
@@ -18,7 +19,7 @@ namespace RPG.Character
     /// <summary>稳定编排玩家输入、当前角色能力、Locomotion 与最终运动结算。</summary>
     [DefaultExecutionOrder(-800), DisallowMultipleComponent]
     [InfoBox(
-        "依赖 Player 上的 PlayerInputController、DialogueParticipant，以及 CharacterRoot 上的 CharacterManager 和唯一 CharacterController；cameraTransform 可由常驻摄像机系统注入。")]
+        "依赖 Player 上的 PlayerInputController、DialogueParticipant，以及 CharacterRoot 上的 CharacterManager 和唯一 CharacterController。移动方向使用带 MainCamera 标签的场景输出摄像机；摄像机暂缺时移动输入会暂停，不回退到世界轴。")]
     public sealed class PlayerController : MonoBehaviour, ILooseGameplayTagEventTarget
     {
         #region 配置与运行时状态
@@ -37,12 +38,14 @@ namespace RPG.Character
         private MotionDriver motionDriver = new();
         [SerializeField]
         private CharacterEnvironmentDetector environmentDetector = new();
-        // 可选常驻摄像机基准；为空时输入仲裁 Manager 使用世界 X/Z 作为回退。
+        // 仅保存最近一次解析到的 MainCamera；为空时暂停移动输入，避免退回世界 X/Z。
         [SerializeField] private Transform cameraTransform;
         private LooseGameplayTagEventBridge looseGameplayTagEventBridge;
         private Coroutine frameIntentCleanupCoroutine;
+        private Coroutine cameraResolveCoroutine;
         private bool dialogueSwitchLocked;
         private bool runtimeStarted;
+        private bool hasLoggedMissingMainCamera;
         private int lastAnimatorMoveFrame = -1;
         private CancellationTokenSource initializationCancellationSource;
         #endregion
@@ -85,6 +88,7 @@ namespace RPG.Character
                 characterRoot == null)
                 throw new InvalidOperationException(
                     $"PlayerController '{name}' 缺少输入、CharacterRoot、CharacterManager 或 CharacterController。");
+            ResolveMainCameraTransform("Awake");
             DontDestroyOnLoad(gameObject);
             characterManager.InitializationFailed += OnCharacterInitializationFailed;
 
@@ -168,6 +172,9 @@ namespace RPG.Character
         private void OnEnable()
         {
             looseGameplayTagEventBridge?.Enable();
+            SceneManager.sceneLoaded += HandleSceneLoaded;
+            if (!ResolveMainCameraTransform("OnEnable"))
+                BeginMainCameraResolution();
             if (StateBlackboard == null) return;
             lastAnimatorMoveFrame = -1;
             if (characterManager.IsReady)
@@ -182,6 +189,9 @@ namespace RPG.Character
         private void OnDisable()
         {
             looseGameplayTagEventBridge?.Disable();
+            SceneManager.sceneLoaded -= HandleSceneLoaded;
+            if (cameraResolveCoroutine != null) StopCoroutine(cameraResolveCoroutine);
+            cameraResolveCoroutine = null;
             lastAnimatorMoveFrame = -1;
             inputController?.ClearMoveInput();
             if (StateBlackboard != null) StateBlackboard.IntentSourceConsumed -= OnIntentSourceConsumed;
@@ -220,7 +230,17 @@ namespace RPG.Character
                 // CharacterManager 负责遍历角色，但只由此处显式推进；后台角色的冷却和持续 GE 不因切人停止。
                 characterManager.AdvanceAbilityFrame(Time.deltaTime);
                 // 输入控制器已完成本帧采样；Manager 当前默认只调度需要镜头转换的 Move Arbiter。
-                InputIntentArbiterManager.ArbitrateFrame(cameraTransform);
+                if (cameraTransform == null)
+                {
+                    // MainCamera 暂时缺失时必须丢弃移动意图，不能让仲裁器按世界轴继续移动。
+                    inputController.ClearMoveInput();
+                    StateBlackboard.ClearMoveInput();
+                    BeginMainCameraResolution();
+                }
+                else
+                {
+                    InputIntentArbiterManager.ArbitrateFrame(cameraTransform);
+                }
 
                 // 切人 Request 的映射和消费由 CharacterManager 处理；玩家级对话锁仍在 PlayerController 门禁。
                 // TODO: 优化切人门禁
@@ -307,6 +327,65 @@ namespace RPG.Character
         #endregion
 
         #region 角色切换
+
+        /// <summary>在场景切换完成后重新绑定新场景实际输出的主摄像机。</summary>
+        /// <param name="scene">刚加载完成的场景。</param>
+        /// <param name="mode">场景加载模式。</param>
+        private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            if (!ResolveMainCameraTransform($"场景加载完成:{scene.name}"))
+                BeginMainCameraResolution();
+        }
+
+        /// <summary>解析当前启用且带 MainCamera 标签的输出摄像机，不在逐帧路径中调用。</summary>
+        /// <param name="reason">触发本次解析的生命周期原因。</param>
+        /// <returns>找到有效主摄像机时返回 true。</returns>
+        private bool ResolveMainCameraTransform(string reason)
+        {
+            Camera mainCamera = Camera.main;
+            if (mainCamera == null)
+            {
+                cameraTransform = null;
+                if (!hasLoggedMissingMainCamera)
+                {
+                    Debug.LogWarning($"[PlayerController] {reason} 时未找到 MainCamera，移动输入暂时停用。", this);
+                    hasLoggedMissingMainCamera = true;
+                }
+                return false;
+            }
+
+            Transform resolvedTransform = mainCamera.transform;
+            bool changed = cameraTransform != resolvedTransform;
+            cameraTransform = resolvedTransform;
+            hasLoggedMissingMainCamera = false;
+            if (changed)
+            {
+                Vector3 horizontalForward = Vector3.ProjectOnPlane(resolvedTransform.forward, Vector3.up).normalized;
+                Debug.Log($"[PlayerController] 已绑定主摄像机，reason={reason}, camera={mainCamera.name}, horizontalForward={horizontalForward}。", this);
+            }
+            return true;
+        }
+
+        /// <summary>主摄像机暂缺时低频重试；常规渲染帧不会重复查找场景对象。</summary>
+        private void BeginMainCameraResolution()
+        {
+            if (!isActiveAndEnabled || cameraResolveCoroutine != null) return;
+            cameraResolveCoroutine = StartCoroutine(ResolveMainCameraWhenAvailable());
+        }
+
+        /// <summary>每隔短暂间隔检查 MainCamera 是否已由场景或相机系统创建。</summary>
+        /// <returns>等待主摄像机恢复的协程。</returns>
+        private IEnumerator ResolveMainCameraWhenAvailable()
+        {
+            WaitForSecondsRealtime retryInterval = new WaitForSecondsRealtime(0.25f);
+            while (isActiveAndEnabled && cameraTransform == null)
+            {
+                yield return retryInterval;
+                if (ResolveMainCameraTransform("低频恢复检查")) break;
+            }
+            cameraResolveCoroutine = null;
+        }
+
         /// <summary>在玩家级阻断通过后切换角色。</summary>
         /// <param name="characterId">目标角色标识。</param>
         /// <returns>明确的切换状态。</returns>

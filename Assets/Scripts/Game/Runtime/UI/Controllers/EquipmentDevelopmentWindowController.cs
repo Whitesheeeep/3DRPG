@@ -65,6 +65,8 @@ namespace RPG.Game.UI.Controllers
         private EquipmentGrowthMode currentGrowthMode = EquipmentGrowthMode.ConfigurationUnavailable;
         private const int MaxSelectedExperienceMaterialCount = 99;
         private bool selectionLimitLogIssued;
+        private BagSortMode selectionSortMode = BagSortMode.AcquisitionSequence;
+        private BagSortDirection selectionSortDirection = BagSortDirection.Ascending;
 
         #endregion
 
@@ -106,6 +108,9 @@ namespace RPG.Game.UI.Controllers
                 selectionPanel.EntryClicked += HandleRefinementMaterialClicked;
                 selectionPanel.QuantityChangeRequested += HandleEnhancementQuantityChanged;
                 selectionPanel.ReturnRequested += CloseSelectionPanel;
+                selectionPanel.SortModeChanged += HandleSelectionSortModeChanged;
+                selectionPanel.SortDirectionRequested += HandleSelectionSortDirectionRequested;
+                selectionPanel.SetSortControl(false, selectionSortMode, selectionSortDirection, "数量");
             }
 
             weaponChangedUnregister = EventSystem.Register_Type<WeaponInstanceChangedEvent>(
@@ -144,6 +149,8 @@ namespace RPG.Game.UI.Controllers
                 selectionPanel.EntryClicked -= HandleRefinementMaterialClicked;
                 selectionPanel.QuantityChangeRequested -= HandleEnhancementQuantityChanged;
                 selectionPanel.ReturnRequested -= CloseSelectionPanel;
+                selectionPanel.SortModeChanged -= HandleSelectionSortModeChanged;
+                selectionPanel.SortDirectionRequested -= HandleSelectionSortDirectionRequested;
             }
 
             weaponChangedUnregister?.UnRegister();
@@ -326,6 +333,8 @@ namespace RPG.Game.UI.Controllers
             {
                 stateModel.SetSelectionPanelVisible(false);
                 selectionPanel?.HideAnimated();
+                selectionPanel?.SetSortControl(false, selectionSortMode, selectionSortDirection,
+                    GetSelectionPrimaryLabel());
                 UnregisterSelectionEscCommand();
             }
 
@@ -347,6 +356,9 @@ namespace RPG.Game.UI.Controllers
                 return;
             }
 
+            // 每次打开都从背包默认的获得顺序升序开始，用户在当前会话中的选择仍由 StateModel 保留。
+            selectionSortMode = BagSortMode.AcquisitionSequence;
+            selectionSortDirection = BagSortDirection.Ascending;
             stateModel.SetSelectionPanelVisible(true);
             BindSelectionPanel();
             RegisterSelectionEscCommand();
@@ -369,6 +381,9 @@ namespace RPG.Game.UI.Controllers
                 Debug.Log("[EquipmentDevelopment] 没有可选择的强化素材，忽略打开素材面板。", this);
                 return;
             }
+            // 强化列表沿用背包默认的获得顺序升序，排序状态仅影响显示，不触碰素材数量选择。
+            selectionSortMode = BagSortMode.AcquisitionSequence;
+            selectionSortDirection = BagSortDirection.Ascending;
             stateModel.SetSelectionPanelVisible(true);
             BindSelectionPanel();
             RegisterSelectionEscCommand();
@@ -387,6 +402,8 @@ namespace RPG.Game.UI.Controllers
 
             stateModel.SetSelectionPanelVisible(false);
             selectionPanel?.HideAnimated();
+            selectionPanel?.SetSortControl(false, selectionSortMode, selectionSortDirection,
+                GetSelectionPrimaryLabel());
             UnregisterSelectionEscCommand();
             Debug.Log("[WeaponDevelopment] 关闭培养材料面板。", this);
         }
@@ -396,6 +413,8 @@ namespace RPG.Game.UI.Controllers
         {
             stateModel?.SetSelectionPanelVisible(false);
             selectionPanel?.HideImmediateAndReset();
+            selectionPanel?.SetSortControl(false, selectionSortMode, selectionSortDirection,
+                GetSelectionPrimaryLabel());
             UnregisterSelectionEscCommand();
         }
 
@@ -1564,10 +1583,33 @@ namespace RPG.Game.UI.Controllers
 
         #region 候选列表与事件
 
+        /// <summary>应用排序字段或方向变化，并仅重排当前候选显示。</summary>
+        /// <param name="sortMode">新的排序字段。</param>
+        private void HandleSelectionSortModeChanged(BagSortMode sortMode)
+        {
+            if (!stateModel.SelectionPanelVisible) return;
+            selectionSortMode = sortMode;
+            BindSelectionPanel();
+            Debug.Log($"[EquipmentDevelopment] 候选排序字段变更：Mode={selectionSortMode}，Direction={selectionSortDirection}。", this);
+        }
+
+        /// <summary>切换当前候选列表升降序，并保留强化数量或精炼实例选择。</summary>
+        private void HandleSelectionSortDirectionRequested()
+        {
+            if (!stateModel.SelectionPanelVisible) return;
+            selectionSortDirection = selectionSortDirection == BagSortDirection.Ascending
+                ? BagSortDirection.Descending
+                : BagSortDirection.Ascending;
+            BindSelectionPanel();
+            Debug.Log($"[EquipmentDevelopment] 候选排序方向变更：Mode={selectionSortMode}，Direction={selectionSortDirection}。", this);
+        }
+
         /// <summary>按当前成长模式或精炼页绑定对应的候选材料列表。</summary>
         private void BindSelectionPanel()
         {
             if (selectionPanel == null) return;
+            selectionPanel.SetSortControl(stateModel.SelectionPanelVisible, selectionSortMode,
+                selectionSortDirection, GetSelectionPrimaryLabel());
             if (stateModel.CurrentPage == EquipmentDevelopmentPage.Growth && currentGrowthMode == EquipmentGrowthMode.Enhancement)
             {
                 if (targetKind == EquipmentDevelopmentTargetKind.Artifact)
@@ -1579,7 +1621,7 @@ namespace RPG.Game.UI.Controllers
 
             if (stateModel.CurrentPage != EquipmentDevelopmentPage.Refinement ||
                 !weaponInventoryManager.TryGetInstance(targetInstanceId, out WeaponInstance target)) return;
-            var entries = new List<BagItemViewData>();
+            var sortedEntries = new List<SelectionSortEntry>();
             var selectedEntryKeys = new List<BagEntryKey>();
             IReadOnlyList<WeaponInstance> instances = weaponInventoryManager.GetInstances();
             for (int index = 0; index < instances.Count; index++)
@@ -1593,21 +1635,23 @@ namespace RPG.Game.UI.Controllers
                     ? resolved
                     : null;
                 var entryKey = new BagEntryKey(ItemCategory.Weapon, instance.InstanceId.ToString());
-                entries.Add(new BagItemViewData(
+                var viewData = new BagItemViewData(
                     entryKey, definition.DisplayName,
                     (int)definition.Rarity, $"Lv.{instance.Level}", icon, null, string.Empty,
-                     false, instance.IsLocked, characterRosterManager.IsEquipmentEquipped(instance.InstanceId)));
+                     false, instance.IsLocked, characterRosterManager.IsEquipmentEquipped(instance.InstanceId));
+                sortedEntries.Add(new SelectionSortEntry(viewData, (int)definition.Rarity, instance.Level,
+                    instance.AcquisitionSequence, instance.InstanceId.ToString()));
                 // 材料实例 ID 是状态模型的唯一来源；这里只投影仍属于当前候选列表的稳定网格键。
                 if (IsMaterialSelected(instance.InstanceId)) selectedEntryKeys.Add(entryKey);
             }
 
-            selectionPanel.Bind(entries, selectedEntryKeys, null);
+            selectionPanel.Bind(SortSelectionEntries(sortedEntries), selectedEntryKeys, null);
         }
 
         /// <summary>绑定武器强化素材候选并投影当前会话数量。</summary>
         private void BindEnhancementSelectionPanel()
         {
-            var entries = new List<BagItemViewData>();
+            var sortedEntries = new List<SelectionSortEntry>();
             var selectedEntryKeys = new List<BagEntryKey>();
             IReadOnlyList<StackableInventoryEntry> inventory =
                 stackableInventoryManager.GetDevelopmentExperienceItems(DevelopmentExperienceItemType.Weapon);
@@ -1616,25 +1660,29 @@ namespace RPG.Game.UI.Controllers
                 StackableInventoryEntry entry = inventory[index];
                 if (entry == null || entry.Quantity <= 0 ||
                     !ItemManager.Instance.TryGetDefinition(entry.ItemId, out ItemDefinition item) ||
-                    !(item is DevelopmentExperienceItemDefinition definition) || definition.ExperienceValue <= 0) continue;
+                    !(item is DevelopmentExperienceItemDefinition definition) ||
+                    !definition.SupportsExperienceType(DevelopmentExperienceItemType.Weapon) ||
+                    definition.ExperienceValue <= 0) continue;
 
                 Sprite icon = spriteAtlasLeaseService.TryGetSprite(definition.IconAddress, definition.IconSpriteName,
                     out Sprite resolved) ? resolved : null;
                 var entryKey = new BagEntryKey(ItemCategory.DevelopmentExperienceItem, entry.ItemId.ToString());
                 int selectedQuantity = stateModel.SelectedEnhancementQuantities.TryGetValue(entry.ItemId,
                     out int selected) ? selected : 0;
-                entries.Add(new BagItemViewData(entryKey, definition.DisplayName, (int)definition.Rarity,
-                    $"{selectedQuantity}/{entry.Quantity}", icon, null, string.Empty, false, false, false));
+                var viewData = new BagItemViewData(entryKey, definition.DisplayName, (int)definition.Rarity,
+                    $"{selectedQuantity}/{entry.Quantity}", icon, null, string.Empty, false, false, false);
+                sortedEntries.Add(new SelectionSortEntry(viewData, (int)definition.Rarity, entry.Quantity,
+                    entry.AcquisitionSequence, entry.ItemId.ToString()));
                 if (selectedQuantity > 0) selectedEntryKeys.Add(entryKey);
             }
 
-            selectionPanel.BindQuantitySelection(entries, selectedEntryKeys);
+            selectionPanel.BindQuantitySelection(SortSelectionEntries(sortedEntries), selectedEntryKeys);
         }
 
         /// <summary>绑定圣遗物升级经验候选并投影当前会话数量。</summary>
         private void BindArtifactEnhancementSelectionPanel()
         {
-            var entries = new List<BagItemViewData>();
+            var sortedEntries = new List<SelectionSortEntry>();
             var selectedEntryKeys = new List<BagEntryKey>();
             IReadOnlyList<StackableInventoryEntry> inventory =
                 stackableInventoryManager.GetDevelopmentExperienceItems(DevelopmentExperienceItemType.Artifact);
@@ -1651,12 +1699,54 @@ namespace RPG.Game.UI.Controllers
                 var entryKey = new BagEntryKey(ItemCategory.DevelopmentExperienceItem, entry.ItemId.ToString());
                 int selectedQuantity = stateModel.SelectedEnhancementQuantities.TryGetValue(entry.ItemId,
                     out int selected) ? selected : 0;
-                entries.Add(new BagItemViewData(entryKey, definition.DisplayName, (int)definition.Rarity,
-                    $"{selectedQuantity}/{entry.Quantity}", icon, null, string.Empty, false, false, false));
+                var viewData = new BagItemViewData(entryKey, definition.DisplayName, (int)definition.Rarity,
+                    $"{selectedQuantity}/{entry.Quantity}", icon, null, string.Empty, false, false, false);
+                sortedEntries.Add(new SelectionSortEntry(viewData, (int)definition.Rarity, entry.Quantity,
+                    entry.AcquisitionSequence, entry.ItemId.ToString()));
                 if (selectedQuantity > 0) selectedEntryKeys.Add(entryKey);
             }
 
-            selectionPanel.BindQuantitySelection(entries, selectedEntryKeys);
+            selectionPanel.BindQuantitySelection(SortSelectionEntries(sortedEntries), selectedEntryKeys);
+        }
+
+        /// <summary>按背包三种字段和稳定次级键排序，再投影为网格所需的 ViewData。</summary>
+        /// <param name="entries">包含展示数据和排序键的候选项。</param>
+        /// <returns>稳定排序后的候选 ViewData。</returns>
+        private IReadOnlyList<BagItemViewData> SortSelectionEntries(List<SelectionSortEntry> entries)
+        {
+            entries.Sort((left, right) =>
+            {
+                int primary = selectionSortMode switch
+                {
+                    BagSortMode.PrimaryValue => left.PrimaryValue.CompareTo(right.PrimaryValue),
+                    BagSortMode.AcquisitionSequence => left.AcquisitionSequence.CompareTo(right.AcquisitionSequence),
+                    _ => left.Rarity.CompareTo(right.Rarity)
+                };
+                if (selectionSortDirection == BagSortDirection.Descending) primary = -primary;
+                if (primary != 0) return primary;
+
+                // 同值项保持背包约定的品质、主数值、获得顺序次级排列，最终由稳定 ID 消除并列。
+                int rarity = right.Rarity.CompareTo(left.Rarity);
+                if (rarity != 0) return rarity;
+                int primaryValue = right.PrimaryValue.CompareTo(left.PrimaryValue);
+                if (primaryValue != 0) return primaryValue;
+                int sequence = left.AcquisitionSequence.CompareTo(right.AcquisitionSequence);
+                return sequence != 0
+                    ? sequence
+                    : string.CompareOrdinal(left.StableId, right.StableId);
+            });
+
+            var result = new List<BagItemViewData>(entries.Count);
+            for (int index = 0; index < entries.Count; index++)
+                result.Add(entries[index].ViewData);
+            return result;
+        }
+
+        /// <summary>取得当前列表主数值字段的本地化文案。</summary>
+        /// <returns>精炼列表返回“等级”，经验素材列表返回“数量”。</returns>
+        private string GetSelectionPrimaryLabel()
+        {
+            return stateModel.CurrentPage == EquipmentDevelopmentPage.Refinement ? "等级" : "数量";
         }
 
         /// <summary>判断当前展开的材料面板是否仍匹配页面和成长模式。</summary>
@@ -1822,6 +1912,41 @@ namespace RPG.Game.UI.Controllers
 
             /// <summary>聚合后的数值或倍率。</summary>
             public float Value { get; }
+        }
+
+        /// <summary>将网格展示对象与背包排序使用的稳定元数据组合在一起。</summary>
+        private sealed class SelectionSortEntry
+        {
+            /// <summary>创建培养候选项的排序包装。</summary>
+            /// <param name="viewData">候选网格展示数据。</param>
+            /// <param name="rarity">物品稀有度。</param>
+            /// <param name="primaryValue">当前分类主数值：装备等级或素材数量。</param>
+            /// <param name="acquisitionSequence">实例或堆叠首次获得顺序。</param>
+            /// <param name="stableId">用于最终并列消歧的物品或实例 ID。</param>
+            public SelectionSortEntry(BagItemViewData viewData, int rarity, long primaryValue,
+                long acquisitionSequence, string stableId)
+            {
+                ViewData = viewData;
+                Rarity = rarity;
+                PrimaryValue = primaryValue;
+                AcquisitionSequence = acquisitionSequence;
+                StableId = stableId;
+            }
+
+            /// <summary>候选网格展示数据。</summary>
+            public BagItemViewData ViewData { get; }
+
+            /// <summary>物品稀有度数值。</summary>
+            public int Rarity { get; }
+
+            /// <summary>分类主数值：装备等级或堆叠数量。</summary>
+            public long PrimaryValue { get; }
+
+            /// <summary>首次获得顺序。</summary>
+            public long AcquisitionSequence { get; }
+
+            /// <summary>稳定的物品或实例 ID。</summary>
+            public string StableId { get; }
         }
 
         #endregion

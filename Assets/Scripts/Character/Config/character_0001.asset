@@ -16,6 +16,7 @@ MonoBehaviour:
     value: character_0001
   identity:
     characterName: "\u5965\u9EDB\u5854"
+    introduction: "\u5965\u9EDB\u5854"
     rarity: 5
   presentation:
     prefabAddress: Character/OdetaA

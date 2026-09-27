@@ -87,6 +87,9 @@ namespace RPG.Game.UI.Escape
         /// <summary>执行 CharacterWindow 隐藏流程。</summary>
         protected override void OnExecute()
         {
+            if (UIManager.Instance.TryGetWindow<CharacterWindow>(out CharacterWindow window) &&
+                window.CloseSelectionModeFromCommand())
+                return;
             UIManager.Instance.HideWindowAsync<CharacterWindow>().Forget();
         }
     }

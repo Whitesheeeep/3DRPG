@@ -1,10 +1,11 @@
 using TMPro;
 using RPG.Game.UI.Character;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace RPG.Game.UI.Views.Character
 {
-    /// <summary>角色属性页中的一行静态基础 Stat。</summary>
+    /// <summary>角色属性页中的一行基础 Stat 与静态装备净加成。</summary>
     [DisallowMultipleComponent]
     public sealed class CharacterAttributeLineView : MonoBehaviour
     {
@@ -14,12 +15,13 @@ namespace RPG.Game.UI.Views.Character
         [SerializeField] private TMP_Text attributeNameText;
         [SerializeField] private TMP_Text attributeValueText;
         [SerializeField] private TMP_Text attributeAddValueText;
+        [SerializeField] private Image dividerImage;
 
         #endregion
 
         #region 绑定
 
-        /// <summary>绑定一行属性文本；当前没有图标配置时隐藏图标节点。</summary>
+        /// <summary>绑定一行属性文本并显示由 Prefab 预先配置的图标。</summary>
         /// <param name="data">属性行数据。</param>
         public void Bind(CharacterAttributeViewData data)
         {
@@ -33,7 +35,8 @@ namespace RPG.Game.UI.Views.Character
             attributeValueText.text = data.BaseValueText;
             attributeAddValueText.text = data.EquipmentBonusText;
             attributeAddValueText.gameObject.SetActive(!string.IsNullOrEmpty(data.EquipmentBonusText));
-            if (attributeIconRoot != null) attributeIconRoot.SetActive(false);
+            if (attributeIconRoot != null) attributeIconRoot.SetActive(true);
+            if (dividerImage != null) dividerImage.raycastTarget = false;
         }
 
         /// <summary>隐藏属性行。</summary>
@@ -46,6 +49,8 @@ namespace RPG.Game.UI.Views.Character
                 attributeAddValueText.text = string.Empty;
                 attributeAddValueText.gameObject.SetActive(false);
             }
+            if (attributeIconRoot != null) attributeIconRoot.SetActive(false);
+            if (dividerImage != null) dividerImage.raycastTarget = false;
             gameObject.SetActive(false);
         }
 

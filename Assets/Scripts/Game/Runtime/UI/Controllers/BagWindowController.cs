@@ -213,7 +213,8 @@ namespace RPG.Game.UI.Controllers
                 new WeaponBagCategoryDataSource(weaponInventoryManager, ResolveSprite,
                     GameArchitecture.Interface.GetManager<CharacterRosterManager>()));
             dataSourceByCategoryMap.Add(ItemCategory.Artifact,
-                new ArtifactBagCategoryDataSource(artifactInventoryManager, ResolveSprite));
+                new ArtifactBagCategoryDataSource(artifactInventoryManager, ResolveSprite,
+                    GameArchitecture.Interface.GetManager<CharacterRosterManager>()));
             dataSourceByCategoryMap.Add(ItemCategory.DevelopmentExperienceItem,
                 new StackableBagCategoryDataSource(
                     ItemCategory.DevelopmentExperienceItem,

@@ -16,6 +16,7 @@ MonoBehaviour:
     value: character_0002
   identity:
     characterName: Rusk
+    introduction: Rusk
     rarity: 5
   presentation:
     prefabAddress: Character/Rusk

@@ -4,6 +4,7 @@ using DG.Tweening;
 using RPG.Game.UI.Bag;
 using RPG.Game.UI.Views.Bag;
 using Sirenix.OdinInspector;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -16,6 +17,8 @@ namespace RPG.Game.UI.Views.Common
 
         [SerializeField] private BagGridView gridView;
         [SerializeField] private Button returnButton;
+        [SerializeField] private TMP_Dropdown sortDropdown;
+        [SerializeField] private Button sortDirectionButton;
         [SerializeField, MinValue(0f)] private float slideDuration = 0.22f;
         [SerializeField] private Ease slideEase = Ease.OutCubic;
         [SerializeField] private Ease slideOutEase = Ease.InCubic;
@@ -24,6 +27,12 @@ namespace RPG.Game.UI.Views.Common
         private Vector2 shownAnchoredPosition;
         private Tween activeSlideTween;
         private bool hasShownPosition;
+        private bool hasSortControlConfiguration;
+        private bool sortControlVisible;
+        private BagSortMode sortControlMode;
+        private BagSortDirection sortControlDirection;
+        private string primarySortLabel = string.Empty;
+        private string configuredPrimarySortLabel;
 
         #endregion
 
@@ -35,12 +44,16 @@ namespace RPG.Game.UI.Views.Common
         public event Action<BagItemQuantityIntent> QuantityChangeRequested;
         /// <summary>用户请求退出选择面板时触发。</summary>
         public event Action ReturnRequested;
+        /// <summary>用户选择新的排序字段时触发。</summary>
+        public event Action<BagSortMode> SortModeChanged;
+        /// <summary>用户请求切换当前列表的升降序时触发。</summary>
+        public event Action SortDirectionRequested;
 
         #endregion
 
         #region 生命周期与绑定
 
-        /// <summary>绑定返回按钮和网格点击转发。</summary>
+        /// <summary>绑定返回、排序控件和网格点击转发。</summary>
         private void Awake()
         {
             panelRectTransform = transform as RectTransform;
@@ -49,13 +62,19 @@ namespace RPG.Game.UI.Views.Common
             shownAnchoredPosition = panelRectTransform.anchoredPosition;
             hasShownPosition = true;
             returnButton?.onClick.AddListener(HandleReturnClicked);
+            sortDropdown?.onValueChanged.AddListener(HandleSortModeChanged);
+            sortDirectionButton?.onClick.AddListener(HandleSortDirectionClicked);
+            // 排序配置由所属窗口控制器提供；视图只恢复选项、下拉值和控件显隐。
+            ApplySortControlState();
         }
 
-        /// <summary>销毁时移除返回按钮监听。</summary>
+        /// <summary>销毁时对称移除返回和排序控件监听。</summary>
         private void OnDestroy()
         {
             KillSlideTweenAndReset(false);
             returnButton?.onClick.RemoveListener(HandleReturnClicked);
+            sortDropdown?.onValueChanged.RemoveListener(HandleSortModeChanged);
+            sortDirectionButton?.onClick.RemoveListener(HandleSortDirectionClicked);
         }
 
         /// <summary>从左侧屏外滑入选择面板；动画期间暂时禁止候选网格交互。</summary>
@@ -176,10 +195,10 @@ namespace RPG.Game.UI.Views.Common
                 KillSlideTweenAndReset(false);
         }
 
-        /// <summary>校验正式 Prefab 的候选网格、返回按钮和空状态提示绑定。</summary>
+        /// <summary>校验候选网格、返回按钮、排序下拉框与方向按钮。</summary>
         public void ValidateConfiguration()
         {
-            if (gridView == null || returnButton == null)
+            if (gridView == null || returnButton == null || sortDropdown == null || sortDirectionButton == null)
                 throw new InvalidOperationException("[ItemSelectionPanelView] 选择面板存在未绑定控件。");
         }
 
@@ -212,8 +231,62 @@ namespace RPG.Game.UI.Views.Common
         /// <param name="interactable">是否可交互。</param>
         public void SetInteractable(bool interactable) => gridView?.SetInteractable(interactable);
 
+        /// <summary>配置排序字段、排序方向和分类主数值文案，并控制两个排序控件的显隐。</summary>
+        /// <param name="visible">是否显示并启用排序按钮。</param>
+        /// <param name="sortMode">当前排序字段。</param>
+        /// <param name="sortDirection">当前排序方向。</param>
+        /// <param name="primaryLabel">主数值选项文案，例如“等级”或“数量”。</param>
+        public void SetSortControl(bool visible, BagSortMode sortMode,
+            BagSortDirection sortDirection, string primaryLabel)
+        {
+            hasSortControlConfiguration = true;
+            sortControlVisible = visible;
+            sortControlMode = sortMode;
+            sortControlDirection = sortDirection;
+            primarySortLabel = string.IsNullOrWhiteSpace(primaryLabel) ? "主数值" : primaryLabel;
+            ApplySortControlState();
+        }
+
+        /// <summary>将最近一次排序配置同步到控件，兼容面板首次激活才触发 Awake 的时序。</summary>
+        private void ApplySortControlState()
+        {
+            if (!hasSortControlConfiguration) return;
+            if (sortDropdown == null || sortDirectionButton == null) return;
+
+            if (!string.Equals(configuredPrimarySortLabel, primarySortLabel, StringComparison.Ordinal))
+            {
+                // 分类主值文案不同，但下拉字段顺序保持与 BagWindow 一致，控制器按同一枚举排序。
+                sortDropdown.ClearOptions();
+                sortDropdown.AddOptions(new List<string> { "品质", primarySortLabel, "获得顺序" });
+                configuredPrimarySortLabel = primarySortLabel;
+            }
+
+            sortDropdown.SetValueWithoutNotify(Mathf.Clamp((int)sortControlMode, 0, 2));
+            sortDropdown.gameObject.SetActive(sortControlVisible);
+            sortDropdown.interactable = sortControlVisible;
+            // 复用背包的排序方向图标，并通过半周旋转明确区分升序和降序状态。
+            sortDirectionButton.transform.localRotation = Quaternion.Euler(0f, 0f,
+                sortControlDirection == BagSortDirection.Descending ? 180f : 0f);
+            sortDirectionButton.gameObject.SetActive(sortControlVisible);
+            sortDirectionButton.interactable = sortControlVisible;
+        }
+
         /// <summary>发送返回面板请求。</summary>
         private void HandleReturnClicked() => ReturnRequested?.Invoke();
+
+        /// <summary>转发下拉框字段选择，由所属 Controller 更新排序状态。</summary>
+        /// <param name="value">下拉选项序号。</param>
+        private void HandleSortModeChanged(int value)
+        {
+            if (!sortControlVisible) return;
+            SortModeChanged?.Invoke((BagSortMode)Mathf.Clamp(value, 0, 2));
+        }
+
+        /// <summary>转发升降序切换请求，由所属 Controller 更新排序状态。</summary>
+        private void HandleSortDirectionClicked()
+        {
+            if (sortControlVisible) SortDirectionRequested?.Invoke();
+        }
 
         /// <summary>把网格条目点击转发为面板级用户意图。</summary>
         /// <param name="entryKey">被点击的候选条目标识。</param>

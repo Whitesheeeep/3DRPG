@@ -9,6 +9,7 @@ using RPG.Game.UI.Services;
 using RPG.ItemSystem;
 using UnityEngine;
 using WS_Modules.GAS.AttributeSystem;
+using WS_Modules.GAS.Generated;
 using WS_Modules.GAS.GameplayEffect;
 
 namespace RPG.Game.UI.Character
@@ -16,6 +17,20 @@ namespace RPG.Game.UI.Character
     /// <summary>把角色实例、配置和装备查询投影为 CharacterWindow 的纯显示快照。</summary>
     internal sealed class CharacterWindowPresentationBuilder
     {
+        #region 固定显示属性
+
+        // 属性页只展示预先确认的五项；固定顺序避免配置顺序或其他 Stat 影响图标对应关系。
+        private static readonly int[] DisplayedAttributeIdsInOrder =
+        {
+            GameplayAttributes.Attribute_MaxHealth.Id,
+            GameplayAttributes.Attribute_AttackPower.Id,
+            GameplayAttributes.Attribute_Armor.Id,
+            GameplayAttributes.Attribute_CriticalChance.Id,
+            GameplayAttributes.Attribute_CriticalDamage.Id
+        };
+
+        #endregion
+
         #region 依赖字段
 
         // 依赖字段：属性只读取 Config 烘焙结果；装备页通过装备系统解析实例关系。
@@ -57,7 +72,7 @@ namespace RPG.Game.UI.Character
             CharacterInstance selected = selectedIndex >= 0 ? sortedInstances[selectedIndex] : null;
             if (selected == null)
                 return new CharacterWindowViewData(Array.Empty<CharacterRosterEntryViewData>(), -1, null, null,
-                    new CharacterArtifactSummaryViewData(0, Array.Empty<string>()),
+                    new CharacterArtifactSummaryViewData(0, Array.Empty<CharacterEquipmentAttributeLineViewData>()),
                     page, Array.Empty<CharacterAttributeViewData>(), null, BuildEmptyArtifactSlots(), 0, null);
 
             var roster = new List<CharacterRosterEntryViewData>(sortedInstances.Count);
@@ -126,12 +141,14 @@ namespace RPG.Game.UI.Character
                 nextExperience = instance.Config.GrowthProfile.BakedLevelProgressions[instance.Level - 1].NextExperience;
             string experience = capState.Length > 0 ? capState :
                 $"{instance.CurrentExperience.ToString("N0", CultureInfo.InvariantCulture)}/{nextExperience.ToString("N0", CultureInfo.InvariantCulture)}";
-            float experienceProgress = nextExperience > 0
+            bool atLevelCap = instance.Level >= cap;
+            float experienceProgress = atLevelCap ? 1f : nextExperience > 0
                 ? Mathf.Clamp01((float)instance.CurrentExperience / nextExperience)
                 : 0f;
-            return new CharacterHeaderViewData(instance.Config.Name, (int)instance.Config.Rarity,
-                $"Lv.{instance.Level}/{cap}", experience, capState, experienceProgress,
-                capState.Length == 0 && nextExperience > 0);
+            string experiencePercent = $"{Mathf.RoundToInt(experienceProgress * 100f)}%";
+            return new CharacterHeaderViewData(instance.Config.Name, (int)instance.Config.Rarity, instance.AscensionRank,
+                $"Lv.{instance.Level}", $"/ {cap}", experience, capState, experienceProgress,
+                experiencePercent, atLevelCap || nextExperience > 0, instance.Config.Introduction);
         }
 
         /// <summary>解析当前突破阶数对应的等级上限。</summary>
@@ -147,27 +164,93 @@ namespace RPG.Game.UI.Character
 
         /// <summary>构建角色基础 Stat 与静态装备净加成拆分后的显示行。</summary>
         /// <param name="instance">目标角色实例。</param>
-        /// <returns>按配置顺序排列的属性行。</returns>
+        /// <returns>按固定 UI 顺序排列的属性行。</returns>
         private IReadOnlyList<CharacterAttributeViewData> BuildAttributes(CharacterInstance instance)
         {
             IReadOnlyList<CharacterAttributeProjectionValue> values = CharacterEquipmentAttributeProjection.ResolveStatValues(
                 instance, equipmentSystem, attributeResolver);
-            var lines = new List<CharacterAttributeViewData>();
+            // 投影按 AttributeId 建索引，随后严格按 UI 固定顺序取值，不把 Speed 等其他 Stat 放入页面。
+            var valueByAttributeIdMap = new Dictionary<int, CharacterAttributeProjectionValue>(values.Count);
             for (int index = 0; index < values.Count; index++)
             {
                 CharacterAttributeProjectionValue value = values[index];
-                string name = string.IsNullOrWhiteSpace(value.Attribute.DisplayName) ? value.Attribute.Name : value.Attribute.DisplayName;
-                long displayedBaseValue = (long)Math.Round(value.BaseValue, MidpointRounding.AwayFromZero);
-                long displayedTotalValue = (long)Math.Round(value.TotalValue, MidpointRounding.AwayFromZero);
-                long displayedEquipmentBonus = displayedTotalValue - displayedBaseValue;
-                string equipmentBonusText = displayedEquipmentBonus == 0
-                    ? string.Empty
-                    : (displayedEquipmentBonus > 0 ? "+" : string.Empty) +
-                      displayedEquipmentBonus.ToString("0", CultureInfo.InvariantCulture);
-                lines.Add(new CharacterAttributeViewData(name,
-                    displayedBaseValue.ToString("0", CultureInfo.InvariantCulture), equipmentBonusText));
+                valueByAttributeIdMap.Add(value.Attribute.Id, value);
             }
+
+            var lines = new List<CharacterAttributeViewData>(DisplayedAttributeIdsInOrder.Length);
+            for (int index = 0; index < DisplayedAttributeIdsInOrder.Length; index++)
+            {
+                int attributeId = DisplayedAttributeIdsInOrder[index];
+                if (!valueByAttributeIdMap.TryGetValue(attributeId, out CharacterAttributeProjectionValue value))
+                    continue;
+
+                string name = string.IsNullOrWhiteSpace(value.Attribute.DisplayName)
+                    ? value.Attribute.Name
+                    : value.Attribute.DisplayName;
+                bool isPercentage = IsPercentageAttribute(attributeId);
+                string baseValueText = FormatAttributeValue(value.BaseValue, isPercentage);
+                string totalValueText = FormatAttributeValue(value.TotalValue, isPercentage);
+                string equipmentBonusText = FormatEquipmentBonus(value.BaseValue, value.TotalValue,
+                    baseValueText, totalValueText, isPercentage);
+                lines.Add(new CharacterAttributeViewData(attributeId, name, baseValueText, equipmentBonusText));
+            }
+
             return lines;
+        }
+
+        /// <summary>判断属性页是否将数值按百分比显示。</summary>
+        /// <param name="attributeId">属性标识。</param>
+        /// <returns>暴击率和暴击伤害返回 true。</returns>
+        private static bool IsPercentageAttribute(int attributeId)
+        {
+            return attributeId == GameplayAttributes.Attribute_CriticalChance.Id ||
+                   attributeId == GameplayAttributes.Attribute_CriticalDamage.Id;
+        }
+
+        /// <summary>按属性展示规则格式化角色本体值或装备结算总值。</summary>
+        /// <param name="value">待格式化数值。</param>
+        /// <param name="isPercentage">是否以百分比显示。</param>
+        /// <returns>整数或一位小数百分比文本。</returns>
+        private static string FormatAttributeValue(float value, bool isPercentage)
+        {
+            if (isPercentage)
+                return (Math.Round(value * 100d, 1, MidpointRounding.AwayFromZero))
+                    .ToString("0.0", CultureInfo.InvariantCulture) + "%";
+
+            return Math.Round(value, MidpointRounding.AwayFromZero)
+                .ToString("0", CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>根据最终显示精度计算装备净加成，保证本体值与加成相加后等于显示总值。</summary>
+        /// <param name="baseValue">角色本体值。</param>
+        /// <param name="totalValue">静态装备结算值。</param>
+        /// <param name="baseValueText">已经格式化的本体值。</param>
+        /// <param name="totalValueText">已经格式化的总值。</param>
+        /// <param name="isPercentage">是否以百分点显示差值。</param>
+        /// <returns>带符号的装备净加成；没有变化时为空字符串。</returns>
+        private static string FormatEquipmentBonus(float baseValue, float totalValue,
+            string baseValueText, string totalValueText, bool isPercentage)
+        {
+            if (isPercentage)
+            {
+                double displayedBaseValue = Math.Round(baseValue * 100d, 1, MidpointRounding.AwayFromZero);
+                double displayedTotalValue = Math.Round(totalValue * 100d, 1, MidpointRounding.AwayFromZero);
+                double displayedBonus = displayedTotalValue - displayedBaseValue;
+                if (Math.Abs(displayedBonus) < 0.05d)
+                    return string.Empty;
+
+                return (displayedBonus > 0d ? "+" : string.Empty) +
+                       displayedBonus.ToString("0.0", CultureInfo.InvariantCulture) + "%";
+            }
+
+            long displayedBaseValueInteger = long.Parse(baseValueText, CultureInfo.InvariantCulture);
+            long displayedTotalValueInteger = long.Parse(totalValueText, CultureInfo.InvariantCulture);
+            long displayedBonusInteger = displayedTotalValueInteger - displayedBaseValueInteger;
+            if (displayedBonusInteger == 0)
+                return string.Empty;
+
+            return (displayedBonusInteger > 0 ? "+" : string.Empty) +
+                   displayedBonusInteger.ToString("0", CultureInfo.InvariantCulture);
         }
 
         /// <summary>构建已装备武器页面。</summary>
@@ -179,22 +262,27 @@ namespace RPG.Game.UI.Character
                 !ItemManager.Instance.TryGetDefinition(weapon.DefinitionId, out ItemDefinition item) ||
                 !(item is WeaponDefinition definition))
                 return new CharacterWeaponViewData(false, default, null, string.Empty, string.Empty, 0,
-                    string.Empty, string.Empty, Array.Empty<string>(), string.Empty);
+                    string.Empty, string.Empty, Array.Empty<CharacterEquipmentAttributeLineViewData>(), string.Empty, null);
 
-            IReadOnlyList<string> lines = BuildWeaponAttributeLines(definition, weapon, instance.CharacterId);
+            IReadOnlyList<CharacterEquipmentAttributeLineViewData> lines =
+                BuildWeaponAttributeLines(definition, weapon, instance.CharacterId);
             return new CharacterWeaponViewData(true, weapon.InstanceId,
                 ResolveSprite(definition.IconAddress, definition.IconSpriteName), definition.DisplayName,
                 definition.WeaponType.ToString(), (int)definition.Rarity,
                 $"Lv.{weapon.Level}/{definition.MaxLevel}", $"精炼 {weapon.RefinementRank}", lines,
-                definition.Description);
+                definition.Description,
+                new BagItemViewData(new BagEntryKey(ItemCategory.Weapon, weapon.InstanceId.ToString()),
+                    definition.DisplayName, (int)definition.Rarity, $"Lv.{weapon.Level}",
+                    ResolveSprite(definition.IconAddress, definition.IconSpriteName), null, string.Empty,
+                    false, weapon.IsLocked, true));
         }
 
         /// <summary>把武器等级与精炼效果按 Attribute 合并成详情行。</summary>
         /// <param name="definition">武器静态定义。</param>
         /// <param name="weapon">当前武器实例。</param>
         /// <param name="characterId">装备该武器的角色标识。</param>
-        /// <returns>按等级效果优先顺序合并后的属性文本。</returns>
-        private static IReadOnlyList<string> BuildWeaponAttributeLines(
+        /// <returns>按等级效果优先顺序合并后的结构化属性行。</returns>
+        internal static IReadOnlyList<CharacterEquipmentAttributeLineViewData> BuildWeaponAttributeLines(
             WeaponDefinition definition, WeaponInstance weapon, CharacterId characterId)
         {
             string context = $"CharacterWindow Weapon {characterId} / {weapon.InstanceId}";
@@ -211,18 +299,26 @@ namespace RPG.Game.UI.Character
             AppendWeaponAttributeValues(mergedValues, levelValues, definition, weapon);
             AppendWeaponAttributeValues(mergedValues, refinementValues, definition, weapon);
 
-            var lines = new List<string>(mergedValues.Count);
-            for (int index = 0; index < mergedValues.Count; index++)
+            return ConvertAttributeLines(mergedValues);
+        }
+
+        /// <summary>把结构化 Modifier 值转换为名称和值分开的详情行。</summary>
+        /// <param name="values">已经聚合的静态属性值。</param>
+        /// <returns>属性详情行。</returns>
+        internal static IReadOnlyList<CharacterEquipmentAttributeLineViewData> ConvertAttributeLines(
+            IReadOnlyList<StaticGameplayAttributePresentationValue> values)
+        {
+            var lines = new List<CharacterEquipmentAttributeLineViewData>(values.Count);
+            for (int index = 0; index < values.Count; index++)
             {
-                StaticGameplayAttributePresentationValue value = mergedValues[index];
+                StaticGameplayAttributePresentationValue value = values[index];
                 string attributeName = string.IsNullOrWhiteSpace(value.Attribute.DisplayName)
                     ? value.Attribute.Name
                     : value.Attribute.DisplayName;
                 string formattedValue = BagGameplayEffectPresentationBuilder.FormatStaticAttributeValue(
                     value.Type, value.Value);
-                lines.Add($"{attributeName}: {formattedValue}");
+                lines.Add(new CharacterEquipmentAttributeLineViewData(attributeName, formattedValue));
             }
-
             return lines;
         }
 
@@ -324,12 +420,17 @@ namespace RPG.Game.UI.Character
                 !ItemManager.Instance.TryGetDefinition(artifact.DefinitionId, out ItemDefinition item) ||
                 !(item is ArtifactDefinition definition))
                 return new CharacterArtifactViewData(false, string.Empty, GetArtifactSlotName(slot), 0, null, string.Empty,
-                    Array.Empty<string>(), string.Empty, default);
-            IReadOnlyList<string> lines = BagGameplayEffectPresentationBuilder.BuildStaticAttributeLines(
+                    Array.Empty<CharacterEquipmentAttributeLineViewData>(), string.Empty, default, null);
+            IReadOnlyList<StaticGameplayAttributePresentationValue> values = BagGameplayEffectPresentationBuilder.BuildStaticAttributeValues(
                 definition.LevelEffects, artifact.Level, $"CharacterWindow Artifact {instance.CharacterId}");
+            IReadOnlyList<CharacterEquipmentAttributeLineViewData> lines = ConvertAttributeLines(values);
+            Sprite artifactIcon = ResolveSprite(definition.IconAddress, definition.IconSpriteName);
             return new CharacterArtifactViewData(true, definition.DisplayName, GetArtifactSlotName(slot), (int)definition.Rarity,
-                ResolveSprite(definition.IconAddress, definition.IconSpriteName),
-                $"+{artifact.Level}/{definition.MaxLevel}", lines, definition.Description, artifact.InstanceId);
+                artifactIcon, $"+{artifact.Level}/{definition.MaxLevel}", lines, definition.Description,
+                artifact.InstanceId,
+                new BagItemViewData(new BagEntryKey(ItemCategory.Artifact, artifact.InstanceId.ToString()),
+                    definition.DisplayName, (int)definition.Rarity, $"+{artifact.Level}", artifactIcon,
+                    null, string.Empty, false, artifact.IsLocked, true));
         }
 
         /// <summary>按 Attribute 合并五件已装备圣遗物的静态属性总量。</summary>
@@ -353,16 +454,7 @@ namespace RPG.Game.UI.Character
                     AppendArtifactAttribute(values, artifactValues[valueIndex], instance.CharacterId, slot);
             }
 
-            var lines = new List<string>(values.Count);
-            for (int index = 0; index < values.Count; index++)
-            {
-                StaticGameplayAttributePresentationValue value = values[index];
-                string attributeName = string.IsNullOrWhiteSpace(value.Attribute.DisplayName)
-                    ? value.Attribute.Name
-                    : value.Attribute.DisplayName;
-                lines.Add($"{attributeName}: {BagGameplayEffectPresentationBuilder.FormatStaticAttributeValue(value.Type, value.Value)}");
-            }
-            return new CharacterArtifactSummaryViewData(equippedCount, lines);
+            return new CharacterArtifactSummaryViewData(equippedCount, ConvertAttributeLines(values));
         }
 
         /// <summary>把一件圣遗物的属性合并到角色总览，并记录不同运算类型之间的配置冲突。</summary>
