@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 using WS_Modules.Singleton;
 using WSEventSystem = WS_Modules.CustomEventSystem.EventSystem;
 
-namespace RPG.CurrencySystem
+namespace RPG.CurrencySystemNS
 {
     /// <summary>独立管理账号货币余额，不将货币混入 GAS 属性或物品背包。</summary>
     public sealed class CurrencyManager : SingletonBase<CurrencyManager>, ICurrencyWallet

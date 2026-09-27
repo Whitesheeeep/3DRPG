@@ -14,24 +14,20 @@ using WS_Modules.GAS.AttributeSystem;
 namespace RPG.Character
 {
     /// <summary>封装一个角色独立的战斗、能力、动画、挂点和 Locomotion 状态。</summary>
-    [DisallowMultipleComponent]
     [RequireComponent(typeof(Animator))]
     [InfoBox("依赖 CharacterConfig、同节点 Humanoid Animator、AnimationController，以及同节点或子节点中的 ASC、MarkerProvider 与 SkillRuntimeHost；Config 提供初始属性、战斗配置和 Locomotion 参数；子树 Renderer 用于隐藏后台角色。")]
-    public sealed class CharacterActor : MonoBehaviour, IGameplayAbilitySystemOwner
+    public sealed class CharacterActor : CharacterAbilityActor
     {
         #region 配置与运行时状态
 
-        // 角色能力与表现依赖：ASC 保持启用供后台 Tick，Animator 仅由当前表现状态启用。
+        // 玩家角色配置与 Humanoid 足部缓存只服务于玩家战斗和队伍切换。
         [SerializeField, Required] private CharacterConfig config;
-        [SerializeField] private GameplayAbilitySystemComponent abilitySystemComponent;
-        [SerializeField] private Animator animator;
         [NonSerialized] private Transform leftFoot;
         [NonSerialized] private Transform rightFoot;
         [NonSerialized] private bool footBonesCached;
-        [SerializeField] private MarkerProvider markerProvider;
-        [SerializeField] private SkillRuntimeHost skillRuntimeHost;
-        [SerializeField] private AnimationController animationController;
         [SerializeField] private CharacterLocomotionStateMachine locomotion = new();
+
+        // 战斗、实例和成长运行时在 CharacterManager 绑定 CharacterInstance 后初始化。
         private readonly CharacterCombatSystem combatSystem = new();
         private CharacterActionArbiter actionArbiter;
         private CharacterInstance instance;
@@ -61,24 +57,6 @@ namespace RPG.Character
         public CharacterConfig Config => instance != null ? instance.Config : config;
         /// <summary>获取当前 Actor 绑定的稳定角色实例。</summary>
         public CharacterInstance Instance => instance;
-        /// <summary>获取角色独立 ASC。</summary>
-        public GameplayAbilitySystemComponent AbilitySystemComponent
-        {
-            get
-            {
-                EnsureDependencies();
-                return abilitySystemComponent;
-            }
-        }
-        /// <summary>获取角色 Animator。</summary>
-        public Animator Animator
-        {
-            get
-            {
-                EnsureDependencies();
-                return animator;
-            }
-        }
         /// <summary>判断左脚是否位于右脚前方；仅适用于已初始化的 Humanoid Avatar。</summary>
         public bool IsLeftFootAhead
         {
@@ -95,41 +73,14 @@ namespace RPG.Character
         public CharacterLocomotionStateMachine Locomotion => locomotion;
         /// <summary>获取稳定 Player 共享的输入状态黑板。</summary>
         public PlayerStateBlackboard StateBlackboard => stateBlackboard;
-        /// <summary>获取对话系统可使用的当前动画播放器。</summary>
-        public IAnimationPlayer AnimationPlayer
-        {
-            get
-            {
-                EnsureDependencies();
-                return animationController;
-            }
-        }
         /// <summary>当角色仍有活动能力时，角色切换应直接拒绝。</summary>
         public bool IsBusy => AbilitySystemComponent.ActiveAbilities.Count > 0;
         /// <inheritdoc />
-        public Transform RootTransform => characterRoot != null ? characterRoot : transform;
+        public override Transform RootTransform => characterRoot != null ? characterRoot : transform;
         /// <inheritdoc />
-        public IMarkerProvider MarkerProvider
-        {
-            get
-            {
-                EnsureDependencies();
-                return markerProvider;
-            }
-        }
+        public override IMotionDriver MotionDriver => motionDriver;
         /// <inheritdoc />
-        public ISkillRuntimeHost SkillRuntimeHost
-        {
-            get
-            {
-                EnsureDependencies();
-                return skillRuntimeHost;
-            }
-        }
-        /// <inheritdoc />
-        public IMotionDriver MotionDriver => motionDriver;
-        /// <inheritdoc />
-        public IFullBodyActionArbiter FullBodyActionArbiter => actionArbiter ??
+        public override IFullBodyActionArbiter FullBodyActionArbiter => actionArbiter ??
             throw new InvalidOperationException($"角色 '{name}' 尚未完成 Action Arbiter 初始化。");
 
         #endregion
@@ -156,10 +107,7 @@ namespace RPG.Character
         /// <summary>在父级 PlayerController 先于子角色 Awake 时也能同步解析依赖。</summary>
         private void EnsureDependencies()
         {
-            if (abilitySystemComponent == null) abilitySystemComponent = GetComponentInChildren<GameplayAbilitySystemComponent>(true);
-            if (animator == null) animator = GetComponent<Animator>();
-            if (animator == null)
-                throw new InvalidOperationException($"角色 '{name}' 缺少 Animator。");
+            EnsureAbilityDependencies();
             if (!footBonesCached)
             {
                 if (animator.avatar == null || !animator.isHuman)
@@ -168,15 +116,8 @@ namespace RPG.Character
                 rightFoot = animator.GetBoneTransform(HumanBodyBones.RightFoot);
                 footBonesCached = true;
             }
-            if (markerProvider == null) markerProvider = GetComponentInChildren<MarkerProvider>(true);
-            if (skillRuntimeHost == null) skillRuntimeHost = GetComponentInChildren<SkillRuntimeHost>(true);
-            if (animationController == null) animationController = GetComponentInChildren<AnimationController>(true);
-            if (abilitySystemComponent == null || animator == null || markerProvider == null || skillRuntimeHost == null ||
-                animationController == null)
-                throw new InvalidOperationException($"CharacterActor '{name}' 缺少同节点 Animator、AnimationController 或角色能力组件。 ");
             if (config == null)
                 throw new InvalidOperationException($"CharacterActor '{name}' 未配置 CharacterConfig。");
-            animator.applyRootMotion = true;
         }
 
         /// <summary>仅在配置了 AttributeSet 且 ASC 尚未初始化时执行一次初始化。</summary>

@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using WS_Modules.ConfigInstaller;
 
-namespace RPG.CurrencySystem
+namespace RPG.CurrencySystemNS
 {
     /// <summary>通过 ConfigInstaller 注入货币钱包配置。</summary>
     [CreateAssetMenu(fileName = "CurrencySettingsConfigProvider", menuName = "RPG/Currency/Currency Settings Provider", order = 1)]

@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using RPG.CurrencySystem;
+using RPG.CurrencySystemNS;
 using Sirenix.OdinInspector;
 using UnityEngine;
 

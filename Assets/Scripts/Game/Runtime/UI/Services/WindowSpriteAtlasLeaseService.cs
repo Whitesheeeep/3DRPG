@@ -19,6 +19,7 @@ namespace RPG.Game.UI.Services
         // key：SpriteAtlas Address；value：本 Service 当前持有的配置地址。
         private readonly IReadOnlyList<string> atlasAddresses;
         private readonly float releaseDelaySeconds;
+        private readonly string logContext;
 
         #endregion
 
@@ -42,12 +43,15 @@ namespace RPG.Game.UI.Services
         /// </summary>
         /// <param name="configuredAddresses">本窗口需要准备的动态图集地址。</param>
         /// <param name="releaseDelaySecondsValue">隐藏后的延迟释放秒数。</param>
+        /// <param name="logContextValue">日志中用于区分租约归属窗口的上下文。</param>
         public WindowSpriteAtlasLeaseService(
             IReadOnlyList<string> configuredAddresses,
-            float releaseDelaySecondsValue)
+            float releaseDelaySecondsValue,
+            string logContextValue = "Window")
         {
             atlasAddresses = configuredAddresses ?? throw new ArgumentNullException(nameof(configuredAddresses));
             releaseDelaySeconds = Mathf.Max(0f, releaseDelaySecondsValue);
+            logContext = string.IsNullOrWhiteSpace(logContextValue) ? "Window" : logContextValue;
         }
 
         /// <summary>
@@ -85,19 +89,19 @@ namespace RPG.Game.UI.Services
                 string address = addresses[index];
                 if (atlasByAddressMap.ContainsKey(address))
                 {
-                    WSLog.Log($"[BagWindow][Atlas] 复用缓存地址：{address}");
+                    WSLog.Log($"[{logContext}][Atlas] 复用缓存地址：{address}");
                     continue;
                 }
 
                 if (loadCompletionByAddressMap.TryGetValue(address,
                         out UniTaskCompletionSource<AtlasLoadResult> existingLoad))
                 {
-                    WSLog.Log($"[BagWindow][Atlas] 复用进行中的加载地址：{address}");
+                    WSLog.Log($"[{logContext}][Atlas] 复用进行中的加载地址：{address}");
                     loadTasks.Add(existingLoad.Task);
                     continue;
                 }
 
-                WSLog.Log($"[BagWindow][Atlas] 开始加载地址：{address}");
+                WSLog.Log($"[{logContext}][Atlas] 开始加载地址：{address}");
                 var completionSource = new UniTaskCompletionSource<AtlasLoadResult>();
                 loadCompletionByAddressMap.Add(address, completionSource);
                 loadTasks.Add(completionSource.Task);
@@ -111,7 +115,7 @@ namespace RPG.Game.UI.Services
             for (int index = 0; index < results.Length; index++)
                 if (results[index].Atlas == null) failedCount++;
 
-            WSLog.Log($"[BagWindow][Atlas] 本轮加载完成：成功 {results.Length - failedCount}，失败 {failedCount}，缓存 {atlasByAddressMap.Count}。");
+            WSLog.Log($"[{logContext}][Atlas] 本轮加载完成：成功 {results.Length - failedCount}，失败 {failedCount}，缓存 {atlasByAddressMap.Count}。");
             return failedCount == 0;
         }
 
@@ -147,7 +151,7 @@ namespace RPG.Game.UI.Services
             releaseCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(
                 lifetimeCancellationSource.Token);
             ReleaseAfterDelayAsync(releaseCancellationSource.Token).Forget(HandleReleaseException);
-            WSLog.Log($"[BagWindow][Atlas] Hide 释放倒计时开始：{releaseDelaySeconds:F1} 秒。");
+            WSLog.Log($"[{logContext}][Atlas] Hide 释放倒计时开始：{releaseDelaySeconds:F1} 秒。");
         }
 
         /// <summary>
@@ -159,7 +163,7 @@ namespace RPG.Game.UI.Services
             releaseCancellationSource.Cancel();
             releaseCancellationSource.Dispose();
             releaseCancellationSource = null;
-            if (!disposed) WSLog.Log("[BagWindow][Atlas] 重新打开取消释放，复用成功缓存。");
+            if (!disposed) WSLog.Log($"[{logContext}][Atlas] 重新打开取消释放，复用成功缓存。");
         }
 
         /// <summary>
@@ -173,7 +177,7 @@ namespace RPG.Game.UI.Services
             {
                 if (pair.Value == null) continue;
                 ResSystem.Instance.UnLoad<SpriteAtlas>(pair.Key);
-                WSLog.Log($"[BagWindow][Atlas] 立即释放地址：{pair.Key}");
+                WSLog.Log($"[{logContext}][Atlas] 立即释放地址：{pair.Key}");
             }
 
             atlasByAddressMap.Clear();
@@ -207,7 +211,7 @@ namespace RPG.Game.UI.Services
             await UniTask.Delay(TimeSpan.FromSeconds(releaseDelaySeconds),
                 ignoreTimeScale: true, cancellationToken: cancellationToken);
             if (disposed || cancellationToken.IsCancellationRequested) return;
-            WSLog.Log("[BagWindow][Atlas] 延迟释放实际执行。");
+            WSLog.Log($"[{logContext}][Atlas] 延迟释放实际执行。");
             ReleaseImmediately();
         }
 
@@ -237,24 +241,24 @@ namespace RPG.Game.UI.Services
                 SpriteAtlas atlas = await ResSystem.Instance.LoadAsync<SpriteAtlas>(address);
                 if (atlas == null)
                 {
-                    WSLog.LogWarning($"[BagWindow][Atlas] 地址加载为空：{address}");
+                    WSLog.LogWarning($"[{logContext}][Atlas] 地址加载为空：{address}");
                     return new AtlasLoadResult(address, null);
                 }
 
                 if (disposed || requestVersion != leaseVersion)
                 {
                     ResSystem.Instance.UnLoad<SpriteAtlas>(address);
-                    WSLog.Log($"[BagWindow][Atlas] 过期异步结果被丢弃并释放：{address}");
+                    WSLog.Log($"[{logContext}][Atlas] 过期异步结果被丢弃并释放：{address}");
                     return new AtlasLoadResult(address, null);
                 }
 
                 atlasByAddressMap[address] = atlas;
-                WSLog.Log($"[BagWindow][Atlas] 单地址加载成功：{address}");
+                WSLog.Log($"[{logContext}][Atlas] 单地址加载成功：{address}");
                 return new AtlasLoadResult(address, atlas);
             }
             catch (Exception exception)
             {
-                WSLog.LogWarning($"[BagWindow][Atlas] 单地址加载失败：{address}，{exception.Message}");
+                WSLog.LogWarning($"[{logContext}][Atlas] 单地址加载失败：{address}，{exception.Message}");
                 return new AtlasLoadResult(address, null);
             }
         }

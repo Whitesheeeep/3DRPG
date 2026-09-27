@@ -9,15 +9,32 @@ namespace RPG.Character
     /// <summary>管理当前唯一队伍的运行时查询和后续编辑边界。</summary>
     public sealed class CharacterPartyManager : AbstractManager
     {
+        #region 状态字段
+
         private CharacterParty party;
+
+        #endregion
+
+        #region 依赖字段
+
         private readonly SaveManager saveManager;
         private readonly CharacterRosterManager rosterManager;
+
+        #endregion
+
+        #region 事件
 
         /// <summary>队伍槽位发生变化时发送。</summary>
         public event Action Changed;
 
+        #endregion
+
+        #region 属性
+
         /// <summary>获取当前唯一队伍；尚未初始化时返回空。</summary>
         public CharacterParty Party => party;
+
+        #endregion
 
         /// <summary>创建由 GameArchitecture 持有的唯一队伍管理器。</summary>
         public CharacterPartyManager(SaveManager saveManagerValue, CharacterRosterManager rosterManagerValue)
@@ -75,6 +92,7 @@ namespace RPG.Character
             }
             party = new CharacterParty(snapshot.CharacterIds.ConvertAll(value => new CharacterId(value)));
             Changed?.Invoke();
+            Debug.Log($"[CharacterPartyManager] 已恢复队伍快照，slotCount={snapshot.CharacterIds.Count}。");
         }
 
         /// <summary>释放静态当前引用，避免场景销毁后 UI 读取旧队伍。</summary>

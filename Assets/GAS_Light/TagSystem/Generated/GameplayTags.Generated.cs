@@ -56,6 +56,10 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_Skill = new GameplayTag(126);
         /// <summary>Skill.ActiveAbility</summary>
         public static readonly GameplayTag Tag_Skill_ActiveAbility = new GameplayTag(167);
+        /// <summary>Skill.CD</summary>
+        public static readonly GameplayTag Tag_Skill_CD = new GameplayTag(184);
+        /// <summary>Skill.CD.QuickShift</summary>
+        public static readonly GameplayTag Tag_Skill_CD_QuickShift = new GameplayTag(185);
         /// <summary>Skill.NormalAttack</summary>
         public static readonly GameplayTag Tag_Skill_NormalAttack = new GameplayTag(164);
         /// <summary>Skill.NormalAttack.Four</summary>

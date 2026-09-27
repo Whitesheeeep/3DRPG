@@ -34,7 +34,7 @@ MonoBehaviour:
     - id: 154
     - id: 156
   costEffect: {fileID: 0}
-  cooldownEffect: {fileID: 0}
+  cooldownEffect: {fileID: 11400000, guid: bcfe12a6132738d4aa6e0e8efa6665f3, type: 2}
   effects: []
   cueTags: []
   damageMultiplier:

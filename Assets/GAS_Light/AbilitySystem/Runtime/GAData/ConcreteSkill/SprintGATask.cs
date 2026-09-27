@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Animancer;
 using RPG.Character;
 using RPG.Character.Animation;
+using RPG.Character.State;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using WS_Modules.GAS.Generated;
@@ -68,6 +69,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private readonly float fadeOutDuration;
 
         // 依赖字段：MotionDriver 负责碰撞结算；Animancer State 提供进度与事件时序。
+        private CharacterActor character;
+        private PlayerStateBlackboard stateBlackboard;
         private IMotionDriver motionDriver;
         private MotionControlHandle motionHandle;
         private AnimancerState animationState;
@@ -113,6 +116,12 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         protected override void OnStart()
         {
             base.OnStart();
+            character = GARuntime.SourceOwner as CharacterActor ??
+                throw new InvalidOperationException(
+                    "[SprintGATask] QuickShift 只能由 CharacterActor 作为 Ability Owner 激活。");
+            stateBlackboard = character.StateBlackboard ??
+                throw new InvalidOperationException(
+                    $"[SprintGATask] 角色 '{character.name}' 尚未注入 PlayerStateBlackboard。");
             Transform root = GARuntime.SourceOwner.RootTransform;
             worldDirection = ResolveWorldDirection(root);
 
@@ -282,7 +291,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
 
         #region 资源清理
 
-        /// <summary>解除本次事件订阅、淡出仍由本任务播放的动作层并释放运动控制权。</summary>
+        /// <summary>解除事件订阅、淡出动作层、按输入调整朝向并交接 Locomotion。</summary>
         /// <param name="reason">触发清理的 Task 终态原因。</param>
         private void ReleaseResources(string reason)
         {
@@ -304,15 +313,85 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 animationState = null;
             }
 
+            bool appliedFacing = ApplyFinalInputFacing();
             motionHandle?.Dispose();
             motionHandle = null;
             motionDriver = null;
+            // 先归还技能运动通道，再切入 Locomotion，避免 Run/Walk 在同一帧被技能优先级压住。
+            CharacterLocomotionStateId handoffState = TryHandoffToLocomotion();
+            string handoffSummary = handoffState == CharacterLocomotionStateId.Disable
+                ? "跳过"
+                : handoffState.ToString();
+            character = null;
+            stateBlackboard = null;
             movementEnabled = false;
             movementStopPending = false;
             Debug.Log(
                 $"[SprintGATask] 冲刺资源已清理，原因={reason}，Action 淡出={fadeOutDuration:F2}s，" +
+                $"结束朝向={(appliedFacing ? "已按当前输入更新" : "保持原朝向")}，" +
+                $"Locomotion 交接={handoffSummary}，" +
                 $"角色={GARuntime.SourceOwner.RootTransform.name}。",
                 GARuntime.SourceOwner as UnityEngine.Object);
+        }
+
+        /// <summary>读取结束时已经结算的移动输入，并在有有效水平输入时更新角色朝向。</summary>
+        /// <returns>本次确实应用了输入朝向时返回 true；输入无效时保持原朝向并返回 false。</returns>
+        private bool ApplyFinalInputFacing()
+        {
+            Vector3 inputDirection = Vector3.ProjectOnPlane(stateBlackboard.MoveWorldInput, Vector3.up);
+            if (inputDirection.sqrMagnitude <= 0.0001f)
+                return false;
+
+            // 直接设置 RootTransform，保证冲刺结束交接到 Locomotion 前已经完成朝向结算。
+            GARuntime.SourceOwner.RootTransform.rotation =
+                Quaternion.LookRotation(inputDirection.normalized, Vector3.up);
+            return true;
+        }
+
+        /// <summary>在有效接地移动输入下直接交接到 Run，并把速度交给 Run 状态继续管理。</summary>
+        /// <returns>交接到 Run 时返回 Run；不满足条件或状态机拒绝时返回 Disable。</returns>
+        private CharacterLocomotionStateId TryHandoffToLocomotion()
+        {
+            if (!stateBlackboard.HasMovement || !stateBlackboard.IsGrounded ||
+                character.Locomotion.CurrentRootState != CharacterLocomotionStateId.Grounded)
+                return CharacterLocomotionStateId.Disable;
+
+            CharacterLocomotionStateId targetState = CharacterLocomotionStateId.Run;
+            if (character.Locomotion.CurrentState == targetState)
+            {
+                // 冲刺期间 Locomotion 可能已经保持在 Run；此时不重播动画，只校准共享速度。
+                if (character.Locomotion.TrySetRunTargetSpeed())
+                    return targetState;
+
+                Debug.LogWarning(
+                    $"[SprintGATask] 角色 '{character.name}' 当前标记为 Run，但无法取得 Run 状态实例，" +
+                    "冲刺结束未应用目标速度。",
+                    character);
+                return CharacterLocomotionStateId.Disable;
+            }
+
+            CharacterLocomotionStateId currentState = character.Locomotion.CurrentState;
+            bool changed = character.Locomotion.ChangeState(targetState, enteredState =>
+            {
+                if (enteredState is not RunLocomotionState runState)
+                    throw new InvalidOperationException(
+                        $"[SprintGATask] Locomotion 声称已进入 Run，但回调目标实际为 " +
+                        $"'{enteredState?.StateId}'。 ");
+
+                // 回调发生在 Run.OnEnter 完成后，直接把冲刺结束时的共享速度提升到 Run 目标值。
+                runState.SetSpeedToRunTargetSpeed();
+            });
+            if (!changed)
+            {
+                Debug.LogWarning(
+                    $"[SprintGATask] 角色 '{character.name}' 冲刺结束后无法交接 Locomotion，" +
+                    $"当前状态={currentState}，目标状态={targetState}，" +
+                    $"IsGrounded={stateBlackboard.IsGrounded}，MoveWorldInput={stateBlackboard.MoveWorldInput}。",
+                    character);
+                return CharacterLocomotionStateId.Disable;
+            }
+
+            return targetState;
         }
 
         #endregion

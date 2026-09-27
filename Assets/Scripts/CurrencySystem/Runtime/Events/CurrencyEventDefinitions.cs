@@ -1,4 +1,4 @@
-namespace RPG.CurrencySystem
+namespace RPG.CurrencySystemNS
 {
     /// <summary>一种货币余额变化事件。</summary>
     public readonly struct CurrencyBalanceChangedEvent

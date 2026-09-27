@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace WS_Modules.FSM
@@ -40,6 +41,16 @@ namespace WS_Modules.FSM
         bool ChangeState(TStateId stateId);
 
         /// <summary>
+        /// 主动切换状态，并在目标状态完成 OnEnter 后执行一次成功回调。
+        /// </summary>
+        /// <param name="stateId">要请求进入的直接子状态 ID。</param>
+        /// <param name="onCommitted">状态切换成功后接收已进入目标状态的回调。</param>
+        /// <returns>目标存在、通过 CanEnter 并完成切换时返回 true。</returns>
+        bool ChangeState(
+            TStateId stateId,
+            Action<IState<TStateId, TOwner>> onCommitted);
+
+        /// <summary>
         /// 请求切换状态；当前层找不到目标时，会继续向父状态机查找。
         /// </summary>
         /// <param name="stateId">要请求进入的状态 ID。</param>
@@ -52,6 +63,16 @@ namespace WS_Modules.FSM
         /// <param name="statePath">从当前状态机开始、依次指向嵌套子状态的直接子状态 ID。</param>
         /// <returns>路径完整有效并完成切换时返回 true。</returns>
         bool ChangeStatePath(params TStateId[] statePath);
+
+        /// <summary>
+        /// 按完整路径执行切换，并在目标叶状态完成 OnEnter 后执行一次成功回调。
+        /// </summary>
+        /// <param name="onCommitted">路径成功提交后接收最终目标状态的回调。</param>
+        /// <param name="statePath">从当前状态机开始、依次指向嵌套子状态的直接子状态 ID。</param>
+        /// <returns>路径完整有效、通过预检并完成切换时返回 true。</returns>
+        bool ChangeStatePath(
+            Action<IState<TStateId, TOwner>> onCommitted,
+            params TStateId[] statePath);
 
         /// <summary>
         /// 添加从指定源状态出发的自动过渡。

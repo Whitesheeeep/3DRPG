@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace RPG.CurrencySystem
+namespace RPG.CurrencySystemNS
 {
     /// <summary>货币配置和成长消耗使用的稳定字符串标识。</summary>
     [Serializable]

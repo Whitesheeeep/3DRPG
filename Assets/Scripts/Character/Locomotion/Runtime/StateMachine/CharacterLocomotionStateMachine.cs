@@ -98,6 +98,17 @@ namespace RPG.Character
             groundedJumpTransitionQueryService ?? throw new InvalidOperationException("Locomotion 尚未完成 Jump 查询服务组装。");
         /// <summary>获取当前是否处于一次重新激活入口。</summary>
         internal bool IsActivationEntry => activationEntryPending;
+
+        /// <summary>如果当前叶状态是 Run，则立即把共享移动速度提升到 Run 目标速度。</summary>
+        /// <returns>当前叶状态确实是 Run 并完成速度设置时返回 true。</returns>
+        internal bool TrySetRunTargetSpeed()
+        {
+            if (stateMachine?.CurrentLeafState is not RunLocomotionState runState)
+                return false;
+
+            runState.SetSpeedToRunTargetSpeed();
+            return true;
+        }
         /// <summary>获取本次普通 Tick 的外部时间。</summary>
         internal float DeltaTime => deltaTime;
         /// <summary>获取本次 AnimatorMove 转发的世界位移。</summary>
@@ -219,6 +230,17 @@ namespace RPG.Character
         /// <returns>切换成功时返回 true。</returns>
         public bool ChangeState(CharacterLocomotionStateId stateId)
         {
+            return ChangeState(stateId, null);
+        }
+
+        /// <summary>按叶状态标识切换当前 Locomotion，并在目标状态进入完成后执行回调。</summary>
+        /// <param name="stateId">目标叶状态。</param>
+        /// <param name="onCommitted">切换成功后接收已进入目标状态实例的回调。</param>
+        /// <returns>切换成功时返回 true。</returns>
+        public bool ChangeState(
+            CharacterLocomotionStateId stateId,
+            Action<IState<CharacterLocomotionStateId, CharacterLocomotionStateMachine>> onCommitted)
+        {
             if (!active && stateId != CharacterLocomotionStateId.Disable)
                 return false;
             if (stateId == CharacterLocomotionStateId.Disable)
@@ -229,10 +251,11 @@ namespace RPG.Character
 
             // Grounded/Traversal/Airborne 状态机是唯一的根节点，直接切换到叶状态时必须补齐路径。
             if (stateId == CharacterLocomotionStateId.Grounded || stateId == CharacterLocomotionStateId.Airborne)
-                return stateMachine.ChangeState(stateId);
+                return stateMachine.ChangeState(stateId, onCommitted);
             if (stateId == CharacterLocomotionStateId.Traversal)
-                return stateMachine.ChangeState(stateId);
+                return stateMachine.ChangeState(stateId, onCommitted);
             return ChangeStatePath(
+                onCommitted,
                 IsTraversalState(stateId)
                     ? CharacterLocomotionStateId.Traversal
                     : IsAirborneState(stateId)
@@ -245,7 +268,16 @@ namespace RPG.Character
         /// <param name="statePath">根状态机到目标叶状态的路径。</param>
         /// <returns>路径通过预检并完成切换时返回 true。</returns>
         public bool ChangeStatePath(params CharacterLocomotionStateId[] statePath) =>
-            stateMachine.ChangeStatePath(statePath);
+            ChangeStatePath(null, statePath);
+
+        /// <summary>转发从根节点开始的完整 HFSM 路径切换，并在最终目标进入完成后执行回调。</summary>
+        /// <param name="onCommitted">路径成功提交后接收最终目标状态实例的回调。</param>
+        /// <param name="statePath">根状态机到目标叶状态的路径。</param>
+        /// <returns>路径通过预检并完成切换时返回 true。</returns>
+        public bool ChangeStatePath(
+            Action<IState<CharacterLocomotionStateId, CharacterLocomotionStateMachine>> onCommitted,
+            params CharacterLocomotionStateId[] statePath) =>
+            stateMachine.ChangeStatePath(onCommitted, statePath);
         #endregion
 
         #region 外部阶段驱动

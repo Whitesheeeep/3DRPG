@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using RPG.SaveSystem;
+using UnityEngine;
 
 namespace RPG.ItemSystem
 {
@@ -52,13 +53,25 @@ namespace RPG.ItemSystem
     /// <summary>将 StackableInventoryManager 状态接入 SaveSystem。</summary>
     public sealed class StackableInventorySaveModule : SaveModule<StackableInventorySaveSnapshot>
     {
+        #region 模块标识
+
+        /// <summary>可堆叠背包存档模块的稳定 ID。</summary>
+        public static readonly SaveModuleId StableModuleId = new SaveModuleId("stackable-inventory");
+
+        #endregion
+
+        #region 依赖字段
+
         private readonly StackableInventoryManager manager;
+
+        #endregion
 
         /// <summary>创建可堆叠背包存档模块。</summary>
         /// <param name="manager">可堆叠背包 Manager。</param>
+        /// <exception cref="ArgumentNullException">Manager 为空时抛出。</exception>
         public StackableInventorySaveModule(StackableInventoryManager manager)
             : base(
-                new SaveModuleId("stackable-inventory"),
+                StableModuleId,
                 1,
                 SaveMissingModulePolicy.Required,
                 new[] { ItemDiscoverySaveModule.StableModuleId })
@@ -66,16 +79,17 @@ namespace RPG.ItemSystem
             this.manager = manager ?? throw new ArgumentNullException(nameof(manager));
         }
 
-        /// <summary>采集当前可堆叠状态。</summary>
-        /// <returns>快照。</returns>
+        /// <summary>采集物品数量、新获得状态和下一个获得顺序。</summary>
+        /// <returns>可堆叠背包快照。</returns>
         protected override StackableInventorySaveSnapshot CaptureTypedSnapshot()
         {
             var snapshot = new StackableInventorySaveSnapshot();
-            IReadOnlyList<StackableInventoryEntry> entries = manager.GetEntries();
+            IReadOnlyList<StackableInventoryEntry> currentEntries = manager.GetEntries();
             long nextSequence = 1;
-            for (int index = 0; index < entries.Count; index++)
+            // 从现有条目推导序号上界，保持获得顺序的快照语义。
+            for (int index = 0; index < currentEntries.Count; index++)
             {
-                StackableInventoryEntry entry = entries[index];
+                StackableInventoryEntry entry = currentEntries[index];
                 snapshot.Entries.Add(new StackableInventorySaveEntry
                 {
                     ItemId = entry.ItemId.Value,
@@ -83,10 +97,31 @@ namespace RPG.ItemSystem
                     IsNew = entry.IsNew,
                     AcquisitionSequence = entry.AcquisitionSequence
                 });
-                if (entry.AcquisitionSequence >= nextSequence) nextSequence = entry.AcquisitionSequence + 1;
+                if (entry.AcquisitionSequence >= nextSequence)
+                {
+                    nextSequence = entry.AcquisitionSequence + 1;
+                }
             }
+
             snapshot.NextAcquisitionSequence = nextSequence;
             return snapshot;
+        }
+
+        /// <summary>将已校验的数量快照整体恢复到背包。</summary>
+        /// <param name="snapshot">已校验的当前版本快照。</param>
+        protected override void RestoreTypedSnapshot(StackableInventorySaveSnapshot snapshot)
+        {
+            var restoredEntries = new List<StackableInventoryEntry>(snapshot.Entries.Count);
+            // DTO 完整转换后一次性替换状态，避免只恢复部分背包内容。
+            for (int index = 0; index < snapshot.Entries.Count; index++)
+            {
+                StackableInventorySaveEntry entry = snapshot.Entries[index];
+                restoredEntries.Add(new StackableInventoryEntry(
+                    new ItemId(entry.ItemId), entry.Quantity, entry.IsNew, entry.AcquisitionSequence));
+            }
+
+            manager.RestoreState(restoredEntries, snapshot.NextAcquisitionSequence);
+            Debug.Log($"[StackableInventorySaveModule] 已恢复可堆叠背包，entryCount={restoredEntries.Count}。");
         }
 
         /// <summary>验证可堆叠快照及当前 Definition。</summary>
@@ -104,17 +139,5 @@ namespace RPG.ItemSystem
             }
         }
 
-        /// <summary>恢复已验证的可堆叠状态。</summary>
-        /// <param name="snapshot">快照。</param>
-        protected override void RestoreTypedSnapshot(StackableInventorySaveSnapshot snapshot)
-        {
-            var entries = new List<StackableInventoryEntry>(snapshot.Entries.Count);
-            for (int index = 0; index < snapshot.Entries.Count; index++)
-            {
-                StackableInventorySaveEntry entry = snapshot.Entries[index];
-                entries.Add(new StackableInventoryEntry(new ItemId(entry.ItemId), entry.Quantity, entry.IsNew, entry.AcquisitionSequence));
-            }
-            manager.RestoreState(entries, snapshot.NextAcquisitionSequence);
-        }
     }
 }

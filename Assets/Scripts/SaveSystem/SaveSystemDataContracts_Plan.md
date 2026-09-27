@@ -64,6 +64,80 @@ const int playerSnapshotVersion = 1;
 ```
 
 模块 ID 一旦写入正式存档，不应因为类名、命名空间或程序集重构而改变。
+每个正式具名模块公开自己的 `public static readonly SaveModuleId StableModuleId`；构造函数、依赖关系和快照类型注册都引用同一字段，避免重复书写模块 ID。
+
+### 1.2.1 由具名模块适配业务 API
+
+业务初始化流程即时创建并注册具名 `SaveModule<TSnapshot>`。模块持有所需的 Manager 或 System 引用，负责把业务 API 转换成纯快照 DTO，并在校验后调用业务 API 恢复；Manager 不需要实现存档接口，也不需要长期持有模块字段。稳定 ID、版本、恢复依赖、快照校验和缺失时的默认快照策略由具名模块负责。
+
+```csharp
+public sealed class PlayerManager
+{
+    private int level;
+    private List<string> unlockedIds = new List<string>();
+
+    public int Level => level;
+    public IReadOnlyList<string> UnlockedIds => unlockedIds;
+
+    public void RestoreProgress(int restoredLevel, IReadOnlyList<string> restoredIds)
+    {
+        level = restoredLevel;
+        unlockedIds = new List<string>(restoredIds);
+    }
+}
+
+public sealed class PlayerSaveModule : SaveModule<PlayerSnapshot>
+{
+    public static readonly SaveModuleId StableModuleId = new SaveModuleId("player");
+    private readonly PlayerManager manager;
+
+    public PlayerSaveModule(PlayerManager manager)
+        : base(StableModuleId, 1, SaveMissingModulePolicy.Required)
+    {
+        this.manager = manager;
+    }
+
+    protected override PlayerSnapshot CaptureTypedSnapshot() => new PlayerSnapshot
+    {
+        Level = manager.Level,
+        UnlockedIds = new List<string>(manager.UnlockedIds)
+    };
+
+    protected override void RestoreTypedSnapshot(PlayerSnapshot snapshot) =>
+        manager.RestoreProgress(snapshot.Level, snapshot.UnlockedIds);
+
+    protected override void ValidateTypedSnapshot(PlayerSnapshot snapshot)
+    {
+        if (snapshot.UnlockedIds == null)
+            throw new InvalidOperationException("UnlockedIds 不能为空。");
+    }
+}
+```
+
+调用关系如下：
+
+```mermaid
+flowchart LR
+    Initialization[业务初始化流程] -->|创建并注册| SaveModuleT[PlayerSaveModule]
+    SaveManager --> ISaveModule
+    ISaveModule --> SaveModuleT
+    SaveModuleT -->|适配采集与恢复| PlayerManager[PlayerManager 业务 API]
+    SaveModuleT -->|持有| Metadata[StableModuleId / 版本 / 恢复依赖]
+    SaveModuleT -->|校验与默认快照| Snapshot[Snapshot contract]
+```
+
+正式模块的恢复依赖由前置模块指向后置模块；例如角色装备依赖角色名册、武器库存和圣遗物库存：
+
+```mermaid
+flowchart LR
+    Discovery[物品发现] --> Stackable[可堆叠背包]
+    Discovery --> Weapon[武器库存]
+    Discovery --> Artifact[圣遗物库存]
+    Roster[角色名册] --> Party[队伍]
+    Roster --> Equipment[角色装备]
+    Weapon --> Equipment
+    Artifact --> Equipment
+```
 
 ### 1.3 组装并使用 `SaveManager`
 
@@ -533,7 +607,7 @@ var serializerRegistry = new SaveSerializerRegistry(
 
 1. 定义实现 `ISaveModuleSnapshot` 的纯数据 DTO。
 2. 分配稳定 `SaveModuleId`。
-3. 使用 `SaveModule<TSnapshot>` 实现强类型采集、默认快照、校验和恢复。
+3. 由具名 `SaveModule<TSnapshot>` 适配 Manager 或 System 的业务 API，完成快照采集、校验、默认快照和恢复；业务初始化流程即时创建并注册模块。
 4. 在 `SaveSnapshotTypeRegistry` 注册 `ModuleId + Version -> SnapshotType`。
 5. 将模块数据按 `ModuleId` 稳定排序后放入 `SaveEnvelope.Modules`。
 

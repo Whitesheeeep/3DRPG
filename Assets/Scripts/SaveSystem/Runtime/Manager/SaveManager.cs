@@ -124,6 +124,7 @@ namespace RPG.SaveSystem
             lock (lifecycleGate)
             {
                 EnsureRegistrationAvailable();
+                // 注册模块时，先尝试创建一个新的模块注册表，若失败则抛出异常；若成功，则将新模块加入已注册列表并替换当前注册表
                 var candidateModules = new List<ISaveModule>(registeredModules)
                 {
                     module

@@ -88,6 +88,13 @@ namespace RPG.Character
     /// <summary>将角色实例状态接入 SaveSystem。</summary>
     public sealed class CharacterRosterSaveModule : SaveModule<CharacterRosterSaveSnapshot>
     {
+        #region 模块标识
+
+        /// <summary>角色实例存档模块的稳定标识。</summary>
+        public static readonly SaveModuleId StableModuleId = new SaveModuleId("character-roster");
+
+        #endregion
+
         #region 依赖字段
 
         private readonly CharacterRosterManager manager;
@@ -96,11 +103,9 @@ namespace RPG.Character
 
         #region 生命周期
 
-        /// <summary>角色实例存档模块的稳定标识。</summary>
-        public static readonly SaveModuleId StableModuleId = new SaveModuleId("character-roster");
-
         /// <summary>创建角色实例 v2 存档模块。</summary>
         /// <param name="manager">角色实例 Manager。</param>
+        /// <exception cref="ArgumentNullException">角色实例 Manager 为空时抛出。</exception>
         public CharacterRosterSaveModule(CharacterRosterManager manager)
             : base(
                 StableModuleId,
@@ -113,32 +118,6 @@ namespace RPG.Character
         #endregion
 
         #region 存档操作
-
-        /// <summary>采集按获得顺序排列的角色实例状态。</summary>
-        /// <returns>角色实例快照。</returns>
-        protected override CharacterRosterSaveSnapshot CaptureTypedSnapshot()
-        {
-            var snapshot = new CharacterRosterSaveSnapshot
-            {
-                NextAcquisitionSequence = manager.NextAcquisitionSequence
-            };
-            IReadOnlyList<CharacterInstance> instances = manager.GetInstances();
-            for (int index = 0; index < instances.Count; index++)
-            {
-                CharacterInstance instance = instances[index];
-                snapshot.Characters.Add(new CharacterInstanceSaveEntry
-                {
-                    CharacterId = instance.CharacterId.ToString(),
-                    Level = instance.Level,
-                    CurrentExperience = instance.CurrentExperience,
-                    AscensionRank = instance.AscensionRank,
-                    AcquisitionSequence = instance.AcquisitionSequence,
-                    Resources = BuildResourceEntries(instance)
-                });
-            }
-
-            return snapshot;
-        }
 
         /// <summary>验证角色标识、配置引用和进度约束。</summary>
         /// <param name="snapshot">待验证快照。</param>
@@ -169,22 +148,51 @@ namespace RPG.Character
             }
         }
 
-        /// <summary>整体恢复角色实例，不触发角色获得或默认武器装配事件。</summary>
-        /// <param name="snapshot">已经完成验证的快照。</param>
+        /// <summary>为缺少角色实例模块的新存档创建空状态。</summary>
+        /// <returns>空角色实例快照。</returns>
+        protected override CharacterRosterSaveSnapshot CreateDefaultTypedSnapshot() =>
+            new CharacterRosterSaveSnapshot();
+
+        /// <summary>按获得顺序采集角色成长、资源及下一个获得序号。</summary>
+        /// <returns>角色实例的当前存档快照。</returns>
+        protected override CharacterRosterSaveSnapshot CaptureTypedSnapshot()
+        {
+            var snapshot = new CharacterRosterSaveSnapshot
+            {
+                NextAcquisitionSequence = manager.NextAcquisitionSequence
+            };
+            IReadOnlyList<CharacterInstance> currentInstances = manager.GetInstances();
+            // DTO 只记录稳定角色键和资源值，避免保存任何运行时对象引用。
+            for (int index = 0; index < currentInstances.Count; index++)
+            {
+                CharacterInstance instance = currentInstances[index];
+                snapshot.Characters.Add(new CharacterInstanceSaveEntry
+                {
+                    CharacterId = instance.CharacterId.ToString(),
+                    Level = instance.Level,
+                    CurrentExperience = instance.CurrentExperience,
+                    AscensionRank = instance.AscensionRank,
+                    AcquisitionSequence = instance.AcquisitionSequence,
+                    Resources = BuildResourceEntries(instance)
+                });
+            }
+
+            return snapshot;
+        }
+
+        /// <summary>恢复已校验的角色实例，不触发普通角色获得或默认装备事件。</summary>
+        /// <param name="snapshot">已校验的当前版本快照。</param>
         protected override void RestoreTypedSnapshot(CharacterRosterSaveSnapshot snapshot)
         {
-            var instances = new List<CharacterInstance>(snapshot.Characters.Count);
+            var restoredInstances = new List<CharacterInstance>(snapshot.Characters.Count);
+            // 先用当前配置重建领域实例和资源对象，再整体提交角色状态。
             for (int index = 0; index < snapshot.Characters.Count; index++)
             {
                 CharacterInstanceSaveEntry entry = snapshot.Characters[index];
                 CharacterId characterId = new CharacterId(entry.CharacterId);
                 CharacterConfig config = CharacterConfigManager.Instance.GetRequiredConfig(characterId);
-                CharacterInstance instance = new CharacterInstance(
-                    config,
-                    entry.Level,
-                    entry.CurrentExperience,
-                    entry.AscensionRank,
-                    entry.AcquisitionSequence);
+                var instance = new CharacterInstance(config, entry.Level, entry.CurrentExperience,
+                    entry.AscensionRank, entry.AcquisitionSequence);
                 var resources = new List<CharacterResourceValue>(entry.Resources.Count);
                 for (int resourceIndex = 0; resourceIndex < entry.Resources.Count; resourceIndex++)
                 {
@@ -192,33 +200,13 @@ namespace RPG.Character
                     GameplayAttribute attribute = FindAttribute(config, resource.AttributeId);
                     resources.Add(new CharacterResourceValue(attribute, resource.CurrentValue));
                 }
+
                 instance.RestoreResourceCurrentValues(resources);
-                instances.Add(instance);
+                restoredInstances.Add(instance);
             }
 
-            manager.RestoreState(instances, snapshot.NextAcquisitionSequence);
+            manager.RestoreState(restoredInstances, snapshot.NextAcquisitionSequence);
             manager.PublishRestored();
-        }
-
-        /// <summary>为缺少角色实例模块的新存档创建空状态。</summary>
-        /// <returns>空角色实例快照。</returns>
-        protected override CharacterRosterSaveSnapshot CreateDefaultTypedSnapshot() =>
-            new CharacterRosterSaveSnapshot();
-
-        /// <summary>把实例内的 Resource 快照转换为稳定 AttributeId 存档条目。</summary>
-        /// <param name="instance">角色实例。</param>
-        /// <returns>按 AttributeId 稳定排序的存档条目。</returns>
-        private static List<CharacterResourceSaveEntry> BuildResourceEntries(CharacterInstance instance)
-        {
-            IReadOnlyList<CharacterResourceValue> values = instance.GetResourceCurrentValues();
-            var entries = new List<CharacterResourceSaveEntry>(values.Count);
-            for (int index = 0; index < values.Count; index++)
-                entries.Add(new CharacterResourceSaveEntry
-                {
-                    AttributeId = values[index].Attribute.Id,
-                    CurrentValue = values[index].CurrentValue
-                });
-            return entries;
         }
 
         /// <summary>校验 Resource 存档只包含配置声明且数值处于固定边界。</summary>
@@ -249,18 +237,49 @@ namespace RPG.Character
             }
         }
 
-        /// <summary>从角色初始 AttributeSet 按 ID 找到可恢复的 Attribute。</summary>
-        /// <param name="config">角色配置。</param><param name="attributeId">稳定 AttributeId。</param>
-        /// <returns>对应 Attribute。</returns>
+        /// <summary>把实例内 Resource 当前值转换为存档条目。</summary>
+        /// <param name="instance">待采集角色实例。</param>
+        /// <returns>按实例提供顺序排列的 Resource 存档条目。</returns>
+        private static List<CharacterResourceSaveEntry> BuildResourceEntries(CharacterInstance instance)
+        {
+            IReadOnlyList<CharacterResourceValue> values = instance.GetResourceCurrentValues();
+            var entries = new List<CharacterResourceSaveEntry>(values.Count);
+            for (int index = 0; index < values.Count; index++)
+            {
+                entries.Add(new CharacterResourceSaveEntry
+                {
+                    AttributeId = values[index].Attribute.Id,
+                    CurrentValue = values[index].CurrentValue
+                });
+            }
+
+            return entries;
+        }
+
+        /// <summary>按稳定 AttributeId 找到角色初始配置中的 Attribute 对象。</summary>
+        /// <param name="config">角色配置。</param>
+        /// <param name="attributeId">Attribute 标识。</param>
+        /// <returns>对应配置 Attribute。</returns>
+        /// <exception cref="InvalidOperationException">配置中不存在该 Attribute 标识时抛出。</exception>
         private static GameplayAttribute FindAttribute(CharacterConfig config, int attributeId)
         {
             for (int setIndex = 0; setIndex < config.InitialAttributeSets.Count; setIndex++)
-                for (int definitionIndex = 0; definitionIndex < config.InitialAttributeSets[setIndex].Definitions.Count; definitionIndex++)
+            {
+                for (int definitionIndex = 0;
+                     definitionIndex < config.InitialAttributeSets[setIndex].Definitions.Count;
+                     definitionIndex++)
                 {
-                    GameplayAttribute attribute = config.InitialAttributeSets[setIndex].Definitions[definitionIndex].Attribute;
-                    if (attribute.Id == attributeId) return attribute;
+                    GameplayAttribute attribute =
+                        config.InitialAttributeSets[setIndex].Definitions[definitionIndex].Attribute;
+                    if (attribute.Id == attributeId)
+                    {
+                        return attribute;
+                    }
                 }
-            throw new InvalidOperationException($"角色 {config.CharacterId} 未配置 AttributeId {attributeId}。");
+            }
+
+            throw new InvalidOperationException(
+                $"角色 {config.CharacterId} 未配置 AttributeId {attributeId}。");
         }
 
         #endregion

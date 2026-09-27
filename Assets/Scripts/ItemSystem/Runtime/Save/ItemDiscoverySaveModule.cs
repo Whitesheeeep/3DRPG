@@ -38,10 +38,14 @@ namespace RPG.ItemSystem
     /// <summary>将 ItemDiscoveryManager 状态接入 SaveSystem。</summary>
     public sealed class ItemDiscoverySaveModule : SaveModule<ItemDiscoverySaveSnapshot>
     {
-        #region 常量与依赖字段
+        #region 常量字段
 
         /// <summary>发现记录存档模块的稳定 ID。</summary>
         public static readonly SaveModuleId StableModuleId = new SaveModuleId("item-discovery");
+
+        #endregion
+
+        #region 依赖字段
 
         private readonly ItemDiscoveryManager manager;
 
@@ -67,15 +71,33 @@ namespace RPG.ItemSystem
         protected override ItemDiscoverySaveSnapshot CreateDefaultTypedSnapshot() =>
             new ItemDiscoverySaveSnapshot();
 
-        /// <summary>按 ItemId 排序采集发现记录。</summary>
-        /// <returns>发现记录快照。</returns>
+        /// <summary>按稳定 ItemId 顺序采集物品发现记录。</summary>
+        /// <returns>物品发现快照。</returns>
         protected override ItemDiscoverySaveSnapshot CaptureTypedSnapshot()
         {
             var snapshot = new ItemDiscoverySaveSnapshot();
-            IReadOnlyList<ItemId> discoveredDefinitionIds = manager.GetDiscoveredDefinitionIds();
-            for (int index = 0; index < discoveredDefinitionIds.Count; index++)
-                snapshot.DiscoveredDefinitionIds.Add(discoveredDefinitionIds[index].Value);
+            IReadOnlyList<ItemId> discoveredIds = manager.GetDiscoveredDefinitionIds();
+            // Manager 返回排序副本，避免把内部 HashSet 暴露给存档 DTO。
+            for (int index = 0; index < discoveredIds.Count; index++)
+            {
+                snapshot.DiscoveredDefinitionIds.Add(discoveredIds[index].Value);
+            }
+
             return snapshot;
+        }
+
+        /// <summary>把已校验的发现记录恢复到 Manager，且不触发普通获得事件。</summary>
+        /// <param name="snapshot">已校验的当前版本快照。</param>
+        protected override void RestoreTypedSnapshot(ItemDiscoverySaveSnapshot snapshot)
+        {
+            var restoredDefinitionIds = new List<ItemId>(snapshot.DiscoveredDefinitionIds.Count);
+            // 将 DTO 中的稳定文本标识还原为业务 ID，再整体替换发现集合。
+            for (int index = 0; index < snapshot.DiscoveredDefinitionIds.Count; index++)
+            {
+                restoredDefinitionIds.Add(new ItemId(snapshot.DiscoveredDefinitionIds[index]));
+            }
+
+            manager.RestoreState(restoredDefinitionIds);
         }
 
         /// <summary>验证发现记录的结构及当前 ItemDatabase 中的定义。</summary>
@@ -92,16 +114,6 @@ namespace RPG.ItemSystem
                 if (!ItemManager.Instance.TryGetDefinition(definitionId, out ItemDefinition definition) || definition == null)
                     throw new InvalidOperationException($"物品发现快照引用了未知 ItemDefinition：{definitionId}。" );
             }
-        }
-
-        /// <summary>恢复发现集合，不发布普通物品获得事件。</summary>
-        /// <param name="snapshot">已验证快照。</param>
-        protected override void RestoreTypedSnapshot(ItemDiscoverySaveSnapshot snapshot)
-        {
-            var discoveredDefinitionIds = new List<ItemId>(snapshot.DiscoveredDefinitionIds.Count);
-            for (int index = 0; index < snapshot.DiscoveredDefinitionIds.Count; index++)
-                discoveredDefinitionIds.Add(new ItemId(snapshot.DiscoveredDefinitionIds[index]));
-            manager.RestoreState(discoveredDefinitionIds);
         }
 
         #endregion

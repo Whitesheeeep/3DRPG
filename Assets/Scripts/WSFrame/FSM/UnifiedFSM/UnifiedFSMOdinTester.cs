@@ -43,6 +43,7 @@ namespace WS_Modules.FSM.Tests
             RunScenario("子状态向父级请求", TestRequestStateChange);
             RunScenario("按路径进入孙状态", TestStatePathChange);
             RunScenario("无效路径保持现状", TestInvalidStatePath);
+            RunScenario("成功切换回调", TestCommittedCallbacks);
             FlushTraceText();
         }
 
@@ -80,6 +81,15 @@ namespace WS_Modules.FSM.Tests
         public void RunInvalidStatePathTest()
         {
             RunSingleScenario("无效路径保持现状", TestInvalidStatePath);
+        }
+
+        /// <summary>
+        /// 验证直接切换和完整路径切换的成功回调时机及失败行为。
+        /// </summary>
+        [Button("测试：成功切换回调")]
+        public void RunCommittedCallbackTest()
+        {
+            RunSingleScenario("成功切换回调", TestCommittedCallbacks);
         }
 
         /// <summary>
@@ -173,6 +183,55 @@ namespace WS_Modules.FSM.Tests
             bool unchanged = IsState(root.CurrentState, TestStateId.Idle);
             LogStep($"ChangeStatePath(Grounded, Attack)：changed={changed}, current={Describe(root.CurrentState)}");
             return !changed && unchanged;
+        }
+
+        /// <summary>
+        /// 验证成功回调接收已进入的目标实例，并且重复或无效路径不会调用回调。
+        /// </summary>
+        private bool TestCommittedCallbacks()
+        {
+            CreateStateMachines(out var root, out _);
+            IState<TestStateId, TestOwner> directTarget = null;
+            int directCallbackCount = 0;
+            bool directChanged = root.ChangeState(
+                TestStateId.Attack,
+                state =>
+                {
+                    directCallbackCount++;
+                    directTarget = state;
+                });
+
+            IState<TestStateId, TestOwner> pathTarget = null;
+            int pathCallbackCount = 0;
+            bool pathChanged = root.ChangeStatePath(
+                state =>
+                {
+                    pathCallbackCount++;
+                    pathTarget = state;
+                },
+                TestStateId.Grounded,
+                TestStateId.Run);
+
+            int callbackCountBeforeFailures = directCallbackCount + pathCallbackCount;
+            bool invalidChanged = root.ChangeStatePath(
+                _ => pathCallbackCount++,
+                TestStateId.Grounded,
+                TestStateId.Attack);
+            bool repeatedChanged = root.ChangeStatePath(
+                _ => pathCallbackCount++,
+                TestStateId.Grounded,
+                TestStateId.Run);
+            bool callbacksStable = directCallbackCount + pathCallbackCount == callbackCountBeforeFailures;
+
+            LogStep(
+                $"直接={directChanged}/{directCallbackCount}/{Describe(directTarget)}，" +
+                $"路径={pathChanged}/{pathCallbackCount}/{Describe(pathTarget)}，" +
+                $"无效={invalidChanged}，重复={repeatedChanged}，" +
+                $"失败后回调稳定={callbacksStable}");
+            return directChanged && pathChanged && directCallbackCount == 1 &&
+                   pathCallbackCount == 1 && IsState(directTarget, TestStateId.Attack) &&
+                   IsState(pathTarget, TestStateId.Run) && !invalidChanged &&
+                   !repeatedChanged && callbacksStable;
         }
 
         // 创建与业务无关的纯内存 HFSM，按钮测试结束后不会在场景中留下运行时对象。

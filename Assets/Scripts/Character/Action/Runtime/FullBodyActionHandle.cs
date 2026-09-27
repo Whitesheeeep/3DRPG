@@ -5,28 +5,28 @@ namespace RPG.Character
     /// <summary>控制一次 FullBody Action 注册的幂等注销。</summary>
     public sealed class FullBodyActionHandle : IDisposable
     {
-        // 生命周期依赖：Handle 只保存登记它的 Arbiter 与不可复用的注册标识。
-        private CharacterActionArbiter arbiter;
+        // 生命周期依赖：Handle 只保存登记它的最小所有者契约与不可复用的注册标识。
+        private IFullBodyActionRegistrationOwner owner;
         private readonly int registrationId;
 
         /// <summary>创建绑定指定 Action Arbiter 注册记录的生命周期 Handle。</summary>
         /// <param name="ownerArbiter">拥有注册记录的角色动作仲裁器。</param>
         /// <param name="sourceRegistrationId">注册记录的单调标识。</param>
-        internal FullBodyActionHandle(CharacterActionArbiter ownerArbiter, int sourceRegistrationId)
+        internal FullBodyActionHandle(IFullBodyActionRegistrationOwner sourceOwner, int sourceRegistrationId)
         {
-            arbiter = ownerArbiter ?? throw new ArgumentNullException(nameof(ownerArbiter));
+            owner = sourceOwner ?? throw new ArgumentNullException(nameof(sourceOwner));
             registrationId = sourceRegistrationId;
         }
 
         /// <summary>幂等注销本次 FullBody Action，并在最后一个占据者退出时归还 Blackboard。</summary>
         public void Dispose()
         {
-            CharacterActionArbiter currentArbiter = arbiter;
-            if (currentArbiter == null)
+            IFullBodyActionRegistrationOwner currentOwner = owner;
+            if (currentOwner == null)
                 return;
 
-            arbiter = null;
-            currentArbiter.UnregisterFullBodyAction(registrationId);
+            owner = null;
+            currentOwner.UnregisterFullBodyAction(registrationId);
         }
     }
 }

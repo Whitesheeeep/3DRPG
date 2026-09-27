@@ -261,5 +261,30 @@ namespace RPG.Character
         }
 
         #endregion
+
+        #region 对外 API
+        /// <summary>设置 Walk/Run 共用的当前代码移动速度，并立即刷新动画速度参数。</summary>
+        /// <param name="speed">新的当前水平移动速度。</param>
+        public void SetCurrentSpeed(float speed)
+        {
+            runtime.CurrentSpeed = speed;
+            RefreshMovePresentation();
+        }
+
+        /// <summary>将当前代码移动速度直接设置为本状态的目标速度。</summary>
+        public void SetSpeedToRunTargetSpeed()
+        {
+            runtime.CurrentSpeed = TargetMoveSpeed;
+            RefreshMovePresentation();
+        }
+
+        /// <summary>同步当前共享速度对应的 Mixer 参数和动画播放速度。</summary>
+        private void RefreshMovePresentation()
+        {
+            ApplyMoveParameters();
+            if (animationState != null)
+                animationState.Speed = CalculateAnimationSpeed();
+        }
+        #endregion
     }
 }

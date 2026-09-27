@@ -1,5 +1,5 @@
 using System.IO;
-using RPG.CurrencySystem;
+using RPG.CurrencySystemNS;
 using RPG.Character;
 using RPG.DialogueSystemModule;
 using RPG.ItemSystem;
@@ -84,20 +84,19 @@ namespace RPG.Game
             RegisterSystem(new TaskProgressSystem(new TaskObjectiveHandlerRegistry()));
             RegisterSystem(new DialogueSystem());
             RegisterSystem(new CharacterEquipmentSystem());
-            RegisterSystem(new RPG.CurrencySystem.CurrencySystem());
+            RegisterSystem(new CurrencySystem());
             RegisterManager(new EscCommandManager());
 
             // 角色、背包等跨业务模块在这里继续注册；各 Manager 在自身 OnInit 中注册 SaveModule。
-            TaskSaveModule taskSaveModule = new TaskSaveModule(TaskManager.Instance);
-            snapshotTypeRegistry.Register<TaskSaveSnapshot>(taskSaveModule.ModuleId, taskSaveModule.CurrentVersion);
+            snapshotTypeRegistry.Register<TaskSaveSnapshot>(TaskSaveModule.StableModuleId, 1);
             snapshotTypeRegistry.Register<CharacterRosterSaveSnapshot>(CharacterRosterSaveModule.StableModuleId, 2);
-            snapshotTypeRegistry.Register<CharacterPartySaveSnapshot>(new SaveModuleId("character-party"), 1);
+            snapshotTypeRegistry.Register<CharacterPartySaveSnapshot>(CharacterPartySaveModule.StableModuleId, 1);
             snapshotTypeRegistry.Register<ItemDiscoverySaveSnapshot>(ItemDiscoverySaveModule.StableModuleId, 1);
-            snapshotTypeRegistry.Register<StackableInventorySaveSnapshot>(new SaveModuleId("stackable-inventory"), 1);
-            snapshotTypeRegistry.Register<WeaponInventorySaveSnapshot>(new SaveModuleId("weapon-inventory"), 1);
-            snapshotTypeRegistry.Register<ArtifactInventorySaveSnapshot>(new SaveModuleId("artifact-inventory"), 1);
-            snapshotTypeRegistry.Register<CharacterEquipmentSaveSnapshot>(new SaveModuleId("character-equipment"), 1);
-            snapshotTypeRegistry.Register<CurrencySaveSnapshot>(new SaveModuleId("currency"), 1);
+            snapshotTypeRegistry.Register<StackableInventorySaveSnapshot>(StackableInventorySaveModule.StableModuleId, 1);
+            snapshotTypeRegistry.Register<WeaponInventorySaveSnapshot>(WeaponInventorySaveModule.StableModuleId, 1);
+            snapshotTypeRegistry.Register<ArtifactInventorySaveSnapshot>(ArtifactInventorySaveModule.StableModuleId, 1);
+            snapshotTypeRegistry.Register<CharacterEquipmentSaveSnapshot>(CharacterEquipmentSaveModule.StableModuleId, 1);
+            snapshotTypeRegistry.Register<CurrencySaveSnapshot>(CurrencySaveModule.StableModuleId, 1);
             #endregion
         }
     }

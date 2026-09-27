@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using RPG.SaveSystem;
+using UnityEngine;
 using WS_Modules.CustomEventSystem;
 using WS_Modules.Singleton;
 
@@ -416,6 +418,9 @@ namespace RPG.TaskSystem
                 unreadTaskIds.UnionWith(restoredUnread);
                 trackedTaskId = restoredTracked;
             }
+
+            Debug.Log($"[TaskManager] 已恢复任务状态，active={snapshot.ActiveTasks.Count}, " +
+                      $"completed={snapshot.CompletedTaskIds.Count}, unread={snapshot.UnreadTaskIds.Count}。");
         }
 
         /// <summary>

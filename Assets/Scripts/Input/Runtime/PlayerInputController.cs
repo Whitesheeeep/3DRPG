@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using WS_Modules.Singleton;
 
 namespace RPG.PlayerInputSystem
 {
     /// <summary>统一管理离散 InputAction、输入 Request 及其真实时间缓冲生命周期。</summary>
     [DefaultExecutionOrder(-900)]
-    public sealed class PlayerInputController : MonoBehaviour, IPlayerInputRequestBuffer
+    public sealed class PlayerInputController : SingletonMonoBase<PlayerInputController>, IPlayerInputRequestBuffer
     {
         #region 序列化配置
         [SerializeField] private List<PlayerInputBinding> bindings = new();
@@ -56,20 +57,36 @@ namespace RPG.PlayerInputSystem
         #endregion
 
         #region Unity 生命周期
-        /// <summary>校验序列化输入配置并建立无分配回调查询表。</summary>
-        private void Awake()
+        /// <summary>校验输入配置后注册场景单例，确保外部不会读取半初始化组件。</summary>
+        protected override void Awake()
         {
+            // 重复 Player 必须在配置解析与 InputAction 订阅前停用；基类负责销毁重复根对象。
+            if (Instance != null && Instance != this)
+            {
+                Debug.LogError(
+                    $"[PlayerInputController] 检测到重复 Player 输入控制器，销毁对象 '{name}'。", this);
+                gameObject.SetActive(false);
+                base.Awake();
+                return;
+            }
+
             BuildBindingLookup();
             // Move 必须由 Inspector 配置对象引用，避免重复维护 Action 名称字符串。
             resolvedMoveAction = moveAction?.action;
             if (resolvedMoveAction == null)
                 throw CreateConfigurationException(
                     $"[PlayerInputController] '{name}' 未配置有效的 Move InputActionReference。");
+
+            // 单例注册和 DontDestroyOnLoad 由基类统一负责，放在所有输入校验之后。
+            base.Awake();
+            Debug.Log($"[PlayerInputController] 已注册场景单例，player={gameObject.name}。", this);
         }
 
         /// <summary>订阅并启用由当前 Controller 独占管理的全部离散动作。</summary>
         private void OnEnable()
         {
+            if (Instance != this) return;
+
             foreach (InputAction action in bindingsByAction.Keys)
             {
                 action.performed += OnPerformed;
@@ -94,6 +111,8 @@ namespace RPG.PlayerInputSystem
         /// <summary>退订并停用全部动作，再清除可能残留的按住状态和阶段句柄。</summary>
         private void OnDisable()
         {
+            if (Instance != this) return;
+
             foreach (InputAction action in bindingsByAction.Keys)
             {
                 action.performed -= OnPerformed;
@@ -106,6 +125,14 @@ namespace RPG.PlayerInputSystem
 
             Clear();
             Debug.Log($"[PlayerInputController] 已停用输入监听并清空 Request。", this);
+        }
+
+        /// <summary>记录唯一输入控制器注销，并由基类清除静态实例引用。</summary>
+        protected override void OnDestroy()
+        {
+            if (Instance == this)
+                Debug.Log($"[PlayerInputController] 已注销场景单例，player={gameObject.name}。", this);
+            base.OnDestroy();
         }
 
         /// <summary>清除连续输入，使失焦、停用和场景迁移不会复用旧摇杆状态。</summary>

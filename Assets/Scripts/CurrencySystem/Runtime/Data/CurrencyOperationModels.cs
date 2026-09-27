@@ -1,6 +1,6 @@
 using System;
 
-namespace RPG.CurrencySystem
+namespace RPG.CurrencySystemNS
 {
     /// <summary>货币与金额组成的只读值对象。</summary>
     public readonly struct CurrencyAmount

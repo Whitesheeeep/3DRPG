@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using RPG.Character;
-using RPG.CurrencySystem;
+using RPG.CurrencySystemNS;
 using RPG.Game.UI.Bag;
 using RPG.Game.UI.Escape;
 using RPG.Game.UI.WeaponDevelopment;
