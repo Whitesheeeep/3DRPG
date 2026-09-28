@@ -202,13 +202,14 @@ namespace RPG.SkillSystem.Editor
         // 将 Preview 状态写入窗口状态栏。
         private void OnPreviewStatusChanged(string message) => SetStatus(message);
 
-        // 将 Scene Handle 完成后的攻击检测快照提交为一条 Item 编辑事务。
+        /// <summary>提交当前攻击检测 Clip 的 CueTag 与检测数据 Inspector 变更。</summary>
+        /// <param name="commit">包含稳定 Clip ID 与复制后检测数据的 Scene 编辑提交。</param>
         private void OnAttackDetectionSceneEditCommitted(AttackDetectionSceneEditCommit commit)
         {
             if (SelectedItem is not AttackDetectionSkillClipConfig clip || clip.Id != commit.ClipId) return;
             EditItem(SelectedTrack, clip, new AttackDetectionEditRequest(
                 clip.StartFrame, clip.DurationFrames, clip.SampleIntervalFrames, clip.DetectionId,
-                clip.MarkerKey, clip.FollowMode, commit.DetectionData));
+                clip.MarkerKey, clip.FollowMode, commit.DetectionData, clip.CueTags));
         }
 
         // Scene Handle 只接收当前攻击检测 Item 的稳定 GUID。

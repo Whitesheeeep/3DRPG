@@ -1083,11 +1083,11 @@ namespace RPG.Game.UI.Controllers
                         "已达上限或未配置", false));
             }
 
-            WeaponDetails currentDetails = WeaponDetailsQuery.CreateProjected(definition, instance,
+            WeaponDetails currentWeaponDetails = WeaponDetailsQuery.CreateProjected(definition, instance,
                 instance.Level, instance.AscensionRank, instance.RefinementRank);
             WeaponDetails projectedDetails = WeaponDetailsQuery.CreateProjected(definition, instance,
                 instance.Level, instance.AscensionRank, nextStage.Rank);
-            IReadOnlyList<string> currentEffects = BuildRefinementEffectLines(currentDetails);
+            IReadOnlyList<string> currentEffects = BuildRefinementEffectLines(currentWeaponDetails);
             IReadOnlyList<string> projectedEffects = BuildRefinementEffectLines(projectedDetails);
             IReadOnlyList<BagItemViewData> selectedMaterials = BuildSelectedRefinementEntries(definition, instance);
             long currencyOwned = CurrencyManager.Instance.GetBalance(CurrencyId.Mola);

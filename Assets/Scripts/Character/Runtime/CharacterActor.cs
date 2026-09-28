@@ -99,8 +99,9 @@ namespace RPG.Character
         }
 
         /// <summary>销毁角色时释放 FullBody Action 注册并归还共享 Blackboard 占据。</summary>
-        private void OnDestroy()
+        protected override void OnDestroy()
         {
+            base.OnDestroy();
             StopRuntime();
         }
 

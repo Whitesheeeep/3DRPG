@@ -85,18 +85,21 @@ namespace WS_Modules
         }
 
         /// <summary>
-        /// 按框架依赖顺序初始化日志、配置、资源、对象池、音频和 UI 系统。
+        /// 按框架依赖顺序初始化日志、资源、对象池、配置、音频和 UI 系统。
         /// </summary>
         private void InitWSFrameRoot()
         {
             GetResLoader();
 
             WSLog.Init(frameSetting.logSetting);
-            ConfigRegisterSystem.Instance.Initialize(frameSetting.configRegisterSetting);
+            WSLog.Log("[WSFrameRoot] 开始初始化框架，顺序为资源加载器、日志、资源系统、对象池、配置注册、音频和 UI。");
             ResSystem.Instance.Initialize(_resLoader);
             PoolManager.Instance.Initialize(frameSetting.PoolingSettings, _resLoader, transform);
+            // 配置节点可能注册需要对象池的服务；必须等 PoolManager 可用后再执行注册树。
+            ConfigRegisterSystem.Instance.Initialize(frameSetting.configRegisterSetting);
             AudioManager.Instance.Initialize(frameSetting.audioSystemSetting, this.transform, _resLoader);
             UIManager.Instance.Initialize(frameSetting.uiManagerSetting);
+            WSLog.Log("[WSFrameRoot] 框架核心系统初始化完成。");
         }
 
         /// <summary>

@@ -90,6 +90,8 @@ namespace RPG.SkillSystem.Editor
         internal const string DetectionId = "detectionId";
         /// <summary>攻击检测片段保存的局部多态检测参数。</summary>
         internal const string DetectionData = "detectionData";
+        /// <summary>攻击检测片段命中后额外发布的 CueTag 数组。</summary>
+        internal const string CueTags = "cueTags";
         /// <summary>摄像机修饰片段保存的局部多态参数。</summary>
         internal const string ModifierData = "modifierData";
         /// <summary>事件 Marker 用于运行时业务路由的稳定键。</summary>

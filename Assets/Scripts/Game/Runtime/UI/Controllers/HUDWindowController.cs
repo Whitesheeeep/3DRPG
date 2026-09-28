@@ -17,7 +17,6 @@ using WS_Modules.GAS.AttributeSystem;
 using WS_Modules.GAS.Generated;
 using WS_Modules.GAS.GameplayAbilitySystem;
 using WS_Modules.GAS.GameplayEffect;
-using WS_Modules.GAS.TAG;
 using WS_Modules.LogModule;
 using WS_Modules.UIModule;
 
@@ -306,7 +305,7 @@ namespace RPG.Game.UI.Controllers
 
         #region 视图刷新
 
-        /// <summary>按最近一次 Active 角色冷却扫描结果刷新剩余时间显示。</summary>
+        /// <summary>按技能格缓存的冷却 Runtime 刷新剩余时间显示。</summary>
         private void Update()
         {
             if (initialized && !disposed && cooldownBoundActor != null)
@@ -452,8 +451,10 @@ namespace RPG.Game.UI.Controllers
         /// <param name="actor">当前 Active 角色。</param>
         private void RefreshSkillSlots(CharacterActor actor)
         {
+            bool cooldownActorChanged = !ReferenceEquals(cooldownBoundActor, actor);
             BindActiveCharacterCooldowns(actor);
             IReadOnlyList<CharacterAbilityInputBinding> bindings = actor.Config.CombatConfig.SkillInputBindings;
+            bool abilityBindingsChanged = false;
             for (int slotIndex = 0; slotIndex < skillSlotViews.Length; slotIndex++)
             {
                 PlayerInputType inputType = skillSlotViews[slotIndex].InputType;
@@ -466,14 +467,18 @@ namespace RPG.Game.UI.Controllers
                     break;
                 }
 
+                if (!ReferenceEquals(abilityDataBySlot[slotIndex], abilityData))
+                    abilityBindingsChanged = true;
                 abilityDataBySlot[slotIndex] = abilityData;
                 skillSlotViews[slotIndex].SetAbilityIcon(abilityData?.Icon);
             }
 
-            RefreshCooldownRuntimes();
+            // 角色或槽位配置变化时做一次快照同步，之后的冷却变化由生命周期事件维护。
+            if (cooldownActorChanged || abilityBindingsChanged)
+                RefreshCooldownRuntimes();
         }
 
-        /// <summary>订阅 Active 角色 ASC 冷却事件；切人时先解除旧 ASC 再扫描新 ASC。</summary>
+        /// <summary>订阅 Active 角色 ASC 冷却事件；冷却快照在技能格绑定后单独同步。</summary>
         /// <param name="actor">需要展示技能和冷却的 Active 角色。</param>
         private void BindActiveCharacterCooldowns(CharacterActor actor)
         {
@@ -502,21 +507,47 @@ namespace RPG.Game.UI.Controllers
             Array.Clear(cooldownRuntimeBySlot, 0, cooldownRuntimeBySlot.Length);
         }
 
-        /// <summary>冷却 GE 创建后扫描 ASC 的当前 Active Effects，避免事件到达前漏掉运行时。</summary>
-        /// <param name="args">触发事件的冷却生命周期快照。</param>
+        /// <summary>把新建冷却 Runtime 增量写入对应 Ability 技能格。</summary>
+        /// <param name="args">已创建并应用到 ASC 的冷却生命周期快照。</param>
         private void HandleCooldownStarted(GameplayAbilityCooldownEventArgs args)
         {
-            if (!disposed) RefreshCooldownRuntimes();
+            if (disposed) return;
+
+            int updatedSlotCount = 0;
+            for (int slotIndex = 0; slotIndex < abilityDataBySlot.Length; slotIndex++)
+            {
+                if (!ReferenceEquals(abilityDataBySlot[slotIndex], args.AbilityData)) continue;
+                cooldownRuntimeBySlot[slotIndex] = args.CooldownRuntime;
+                updatedSlotCount++;
+            }
+
+            if (updatedSlotCount == 0) return;
+            RefreshCooldownViews();
+            WSLog.Log(
+                $"[HUDWindowController] 技能冷却开始并更新技能格，ability={args.AbilityData.name}, duration={args.Duration}, slotCount={updatedSlotCount}。");
         }
 
-        /// <summary>冷却 GE 移除后重新扫描，保留仍共享同一冷却标签的其他 Runtime。</summary>
+        /// <summary>只清除引用与结束事件完全相同的技能格冷却 Runtime。</summary>
         /// <param name="args">结束事件携带的冷却生命周期快照。</param>
         private void HandleCooldownEnded(GameplayAbilityCooldownEventArgs args)
         {
-            if (!disposed) RefreshCooldownRuntimes();
+            if (disposed) return;
+
+            int clearedSlotCount = 0;
+            for (int slotIndex = 0; slotIndex < cooldownRuntimeBySlot.Length; slotIndex++)
+            {
+                if (!ReferenceEquals(cooldownRuntimeBySlot[slotIndex], args.CooldownRuntime)) continue;
+                cooldownRuntimeBySlot[slotIndex] = null;
+                clearedSlotCount++;
+            }
+
+            if (clearedSlotCount == 0) return;
+            RefreshCooldownViews();
+            WSLog.Log(
+                $"[HUDWindowController] 技能冷却结束并清除技能格，ability={args.AbilityData.name}, slotCount={clearedSlotCount}。");
         }
 
-        /// <summary>按 CooldownEffect.GrantedTags 与 Active GE 的 GrantedTags 层级匹配当前四格冷却。</summary>
+        /// <summary>在角色或技能槽配置变化时读取一次 Active Effects，恢复已开始的冷却。</summary>
         private void RefreshCooldownRuntimes()
         {
             Array.Clear(cooldownRuntimeBySlot, 0, cooldownRuntimeBySlot.Length);
@@ -527,52 +558,22 @@ namespace RPG.Game.UI.Controllers
             }
 
             IReadOnlyList<GameEffectRuntime> activeEffects = cooldownBoundActor.AbilitySystemComponent.ActiveEffects;
-            for (int effectIndex = 0; effectIndex < activeEffects.Count; effectIndex++)
+            // 首次绑定用冷却 GE 资产引用恢复状态；运行中的开始和结束由 GA 事件增量维护。
+            for (int slotIndex = 0; slotIndex < abilityDataBySlot.Length; slotIndex++)
             {
-                GameEffectRuntime runtime = activeEffects[effectIndex];
-                if (!runtime.IsActive) continue;
-                for (int slotIndex = 0; slotIndex < abilityDataBySlot.Length; slotIndex++)
-                {
-                    GameplayEffectData configuredCooldown = abilityDataBySlot[slotIndex]?.CooldownEffect;
-                    if (configuredCooldown == null || !HasMatchingCooldownTag(runtime.Data, configuredCooldown))
-                        continue;
+                GameplayEffectData configuredCooldown = abilityDataBySlot[slotIndex]?.CooldownEffect;
+                if (configuredCooldown == null) continue;
 
-                    GameEffectRuntime current = cooldownRuntimeBySlot[slotIndex];
-                    if (ShouldReplaceCooldownRuntime(current, runtime))
-                        cooldownRuntimeBySlot[slotIndex] = runtime;
+                for (int effectIndex = 0; effectIndex < activeEffects.Count; effectIndex++)
+                {
+                    GameEffectRuntime runtime = activeEffects[effectIndex];
+                    if (!runtime.IsActive || !ReferenceEquals(runtime.Data, configuredCooldown)) continue;
+                    cooldownRuntimeBySlot[slotIndex] = runtime;
+                    break;
                 }
             }
 
             RefreshCooldownViews();
-        }
-
-        /// <summary>比较 Active GE Runtime 与技能配置冷却的 GrantedTags，并遵循 Tag 子级匹配查询父级的规则。</summary>
-        /// <param name="activeEffect">ASC 当前有效的 GE 配置。</param>
-        /// <param name="configuredCooldown">技能配置中的冷却 GE。</param>
-        /// <returns>两个 GE 至少共享一个冷却标签身份时返回 true。</returns>
-        private static bool HasMatchingCooldownTag(GameplayEffectData activeEffect,
-            GameplayEffectData configuredCooldown)
-        {
-            IReadOnlyList<GameplayTag> activeTags = activeEffect.GrantedTags;
-            IReadOnlyList<GameplayTag> cooldownTags = configuredCooldown.GrantedTags;
-            for (int activeTagIndex = 0; activeTagIndex < activeTags.Count; activeTagIndex++)
-            for (int cooldownTagIndex = 0; cooldownTagIndex < cooldownTags.Count; cooldownTagIndex++)
-                if (activeTags[activeTagIndex].MatchesTag(cooldownTags[cooldownTagIndex]))
-                    return true;
-            return false;
-        }
-
-        /// <summary>优先显示无限冷却，否则显示剩余时间更长的同标签 Active Runtime。</summary>
-        /// <param name="current">当前已选 Runtime。</param>
-        /// <param name="candidate">新发现的匹配 Runtime。</param>
-        /// <returns>候选 Runtime 应替代当前选择时返回 true。</returns>
-        private static bool ShouldReplaceCooldownRuntime(GameEffectRuntime current, GameEffectRuntime candidate)
-        {
-            if (current == null) return true;
-            bool currentInfinite = current.Data.DurationType == E_GameEffectDurationType.Infinite;
-            bool candidateInfinite = candidate.Data.DurationType == E_GameEffectDurationType.Infinite;
-            if (candidateInfinite != currentInfinite) return candidateInfinite;
-            return !candidateInfinite && candidate.RemainingDuration > current.RemainingDuration;
         }
 
         /// <summary>把缓存的 Active GE 剩余时长转换为各 View 的圆形填充和数字文本。</summary>

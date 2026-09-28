@@ -266,8 +266,11 @@ namespace RPG.Character
                 // 切换后由 Manager 重新读取 ActiveCharacter，确保同帧技能和 Locomotion 使用新角色。
                 characterManager.AdvanceActiveFrame(inputController, Time.deltaTime);
 
-                // 普通 Locomotion 与需要渲染帧同步的 GAS 运动在此统一仲裁并结算一次。
-                motionDriver.ResolveUpdateMotion();
+                // HitStop 生效后丢弃本帧动作位移提交；缓冲输入仍由原输入系统按真实时间管理。
+                if (characterManager.ActiveCharacter?.IsActionPaused == true)
+                    motionDriver.ClearTransientRequests();
+                else
+                    motionDriver.ResolveUpdateMotion();
             }
             catch
             {

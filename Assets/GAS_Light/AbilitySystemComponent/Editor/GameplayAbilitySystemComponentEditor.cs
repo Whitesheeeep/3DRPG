@@ -66,7 +66,8 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             if (style != null) root.styleSheets.Add(style);
 
             root.RegisterCallback<DetachFromPanelEvent>(OnDetached);
-            refreshSchedule = root.schedule.Execute(Refresh).Every(RefreshIntervalMilliseconds);
+            if (Application.isPlaying)
+                refreshSchedule = root.schedule.Execute(Refresh).Every(RefreshIntervalMilliseconds);
             Refresh();
             return root;
         }
@@ -99,6 +100,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
 
             if (!Application.isPlaying)
             {
+                root.Add(CreateLocalCueHandlerConfiguration());
                 root.Add(new HelpBox("进入 Play Mode 后显示 ASC 运行时状态。", HelpBoxMessageType.Info));
                 return;
             }
@@ -127,6 +129,24 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             root.Add(CreateActiveEffectsSection());
             root.Add(CreateAttributesSection());
             root.Add(CreateActiveCuesSection());
+        }
+
+        /// <summary>在编辑模式暴露 ASC 专属 SerializeReference Handler 配置。</summary>
+        /// <returns>使用 Unity 原生多态类型选择和 Undo 的本地 Handler 字段。</returns>
+        private VisualElement CreateLocalCueHandlerConfiguration()
+        {
+            var section = new VisualElement();
+            section.Add(new Label("ASC Local Gameplay Cue Handlers") { name = "gas-local-cue-handlers-title" });
+            SerializedProperty property = serializedObject.FindProperty("localCueHandlers");
+            if (property == null)
+            {
+                section.Add(new HelpBox("未找到本地 Cue Handler 配置字段。", HelpBoxMessageType.Error));
+                return section;
+            }
+
+            section.Add(new PropertyField(property, "Local Cue Handlers"));
+            section.Bind(serializedObject);
+            return section;
         }
 
         /// <summary>创建 Inspector 顶部标题和只读用途说明。</summary>

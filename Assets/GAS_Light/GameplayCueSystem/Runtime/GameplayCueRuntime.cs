@@ -84,8 +84,8 @@ namespace WS_Modules.GAS.GameplayCue
         public void Release()
         {
             if (released) return;
-            // 表现脚本主动结束只请求回收；持续 Cue 的 OnRemove 由 Controller 移除入口负责发送。
-            owner.ReleaseRuntime(this, false);
+            // Active Handle 由 Controller 交给创建它的 Handler 执行 OnRemove 和对象池收尾。
+            owner.RequestRuntimeRelease(this);
         }
 
         /// <summary>

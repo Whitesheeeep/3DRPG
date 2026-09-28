@@ -75,7 +75,7 @@ namespace WS_Modules.GAS.Editor
         /// <summary>Cue 选择发生变化时触发。</summary>
         event Action<GameplayCueData> CueSelectionChanged;
         /// <summary>请求创建 CueData 并注册到当前数据库。</summary>
-        event Action CreateCueRequested;
+        event Action<Type> CreateCueRequested;
         /// <summary>请求添加已有 CueData。</summary>
         event Action AddExistingCueRequested;
         /// <summary>请求复制当前 CueData。</summary>

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using RPG.Markers;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using WS_Modules.GAS.TAG;
 
 namespace RPG.SkillSystem
 {
@@ -14,7 +15,9 @@ namespace RPG.SkillSystem
     {
         [SerializeField] private List<AttackDetectionSkillClipConfig> clips = new();
 
+        /// <summary>获取按时间排列的攻击检测 Clip 配置。</summary>
         public IReadOnlyList<AttackDetectionSkillClipConfig> Clips => clips;
+        /// <summary>获取供技能时间轴统一调度的攻击检测内容。</summary>
         public override IReadOnlyList<TimelineItemConfigBase> Items => clips;
     }
 
@@ -312,12 +315,17 @@ namespace RPG.SkillSystem
         [SerializeField, MinValue(0), LabelText("检测 ID")] private int detectionId;
         [SerializeField, LabelText("挂点")] private MarkerKey markerKey;
         [SerializeField, LabelText("跟随模式")] private AttackDetectionFollowMode followMode;
+        [SerializeField, LabelText("命中 Cue Tags")] private List<GameplayTag> cueTags = new();
         [SerializeReference] private AttackDetectionDataBase detectionData =
             AttackDetectionDataBase.Create(AttackDetectionType.Box);
 
+        /// <summary>获取在 Track 内稳定识别此 Clip 的 GUID。</summary>
         public override string Id => id;
+        /// <summary>获取半开检测帧区间的起始帧。</summary>
         public override int StartFrame => startFrame;
+        /// <summary>获取半开检测帧区间的持续帧数。</summary>
         public override int DurationFrames => durationFrames;
+        /// <summary>获取相邻攻击检测采样帧的最小间隔。</summary>
         public int SampleIntervalFrames => sampleIntervalFrames;
         /// <summary>获取或设置本次技能执行内共享的攻击命中分组 ID。</summary>
         public int DetectionId
@@ -339,7 +347,12 @@ namespace RPG.SkillSystem
             get => followMode;
             set => followMode = value;
         }
+        /// <summary>获取当前具体的多态攻击区域和检测参数。</summary>
         public AttackDetectionDataBase DetectionData => detectionData;
+        /// <summary>获取由多态检测数据提供的具体检测类型。</summary>
         public AttackDetectionType DetectionType => detectionData?.Type ?? AttackDetectionType.None;
+        /// <summary>获取命中后与 Ability CueTag 合并发布的标签。</summary>
+        public IReadOnlyList<GameplayTag> CueTags =>
+            cueTags == null ? (IReadOnlyList<GameplayTag>)Array.Empty<GameplayTag>() : cueTags;
     }
 }

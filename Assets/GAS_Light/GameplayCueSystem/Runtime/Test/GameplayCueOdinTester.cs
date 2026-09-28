@@ -25,16 +25,16 @@ namespace WS_Modules.GAS.GameplayCue
         private GameObject targetActor;
 
         [SerializeField, AssetsOnly, Required]
-        private GameplayCueData sourceCueData;
+        private VisualGameplayCueData sourceCueData;
 
         [SerializeField, AssetsOnly, Required]
-        private GameplayCueData worldCueData;
+        private VisualGameplayCueData worldCueData;
 
         [SerializeField, AssetsOnly, Required]
-        private GameplayCueData targetCueData;
+        private VisualGameplayCueData targetCueData;
 
         [SerializeField, AssetsOnly, Required]
-        private GameplayCueData followCueData;
+        private VisualGameplayCueData followCueData;
 
         [SerializeField, Min(0.1f)]
         private float visualizationDuration = 5f;
@@ -80,45 +80,37 @@ namespace WS_Modules.GAS.GameplayCue
             Debug.Log("[CueTest][PASS] Execute 请求已发布；一次性 Cue 应由表现行为主动 Release。", this);
         }
 
-        /// <summary>
-        /// 使用 Source CueData 创建两次持续表现并逐个移除，验证 Active 与 Remove 生命周期。
-        /// </summary>
+        /// <summary>用相同来源重复发布 Active，验证来源去重后只创建一个句柄。</summary>
         [Button("测试 Active/Remove Cue", ButtonSizes.Medium)]
         public void TestActiveCue()
         {
             if (!TryPrepare()) return;
             if (!TryValidateCue("Active", sourceCueData, GameplayCueAnchor.Source, false)) return;
 
-            int beforeCount = target.Cues.ActiveCues.Count;
+            int initialActiveCount = target.Cues.ActiveCues.Count;
             target.PublishGameplayCue(new GameplayCueRequest(
                 sourceCueData.CueTag,
                 GameplayCueEventType.Active,
                 source,
                 target));
-            GameplayCueRuntime first = FindNewActiveCue(beforeCount, sourceCueData);
+            GameplayCueRuntime first = FindNewActiveCue(initialActiveCount, sourceCueData);
 
-            beforeCount = target.Cues.ActiveCues.Count;
+            int beforeDuplicateCount = target.Cues.ActiveCues.Count;
             target.PublishGameplayCue(new GameplayCueRequest(
                 sourceCueData.CueTag,
                 GameplayCueEventType.Active,
                 source,
                 target));
-            GameplayCueRuntime second = FindNewActiveCue(beforeCount, sourceCueData);
+            GameplayCueRuntime second = FindNewActiveCue(beforeDuplicateCount, sourceCueData);
 
-            int createdCount = 0;
-            if (first != null) createdCount++;
-            if (second != null && !ReferenceEquals(second, first)) createdCount++;
             bool firstRemoved = first != null && target.Cues.TryRemove(first);
-            bool secondRemoved = second != null &&
-                                 !ReferenceEquals(second, first) &&
-                                 target.Cues.TryRemove(second);
-            bool releasedExactlyOnce = firstRemoved && secondRemoved &&
-                                       first.IsReleased && second.IsReleased;
+            bool releasedExactlyOnce = first != null && second == null && firstRemoved && first.IsReleased &&
+                                       target.Cues.ActiveCues.Count == initialActiveCount;
 
             Debug.Log(releasedExactlyOnce
-                    ? $"[CueTest][PASS] Active 创建数量={createdCount}，两个 Runtime 均完成单次移除和回收。"
-                    : $"[CueTest][FAIL] Active 移除异常：Created={createdCount}, " +
-                      $"FirstRemoved={firstRemoved}, SecondRemoved={secondRemoved}",
+                    ? "[CueTest][PASS] 同一来源重复 Active 只登记一个 Runtime，并由原 Handler 完成一次 Remove。"
+                    : $"[CueTest][FAIL] Active 移除异常：" +
+                      $"FirstRemoved={firstRemoved}, DuplicateCreated={second != null}",
                 this);
         }
 
@@ -241,10 +233,15 @@ namespace WS_Modules.GAS.GameplayCue
             return true;
         }
 
-        // 验证 Cue 配置、数据库注册关系和本次测试要求的 Anchor/Follow 约束。
+        /// <summary>验证 Cue 配置、数据库注册关系和本次测试要求的锚点约束。</summary>
+        /// <param name="testName">测试报告名称。</param>
+        /// <param name="data">待验证的 Visual Cue 配置。</param>
+        /// <param name="expectedAnchor">要求使用的默认锚点；空值表示不限制。</param>
+        /// <param name="requireFollow">是否要求 Cue 跟随锚点移动。</param>
+        /// <returns>配置满足本测试要求时返回 true。</returns>
         private bool TryValidateCue(
             string testName,
-            GameplayCueData data,
+            VisualGameplayCueData data,
             GameplayCueAnchor? expectedAnchor,
             bool requireFollow)
         {
@@ -296,8 +293,11 @@ namespace WS_Modules.GAS.GameplayCue
             return true;
         }
 
-        // 发布一次 Active 请求并记录新产生的 Runtime；请求统一由 Target ASC 接收。
-        private GameplayCueRuntime PublishVisualizationCue(string testName, GameplayCueData data)
+        /// <summary>发布一次 Active 请求并记录 Target ASC 新产生的 Visual Runtime。</summary>
+        /// <param name="testName">测试报告名称。</param>
+        /// <param name="data">本次测试使用的 Visual Cue 配置。</param>
+        /// <returns>成功生成且通过初始摆放检查的 Runtime。</returns>
+        private GameplayCueRuntime PublishVisualizationCue(string testName, VisualGameplayCueData data)
         {
             int beforeCount = target.Cues.ActiveCues.Count;
             target.PublishGameplayCue(new GameplayCueRequest(
@@ -330,8 +330,12 @@ namespace WS_Modules.GAS.GameplayCue
             return runtime;
         }
 
-        // 按 CueData 的 Anchor 和 FollowAnchor 语义校验初始父节点、位置与旋转。
-        private bool ValidateInitialPlacement(string testName, GameplayCueRuntime runtime, GameplayCueData data)
+        /// <summary>按配置锚点和跟随语义校验 Cue 初始父节点、位置与旋转。</summary>
+        /// <param name="testName">测试报告名称。</param>
+        /// <param name="runtime">待验证的活动 Visual Runtime。</param>
+        /// <param name="data">创建该 Runtime 的 Visual Cue 配置。</param>
+        /// <returns>父节点、位置和旋转均符合配置时返回 true。</returns>
+        private bool ValidateInitialPlacement(string testName, GameplayCueRuntime runtime, VisualGameplayCueData data)
         {
             Transform cueTransform = runtime.CueObject.transform;
             Transform anchor = ResolveExpectedAnchor(data);
@@ -357,8 +361,10 @@ namespace WS_Modules.GAS.GameplayCue
             return false;
         }
 
-        // 使用与 GameplayCueCtrl 相同的 Source/Target 与 Marker 回退规则计算测试预期挂点。
-        private Transform ResolveExpectedAnchor(GameplayCueData data)
+        /// <summary>按 Cue Controller 的规则解析测试所需的 Source、Target 或 Marker 锚点。</summary>
+        /// <param name="data">提供默认锚点与 Marker 的 Cue 配置。</param>
+        /// <returns>预期锚点；World 或缺失 Owner 时返回空引用。</returns>
+        private Transform ResolveExpectedAnchor(VisualGameplayCueData data)
         {
             if (data.DefaultAnchor == GameplayCueAnchor.World)
                 return null;
@@ -375,8 +381,11 @@ namespace WS_Modules.GAS.GameplayCue
                 : anchorAsc.transform;
         }
 
-        // 查找本次发布后新增的 Active Runtime，避免依赖列表中其他外部 Cue 的顺序。
-        private GameplayCueRuntime FindNewActiveCue(int beforeCount, GameplayCueData data)
+        /// <summary>查找本次请求新建的 Active Runtime，忽略其他来源的 Cue。</summary>
+        /// <param name="beforeCount">请求前活动视觉句柄数量。</param>
+        /// <param name="data">需要匹配的 Cue 配置。</param>
+        /// <returns>新建的匹配 Runtime；没有新建时返回空引用。</returns>
+        private GameplayCueRuntime FindNewActiveCue(int beforeCount, VisualGameplayCueData data)
         {
             IReadOnlyList<GameplayCueRuntime> activeCues = target.Cues.ActiveCues;
             for (int i = activeCues.Count - 1; i >= beforeCount && i >= 0; i--)
@@ -389,10 +398,14 @@ namespace WS_Modules.GAS.GameplayCue
             return null;
         }
 
-        // 显示单个 Anchor 测试，并按需启动 Follow 验证和统一倒计时回收。
+        /// <summary>显示单个锚点测试，并按需验证 Follow 结果后统一回收。</summary>
+        /// <param name="testName">测试报告名称。</param>
+        /// <param name="data">待展示的 Visual Cue 配置。</param>
+        /// <param name="expectedAnchor">要求使用的锚点；空值表示不限制。</param>
+        /// <param name="verifyFollow">是否执行锚点移动验证。</param>
         private void ShowSingleCue(
             string testName,
-            GameplayCueData data,
+            VisualGameplayCueData data,
             GameplayCueAnchor? expectedAnchor,
             bool verifyFollow)
         {

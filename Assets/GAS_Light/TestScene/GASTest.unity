@@ -557,6 +557,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4b0799f21e062a46bc8ef0c1cb35599, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  localCueHandlers: []
+  references:
+    version: 2
+    RefIds: []
 --- !u!114 &502244387
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1013,36 +1017,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 6509208c90ed26745be3e64cd81f132e, type: 3}
---- !u!21 &915511784
-Material:
-  serializedVersion: 8
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: MMD4Mecanim/MMDLit-NEXTEdge-Pass8
-  m_Shader: {fileID: 4800000, guid: ff1e1d0bbf6980244a107d25ff535f9a, type: 3}
-  m_Parent: {fileID: 0}
-  m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
-  m_InvalidKeywords: []
-  m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
-  m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 2001
-  stringTagMap: {}
-  disabledShaderPasses: []
-  m_LockedProperties: 
-  m_SavedProperties:
-    serializedVersion: 3
-    m_TexEnvs: []
-    m_Ints: []
-    m_Floats:
-    - _EdgeSize: 0.005
-    - _PostfixRenderQueue: 1
-    m_Colors:
-    - _EdgeColor: {r: 0.39999998, g: 1, b: 1, a: 1}
-  m_BuildTextureStacks: []
 --- !u!1 &1203861531
 GameObject:
   m_ObjectHideFlags: 0
@@ -1164,6 +1138,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4b0799f21e062a46bc8ef0c1cb35599, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  localCueHandlers:
+  - rid: 2645455285663563776
+  references:
+    version: 2
+    RefIds:
+    - rid: 2645455285663563776
+      type: {class: GameplayCueLocalProbeHandler, ns: WS_Modules.GAS.GameplayCue, asm: Assembly-CSharp}
+      data:
+        cueTags:
+        - id: 187
 --- !u!114 &1203861537
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1231,36 +1215,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4b0799f21e062a46bc8ef0c1cb35599, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!21 &1384741043
-Material:
-  serializedVersion: 8
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: MMD4Mecanim/MMDLit-NEXTEdge-Pass4
-  m_Shader: {fileID: 4800000, guid: 684f8af9b4ff4bc459588db5b0f6275d, type: 3}
-  m_Parent: {fileID: 0}
-  m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
-  m_InvalidKeywords: []
-  m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
-  m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 2001
-  stringTagMap: {}
-  disabledShaderPasses: []
-  m_LockedProperties: 
-  m_SavedProperties:
-    serializedVersion: 3
-    m_TexEnvs: []
-    m_Ints: []
-    m_Floats:
-    - _EdgeSize: 0.005
-    - _PostfixRenderQueue: 1
-    m_Colors:
-    - _EdgeColor: {r: 0.39999998, g: 1, b: 1, a: 1}
-  m_BuildTextureStacks: []
 --- !u!1 &1696073706
 GameObject:
   m_ObjectHideFlags: 0
@@ -1434,6 +1388,8 @@ MonoBehaviour:
   instantAbility: {fileID: 11400000, guid: 29af3eba64d141afbfac72595181c363, type: 2}
   passiveAbility: {fileID: 11400000, guid: f1e6875193c543f89aee4ec2a1e2a04a, type: 2}
   projectileAbility: {fileID: 11400000, guid: d9fc6a1d2b8e490bb12d3b3be9b2e0f8, type: 2}
+  hitStopCueData: {fileID: 11400000, guid: b570ff170b6e9f04e890c999dfdb4300, type: 2}
+  hitSoundCueData: {fileID: 11400000, guid: fa93aab208257394caba2fb393686a4a, type: 2}
   instantEffectCueTag:
     id: 16
   durationEffectCueTag:
@@ -1465,6 +1421,8 @@ MonoBehaviour:
   sets: []
   attribute:
     id: -1
+    name: 
+    displayName: 
   modifierType: 0
   modifierMagnitude: 0
   modifierPriority: 0
@@ -1474,6 +1432,8 @@ MonoBehaviour:
     attributes:
     - attribute:
         id: 0
+        name: 
+        displayName: 
       type: 1
       defaultValue: 100
       minValue: 0
@@ -1483,6 +1443,8 @@ MonoBehaviour:
       ownerSet: {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
     - attribute:
         id: 1
+        name: 
+        displayName: 
       type: 0
       defaultValue: 100
       minValue: 1
@@ -1492,6 +1454,8 @@ MonoBehaviour:
       ownerSet: {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
     - attribute:
         id: 2
+        name: 
+        displayName: 
       type: 0
       defaultValue: 10
       minValue: 0
@@ -1501,6 +1465,8 @@ MonoBehaviour:
       ownerSet: {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
     - attribute:
         id: 3
+        name: 
+        displayName: 
       type: 1
       defaultValue: 50
       minValue: 0
@@ -1543,7 +1509,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   attributeSet: {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
   tagDatabase: {fileID: 11400000, guid: 44d0d73125b5f0d4d82269bceac4ca8c, type: 2}
-  abilityDatabase: {fileID: 11400000, guid: 1a17a26fee721d940838d5befe222554, type: 2}
   cueDatabase: {fileID: 11400000, guid: 1d5d8bec41f863940bc59fc14cc022f0, type: 2}
   passiveAbility: {fileID: 11400000, guid: f1e6875193c543f89aee4ec2a1e2a04a, type: 2}
   toggleAbility: {fileID: 11400000, guid: 0bcaf93a89b74feb82dd830fe0897150, type: 2}

@@ -17,6 +17,17 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: e5871942464f45b42af52872df440d72
   m_SerializeEntries:
+  - m_GUID: 3e5c3e07920b4b144bbe24fb9757d20a
+    m_Address: AudioSourcePrefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8b8b4df240a6fa14ea7ebd3fe0b21785
+    m_Address: Combat/Hit/IMPT-punch-1
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SFX
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: aded8780929c51b4981d9fceb7c0ed86
     m_Address: UI/BagBtnClick
     m_ReadOnly: 0

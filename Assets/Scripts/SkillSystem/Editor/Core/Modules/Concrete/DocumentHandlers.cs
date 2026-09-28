@@ -382,6 +382,7 @@ namespace RPG.SkillSystem.Editor
                         attack.MarkerKey;
                     item.FindPropertyRelative(DocumentFieldNames.FollowMode).enumValueIndex =
                         (int)attack.FollowMode;
+                    SetTagArray(item.FindPropertyRelative(DocumentFieldNames.CueTags), attack.CueTags);
                     item.FindPropertyRelative(DocumentFieldNames.DetectionData).managedReferenceValue =
                         AttackDetectionDataBase.Copy(attack.DetectionData);
                 });
@@ -402,6 +403,8 @@ namespace RPG.SkillSystem.Editor
                 source.FindPropertyRelative(DocumentFieldNames.MarkerKey).objectReferenceValue;
             destination.FindPropertyRelative(DocumentFieldNames.FollowMode).enumValueIndex =
                 source.FindPropertyRelative(DocumentFieldNames.FollowMode).enumValueIndex;
+            CopyTagArray(source.FindPropertyRelative(DocumentFieldNames.CueTags),
+                destination.FindPropertyRelative(DocumentFieldNames.CueTags));
             AttackDetectionDataBase sourceData = source
                 .FindPropertyRelative(DocumentFieldNames.DetectionData).managedReferenceValue
                 as AttackDetectionDataBase;
@@ -431,8 +434,30 @@ namespace RPG.SkillSystem.Editor
             item.FindPropertyRelative(DocumentFieldNames.MarkerKey).objectReferenceValue = null;
             item.FindPropertyRelative(DocumentFieldNames.FollowMode).enumValueIndex =
                 (int)AttackDetectionFollowMode.FollowBinding;
+            item.FindPropertyRelative(DocumentFieldNames.CueTags).ClearArray();
             item.FindPropertyRelative(DocumentFieldNames.DetectionData).managedReferenceValue =
                 AttackDetectionDataBase.Create(AttackDetectionType.Box);
+        }
+
+        /// <summary>把命中 CueTag 快照写入目标 Clip 的序列化数组。</summary>
+        /// <param name="property">攻击检测 Clip 的 CueTag 数组。</param>
+        /// <param name="tags">编辑请求中的标签快照。</param>
+        private static void SetTagArray(SerializedProperty property, IReadOnlyList<GameplayTag> tags)
+        {
+            property.arraySize = tags?.Count ?? 0;
+            for (int index = 0; index < property.arraySize; index++)
+                property.GetArrayElementAtIndex(index).FindPropertyRelative("id").intValue = tags[index].Id;
+        }
+
+        /// <summary>复制源 Clip 的 CueTag 稳定 ID 数组。</summary>
+        /// <param name="source">复制源 CueTag 数组。</param>
+        /// <param name="destination">新 Clip 的 CueTag 数组。</param>
+        private static void CopyTagArray(SerializedProperty source, SerializedProperty destination)
+        {
+            destination.arraySize = source.arraySize;
+            for (int index = 0; index < source.arraySize; index++)
+                destination.GetArrayElementAtIndex(index).FindPropertyRelative("id").intValue =
+                    source.GetArrayElementAtIndex(index).FindPropertyRelative("id").intValue;
         }
     }
 

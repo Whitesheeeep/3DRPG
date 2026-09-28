@@ -5,6 +5,7 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 using WS_Modules.GAS.GameplayCue;
+using RPG.Character.Combat;
 
 namespace WS_Modules.GAS.Editor
 {
@@ -166,15 +167,20 @@ namespace WS_Modules.GAS.Editor
             RenderCurrentIssues();
         }
 
-        // 普通字段写回只排队局部显示刷新和校验，不重新创建当前详情 PropertyField。
+        /// <summary>处理 Cue 字段或共享 Handler 列表的序列化变更。</summary>
         private void OnCueSerializedChanged()
         {
-            if (disposed || currentCue == null) return;
-            pendingPresentationCue = currentCue;
-            if (!presentationRefreshScheduled)
+            if (disposed) return;
+
+            // Cue 列表的字段变化只刷新当前行与详情标题；共享 Handler 列表变化只需重新校验数据库。
+            if (currentCue != null)
             {
-                presentationRefreshScheduled = true;
-                EditorApplication.delayCall += RunScheduledPresentationRefresh;
+                pendingPresentationCue = currentCue;
+                if (!presentationRefreshScheduled)
+                {
+                    presentationRefreshScheduled = true;
+                    EditorApplication.delayCall += RunScheduledPresentationRefresh;
+                }
             }
 
             ScheduleValidation();
@@ -206,8 +212,9 @@ namespace WS_Modules.GAS.Editor
             SetDatabase(database, false);
         }
 
-        /// <summary>打开 CueData 创建路径面板并由 Service 注册新资产。</summary>
-        private void OnCreateCueRequested()
+        /// <summary>打开具体 CueData 类型的创建路径面板并由 Service 注册新资产。</summary>
+        /// <param name="cueDataType">作者在创建菜单中选择的具体配置类型。</param>
+        private void OnCreateCueRequested(Type cueDataType)
         {
             if (currentDatabase == null)
             {
@@ -217,7 +224,8 @@ namespace WS_Modules.GAS.Editor
 
             string path = EditorUtility.SaveFilePanelInProject(
                 "创建 Gameplay Cue",
-                "GameplayCueData",
+                cueDataType == typeof(VisualGameplayCueData) ? "VisualGameplayCueData" :
+                cueDataType == typeof(HitStopCueData) ? "HitStopCueData" : "HitSoundCueData",
                 "asset",
                 "选择 CueData 保存路径。",
                 GASEditorPreferences.GetLastCreateFolder(
@@ -228,7 +236,7 @@ namespace WS_Modules.GAS.Editor
                 GASEditorAssetFolderKind.GameplayCue,
                 path);
 
-            if (!service.TryCreateCue(currentDatabase, path, out GameplayCueData cue, out string error))
+            if (!service.TryCreateCue(currentDatabase, cueDataType, path, out GameplayCueData cue, out string error))
             {
                 view.ShowError("创建 Cue 失败", error);
                 return;
