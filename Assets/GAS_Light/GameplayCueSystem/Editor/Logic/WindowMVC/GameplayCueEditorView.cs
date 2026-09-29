@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+using RPG.Character.Combat;
 using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.TAG;
 
@@ -30,6 +31,7 @@ namespace WS_Modules.GAS.Editor
         private readonly ListView cueList;
         private readonly VisualElement detailsHost;
         private readonly VisualElement validationHost;
+        private readonly VisualElement handlersHost;
         private readonly List<GameplayCueData> renderedCues = new();
         private readonly List<CueRowState> rowStates = new();
         private readonly Dictionary<GameplayCueData, GameplayCueValidationSeverity> validationStates = new();
@@ -41,6 +43,7 @@ namespace WS_Modules.GAS.Editor
         private string pendingRenameValue = string.Empty;
         private int renameVersion;
         private SerializedObject boundObject;
+        private SerializedObject boundDatabaseObject;
         private Label detailsTitle;
         private Label cueAssetPathLabel;
         private Label addressableKeyLabel;
@@ -61,7 +64,7 @@ namespace WS_Modules.GAS.Editor
         /// <inheritdoc />
         public event Action<GameplayCueData> CueSelectionChanged;
         /// <inheritdoc />
-        public event Action CreateCueRequested;
+        public event Action<Type> CreateCueRequested;
         /// <inheritdoc />
         public event Action AddExistingCueRequested;
         /// <inheritdoc />
@@ -107,13 +110,17 @@ namespace WS_Modules.GAS.Editor
             cueList = Require<ListView>("CueList");
             detailsHost = Require<VisualElement>("DetailsHost");
             validationHost = Require<VisualElement>("ValidationHost");
+            handlersHost = Require<VisualElement>("HandlersHost");
             ConfigureList();
             RegisterCallbacks();
         }
 
         /// <inheritdoc />
-        public void SetDatabase(GameplayCueDatabase database) =>
+        public void SetDatabase(GameplayCueDatabase database)
+        {
             databaseField.SetValueWithoutNotify(database);
+            BindSharedHandlers(database);
+        }
 
         /// <inheritdoc />
         public void SetTagDatabase(GameplayTagDatabase database)
@@ -171,15 +178,15 @@ namespace WS_Modules.GAS.Editor
             boundObject = new SerializedObject(cue);
             detailsTitle = new Label(cue.name) { name = "CueDetailsTitle" };
             detailsHost.Add(detailsTitle);
-            AddProperty("cueTag", "Cue Tag");
-            AddProperty("markerKey", "Marker");
-            AddProperty("addressableKey", "Addressable Key");
-            AddProperty("fallbackPrefab", "Fallback Prefab");
-            AddProperty("defaultAnchor", "Default Anchor Mode");
-            AddProperty("localPosition", "Local Position");
-            AddProperty("localEulerAngles", "Local Euler Angles");
-            AddProperty("followAnchor", "Follow Anchor");
-            AddResourceInfo(cue);
+            SerializedProperty property = boundObject.GetIterator();
+            bool enterChildren = true;
+            while (property.NextVisible(enterChildren))
+            {
+                enterChildren = false;
+                if (property.propertyPath == "m_Script") continue;
+                detailsHost.Add(new PropertyField(property.Copy()));
+            }
+            if (cue is VisualGameplayCueData) AddResourceInfo(cue);
             bindingDetails = true;
             detailsHost.Bind(boundObject);
             bindingDetails = false;
@@ -198,7 +205,7 @@ namespace WS_Modules.GAS.Editor
             if (!ReferenceEquals(selectedCue, cue) || boundObject?.targetObject != cue) return;
 
             if (detailsTitle != null) detailsTitle.text = cue.name;
-            RefreshResourceInfo(cue);
+            if (cue is VisualGameplayCueData) RefreshResourceInfo(cue);
         }
 
         /// <inheritdoc />
@@ -250,6 +257,8 @@ namespace WS_Modules.GAS.Editor
             rowStates.Clear();
             cueList.itemsSource = null;
             detailsHost.Unbind();
+            handlersHost.Unbind();
+            boundDatabaseObject = null;
             boundObject = null;
             renderedValidationIssues.Clear();
             ClearDetailsPresentationReferences();
@@ -314,6 +323,7 @@ namespace WS_Modules.GAS.Editor
             duplicateCueButton.clicked += OnDuplicateCueClicked;
             cueList.selectionChanged += OnSelectionChanged;
             detailsHost.RegisterCallback<SerializedPropertyChangeEvent>(OnSerializedPropertyChanged);
+            handlersHost.RegisterCallback<SerializedPropertyChangeEvent>(OnSerializedPropertyChanged);
         }
 
         // 对称解除所有 UI 回调，避免模块切换后重复发送意图。
@@ -328,6 +338,7 @@ namespace WS_Modules.GAS.Editor
             duplicateCueButton.clicked -= OnDuplicateCueClicked;
             cueList.selectionChanged -= OnSelectionChanged;
             detailsHost.UnregisterCallback<SerializedPropertyChangeEvent>(OnSerializedPropertyChanged);
+            handlersHost.UnregisterCallback<SerializedPropertyChangeEvent>(OnSerializedPropertyChanged);
         }
 
         // 数据库 ObjectField 只传递用户选择，不直接修改 Model。
@@ -340,7 +351,18 @@ namespace WS_Modules.GAS.Editor
         // 顶部操作只负责收集路径或发送用户意图。
         private void OnCreateDatabaseClicked() => CreateDatabaseRequested?.Invoke();
         private void OnRefreshClicked() => RefreshRequested?.Invoke();
-        private void OnCreateCueClicked() => CreateCueRequested?.Invoke();
+        /// <summary>显示具体 CueData 类型菜单并转发所选创建意图。</summary>
+        private void OnCreateCueClicked()
+        {
+            var menu = new GenericMenu();
+            menu.AddItem(new GUIContent("Visual Cue"), false,
+                () => CreateCueRequested?.Invoke(typeof(VisualGameplayCueData)));
+            menu.AddItem(new GUIContent("Hit Stop Cue"), false,
+                () => CreateCueRequested?.Invoke(typeof(HitStopCueData)));
+            menu.AddItem(new GUIContent("Hit Sound Cue"), false,
+                () => CreateCueRequested?.Invoke(typeof(HitSoundCueData)));
+            menu.ShowAsContext();
+        }
         private void OnAddCueClicked() => AddExistingCueRequested?.Invoke();
         private void OnDuplicateCueClicked() => DuplicateCueRequested?.Invoke();
 
@@ -395,12 +417,32 @@ namespace WS_Modules.GAS.Editor
             if (!disposed) cueList.RefreshItems();
         }
 
-        // 使用 SerializedProperty 创建详情字段，保持原生 Undo 和绑定语义。
-        private void AddProperty(string path, string label)
+        /// <summary>绑定数据库共享 Handler 数组并保留 Unity 原生多态选择与 Undo。</summary>
+        /// <param name="database">作者当前编辑的 Cue Database。</param>
+        private void BindSharedHandlers(GameplayCueDatabase database)
         {
-            SerializedProperty property = boundObject.FindProperty(path);
-            if (property == null) return;
-            detailsHost.Add(new PropertyField(property, label));
+            if (ReferenceEquals(boundDatabaseObject?.targetObject, database)) return;
+            handlersHost.Unbind();
+            handlersHost.Clear();
+            boundDatabaseObject = null;
+            if (database == null)
+            {
+                handlersHost.Add(new HelpBox("请选择 Cue Database 后配置共享 Handler。", HelpBoxMessageType.Info));
+                return;
+            }
+
+            boundDatabaseObject = new SerializedObject(database);
+            SerializedProperty handlersProperty = boundDatabaseObject.FindProperty("handlers");
+            if (handlersProperty == null)
+            {
+                handlersHost.Add(new HelpBox("Database 缺少共享 Handler 序列化字段。", HelpBoxMessageType.Error));
+                return;
+            }
+
+            handlersHost.Add(new PropertyField(handlersProperty, "Handler SO 列表"));
+            bindingDetails = true;
+            handlersHost.Bind(boundDatabaseObject);
+            bindingDetails = false;
         }
 
         // 显示静态资源信息，不调用 Addressable 或 PoolManager。
@@ -429,9 +471,9 @@ namespace WS_Modules.GAS.Editor
         /// <param name="cue">当前选中的 CueData。</param>
         private void RefreshResourceInfo(GameplayCueData cue)
         {
-            if (cue == null || cueAssetPathLabel == null) return;
+            if (cue is not VisualGameplayCueData visualCue || cueAssetPathLabel == null) return;
             cueAssetPathLabel.text = $"Cue 资产：{AssetDatabase.GetAssetPath(cue)}";
-            addressableKeyLabel.text = $"Addressable Key：{(string.IsNullOrWhiteSpace(cue.AddressableKey) ? "未配置" : cue.AddressableKey)}";
+            addressableKeyLabel.text = $"Addressable Key：{(string.IsNullOrWhiteSpace(visualCue.AddressableKey) ? "未配置" : visualCue.AddressableKey)}";
 
             // Unity 对已销毁对象保留托管包装，所有 Prefab 访问必须在同一个边界内完成，避免后续 UI 刷新再次访问失效引用。
             string prefabPath = "未配置";
@@ -440,7 +482,7 @@ namespace WS_Modules.GAS.Editor
             bool hasBehaviour = false;
             try
             {
-                GameObject fallbackPrefab = cue.FallbackPrefab;
+                GameObject fallbackPrefab = visualCue.FallbackPrefab;
                 hasFallbackPrefab = fallbackPrefab != null;
                 if (hasFallbackPrefab)
                 {

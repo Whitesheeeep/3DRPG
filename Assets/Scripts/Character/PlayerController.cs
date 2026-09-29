@@ -7,7 +7,6 @@ using RPG.DialogueSystemModule;
 using RPG.PlayerInputSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using WS_Modules.GAS.Generated;
 using WS_Modules;
 using WS_Modules.GAS.AbilitySystemComponent;
@@ -20,7 +19,7 @@ namespace RPG.Character
     /// <summary>稳定编排玩家输入、当前角色能力、Locomotion 与最终运动结算。</summary>
     [DefaultExecutionOrder(-800), DisallowMultipleComponent]
     [InfoBox(
-        "依赖 Player 上的 PlayerInputController、DialogueParticipant，以及 CharacterRoot 上的 CharacterManager 和唯一 CharacterController；cameraTransform 可由常驻摄像机系统注入。")]
+        "依赖 Player 上的 PlayerInputController、DialogueParticipant，以及 CharacterRoot 上的 CharacterManager 和唯一 CharacterController；cameraTransform 可在 Inspector 指定，未绑定时低频查找 MainCamera。")]
     public sealed class PlayerController : SingletonMonoBase<PlayerController>, ILooseGameplayTagEventTarget
     {
         #region 配置与运行时状态
@@ -39,7 +38,7 @@ namespace RPG.Character
         private MotionDriver motionDriver = new();
         [SerializeField]
         private CharacterEnvironmentDetector environmentDetector = new();
-        // 仅保存最近一次解析到的 MainCamera；为空时暂停移动输入，避免退回世界 X/Z。
+        // 缓存已绑定的 MainCamera；引用暂缺或被销毁时暂停移动输入并低频恢复。
         [SerializeField] private Transform cameraTransform;
         private LooseGameplayTagEventBridge looseGameplayTagEventBridge;
         private Coroutine frameIntentCleanupCoroutine;
@@ -98,8 +97,6 @@ namespace RPG.Character
                 characterRoot == null)
                 throw new InvalidOperationException(
                     $"PlayerController '{name}' 缺少输入、CharacterRoot、CharacterManager 或 CharacterController。");
-            ResolveMainCameraTransform("Awake");
-            DontDestroyOnLoad(gameObject);
             characterManager.InitializationFailed += OnCharacterInitializationFailed;
 
             // MotionDriver 只绑定共享 CharacterController；Tag 来源稍后随 ActiveCharacter 注入。
@@ -188,8 +185,7 @@ namespace RPG.Character
             if (Instance != this) return;
 
             looseGameplayTagEventBridge?.Enable();
-            SceneManager.sceneLoaded += HandleSceneLoaded;
-            if (!ResolveMainCameraTransform("OnEnable"))
+            if (cameraTransform == null && !ResolveMainCameraTransform("OnEnable"))
                 BeginMainCameraResolution();
             if (StateBlackboard == null) return;
             lastAnimatorMoveFrame = -1;
@@ -207,7 +203,6 @@ namespace RPG.Character
             if (Instance != this) return;
 
             looseGameplayTagEventBridge?.Disable();
-            SceneManager.sceneLoaded -= HandleSceneLoaded;
             if (cameraResolveCoroutine != null) StopCoroutine(cameraResolveCoroutine);
             cameraResolveCoroutine = null;
             lastAnimatorMoveFrame = -1;
@@ -271,8 +266,11 @@ namespace RPG.Character
                 // 切换后由 Manager 重新读取 ActiveCharacter，确保同帧技能和 Locomotion 使用新角色。
                 characterManager.AdvanceActiveFrame(inputController, Time.deltaTime);
 
-                // 普通 Locomotion 与需要渲染帧同步的 GAS 运动在此统一仲裁并结算一次。
-                motionDriver.ResolveUpdateMotion();
+                // HitStop 生效后丢弃本帧动作位移提交；缓冲输入仍由原输入系统按真实时间管理。
+                if (characterManager.ActiveCharacter?.IsActionPaused == true)
+                    motionDriver.ClearTransientRequests();
+                else
+                    motionDriver.ResolveUpdateMotion();
             }
             catch
             {
@@ -347,16 +345,7 @@ namespace RPG.Character
         }
         #endregion
 
-        #region 角色切换
-
-        /// <summary>在场景切换完成后重新绑定新场景实际输出的主摄像机。</summary>
-        /// <param name="scene">刚加载完成的场景。</param>
-        /// <param name="mode">场景加载模式。</param>
-        private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
-        {
-            if (!ResolveMainCameraTransform($"场景加载完成:{scene.name}"))
-                BeginMainCameraResolution();
-        }
+        #region 摄像机绑定
 
         /// <summary>解析当前启用且带 MainCamera 标签的输出摄像机，不在逐帧路径中调用。</summary>
         /// <param name="reason">触发本次解析的生命周期原因。</param>
@@ -394,7 +383,7 @@ namespace RPG.Character
             cameraResolveCoroutine = StartCoroutine(ResolveMainCameraWhenAvailable());
         }
 
-        /// <summary>每隔短暂间隔检查 MainCamera 是否已由场景或相机系统创建。</summary>
+        /// <summary>摄像机缺失时低频检查 MainCamera 是否已恢复可用。</summary>
         /// <returns>等待主摄像机恢复的协程。</returns>
         private IEnumerator ResolveMainCameraWhenAvailable()
         {
@@ -406,6 +395,10 @@ namespace RPG.Character
             }
             cameraResolveCoroutine = null;
         }
+
+        #endregion
+
+        #region 角色切换
 
         /// <summary>在玩家级阻断通过后切换角色。</summary>
         /// <param name="characterId">目标角色标识。</param>

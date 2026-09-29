@@ -23,6 +23,8 @@ namespace RPG.Character.Animation
         [SerializeField] private AnimationLayerProfile profile;
 
         private bool initialized;
+        private bool hitStopPaused;
+        private float speedBeforeHitStop = 1f;
 
         #endregion
 
@@ -131,6 +133,26 @@ namespace RPG.Character.Animation
         #endregion
 
         #region 层控制
+
+        /// <summary>暂停或恢复 Animancer Graph，并保留卡帧前的图级播放倍率。</summary>
+        /// <param name="paused">是否局部暂停本角色全部动画层。</param>
+        public void SetHitStopPaused(bool paused)
+        {
+            InitializeIfNeeded();
+            if (hitStopPaused == paused) return;
+
+            if (paused)
+            {
+                speedBeforeHitStop = animancer.Graph.Speed;
+                animancer.Graph.Speed = 0f;
+            }
+            else
+            {
+                animancer.Graph.Speed = speedBeforeHitStop;
+            }
+            hitStopPaused = paused;
+            Debug.Log($"[AnimationController] 角色 '{name}' {(paused ? "暂停" : "恢复")}动画图，graphSpeed={animancer.Graph.Speed:F2}。", this);
+        }
 
         /// <summary>
         /// 将指定固定层平滑调整到目标权重，但保留该层当前状态及播放进度。

@@ -1,4 +1,6 @@
 using WS_Modules.Singleton;
+using System;
+using System.Collections.Generic;
 using WS_Modules.GAS.TAG;
 
 namespace WS_Modules.GAS.GameplayCue
@@ -14,7 +16,7 @@ namespace WS_Modules.GAS.GameplayCue
         public GameplayCueDatabase Database => database;
         #endregion
 
-        // SingletonBase 通过反射创建实例，保持与 GameplayTagManager 一致。
+        /// <summary>构造空 Manager；SingletonBase 负责通过反射创建唯一实例。</summary>
         private GameplayCueManager()
         {
         }
@@ -24,8 +26,11 @@ namespace WS_Modules.GAS.GameplayCue
         /// <param name="cueDatabase">项目当前使用的 CueDatabase。</param>
         public void Initialize(GameplayCueDatabase cueDatabase)
         {
+            if (cueDatabase == null) throw new ArgumentNullException(nameof(cueDatabase));
             database = cueDatabase;
-            database?.BuildRuntimeIndex();
+            int registeredCueCount = database.BuildRuntimeIndex();
+            WS_Modules.LogModule.WSLog.Log(
+                $"[GameplayCueManager] 已注册 CueDatabase '{database.name}'，Cue={registeredCueCount}，Handler={database.Handlers.Count}。");
         }
 
         /// <summary>清除当前数据库引用，供测试隔离和退出流程使用。</summary>
@@ -43,6 +48,20 @@ namespace WS_Modules.GAS.GameplayCue
             cue = null;
             return false;
         }
+
+        /// <summary>尝试按 CueData 的具体类型获取数据库中的共享 Handler。</summary>
+        /// <param name="dataType">CueData 的具体运行时类型。</param>
+        /// <param name="handler">找到的共享 Handler SO。</param>
+        /// <returns>共享 Handler 已登记时返回 true。</returns>
+        public bool TryGetHandler(Type dataType, out GameplayCueHandlerSO handler)
+        {
+            if (database != null && database.TryGetHandler(dataType, out handler)) return true;
+            handler = null;
+            return false;
+        }
+
+        /// <summary>获取当前数据库登记的 CueData 列表，用于测试和运行时诊断。</summary>
+        public IReadOnlyList<GameplayCueData> Cues => database?.Cues;
         #endregion
     }
 }

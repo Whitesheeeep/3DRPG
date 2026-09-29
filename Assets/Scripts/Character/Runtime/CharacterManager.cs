@@ -107,8 +107,10 @@ namespace RPG.Character
                     throw new InvalidOperationException("[CharacterManager] 未配置初始 CharacterId。");
 
                 bool hasConfiguredParty = false;
+                // 如果当前已有 Party 存档，则不覆盖；否则按配置创建初始队伍。
                 if (partyManager.Party != null)
                 {
+                    // 校验当前 Party 是否有有效角色，避免空新档在发现重复角色后留下部分已获得实例。
                     IReadOnlyList<CharacterId> restoredPartyIds = partyManager.CreateSnapshot();
                     for (int slotIndex = 0; slotIndex < restoredPartyIds.Count; slotIndex++)
                         hasConfiguredParty |= restoredPartyIds[slotIndex].IsValid;
@@ -368,6 +370,7 @@ namespace RPG.Character
             if (!IsReady) return;
             if (inputRequests == null) throw new ArgumentNullException(nameof(inputRequests));
             CharacterActor active = ActiveCharacter ?? throw new InvalidOperationException("[CharacterManager] Ready 状态缺少 ActiveCharacter。");
+            if (active.IsActionPaused) return;
             // Action Arbiter 必须先于 Locomotion Tick；Jump 取消 GA 后，本帧原有 FSM Transition 即可提交目标路径。
             active.AdvanceActionFrame(inputRequests, deltaTime);
             active.Locomotion.Tick(deltaTime);
@@ -380,6 +383,7 @@ namespace RPG.Character
         {
             if (!IsReady) return false;
             CharacterActor active = ActiveCharacter ?? throw new InvalidOperationException("[CharacterManager] Ready 状态缺少 ActiveCharacter。");
+            if (active.IsActionPaused) return false;
             active.FixedTickAbility(fixedDeltaTime);
             active.Locomotion.FixedTick(fixedDeltaTime);
             return true;
@@ -392,7 +396,7 @@ namespace RPG.Character
             if (!IsReady) return;
             for (int index = 0; index < characters.Count; index++) characters[index].LateTickAbility(deltaTime);
             CharacterActor active = ActiveCharacter ?? throw new InvalidOperationException("[CharacterManager] Ready 状态缺少 ActiveCharacter。");
-            active.Locomotion.LateTick(deltaTime);
+            if (!active.IsActionPaused) active.Locomotion.LateTick(deltaTime);
         }
 
         /// <summary>处理角色槽位输入；Loading/Failed 阶段不消费缓冲请求。</summary>
@@ -421,7 +425,7 @@ namespace RPG.Character
         /// <returns>角色阶段实际推进时返回 true。</returns>
         internal bool TryAdvanceAnimatorStep(CharacterActor source, Vector3 deltaPosition, Quaternion deltaRotation, float evaluationDeltaTime)
         {
-            if (!IsReady || !ReferenceEquals(source, ActiveCharacter)) return false;
+            if (!IsReady || !ReferenceEquals(source, ActiveCharacter) || source.IsActionPaused) return false;
             source.UpdateAnimationMoveAbility(deltaPosition, deltaRotation);
             source.Locomotion.UpdateAnimationMove(deltaPosition, deltaRotation, evaluationDeltaTime);
             return true;

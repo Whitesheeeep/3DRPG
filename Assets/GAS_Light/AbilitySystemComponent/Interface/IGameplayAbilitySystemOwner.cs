@@ -28,5 +28,11 @@ namespace WS_Modules.GAS.AbilitySystemComponent
 
         /// <summary>获取宿主用于登记 FullBody Ability 生命周期和转换窗口的动作仲裁接口。</summary>
         IFullBodyActionArbiter FullBodyActionArbiter { get; }
+
+        /// <summary>判断宿主是否局部暂停 GA 动作推进；GE 与冷却仍由 ASC 正常更新。</summary>
+        bool IsActionPaused { get; }
+
+        /// <summary>判断 HitStop 是否在当前 Unity 帧首次生效或延长，以完成已排队的 LateUpdate 命中批次。</summary>
+        bool IsActionPauseAppliedThisFrame { get; }
     }
 }

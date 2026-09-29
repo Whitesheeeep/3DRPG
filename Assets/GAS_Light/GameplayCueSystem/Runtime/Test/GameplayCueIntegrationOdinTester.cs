@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using RPG.Character.Combat;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using WS_Modules;
@@ -60,6 +61,13 @@ namespace WS_Modules.GAS.GameplayCue
 
         [SerializeField, AssetsOnly, Required]
         private GameplayAbilityData projectileAbility;
+
+        [Title("战斗命中 Cue")]
+        [SerializeField, AssetsOnly, Required]
+        private HitStopCueData hitStopCueData;
+
+        [SerializeField, AssetsOnly, Required]
+        private HitSoundCueData hitSoundCueData;
 
         [Title("GE CueTag")]
         [SerializeField]
@@ -250,6 +258,13 @@ namespace WS_Modules.GAS.GameplayCue
             StartScenario("GE/GA/Cue 完整测试", RunFullCueScenario);
         }
 
+        /// <summary>通过 ASC 请求验证共享 HitStop 与 HitSound Handler 的命中 Execute 行为。</summary>
+        [Button("命中 Cue：卡帧与音效", ButtonSizes.Medium)]
+        public void TestCombatHitCues()
+        {
+            StartScenario("HitStop/HitSound", RunCombatHitCueScenario);
+        }
+
         /// <summary>停止当前协程并清理本测试器创建的 GE、GA 和 Cue Runtime。</summary>
         [Button("清理集成测试", ButtonSizes.Medium)]
         public void CleanupIntegrationTest()
@@ -268,6 +283,114 @@ namespace WS_Modules.GAS.GameplayCue
             yield return RunGameplayEffectCueScenario();
             CleanupOwnedRuntime();
             yield return RunGameplayAbilityCueScenario();
+        }
+
+        /// <summary>发布战斗命中 Cue，检查双方立即暂停并在未缩放截止时间后恢复。</summary>
+        private IEnumerator RunCombatHitCueScenario()
+        {
+            if (!IsCueDataRegistered("Hit Stop", hitStopCueData) ||
+                !IsCueDataRegistered("Hit Sound", hitSoundCueData))
+                yield break;
+
+            bool actorOwnersValid = source.Owner is IHitStopReceiver && target.Owner is IHitStopReceiver;
+            Check("命中 Cue Actor Owner", actorOwnersValid,
+                actorOwnersValid ? "Source/Target 均实现 IHitStopReceiver。" : "HitStop 需要可接收局部暂停的 Owner。");
+            if (!actorOwnersValid) yield break;
+
+            GameplayCueLocalProbeHandler localProbe = FindLocalProbeHandler(target);
+            bool localHandlerConfigured = localProbe != null;
+            Check("ASC 本地 Handler 配置", localHandlerConfigured,
+                localHandlerConfigured ? "Target ASC 已配置关注 HitStop Tag 的测试 Handler。" : "Target ASC 缺少本地 HitStop Handler。");
+            if (!localHandlerConfigured) yield break;
+            int localExecuteCountBefore = localProbe.ExecuteCount;
+
+            Vector3 hitPoint = Vector3.Lerp(source.transform.position, target.transform.position, 0.5f);
+            float durationSeconds = hitStopCueData.DurationMilliseconds / 1000f;
+            float originalTimeScale = Time.timeScale;
+            try
+            {
+                // 真实时间计时应在全局缩放暂停时仍到期；连续命中随后必须把双方截止点延长。
+                Time.timeScale = 0f;
+                target.PublishGameplayCue(new GameplayCueRequest(
+                    hitStopCueData.CueTag,
+                    GameplayCueEventType.Execute,
+                    source,
+                    target,
+                    effectRuntime: null,
+                    abilityRuntime: null,
+                    position: hitPoint,
+                    rotation: Quaternion.identity));
+                Check("HitStop 命中后暂停双方",
+                    source.Owner.IsActionPaused && target.Owner.IsActionPaused,
+                    $"Source={source.Owner.IsActionPaused}, Target={target.Owner.IsActionPaused}");
+                Check("共享与 ASC 本地 Handler 同时执行",
+                    localProbe.ExecuteCount == localExecuteCountBefore + 1,
+                    $"LocalExecuteCount={localProbe.ExecuteCount}, Before={localExecuteCountBefore}");
+
+                target.PublishGameplayCue(new GameplayCueRequest(
+                    hitSoundCueData.CueTag,
+                    GameplayCueEventType.Execute,
+                    source,
+                    target,
+                    effectRuntime: null,
+                    abilityRuntime: null,
+                    position: hitPoint,
+                    rotation: Quaternion.identity));
+                Report("HitSound Execute", true, $"已通过 AudioManager 请求 Key={hitSoundCueData.AudioKey}");
+
+                yield return new WaitForSecondsRealtime(durationSeconds * 0.5f);
+                target.PublishGameplayCue(new GameplayCueRequest(
+                    hitStopCueData.CueTag,
+                    GameplayCueEventType.Execute,
+                    source,
+                    target,
+                    effectRuntime: null,
+                    abilityRuntime: null,
+                    position: hitPoint,
+                    rotation: Quaternion.identity));
+                yield return new WaitForSecondsRealtime(durationSeconds * 0.6f);
+                Check("连续命中延长卡帧",
+                    source.Owner.IsActionPaused && target.Owner.IsActionPaused &&
+                    localProbe.ExecuteCount == localExecuteCountBefore + 2,
+                    $"Source={source.Owner.IsActionPaused}, Target={target.Owner.IsActionPaused}, " +
+                    $"LocalExecuteCount={localProbe.ExecuteCount}");
+
+                yield return new WaitForSecondsRealtime(durationSeconds + 0.1f);
+                Check("未缩放截止时间后恢复双方",
+                    !source.Owner.IsActionPaused && !target.Owner.IsActionPaused,
+                    $"Source={source.Owner.IsActionPaused}, Target={target.Owner.IsActionPaused}");
+            }
+            finally
+            {
+                Time.timeScale = originalTimeScale;
+            }
+        }
+
+        /// <summary>找到当前 Target ASC 上用于检查同 Tag 双路分发的测试 Handler。</summary>
+        /// <param name="asc">需要检查本地 Handler 列表的目标 ASC。</param>
+        /// <returns>已绑定的测试 Handler；未配置时返回空引用。</returns>
+        private static GameplayCueLocalProbeHandler FindLocalProbeHandler(GameplayAbilitySystemComponent asc)
+        {
+            IReadOnlyList<ASCGameplayCueHandler> handlers = asc.LocalCueHandlers;
+            for (int index = 0; index < handlers.Count; index++)
+                if (handlers[index] is GameplayCueLocalProbeHandler localProbe)
+                    return localProbe;
+            return null;
+        }
+
+        /// <summary>确认测试 CueData 的标签已 Bake 且数据库精确映射到同一资产。</summary>
+        /// <param name="label">测试报告使用的 Cue 名称。</param>
+        /// <param name="cueData">待校验的 CueData。</param>
+        /// <returns>配置、Tag Database 和 Cue Database 映射均有效时返回 true。</returns>
+        private bool IsCueDataRegistered(string label, GameplayCueData cueData)
+        {
+            bool valid = cueData != null && cueData.CueTag.IsValid &&
+                         GameplayTagManager.Instance.IsValidTag(cueData.CueTag) &&
+                         GameplayCueManager.Instance.TryGetCue(cueData.CueTag, out GameplayCueData mapped) &&
+                         ReferenceEquals(mapped, cueData);
+            Report($"{label} CueData", valid,
+                valid ? $"Tag={cueData.CueTag}" : "CueData 未配置、未 Bake 或未注册到 Cue Database。");
+            return valid;
         }
 
         /// <summary>验证 Instant、Duration、Infinite 和 Periodic GE 的结算与 Cue 生命周期。</summary>
@@ -582,7 +705,8 @@ namespace WS_Modules.GAS.GameplayCue
 
             bool declared = declaredTags != null && ContainsTag(declaredTags, expectedTag);
             Report($"{label} 资产 CueTags", declared, declared ? "已声明" : $"资产未声明 {expectedTag}。");
-            if (cueData.FallbackPrefab != null && cueData.FallbackPrefab.GetComponentInChildren<GameplayCueVisualProbeBehaviour>() == null)
+            if (cueData is VisualGameplayCueData visualCueData && visualCueData.FallbackPrefab != null &&
+                visualCueData.FallbackPrefab.GetComponentInChildren<GameplayCueVisualProbeBehaviour>() == null)
                 Debug.LogWarning($"[GAS Cue Integration][Warning] CueData '{cueData.name}' 的 Fallback Prefab 没有 GameplayCueVisualProbeBehaviour，无法记录可视化回调。", cueData);
             return declared;
         }
@@ -625,6 +749,12 @@ namespace WS_Modules.GAS.GameplayCue
         /// <returns>两个 ASC 都可用于测试时返回 true。</returns>
         private bool TryPrepareActors()
         {
+            // GASTest 中纯 GAS Actor 默认关闭，避免平时参与场景运行；执行测试时先激活以创建 ASC Owner。
+            if (sourceActor != null && !sourceActor.activeSelf)
+                sourceActor.SetActive(true);
+            if (targetActor != null && !targetActor.activeSelf)
+                targetActor.SetActive(true);
+
             source = sourceActor == null ? null : sourceActor.GetComponent<GameplayAbilitySystemComponent>();
             target = targetActor == null ? null : targetActor.GetComponent<GameplayAbilitySystemComponent>();
             bool valid = source != null && target != null && !ReferenceEquals(source, target);
@@ -878,6 +1008,36 @@ namespace WS_Modules.GAS.GameplayCue
                 yield return null;
             }
             waitResult = condition();
+        }
+
+        #endregion
+    }
+
+    /// <summary>记录本地 ASC Handler 收到的 Execute 次数，用于验证共享与本地 Handler 并行分发。</summary>
+    [Serializable]
+    public sealed class GameplayCueLocalProbeHandler : ASCGameplayCueHandler
+    {
+        #region 状态
+
+        [NonSerialized] private int executeCount;
+
+        #endregion
+
+        #region 查询与 Cue 执行
+
+        /// <summary>获取当前 Play Mode 累计接收的 Execute 数量。</summary>
+        public int ExecuteCount => executeCount;
+
+        /// <summary>收到关注 Tag 的请求时增加计数，供集成测试验证本地分发。</summary>
+        /// <param name="data">本次命中的 CueData。</param>
+        /// <param name="request">命中来源与目标信息。</param>
+        /// <param name="controller">目标 ASC 的 Cue Controller。</param>
+        public override void Execute(GameplayCueData data, GameplayCueRequest request, GameplayCueCtrl controller)
+        {
+            executeCount++;
+            Debug.Log(
+                $"[GameplayCueLocalProbeHandler] 收到本地 Execute，Tag={request.CueTag}，Count={executeCount}。",
+                request.Target);
         }
 
         #endregion

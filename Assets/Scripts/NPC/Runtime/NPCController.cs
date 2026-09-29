@@ -96,6 +96,13 @@ namespace RPG.NPC
             try
             {
                 abilitySystemComponent.Tick(Time.deltaTime);
+                if (actor.IsActionPaused)
+                {
+                    // HitStop 冻结动作位移结算，避免暂停前提交的瞬时请求跨帧应用。
+                    motionDriver.ClearTransientRequests();
+                    return;
+                }
+
                 locomotion.Tick();
                 motionDriver.ResolveUpdateMotion();
             }
@@ -111,6 +118,7 @@ namespace RPG.NPC
         {
             if (!initialized)
                 return;
+            if (actor.IsActionPaused) return;
 
             try
             {
@@ -131,7 +139,7 @@ namespace RPG.NPC
             if (!initialized)
                 return;
             abilitySystemComponent.LateTick(Time.deltaTime);
-            locomotion.LateTick();
+            if (!actor.IsActionPaused) locomotion.LateTick();
         }
 
         /// <summary>释放动作占据与仍属于 NPC 的运动控制权。</summary>
@@ -289,7 +297,8 @@ namespace RPG.NPC
         /// <param name="deltaRotation">Animator 本次根旋转。</param>
         internal void ProcessAnimatorMotion(Vector3 deltaPosition, Quaternion deltaRotation)
         {
-            if (!initialized || !isActiveAndEnabled || lastAnimatorMoveFrame == Time.frameCount)
+            if (!initialized || !isActiveAndEnabled || actor.IsActionPaused ||
+                lastAnimatorMoveFrame == Time.frameCount)
                 return;
 
             try

@@ -8,6 +8,12 @@ namespace WS_Modules.GAS.Generated
     {
         /// <summary>CueTest</summary>
         public static readonly GameplayTag Tag_CueTest = new GameplayTag(112);
+        /// <summary>CueTest.Combat</summary>
+        public static readonly GameplayTag Tag_CueTest_Combat = new GameplayTag(186);
+        /// <summary>CueTest.Combat.HitSound</summary>
+        public static readonly GameplayTag Tag_CueTest_Combat_HitSound = new GameplayTag(188);
+        /// <summary>CueTest.Combat.HitStop</summary>
+        public static readonly GameplayTag Tag_CueTest_Combat_HitStop = new GameplayTag(187);
         /// <summary>CueTest.Cue_Follow</summary>
         public static readonly GameplayTag Tag_CueTest_Cue_Follow = new GameplayTag(116);
         /// <summary>CueTest.Cue_Source</summary>

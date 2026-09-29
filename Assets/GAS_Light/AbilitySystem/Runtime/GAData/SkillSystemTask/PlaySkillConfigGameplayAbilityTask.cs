@@ -291,15 +291,41 @@ namespace RPG.SkillSystem
                 if (applicationResult.ActiveEffect != null)
                     GARuntime.RetainOwnedEffect(applicationResult.ActiveEffect);
             }
-            GARuntime.Data.PublishConfiguredCues(
-                GameplayCueEventType.Execute,
-                GARuntime.SourceASC,
-                target,
-                abilityRuntime: GARuntime,
-                position: args.Point,
-                rotation: Quaternion.identity,
-                effectSpec: lastApplicationResult?.Spec,
-                applicationResult: lastApplicationResult);
+
+            // 命中 Cue 表示一次有效攻击检测；GE 被免疫或拒绝时也必须发布。GA 与 Clip 标签合并后按 Tag 去重。
+            var publishedCueTagSet = new HashSet<GameplayTag>();
+            PublishHitCueTags(GARuntime.Data.CueTags, args, target, lastApplicationResult, publishedCueTagSet);
+            PublishHitCueTags(args.Clip.CueTags, args, target, lastApplicationResult, publishedCueTagSet);
+        }
+
+        /// <summary>发布单个配置来源中尚未发布的命中 Execute CueTag。</summary>
+        /// <param name="cueTags">GA 或攻击检测 Clip 配置的标签列表。</param>
+        /// <param name="args">当前命中点与目标信息。</param>
+        /// <param name="target">接收 Cue 的目标 ASC。</param>
+        /// <param name="applicationResult">本次命中最后一次成功的 GE 应用结果。</param>
+        /// <param name="publishedCueTagSet">当前命中已发布的精确 Tag 集合。</param>
+        private void PublishHitCueTags(IReadOnlyList<GameplayTag> cueTags, SkillHitEventArgs args,
+            GameplayAbilitySystemComponent target, GameplayEffectApplicationResult applicationResult,
+            HashSet<GameplayTag> publishedCueTagSet)
+        {
+            for (int index = 0; index < cueTags.Count; index++)
+            {
+                GameplayTag cueTag = cueTags[index];
+                if (!publishedCueTagSet.Add(cueTag)) continue;
+
+                target.PublishGameplayCue(new GameplayCueRequest(
+                    cueTag,
+                    GameplayCueEventType.Execute,
+                    GARuntime.SourceASC,
+                    target,
+                    effectRuntime: null,
+                    abilityRuntime: GARuntime,
+                    position: args.Point,
+                    rotation: Quaternion.identity,
+                    attachTransform: null,
+                    effectSpec: applicationResult?.Spec,
+                    applicationResult: applicationResult));
+            }
         }
 
         /// <summary>将当前 SkillConfig 的 Projectile 发射事件转换为带有 GA 快照的池化投射物生成。</summary>

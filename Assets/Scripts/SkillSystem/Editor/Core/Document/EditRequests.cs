@@ -246,13 +246,21 @@ namespace RPG.SkillSystem.Editor
         public MarkerKey MarkerKey { get; }
         public AttackDetectionFollowMode FollowMode { get; }
         public AttackDetectionDataBase DetectionData { get; }
+        public IReadOnlyList<GameplayTag> CueTags { get; }
 
-        /// <summary>
-        /// 创建攻击检测编辑请求，并复制 managed reference 数据以隔离 Inspector 临时状态。
-        /// </summary>
+        /// <summary>创建攻击检测编辑请求，并复制多态数据与 CueTag 快照以隔离 Inspector 临时状态。</summary>
+        /// <param name="startFrame">检测半开区间起始帧。</param>
+        /// <param name="durationFrames">检测半开区间持续帧数。</param>
+        /// <param name="sampleIntervalFrames">相邻检测采样帧间隔。</param>
+        /// <param name="detectionId">命中去重分组 ID。</param>
+        /// <param name="markerKey">普通检测区域的绑定 Marker。</param>
+        /// <param name="followMode">检测区域相对绑定点的跟随规则。</param>
+        /// <param name="detectionData">当前具体检测参数。</param>
+        /// <param name="cueTags">有效命中后额外发布的 CueTag 快照。</param>
         public AttackDetectionEditRequest(int startFrame, int durationFrames,
             int sampleIntervalFrames, int detectionId, MarkerKey markerKey,
-            AttackDetectionFollowMode followMode, AttackDetectionDataBase detectionData)
+            AttackDetectionFollowMode followMode, AttackDetectionDataBase detectionData,
+            IReadOnlyList<GameplayTag> cueTags)
         {
             StartFrame = startFrame;
             DurationFrames = durationFrames;
@@ -261,6 +269,10 @@ namespace RPG.SkillSystem.Editor
             MarkerKey = markerKey;
             FollowMode = followMode;
             DetectionData = AttackDetectionDataBase.Copy(detectionData);
+            var copiedCueTags = new GameplayTag[cueTags?.Count ?? 0];
+            for (int index = 0; index < copiedCueTags.Length; index++)
+                copiedCueTags[index] = cueTags[index];
+            CueTags = copiedCueTags;
         }
     }
 

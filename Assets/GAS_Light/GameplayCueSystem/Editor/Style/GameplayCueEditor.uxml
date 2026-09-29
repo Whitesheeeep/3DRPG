@@ -19,6 +19,8 @@
                 <ui:ListView name="CueList" class="cue-list" />
             </ui:VisualElement>
             <ui:ScrollView name="DetailsScroll" class="cue-details-scroll">
+                <ui:Label text="Shared Handler Registrations" class="cue-details-title" />
+                <ui:VisualElement name="HandlersHost" class="cue-handlers-host" />
                 <ui:VisualElement name="DetailsHost" class="cue-details-host" />
                 <ui:VisualElement name="ValidationHost" class="cue-validation-host" />
             </ui:ScrollView>

@@ -7,6 +7,7 @@ using UnityEngine;
 using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.TAG;
 using WS_Modules.Pooling;
+using RPG.Character.Combat;
 
 namespace WS_Modules.GAS.Editor
 {
@@ -80,12 +81,14 @@ namespace WS_Modules.GAS.Editor
 
         /// <summary>创建 CueData 并自动注册到当前 Database。</summary>
         /// <param name="database">目标数据库。</param>
+        /// <param name="cueDataType">需要创建的具体 CueData 类型。</param>
         /// <param name="assetPath">项目内目标路径。</param>
         /// <param name="cue">创建的 CueData。</param>
         /// <param name="error">失败原因。</param>
         /// <returns>创建成功时返回 true。</returns>
         public bool TryCreateCue(
             GameplayCueDatabase database,
+            Type cueDataType,
             string assetPath,
             out GameplayCueData cue,
             out string error)
@@ -103,8 +106,19 @@ namespace WS_Modules.GAS.Editor
                 return false;
             }
 
+            if (cueDataType == null || cueDataType.IsAbstract || !typeof(GameplayCueData).IsAssignableFrom(cueDataType))
+            {
+                error = "请选择一个具体的 GameplayCueData 类型。";
+                return false;
+            }
+
             string uniquePath = AssetDatabase.GenerateUniqueAssetPath(assetPath);
-            GameplayCueData createdCue = ScriptableObject.CreateInstance<GameplayCueData>();
+            GameplayCueData createdCue = ScriptableObject.CreateInstance(cueDataType) as GameplayCueData;
+            if (createdCue == null)
+            {
+                error = $"无法创建 CueData 类型：{cueDataType.FullName}。";
+                return false;
+            }
             cue = createdCue;
             int undoGroup = Undo.GetCurrentGroup();
             Undo.SetCurrentGroupName("创建 Gameplay Cue");
@@ -301,15 +315,15 @@ namespace WS_Modules.GAS.Editor
             if (cue != null) EditorGUIUtility.PingObject(cue);
         }
 
-        /// <summary>在 Project 窗口定位 Fallback Prefab。</summary>
+        /// <summary>在 Project 窗口定位 Visual Cue 的 Fallback Prefab。</summary>
         /// <param name="cue">目标 CueData。</param>
         public void PingPrefab(GameplayCueData cue)
         {
-            if (cue == null) return;
+            if (cue is not VisualGameplayCueData visualCue) return;
 
             try
             {
-                GameObject fallbackPrefab = cue.FallbackPrefab;
+                GameObject fallbackPrefab = visualCue.FallbackPrefab;
                 if (fallbackPrefab != null) EditorGUIUtility.PingObject(fallbackPrefab);
             }
             catch (MissingReferenceException)
@@ -386,6 +400,8 @@ namespace WS_Modules.GAS.Editor
                 ValidateCue(cue, issues);
             }
 
+            ValidateHandlerRegistrations(database, cues, issues);
+
             return issues;
         }
 
@@ -393,13 +409,35 @@ namespace WS_Modules.GAS.Editor
 
         #region 内部辅助
 
-        /// <summary>校验 CueData 的资源边界和可回收表现组件，不加载 Addressable 或生成对象。</summary>
+        /// <summary>按 CueData 具体类型校验配置，不加载 Addressable 或生成表现对象。</summary>
         /// <param name="cue">待校验的 CueData。</param>
         /// <param name="issues">接收校验问题的集合。</param>
         private static void ValidateCue(
             GameplayCueData cue,
             ICollection<GameplayCueValidationIssue> issues)
         {
+            if (cue is HitStopCueData hitStopCue)
+            {
+                if (hitStopCue.DurationMilliseconds < 1)
+                    issues.Add(Error(cue, "卡帧时长必须至少为 1 毫秒。"));
+                return;
+            }
+
+            if (cue is HitSoundCueData hitSoundCue)
+            {
+                if (string.IsNullOrWhiteSpace(hitSoundCue.AudioKey))
+                    issues.Add(Error(cue, "命中音效必须配置音频资源 Key。"));
+                if (hitSoundCue.Volume < 0f || float.IsNaN(hitSoundCue.Volume) || float.IsInfinity(hitSoundCue.Volume))
+                    issues.Add(Error(cue, "命中音效音量必须是有限非负数。"));
+                return;
+            }
+
+            if (cue is not VisualGameplayCueData visualCue)
+            {
+                issues.Add(Error(cue, $"未支持的 CueData 类型：{cue.GetType().FullName}。"));
+                return;
+            }
+
             bool hasFallbackPrefab = false;
             bool hasBehaviour = false;
             bool hasPoolIdentity = false;
@@ -408,7 +446,7 @@ namespace WS_Modules.GAS.Editor
             bool invalidPrefabReference = false;
             try
             {
-                GameObject fallbackPrefab = cue.FallbackPrefab;
+                GameObject fallbackPrefab = visualCue.FallbackPrefab;
                 hasFallbackPrefab = fallbackPrefab != null;
                 if (hasFallbackPrefab)
                 {
@@ -419,8 +457,8 @@ namespace WS_Modules.GAS.Editor
                     poolKeyMissing = hasPoolIdentity && string.IsNullOrWhiteSpace(poolable.Key);
                     poolKeyMismatch = hasPoolIdentity &&
                                       !poolKeyMissing &&
-                                      !string.IsNullOrWhiteSpace(cue.AddressableKey) &&
-                                      poolable.Key != cue.AddressableKey;
+                                      !string.IsNullOrWhiteSpace(visualCue.AddressableKey) &&
+                                      poolable.Key != visualCue.AddressableKey;
                 }
             }
             catch (MissingReferenceException)
@@ -429,7 +467,7 @@ namespace WS_Modules.GAS.Editor
                 issues.Add(Error(cue, "Fallback Prefab 引用已失效，请重新指定或清空该字段。"));
             }
 
-            if (string.IsNullOrWhiteSpace(cue.AddressableKey) && !hasFallbackPrefab && !invalidPrefabReference)
+            if (string.IsNullOrWhiteSpace(visualCue.AddressableKey) && !hasFallbackPrefab && !invalidPrefabReference)
                 issues.Add(Error(cue, "必须配置 Addressable Key 或 Fallback Prefab。"));
 
             if (!invalidPrefabReference && hasFallbackPrefab && !hasBehaviour)
@@ -442,16 +480,55 @@ namespace WS_Modules.GAS.Editor
             else if (!invalidPrefabReference && hasFallbackPrefab && poolKeyMismatch)
                 issues.Add(Error(
                     cue,
-                    $"Fallback Prefab Key 与 Addressable Key '{cue.AddressableKey}' 不一致。"));
+                    $"Fallback Prefab Key 与 Addressable Key '{visualCue.AddressableKey}' 不一致。"));
 
-            if (ContainsInvalid(cue.LocalPosition) || ContainsInvalid(cue.LocalRotation.eulerAngles))
+            if (ContainsInvalid(visualCue.LocalPosition) || ContainsInvalid(visualCue.LocalRotation.eulerAngles))
                 issues.Add(Error(cue, "位置或旋转偏移包含 NaN/Infinity。"));
 
-            if (!string.IsNullOrWhiteSpace(cue.AddressableKey) && !hasFallbackPrefab && !invalidPrefabReference)
+            if (!string.IsNullOrWhiteSpace(visualCue.AddressableKey) && !hasFallbackPrefab && !invalidPrefabReference)
                 issues.Add(new GameplayCueValidationIssue(
                     GameplayCueValidationSeverity.Info,
                     cue,
                     "仅配置 Addressable Key，编辑器不会验证远端资源是否存在。"));
+        }
+
+        /// <summary>校验共享 Handler 对 CueData 具体类型的一对一注册。</summary>
+        /// <param name="database">待检查的 Cue Database。</param>
+        /// <param name="cues">数据库当前保存的 CueData 列表。</param>
+        /// <param name="issues">接收校验问题的集合。</param>
+        private static void ValidateHandlerRegistrations(GameplayCueDatabase database,
+            IReadOnlyList<GameplayCueData> cues, ICollection<GameplayCueValidationIssue> issues)
+        {
+            // key：CueData 具体类型；value：该类型在当前 Database 中登记的唯一共享 Handler。
+            var handlerByTypeMap = new Dictionary<Type, GameplayCueHandlerSO>();
+            IReadOnlyList<GameplayCueHandlerSO> handlers = database.Handlers ?? Array.Empty<GameplayCueHandlerSO>();
+            for (int index = 0; index < handlers.Count; index++)
+            {
+                GameplayCueHandlerSO handler = handlers[index];
+                if (handler == null)
+                {
+                    issues.Add(Error(null, $"Database 的 Handlers[{index}] 为空。"));
+                    continue;
+                }
+
+                Type dataType = handler.CueDataType;
+                if (dataType == null || dataType.IsAbstract || !typeof(GameplayCueData).IsAssignableFrom(dataType))
+                {
+                    issues.Add(Error(null, $"Handler '{handler.name}' 声明了无效 CueData 类型。"));
+                    continue;
+                }
+                if (!handlerByTypeMap.TryAdd(dataType, handler))
+                    issues.Add(Error(null, $"CueData 类型 '{dataType.Name}' 注册了多个共享 Handler。"));
+            }
+
+            var checkedTypeSet = new HashSet<Type>();
+            for (int index = 0; index < cues.Count; index++)
+            {
+                GameplayCueData cue = cues[index];
+                if (cue == null || !checkedTypeSet.Add(cue.GetType())) continue;
+                if (!handlerByTypeMap.ContainsKey(cue.GetType()))
+                    issues.Add(Error(cue, $"没有为 '{cue.GetType().Name}' 注册共享 Handler。"));
+            }
         }
 
         // 统一创建数据库校验错误，保证问题都能定位到 CueData。

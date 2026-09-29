@@ -88,6 +88,15 @@
     min-width: 0;
 }
 
+.cue-handlers-host {
+    flex-shrink: 0;
+    min-width: 0;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(63, 63, 63);
+}
+
 .cue-validation-host {
     flex-shrink: 0;
     min-width: 0;

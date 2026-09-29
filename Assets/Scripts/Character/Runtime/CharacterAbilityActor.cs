@@ -2,6 +2,7 @@ using System;
 using RPG.Character.Animation;
 using RPG.Markers;
 using RPG.SkillSystem;
+using RPG.Character.Combat;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
@@ -11,7 +12,7 @@ namespace RPG.Character
     /// <summary>为玩家角色和 NPC 角色提供共用的 GAS Owner 能力组件入口。</summary>
     [DisallowMultipleComponent]
     [InfoBox("依赖同节点 Humanoid Animator，以及同节点或子节点中的 ASC、MarkerProvider、SkillRuntimeHost 与 AnimationController。派生角色还需提供空间根节点、MotionDriver 和 FullBody Action Arbiter。")]
-    public abstract class CharacterAbilityActor : MonoBehaviour, IGameplayAbilitySystemOwner
+    public abstract class CharacterAbilityActor : MonoBehaviour, IGameplayAbilitySystemOwner, IHitStopReceiver
     {
         #region 依赖字段
 
@@ -21,6 +22,7 @@ namespace RPG.Character
         [SerializeField] protected MarkerProvider markerProvider;
         [SerializeField] protected SkillRuntimeHost skillRuntimeHost;
         [SerializeField] protected AnimationController animationController;
+        private CharacterHitStopState hitStopState;
 
         #endregion
 
@@ -77,6 +79,12 @@ namespace RPG.Character
         }
 
         /// <inheritdoc />
+        public bool IsActionPaused => hitStopState?.IsActive ?? false;
+
+        /// <inheritdoc />
+        public bool IsActionPauseAppliedThisFrame => hitStopState?.WasAppliedThisFrame ?? false;
+
+        /// <inheritdoc />
         public abstract Transform RootTransform { get; }
 
         /// <inheritdoc />
@@ -84,6 +92,39 @@ namespace RPG.Character
 
         /// <inheritdoc />
         public abstract IFullBodyActionArbiter FullBodyActionArbiter { get; }
+
+        #endregion
+
+        #region 局部暂停
+
+        /// <summary>延长当前角色局部卡帧的未缩放恢复截止时间。</summary>
+        /// <param name="durationSeconds">卡帧持续时间，单位为秒。</param>
+        /// <exception cref="ArgumentOutOfRangeException">时长不是有限正数时抛出。</exception>
+        public void ApplyHitStop(float durationSeconds)
+        {
+            EnsureAbilityDependencies();
+            hitStopState ??= new CharacterHitStopState(this, SetHitStopPaused);
+            hitStopState.Apply(durationSeconds);
+        }
+
+        /// <summary>将角色动画图切换到 HitStop 对应的暂停状态。</summary>
+        /// <param name="paused">是否暂停动画图的动作采样。</param>
+        internal void SetHitStopPaused(bool paused)
+        {
+            if (animationController == null)
+            {
+                // OnDestroy 可能先于子级 AnimationController 销毁，解除暂停时允许跳过已销毁依赖。
+                if (!paused) return;
+                EnsureAbilityDependencies();
+            }
+            animationController.SetHitStopPaused(paused);
+        }
+
+        /// <summary>在派生角色销毁时取消卡帧恢复计时并恢复动画图速度。</summary>
+        protected virtual void OnDestroy()
+        {
+            hitStopState?.Clear();
+        }
 
         #endregion
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
 using WS_Modules.GAS.AttributeSystem;
 using WS_Modules.GAS.GameplayAbilitySystem;
@@ -13,12 +14,25 @@ namespace WS_Modules.GAS.AbilitySystemComponent
     /// 聚合单个 Owner 的 Attribute、Tag、GE 与 GA 运行时服务。
     /// ASC 不主动更新，由外部 Owner 负责初始化、Tick 和正常清理。
     /// </summary>
+    [InfoBox("依赖同节点或父级中的 IGameplayAbilitySystemOwner；缺失时无法创建 ASC 运行时 Controller。")]
     public sealed class GameplayAbilitySystemComponent : MonoBehaviour
     {
-        #region 字段
+        #region 依赖字段
+
+        // Owner 提供角色空间、扩展能力和暂停状态；Controller 以此 ASC 作为唯一运行时边界。
         private GameplayAbilityCtrl abilityController;
         private GameplayCueCtrl cueController;
+
+        #endregion
+
+        #region 状态与本地 Handler 配置
+
+        // 状态
         private bool initialized;
+
+        // ASC 本地 Handler 配置
+        [SerializeReference, Tooltip("仅由当前 ASC 实例拥有的 Cue Handler，可按 CueTag 精确处理本地响应。")]
+        private List<ASCGameplayCueHandler> localCueHandlers = new();
         #endregion
 
         #region 属性
@@ -42,6 +56,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
 
         /// <summary>获取当前 ASC 的 GameplayCue 控制器。</summary>
         public IGameplayCueCtrl Cues { get; private set; }
+
+        /// <summary>获取仅属于当前 ASC 的本地 Cue Handler 配置。</summary>
+        public IReadOnlyList<ASCGameplayCueHandler> LocalCueHandlers => localCueHandlers;
 
         /// <summary>获取当前 Target ASC 上 Active GE 的只读列表。</summary>
         public IReadOnlyList<GameEffectRuntime> ActiveEffects => GameEffectCtrl.ActiveEffects;
@@ -96,7 +113,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         #endregion
 
         #region Unity 生命周期
-        // 创建运行时容器与 Controller，但不导入任何作者配置。
+        /// <summary>创建 ASC 运行时容器与 Controller，但不导入作者配置。</summary>
         private void Awake()
         {
             // Owner 必须在 ASC 建立 Controller 前解析，后续 Ability 与 Cue 只能通过该契约访问宿主。
@@ -115,14 +132,16 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             Abilities = abilityController;
             cueController = new GameplayCueCtrl(this);
             Cues = cueController;
+            Debug.Log($"[ASC] '{name}' 已创建 Attribute、Tag、GE、GA 与 Cue 运行时容器。", this);
         }
 
-        // 组件销毁时释放 Tick 注册、Active GA、GE 和容器运行状态。
+        /// <summary>销毁时释放 Active GA、GE、Cue Handler 和容器运行状态。</summary>
         private void OnDestroy()
         {
             if (MutableAttributes != null) MutableAttributes.AttributeChanged -= HandleAttributeChanged;
             Clear();
             cueController.Dispose();
+            Debug.Log($"[ASC] '{name}' 已销毁并清理运行时状态。", this);
         }
 
         /// <summary>把容器 CurrentValue 事件转发给角色运行时同步层。</summary>
@@ -201,6 +220,16 @@ namespace WS_Modules.GAS.AbilitySystemComponent
 
             abilityController.InitializeActivationBlockedTags(blockedOwnerTags);
             initialized = true;
+            try
+            {
+                cueController.BindLocalHandlers();
+            }
+            catch
+            {
+                // 本地 Handler 的绑定失败意味着 ASC 未完成初始化；Clear 会对称释放前置容器状态。
+                Clear();
+                throw;
+            }
             return true;
         }
 
@@ -238,6 +267,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             abilityController.Clear();
             GameEffectCtrl.Clear();
             cueController.Clear();
+            cueController.UnbindLocalHandlers();
             MutableTags.Reset();
             MutableAttributes.Clear();
             initialized = false;
@@ -250,20 +280,31 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         public void Tick(float deltaTime)
         {
             GameEffectCtrl.Tick(deltaTime);
-            abilityController.Tick(deltaTime);
+            // GE 与冷却按常规时间继续更新；HitStop 只冻结宿主动作与 GA 推进。
+            if (!Owner.IsActionPaused) abilityController.Tick(deltaTime);
         }
 
         /// <summary>推进当前 ASC 的 GA 固定更新阶段，不更新 GE。</summary>
         /// <param name="fixedDeltaTime">本次固定更新的秒数。</param>
-        public void FixedTick(float fixedDeltaTime) => abilityController.FixedTick(fixedDeltaTime);
+        public void FixedTick(float fixedDeltaTime)
+        {
+            if (!Owner.IsActionPaused) abilityController.FixedTick(fixedDeltaTime);
+        }
 
         /// <summary>推进当前 ASC 的 GA 延迟更新阶段，不更新 GE。</summary>
         /// <param name="deltaTime">本次延迟更新使用的秒数。</param>
-        public void LateTick(float deltaTime) => abilityController.LateTick(deltaTime);
+        public void LateTick(float deltaTime)
+        {
+            // HitStop 当帧仍排空已提交检测批次；从下一帧开始拦截后续动作时间轴推进。
+            if (!Owner.IsActionPaused || Owner.IsActionPauseAppliedThisFrame)
+                abilityController.LateTick(deltaTime);
+        }
 
         /// <summary>在 Animator 完成当前帧求值后，将根运动处理阶段转发给 Active GA。</summary>
-        public void UpdateAnimationMove(Vector3 deltaPosition, Quaternion deltaRotation) =>
-            abilityController.UpdateAnimationMove(deltaPosition, deltaRotation);
+        public void UpdateAnimationMove(Vector3 deltaPosition, Quaternion deltaRotation)
+        {
+            if (!Owner.IsActionPaused) abilityController.UpdateAnimationMove(deltaPosition, deltaRotation);
+        }
         #endregion
 
         #region 只读快捷查询
@@ -435,7 +476,8 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         #endregion
 
         #region Ability 内部入口
-        // 仅允许当前 ASC 内部发布 Cue 请求，Controller 负责消费和对象池生命周期。
+        /// <summary>向当前 ASC 的 Cue Controller 发布内部 Cue 请求。</summary>
+        /// <param name="request">包含 Tag、事件、来源、目标和命中空间信息的请求。</param>
         internal void PublishGameplayCue(GameplayCueRequest request) => CueRequested?.Invoke(request);
         #endregion
 

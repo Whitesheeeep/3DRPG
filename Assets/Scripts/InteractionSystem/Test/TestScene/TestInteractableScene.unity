@@ -960,6 +960,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3217963146180904393, guid: f357673d5e17f384fa3c49ff17c7e384, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 8242590249179799947, guid: f357673d5e17f384fa3c49ff17c7e384, type: 3}
       propertyPath: m_Name
       value: WSFrameRoot
