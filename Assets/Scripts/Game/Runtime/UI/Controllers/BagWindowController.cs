@@ -83,6 +83,7 @@ namespace RPG.Game.UI.Controllers
             stateModel.SelectionChanged += HandleSelectionChanged;
             BuildDataSources();
             RegisterButtons();
+            RefreshCategorySelectionVisuals(stateModel.CurrentCategory);
             spriteAtlasLeaseService.Released += HandleAtlasReleased;
             weaponChangedUnregister = EventSystem.Register_Type<WeaponInstanceChangedEvent>(
                 typeof(WeaponInstanceChangedEvent), HandleWeaponChanged);
@@ -163,6 +164,7 @@ namespace RPG.Game.UI.Controllers
             if (disposed) return;
             windowShown = true;
             spriteAtlasLeaseService.CancelRelease();
+            RefreshCategorySelectionVisuals(stateModel.CurrentCategory);
             // 这里再次启动准备是避免不走 OnWindowShown 的打开请求直接显示窗口，导致首次绑定时 Atlas 尚未完成。
             PrepareOpen();
             // 隐藏窗口时会关闭格子交互；重新显示必须在首次绑定前恢复按钮状态。
@@ -343,8 +345,29 @@ namespace RPG.Game.UI.Controllers
         /// <param name="category">新的分类。</param>
         private void HandleCategoryChanged(ItemCategory category)
         {
+            RefreshCategorySelectionVisuals(category);
+            Debug.Log($"[BagWindowController] 分类页签选中状态已切换，category={category}。", this);
             RefreshSortOptions();
             RefreshCurrentCategory(true);
+        }
+
+        /// <summary>根据浏览状态更新分类页签的背景与横条显示。</summary>
+        /// <param name="category">当前分类。</param>
+        private void RefreshCategorySelectionVisuals(ItemCategory category)
+        {
+            int selectedIndex = IndexOfCategory(category);
+            if (selectedIndex < 0)
+                throw new InvalidOperationException($"[BagWindowController] 当前分类 {category} 未配置对应页签。");
+
+            IReadOnlyList<GameObject> selectedVisuals = data.CategorySelectedVisuals;
+            for (int index = 0; index < selectedVisuals.Count; index++)
+            {
+                // 仅切换当前分类对应的容器，图标和原有提示节点继续由 Prefab 层级显示。
+                GameObject selectedVisual = selectedVisuals[index];
+                bool shouldBeVisible = index == selectedIndex;
+                if (selectedVisual.activeSelf != shouldBeVisible)
+                    selectedVisual.SetActive(shouldBeVisible);
+            }
         }
 
         /// <summary>排序字段或方向变化时重建列表但保留仍存在的稳定选择。</summary>

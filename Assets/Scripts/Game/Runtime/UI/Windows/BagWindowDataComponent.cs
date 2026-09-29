@@ -25,6 +25,7 @@ namespace WS_Modules.UIModule
         [SerializeField, Required] private Image bagIcon;
         [SerializeField, Required] private TMP_Text upperLimitCountText;
         [SerializeField, Required] private Button[] categoryButtons = Array.Empty<Button>();
+        [SerializeField, Required] private GameObject[] categorySelectedVisuals = Array.Empty<GameObject>();
         [SerializeField] private Button previousCategoryButton;
         [SerializeField] private Button nextCategoryButton;
         [SerializeField] private Button closeButton;
@@ -84,6 +85,9 @@ namespace WS_Modules.UIModule
         /// <summary>获取分类按钮配置。</summary>
         public IReadOnlyList<Button> CategoryButtons => categoryButtons;
 
+        /// <summary>获取与分类按钮顺序一致的选中背景和横条容器。</summary>
+        public IReadOnlyList<GameObject> CategorySelectedVisuals => categorySelectedVisuals;
+
         /// <summary>获取前一分类按钮。</summary>
         public Button PreviousCategoryButton => previousCategoryButton;
 
@@ -128,12 +132,20 @@ namespace WS_Modules.UIModule
         {
             if (categoryButtons == null || categoryButtons.Length == 0)
                 throw new InvalidOperationException("[BagWindowDataComponent] 未绑定分类按钮。");
+            if (categorySelectedVisuals == null || categorySelectedVisuals.Length != categoryButtons.Length)
+                throw new InvalidOperationException("[BagWindowDataComponent] 选中视觉节点数量必须与分类按钮数量一致。");
+            if (categoryOrder == null || categoryOrder.Count != categoryButtons.Length)
+                throw new InvalidOperationException("[BagWindowDataComponent] 分类顺序数量必须与分类按钮数量一致。");
             if (bagIcon == null) throw new InvalidOperationException("[BagWindowDataComponent] 未绑定 BagIcon。");
             if (upperLimitCountText == null)
                 throw new InvalidOperationException("[BagWindowDataComponent] 未绑定 UpperLimitCount。");
             for (int index = 0; index < categoryButtons.Length; index++)
+            {
                 if (categoryButtons[index] == null)
                     throw new InvalidOperationException($"[BagWindowDataComponent] 分类按钮索引 {index} 未绑定。");
+                if (categorySelectedVisuals[index] == null)
+                    throw new InvalidOperationException($"[BagWindowDataComponent] 分类选中视觉索引 {index} 未绑定。");
+            }
             if (gridView == null) throw new InvalidOperationException("[BagWindowDataComponent] 未绑定 BagGridView。");
             if (detailView == null) throw new InvalidOperationException("[BagWindowDataComponent] 未绑定 BagDetailView。");
             if (dynamicAtlasAddresses == null) throw new InvalidOperationException("[BagWindowDataComponent] 动态图集地址列表为空。");

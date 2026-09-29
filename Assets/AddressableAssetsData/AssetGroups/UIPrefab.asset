@@ -47,6 +47,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d730e3b91c92922468381983fd2e2f18
+    m_Address: TaskWindow
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: d89412627c47e9c4a992cc1265cf7cb2
     m_Address: DialogueWindow
     m_ReadOnly: 0
