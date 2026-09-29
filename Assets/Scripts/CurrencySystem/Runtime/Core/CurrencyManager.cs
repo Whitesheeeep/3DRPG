@@ -62,6 +62,58 @@ namespace RPG.CurrencySystemNS
             return true;
         }
 
+        /// <summary>预检多种货币的增加请求，不改余额、不发事件。</summary>
+        /// <param name="amounts">待增加金额。</param>
+        /// <returns>货币配置、数值范围和余额上限的校验结果。</returns>
+        /// <exception cref="InvalidOperationException">钱包尚未完成货币配置时抛出。</exception>
+        public CurrencyOperationResult CanAddCurrencies(IReadOnlyList<CurrencyAmount> amounts)
+        {
+            EnsureConfigured();
+            if (amounts == null || amounts.Count == 0)
+                return new CurrencyOperationResult(CurrencyOperationStatus.InvalidAmount, CurrencyId.None);
+
+            // key：CurrencyId；value：合并重复请求后的增加总额。
+            var amountByCurrencyIdMap = new Dictionary<CurrencyId, int>();
+            for (int index = 0; index < amounts.Count; index++)
+            {
+                CurrencyAmount amount = amounts[index];
+                if (amount.CurrencyId == CurrencyId.None || !balances.ContainsKey(amount.CurrencyId))
+                    return new CurrencyOperationResult(CurrencyOperationStatus.InvalidCurrency, amount.CurrencyId);
+                if (amount.Amount <= 0)
+                    return new CurrencyOperationResult(CurrencyOperationStatus.InvalidAmount, amount.CurrencyId);
+
+                try
+                {
+                    amountByCurrencyIdMap[amount.CurrencyId] = checked(
+                        amountByCurrencyIdMap.TryGetValue(amount.CurrencyId, out int current)
+                            ? current + amount.Amount
+                            : amount.Amount);
+                }
+                catch (OverflowException)
+                {
+                    return new CurrencyOperationResult(CurrencyOperationStatus.ArithmeticOverflow, amount.CurrencyId);
+                }
+            }
+
+            foreach (KeyValuePair<CurrencyId, int> pair in amountByCurrencyIdMap)
+            {
+                int nextBalance;
+                try
+                {
+                    nextBalance = checked(balances[pair.Key] + pair.Value);
+                }
+                catch (OverflowException)
+                {
+                    return new CurrencyOperationResult(CurrencyOperationStatus.ArithmeticOverflow, pair.Key);
+                }
+
+                if (nextBalance > GetRule(pair.Key).MaxBalance)
+                    return new CurrencyOperationResult(CurrencyOperationStatus.BalanceLimitExceeded, pair.Key);
+            }
+
+            return new CurrencyOperationResult(CurrencyOperationStatus.Succeeded, CurrencyId.None);
+        }
+
         /// <summary>原子增加多种货币。</summary>
         /// <param name="amounts">增加金额。</param>
         /// <returns>操作结果。</returns>

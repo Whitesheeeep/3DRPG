@@ -555,5 +555,5 @@ private void OnDisable()
 
 ## 12. 相关文档
 
-- [任务、红点系统与存档系统架构说明](../TaskSystem/TaskRedDotSaveSystem_Architecture.md)
+- [任务系统架构与数据模型](../TaskSystem/TaskSystem_Architecture.md)
 - [TaskSystem 需求说明](../TaskSystem/TaskSystem_Requirements.md)

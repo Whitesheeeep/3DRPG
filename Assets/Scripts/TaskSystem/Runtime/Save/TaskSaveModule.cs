@@ -51,12 +51,14 @@ namespace RPG.TaskSystem
                 }
 
                 _ = new TaskId(record.TaskId);
-                if (record.ObjectiveProgress == null ||
+                if (record.ObjectiveProgress == null || record.ObjectiveProgress.Count == 0 ||
                     (record.State != TaskLifecycleState.InProgress &&
                      record.State != TaskLifecycleState.Claimable))
                 {
                     throw new InvalidOperationException("任务快照活动记录的状态或目标列表非法。");
                 }
+
+                _ = new TaskStageId(record.CurrentStageId);
 
                 foreach (TaskObjectiveProgressSnapshot progress in record.ObjectiveProgress)
                 {
@@ -96,6 +98,11 @@ namespace RPG.TaskSystem
         /// 任务稳定标识字符串。
         /// </summary>
         public string TaskId { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 当前阶段稳定标识字符串。
+        /// </summary>
+        public string CurrentStageId { get; set; } = string.Empty;
 
         /// <summary>
         /// 活动任务生命周期状态。
@@ -160,7 +167,7 @@ namespace RPG.TaskSystem
         public TaskSaveModule(TaskManager taskManager)
             : base(
                 StableModuleId,
-                1,
+                2,
                 SaveMissingModulePolicy.Required)
         {
             this.taskManager = taskManager ?? throw new ArgumentNullException(nameof(taskManager));

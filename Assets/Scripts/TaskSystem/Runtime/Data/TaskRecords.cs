@@ -10,28 +10,27 @@ namespace RPG.TaskSystem
     /// </summary>
     public enum TaskLifecycleState
     {
-        /// <summary>任务已接取，至少一个目标尚未完成。</summary>
+        /// <summary>任务已接取，当前阶段仍有目标未完成。</summary>
         InProgress = 0,
-
-        /// <summary>所有目标当前均已完成，等待领奖。</summary>
+        /// <summary>所有阶段目标已完成，等待玩家提交领奖。</summary>
         Claimable = 1
     }
 
     /// <summary>
-    /// 保存单个任务目标的当前整数进度。
+    /// 保存当前阶段单个目标的整数进度。
     /// </summary>
     public sealed class TaskObjectiveProgress
     {
         private int current;
 
         /// <summary>
-        /// 创建一个目标进度对象。
+        /// 创建目标进度。
         /// </summary>
-        /// <param name="objectiveId">目标稳定标识。</param>
-        /// <param name="required">目标完成所需数量。</param>
-        /// <param name="current">初始当前值。</param>
-        /// <exception cref="ArgumentException">目标标识无效时抛出。</exception>
-        /// <exception cref="ArgumentOutOfRangeException">数量范围非法时抛出。</exception>
+        /// <param name="objectiveId">当前阶段内稳定目标标识。</param>
+        /// <param name="required">目标需求数量。</param>
+        /// <param name="current">初始进度。</param>
+        /// <exception cref="ArgumentException">目标 ID 非法时抛出。</exception>
+        /// <exception cref="ArgumentOutOfRangeException">需求或当前值非法时抛出。</exception>
         public TaskObjectiveProgress(ObjectiveId objectiveId, int required, int current = 0)
         {
             if (!objectiveId.IsValid)
@@ -65,14 +64,15 @@ namespace RPG.TaskSystem
         public int Current => current;
 
         /// <summary>
-        /// 获取当前进度是否已经达到需求。
+        /// 判断进度是否达到目标需求。
         /// </summary>
         public bool IsComplete => current >= Required;
 
         /// <summary>
-        /// 设置状态型目标的当前值，并将其限制在合法范围内。
+        /// 设置状态型目标进度并限制在需求上限内。
         /// </summary>
-        /// <param name="value">新的当前值。</param>
+        /// <param name="value">新的非负进度。</param>
+        /// <exception cref="ArgumentOutOfRangeException">进度为负数时抛出。</exception>
         internal void SetCurrent(int value)
         {
             if (value < 0)
@@ -84,9 +84,10 @@ namespace RPG.TaskSystem
         }
 
         /// <summary>
-        /// 累加事件型目标的进度，并限制到需求上限。
+        /// 累加事件型目标进度并限制在需求上限内。
         /// </summary>
-        /// <param name="delta">本次增加量。</param>
+        /// <param name="delta">非负增加量。</param>
+        /// <exception cref="ArgumentOutOfRangeException">增加量为负数时抛出。</exception>
         internal void AddCurrent(int delta)
         {
             if (delta < 0)
@@ -94,21 +95,23 @@ namespace RPG.TaskSystem
                 throw new ArgumentOutOfRangeException(nameof(delta), "累计目标增加量不能为负数。");
             }
 
-            SetCurrent((long)current + delta > int.MaxValue ? Required : current + delta);
+            current = (int)Math.Min((long)current + delta, Required);
         }
     }
 
     /// <summary>
-    /// 表示一个已经接取的运行时任务记录，不包含配置资产引用和事件句柄。
+    /// 表示玩家已接取任务的可存档状态数据，仅保存当前阶段进度。
     /// </summary>
     public sealed class TaskRecord
     {
-        private readonly Dictionary<ObjectiveId, TaskObjectiveProgress> progressById;
+        // key：当前阶段内的 ObjectiveId；value：该目标的需求和已累计进度。
+        private readonly Dictionary<ObjectiveId, TaskObjectiveProgress> objectiveProgressByIdMap =
+            new Dictionary<ObjectiveId, TaskObjectiveProgress>();
 
         /// <summary>
-        /// 按任务定义创建初始运行时记录。
+        /// 根据任务第一阶段创建初始活动记录。
         /// </summary>
-        /// <param name="definition">任务静态定义。</param>
+        /// <param name="definition">已通过配置校验的任务资产。</param>
         /// <exception cref="ArgumentNullException">定义为空时抛出。</exception>
         public TaskRecord(TaskDefinition definition)
         {
@@ -117,17 +120,9 @@ namespace RPG.TaskSystem
                 throw new ArgumentNullException(nameof(definition));
             }
 
-            definition.Validate();
             TaskId = definition.TaskId;
             State = TaskLifecycleState.InProgress;
-            progressById = new Dictionary<ObjectiveId, TaskObjectiveProgress>();
-            for (int index = 0; index < definition.Objectives.Count; index++)
-            {
-                TaskObjectiveDefinition objective = definition.Objectives[index];
-                progressById.Add(
-                    objective.ObjectiveId,
-                    new TaskObjectiveProgress(objective.ObjectiveId, objective.Required));
-            }
+            ActivateStage(definition.Stages[0]);
         }
 
         /// <summary>
@@ -136,89 +131,107 @@ namespace RPG.TaskSystem
         public TaskId TaskId { get; }
 
         /// <summary>
-        /// 获取或设置任务生命周期状态。
+        /// 获取当前阶段稳定标识。
+        /// </summary>
+        public TaskStageId CurrentStageId { get; private set; }
+
+        /// <summary>
+        /// 获取任务生命周期状态。
         /// </summary>
         public TaskLifecycleState State { get; private set; }
 
         /// <summary>
-        /// 获取所有目标进度的只读枚举。
+        /// 获取当前阶段目标进度。
         /// </summary>
-        public IEnumerable<TaskObjectiveProgress> ObjectiveProgress => progressById.Values;
+        public IReadOnlyCollection<TaskObjectiveProgress> ObjectiveProgress => objectiveProgressByIdMap.Values;
 
         /// <summary>
-        /// 尝试获取指定目标进度。
+        /// 尝试获取当前阶段指定目标进度。
         /// </summary>
         /// <param name="objectiveId">目标标识。</param>
-        /// <param name="progress">目标进度。</param>
-        /// <returns>找到目标时返回 true。</returns>
+        /// <param name="progress">找到的进度记录。</param>
+        /// <returns>当前阶段包含该目标时返回 true。</returns>
         public bool TryGetProgress(ObjectiveId objectiveId, out TaskObjectiveProgress progress) =>
-            progressById.TryGetValue(objectiveId, out progress);
+            objectiveProgressByIdMap.TryGetValue(objectiveId, out progress);
 
         /// <summary>
-        /// 更新目标当前值并重新计算任务状态。
+        /// 判断当前阶段所有目标是否都已完成。
         /// </summary>
-        /// <param name="objectiveId">目标标识。</param>
-        /// <param name="value">目标当前值。</param>
-        /// <returns>值或任务状态发生变化时返回 true。</returns>
-        internal bool SetObjectiveProgress(ObjectiveId objectiveId, int value)
+        /// <returns>全部完成时返回 true。</returns>
+        public bool IsCurrentStageComplete()
         {
-            if (!progressById.TryGetValue(objectiveId, out TaskObjectiveProgress progress))
-            {
-                return false;
-            }
-
-            int previous = progress.Current;
-            TaskLifecycleState previousState = State;
-            progress.SetCurrent(value);
-            RefreshState();
-            return previous != progress.Current || previousState != State;
-        }
-
-        /// <summary>
-        /// 累加目标事件进度并重新计算任务状态。
-        /// </summary>
-        /// <param name="objectiveId">目标标识。</param>
-        /// <param name="delta">增加量。</param>
-        /// <returns>值或任务状态发生变化时返回 true。</returns>
-        internal bool AddObjectiveProgress(ObjectiveId objectiveId, int delta)
-        {
-            if (!progressById.TryGetValue(objectiveId, out TaskObjectiveProgress progress))
-            {
-                return false;
-            }
-
-            int previous = progress.Current;
-            TaskLifecycleState previousState = State;
-            progress.AddCurrent(delta);
-            RefreshState();
-            return previous != progress.Current || previousState != State;
-        }
-
-        /// <summary>
-        /// 将已校验的任务状态设置为指定值。
-        /// </summary>
-        /// <param name="state">新的生命周期状态。</param>
-        internal void SetState(TaskLifecycleState state)
-        {
-            State = state;
-        }
-
-        /// <summary>
-        /// 根据全部目标当前值刷新任务状态；Live 目标允许从 Claimable 回退。
-        /// </summary>
-        private void RefreshState()
-        {
-            bool allComplete = true;
-            foreach (TaskObjectiveProgress progress in progressById.Values)
+            foreach (TaskObjectiveProgress progress in objectiveProgressByIdMap.Values)
             {
                 if (!progress.IsComplete)
                 {
-                    allComplete = false;
-                    break;
+                    return false;
                 }
             }
 
-            State = allComplete ? TaskLifecycleState.Claimable : TaskLifecycleState.InProgress;
+            return objectiveProgressByIdMap.Count > 0;
+        }
+
+        /// <summary>
+        /// 设置当前阶段目标并报告进度是否变化。
+        /// </summary>
+        /// <param name="objectiveId">目标标识。</param>
+        /// <param name="value">新的非负进度。</param>
+        /// <returns>目标进度实际变化时返回 true。</returns>
+        internal bool SetObjectiveProgress(ObjectiveId objectiveId, int value)
+        {
+            if (!objectiveProgressByIdMap.TryGetValue(objectiveId, out TaskObjectiveProgress progress))
+            {
+                return false;
+            }
+
+            int previous = progress.Current;
+            progress.SetCurrent(value);
+            return previous != progress.Current;
+        }
+
+        /// <summary>
+        /// 累加当前阶段目标并报告进度是否变化。
+        /// </summary>
+        /// <param name="objectiveId">目标标识。</param>
+        /// <param name="delta">非负增加量。</param>
+        /// <returns>目标进度实际变化时返回 true。</returns>
+        internal bool AddObjectiveProgress(ObjectiveId objectiveId, int delta)
+        {
+            if (!objectiveProgressByIdMap.TryGetValue(objectiveId, out TaskObjectiveProgress progress))
+            {
+                return false;
+            }
+
+            int previous = progress.Current;
+            progress.AddCurrent(delta);
+            return previous != progress.Current;
+        }
+
+        /// <summary>
+        /// 清空旧阶段进度并初始化新阶段的目标集合。
+        /// </summary>
+        /// <param name="stage">要激活的阶段定义。</param>
+        internal void ActivateStage(TaskStageDefinition stage)
+        {
+            CurrentStageId = stage.StageId;
+            State = TaskLifecycleState.InProgress;
+            objectiveProgressByIdMap.Clear();
+            for (int index = 0; index < stage.Objectives.Count; index++)
+            {
+                TaskObjectiveDefinition objective = stage.Objectives[index];
+                objectiveProgressByIdMap.Add(
+                    objective.ObjectiveId,
+                    new TaskObjectiveProgress(objective.ObjectiveId, objective.Required));
+            }
+        }
+
+        /// <summary>
+        /// 恢复经过快照校验的生命周期状态。
+        /// </summary>
+        /// <param name="state">存档中的状态。</param>
+        internal void SetState(TaskLifecycleState state)
+        {
+            State = state;
         }
     }
 
