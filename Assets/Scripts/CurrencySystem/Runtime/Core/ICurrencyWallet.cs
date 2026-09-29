@@ -15,6 +15,11 @@ namespace RPG.CurrencySystemNS
         /// <returns>余额足够时返回 true。</returns>
         bool CanAfford(IReadOnlyList<CurrencyAmount> costs);
 
+        /// <summary>检查是否可以增加全部货币且不超过规则上限，不修改余额。</summary>
+        /// <param name="amounts">待增加金额。</param>
+        /// <returns>货币和上限校验结果。</returns>
+        CurrencyOperationResult CanAddCurrencies(IReadOnlyList<CurrencyAmount> amounts);
+
         /// <summary>原子增加多种货币。</summary>
         /// <param name="amounts">增加金额。</param>
         /// <returns>操作结果。</returns>

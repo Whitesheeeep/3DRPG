@@ -79,16 +79,24 @@ namespace RPG.Game
                 redDotSystem,
                 bagRedDotConfig.ArtifactNewKey));
 
-            // TaskManager 由 WSFrame ConfigInstaller 注入 TaskDatabase；
-            // TaskProgressSystem 只协调任务实例运行时，并在初始化时注册 TaskSaveModule。
-            RegisterSystem(new TaskProgressSystem(new TaskObjectiveHandlerRegistry()));
+            // 货币钱包先初始化，任务领奖随后通过其预检和原子批量接口发放货币。
+            RegisterSystem(new CurrencySystem());
+
+            // 任务定义由 ConfigInstaller 注入；默认 Handler 由各领域注册表集中登记。
+            var taskObjectiveHandlerRegistry = new TaskObjectiveHandlerRegistry();
+            taskObjectiveHandlerRegistry.RegisterDefault();
+            var taskConditionHandlerRegistry = new TaskConditionHandlerRegistry();
+            taskConditionHandlerRegistry.RegisterDefault();
+            RegisterSystem(new TaskProgressSystem(
+                taskObjectiveHandlerRegistry,
+                taskConditionHandlerRegistry,
+                new TaskCurrencyRewardHandler(CurrencyManager.Instance)));
             RegisterSystem(new DialogueSystem());
             RegisterSystem(new CharacterEquipmentSystem());
-            RegisterSystem(new CurrencySystem());
             RegisterManager(new EscCommandManager());
 
             // 角色、背包等跨业务模块在这里继续注册；各 Manager 在自身 OnInit 中注册 SaveModule。
-            snapshotTypeRegistry.Register<TaskSaveSnapshot>(TaskSaveModule.StableModuleId, 1);
+            snapshotTypeRegistry.Register<TaskSaveSnapshot>(TaskSaveModule.StableModuleId, 2);
             snapshotTypeRegistry.Register<CharacterRosterSaveSnapshot>(CharacterRosterSaveModule.StableModuleId, 2);
             snapshotTypeRegistry.Register<CharacterPartySaveSnapshot>(CharacterPartySaveModule.StableModuleId, 1);
             snapshotTypeRegistry.Register<ItemDiscoverySaveSnapshot>(ItemDiscoverySaveModule.StableModuleId, 1);

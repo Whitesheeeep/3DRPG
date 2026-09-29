@@ -192,7 +192,89 @@ namespace RPG.TaskSystem
     }
 
     /// <summary>
-    /// 表示可扩展的任务分类标识。
+    /// 表示任务内部稳定且唯一的阶段标识。
+    /// </summary>
+    public readonly struct TaskStageId : IEquatable<TaskStageId>, IComparable<TaskStageId>
+    {
+        /// <summary>
+        /// 创建任务阶段标识。
+        /// </summary>
+        /// <param name="value">阶段稳定字符串。</param>
+        /// <exception cref="ArgumentException">标识为空或格式非法时抛出。</exception>
+        public TaskStageId(string value)
+        {
+            if (!TaskIdentifierRules.IsValid(value))
+            {
+                throw new ArgumentException("任务阶段 ID 必须是非空且不超过 128 个字符的稳定标识。", nameof(value));
+            }
+
+            Value = value;
+        }
+
+        /// <summary>
+        /// 获取稳定字符串值。
+        /// </summary>
+        public string Value { get; }
+
+        /// <summary>
+        /// 获取当前值是否有效。
+        /// </summary>
+        public bool IsValid => !string.IsNullOrEmpty(Value);
+
+        /// <summary>
+        /// 按 Ordinal 规则比较阶段标识。
+        /// </summary>
+        /// <param name="other">待比较标识。</param>
+        /// <returns>比较结果。</returns>
+        public int CompareTo(TaskStageId other) =>
+            string.Compare(Value ?? string.Empty, other.Value ?? string.Empty, StringComparison.Ordinal);
+
+        /// <summary>
+        /// 判断两个阶段标识是否相等。
+        /// </summary>
+        /// <param name="other">待比较标识。</param>
+        /// <returns>相等时返回 true。</returns>
+        public bool Equals(TaskStageId other) =>
+            string.Equals(Value, other.Value, StringComparison.Ordinal);
+
+        /// <summary>
+        /// 判断对象是否为相同阶段标识。
+        /// </summary>
+        /// <param name="obj">待比较对象。</param>
+        /// <returns>对象为相同阶段标识时返回 true。</returns>
+        public override bool Equals(object obj) => obj is TaskStageId other && Equals(other);
+
+        /// <summary>
+        /// 获取与 Ordinal 相等规则一致的哈希值。
+        /// </summary>
+        /// <returns>阶段标识哈希值。</returns>
+        public override int GetHashCode() => StringComparer.Ordinal.GetHashCode(Value ?? string.Empty);
+
+        /// <summary>
+        /// 返回稳定字符串值。
+        /// </summary>
+        /// <returns>稳定字符串。</returns>
+        public override string ToString() => Value ?? string.Empty;
+
+        /// <summary>
+        /// 判断两个阶段标识是否相等。
+        /// </summary>
+        /// <param name="left">左侧标识。</param>
+        /// <param name="right">右侧标识。</param>
+        /// <returns>相等时返回 true。</returns>
+        public static bool operator ==(TaskStageId left, TaskStageId right) => left.Equals(right);
+
+        /// <summary>
+        /// 判断两个阶段标识是否不相等。
+        /// </summary>
+        /// <param name="left">左侧标识。</param>
+        /// <param name="right">右侧标识。</param>
+        /// <returns>不相等时返回 true。</returns>
+        public static bool operator !=(TaskStageId left, TaskStageId right) => !left.Equals(right);
+    }
+
+    /// <summary>
+    /// 表示由任务静态分类表管理的稳定字符串标识。
     /// </summary>
     public readonly struct TaskCategoryId : IEquatable<TaskCategoryId>, IComparable<TaskCategoryId>
     {

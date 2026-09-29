@@ -12,11 +12,14 @@ namespace RPG.TaskSystem
     /// </summary>
     public sealed class TaskManager : SingletonBase<TaskManager>
     {
-        // 配置锁独立于实例状态锁，使 ConfigInstaller 可以在不创建 TaskManager 单例的情况下注入数据库。
-        private static readonly object configurationGate = new object();
+        #region 配置与状态字段
 
+        // 配置锁独立于实例状态锁，使 ConfigInstaller 注入数据库时不创建 Manager 实例。
+        private static readonly object configurationGate = new object();
         private readonly object stateGate = new object();
-        private readonly Dictionary<TaskId, TaskRecord> activeRecords =
+
+        // 活动任务表以 TaskId 为键，每个值仅保存当前阶段的运行时进度。
+        private readonly Dictionary<TaskId, TaskRecord> taskRecordByIdMap =
             new Dictionary<TaskId, TaskRecord>();
         private readonly HashSet<TaskId> completedTaskIds = new HashSet<TaskId>();
         private readonly HashSet<TaskId> unreadTaskIds = new HashSet<TaskId>();
@@ -24,6 +27,10 @@ namespace RPG.TaskSystem
         private static TaskDatabase database;
         private static bool configured;
         private TaskId trackedTaskId;
+
+        #endregion
+
+        #region 生命周期与查询
 
         /// <summary>
         /// 创建任务 Manager；实例由 SingletonBase 通过私有无参构造函数创建。
@@ -50,7 +57,7 @@ namespace RPG.TaskSystem
         }
 
         /// <summary>
-        /// 获取当前活动任务的稳定快照列表。
+        /// 获取当前活动任务的稳定列表副本。
         /// </summary>
         public IReadOnlyList<TaskRecord> ActiveRecords
         {
@@ -58,13 +65,15 @@ namespace RPG.TaskSystem
             {
                 lock (stateGate)
                 {
-                    return new List<TaskRecord>(activeRecords.Values).AsReadOnly();
+                    var records = new List<TaskRecord>(taskRecordByIdMap.Values);
+                    records.Sort((left, right) => left.TaskId.CompareTo(right.TaskId));
+                    return records.AsReadOnly();
                 }
             }
         }
 
         /// <summary>
-        /// 获取已经完成的一次性任务标识。
+        /// 获取已经完成的一次性任务标识副本。
         /// </summary>
         public IReadOnlyCollection<TaskId> CompletedTaskIds
         {
@@ -78,7 +87,7 @@ namespace RPG.TaskSystem
         }
 
         /// <summary>
-        /// 获取当前尚未确认的任务标识。
+        /// 获取当前尚未确认的任务标识副本。
         /// </summary>
         public IReadOnlyCollection<TaskId> UnreadTaskIds
         {
@@ -94,12 +103,21 @@ namespace RPG.TaskSystem
         /// <summary>
         /// 获取当前追踪任务；没有追踪任务时返回无效值。
         /// </summary>
-        public TaskId TrackedTaskId => trackedTaskId;
+        public TaskId TrackedTaskId
+        {
+            get
+            {
+                lock (stateGate)
+                {
+                    return trackedTaskId;
+                }
+            }
+        }
 
         /// <summary>
-        /// 注入集中式任务数据库，并在运行前建立定义索引。
+        /// 注入任务数据库并在业务运行前校验全部独立任务资产。
         /// </summary>
-        /// <param name="taskDatabase">任务配置资产。</param>
+        /// <param name="taskDatabase">集中引用任务定义的数据库资产。</param>
         /// <exception cref="ArgumentNullException">数据库为空时抛出。</exception>
         /// <exception cref="InvalidOperationException">重复注入不同数据库时抛出。</exception>
         public static void Initialize(TaskDatabase taskDatabase)
@@ -125,10 +143,12 @@ namespace RPG.TaskSystem
                 database = taskDatabase;
                 configured = true;
             }
+
+            Debug.Log($"[TaskManager] 已注入任务数据库，definitionCount={taskDatabase.Definitions.Count}。");
         }
 
         /// <summary>
-        /// 尝试按稳定标识获取任务定义。
+        /// 尝试按稳定标识获取任务定义资产。
         /// </summary>
         /// <param name="taskId">任务标识。</param>
         /// <param name="definition">找到的任务定义。</param>
@@ -140,7 +160,7 @@ namespace RPG.TaskSystem
         }
 
         /// <summary>
-        /// 尝试获取活动任务记录。
+        /// 尝试获取指定活动任务记录。
         /// </summary>
         /// <param name="taskId">任务标识。</param>
         /// <param name="record">找到的活动任务记录。</param>
@@ -149,20 +169,38 @@ namespace RPG.TaskSystem
         {
             lock (stateGate)
             {
-                return activeRecords.TryGetValue(taskId, out record);
+                return taskRecordByIdMap.TryGetValue(taskId, out record);
             }
         }
+
+        /// <summary>
+        /// 判断指定任务是否已经完成。
+        /// </summary>
+        /// <param name="taskId">任务标识。</param>
+        /// <returns>任务存在于已完成集合时返回 true。</returns>
+        public bool IsTaskCompleted(TaskId taskId)
+        {
+            lock (stateGate)
+            {
+                return completedTaskIds.Contains(taskId);
+            }
+        }
+
+        #endregion
+
+        #region 追踪与未读状态
 
         /// <summary>
         /// 将指定活动任务设置为当前追踪任务。
         /// </summary>
         /// <param name="taskId">待追踪任务标识。</param>
-        /// <returns>追踪目标发生变化时返回 true。</returns>
+        /// <returns>任务活动且设置成功时返回 true。</returns>
         public bool TrySetTrackedTask(TaskId taskId)
         {
+            TaskId previousTaskId;
             lock (stateGate)
             {
-                if (!activeRecords.ContainsKey(taskId))
+                if (!taskRecordByIdMap.ContainsKey(taskId))
                 {
                     return false;
                 }
@@ -172,11 +210,12 @@ namespace RPG.TaskSystem
                     return true;
                 }
 
-                TaskId previousTaskId = trackedTaskId;
+                previousTaskId = trackedTaskId;
                 trackedTaskId = taskId;
-                Publish(new TaskTrackedChangedEventArgs(previousTaskId, trackedTaskId));
-                return true;
             }
+
+            Publish(new TaskTrackedChangedEventArgs(previousTaskId, taskId));
+            return true;
         }
 
         /// <summary>
@@ -185,6 +224,7 @@ namespace RPG.TaskSystem
         /// <returns>存在追踪任务且已清除时返回 true。</returns>
         public bool ClearTrackedTask()
         {
+            TaskId previousTaskId;
             lock (stateGate)
             {
                 if (!trackedTaskId.IsValid)
@@ -192,11 +232,12 @@ namespace RPG.TaskSystem
                     return false;
                 }
 
-                TaskId previousTaskId = trackedTaskId;
+                previousTaskId = trackedTaskId;
                 trackedTaskId = default;
-                Publish(new TaskTrackedChangedEventArgs(previousTaskId, trackedTaskId));
-                return true;
             }
+
+            Publish(new TaskTrackedChangedEventArgs(previousTaskId, default));
+            return true;
         }
 
         /// <summary>
@@ -212,18 +253,22 @@ namespace RPG.TaskSystem
                 {
                     return false;
                 }
-
-                Publish(new TaskAcknowledgedEventArgs(taskId));
-                return true;
             }
+
+            Publish(new TaskAcknowledgedEventArgs(taskId));
+            return true;
         }
 
+        #endregion
+
+        #region 生命周期状态变更
+
         /// <summary>
-        /// 创建供任务流程和手动测试使用的活动任务记录。
+        /// 为统一接取流程创建尚未对外发布的活动记录。
         /// </summary>
         /// <param name="taskId">待接取任务标识。</param>
-        /// <param name="record">创建的任务记录。</param>
-        /// <returns>成功创建时返回 true；任务不存在、已活动或已完成时返回 false。</returns>
+        /// <param name="record">创建的活动记录。</param>
+        /// <returns>任务定义存在且未活动、未完成时返回 true。</returns>
         internal bool TryCreateActiveRecord(TaskId taskId, out TaskRecord record)
         {
             EnsureConfigured();
@@ -231,96 +276,229 @@ namespace RPG.TaskSystem
             {
                 record = null;
                 if (!database.TryGetDefinition(taskId, out TaskDefinition definition) ||
-                    activeRecords.ContainsKey(taskId) ||
+                    taskRecordByIdMap.ContainsKey(taskId) ||
                     completedTaskIds.Contains(taskId))
                 {
                     return false;
                 }
 
                 record = new TaskRecord(definition);
-                activeRecords.Add(taskId, record);
-                unreadTaskIds.Add(taskId);
-                Publish(new TaskAcceptedEventArgs(taskId));
+                taskRecordByIdMap.Add(taskId, record);
                 return true;
             }
         }
 
         /// <summary>
-        /// 将可领取任务转为已完成事实并清理活动运行时数据。
+        /// 在首阶段目标监听建立后提交接取事实并加入未读集合。
         /// </summary>
-        /// <param name="taskId">待完成任务标识。</param>
-        /// <returns>任务处于可领取并成功完成时返回 true。</returns>
-        internal bool TryMarkCompleted(TaskId taskId)
+        /// <param name="taskId">已经创建运行时的任务。</param>
+        /// <param name="source">调用方来源。</param>
+        /// <returns>活动记录存在时返回 true。</returns>
+        internal bool CommitAccepted(TaskId taskId, TaskAcceptSource source)
         {
             lock (stateGate)
             {
-                if (!activeRecords.TryGetValue(taskId, out TaskRecord record) ||
+                if (!taskRecordByIdMap.ContainsKey(taskId))
+                {
+                    return false;
+                }
+
+                unreadTaskIds.Add(taskId);
+            }
+
+            Publish(new TaskAcceptedEventArgs(taskId, source));
+            return true;
+        }
+
+        /// <summary>
+        /// 清理尚未成功提交接取事件的新活动记录。
+        /// </summary>
+        /// <param name="taskId">接取流程创建的任务标识。</param>
+        internal void RollbackUncommittedTask(TaskId taskId)
+        {
+            lock (stateGate)
+            {
+                taskRecordByIdMap.Remove(taskId);
+                unreadTaskIds.Remove(taskId);
+            }
+        }
+
+        /// <summary>
+        /// 检查活动任务当前阶段是否已经全部完成。
+        /// </summary>
+        /// <param name="taskId">任务标识。</param>
+        /// <returns>当前阶段目标全部完成时返回 true。</returns>
+        internal bool IsCurrentStageComplete(TaskId taskId)
+        {
+            lock (stateGate)
+            {
+                return taskRecordByIdMap.TryGetValue(taskId, out TaskRecord record) &&
+                       record.State == TaskLifecycleState.InProgress &&
+                       record.IsCurrentStageComplete();
+            }
+        }
+
+        /// <summary>
+        /// 将活动任务移至已完成阶段后的下一阶段，事件由 System 在新监听成功后发布。
+        /// </summary>
+        /// <param name="taskId">任务标识。</param>
+        /// <param name="nextStage">下一阶段定义。</param>
+        /// <param name="previousStageId">变化前阶段标识。</param>
+        /// <returns>记录仍在进行且当前阶段完整时返回 true。</returns>
+        internal bool TryAdvanceStage(
+            TaskId taskId,
+            TaskStageDefinition nextStage,
+            out TaskStageId previousStageId)
+        {
+            if (nextStage == null)
+            {
+                throw new ArgumentNullException(nameof(nextStage));
+            }
+
+            lock (stateGate)
+            {
+                previousStageId = default;
+                if (!taskRecordByIdMap.TryGetValue(taskId, out TaskRecord record) ||
+                    record.State != TaskLifecycleState.InProgress ||
+                    !record.IsCurrentStageComplete())
+                {
+                    return false;
+                }
+
+                previousStageId = record.CurrentStageId;
+                record.ActivateStage(nextStage);
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// 将最后阶段完整的任务置为待提交状态。
+        /// </summary>
+        /// <param name="taskId">任务标识。</param>
+        /// <returns>状态实际切换为 Claimable 时返回 true。</returns>
+        internal bool TryMarkClaimable(TaskId taskId)
+        {
+            lock (stateGate)
+            {
+                if (!taskRecordByIdMap.TryGetValue(taskId, out TaskRecord record) ||
+                    record.State != TaskLifecycleState.InProgress ||
+                    !record.IsCurrentStageComplete())
+                {
+                    return false;
+                }
+
+                record.SetState(TaskLifecycleState.Claimable);
+            }
+
+            Publish(new TaskStateChangedEventArgs(
+                taskId,
+                TaskLifecycleState.InProgress,
+                TaskLifecycleState.Claimable));
+            Publish(new TaskRewardClaimableEventArgs(taskId));
+            return true;
+        }
+
+        /// <summary>
+        /// 奖励成功发放后记录任务完成并清理追踪和未读状态。
+        /// </summary>
+        /// <param name="taskId">待完成任务标识。</param>
+        /// <returns>任务当前处于 Claimable 时返回 true。</returns>
+        internal bool TryMarkCompleted(TaskId taskId)
+        {
+            TaskId previousTrackedTaskId = default;
+            bool trackingChanged = false;
+            lock (stateGate)
+            {
+                if (!taskRecordByIdMap.TryGetValue(taskId, out TaskRecord record) ||
                     record.State != TaskLifecycleState.Claimable)
                 {
                     return false;
                 }
 
-                activeRecords.Remove(taskId);
+                taskRecordByIdMap.Remove(taskId);
                 completedTaskIds.Add(taskId);
                 unreadTaskIds.Remove(taskId);
-                TaskId previousTrackedTaskId = trackedTaskId;
                 if (trackedTaskId == taskId)
                 {
+                    previousTrackedTaskId = trackedTaskId;
                     trackedTaskId = default;
+                    trackingChanged = true;
                 }
-
-                if (previousTrackedTaskId != trackedTaskId)
-                {
-                    Publish(new TaskTrackedChangedEventArgs(previousTrackedTaskId, trackedTaskId));
-                }
-
-                Publish(new TaskCompletedEventArgs(taskId));
-                return true;
             }
+
+            if (trackingChanged)
+            {
+                Publish(new TaskTrackedChangedEventArgs(previousTrackedTaskId, default));
+            }
+
+            Publish(new TaskCompletedEventArgs(taskId));
+            return true;
         }
 
         /// <summary>
-        /// 按事件累计量更新活动任务目标进度。
+        /// 应用目标进度变化并发布当前阶段的进度事实。
         /// </summary>
         /// <param name="taskId">任务标识。</param>
-        /// <param name="objectiveId">目标标识。</param>
-        /// <param name="delta">非负增加量。</param>
-        /// <returns>目标或任务状态变化时返回 true。</returns>
-        internal bool ApplyObjectiveDelta(TaskId taskId, ObjectiveId objectiveId, int delta)
-        {
-            if (delta < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(delta), "目标累计增加量不能为负数。");
-            }
-
-            lock (stateGate)
-            {
-                return ApplyObjectiveUpdateInternal(taskId, objectiveId, delta, false);
-            }
-        }
-
-        /// <summary>
-        /// 按外部业务当前状态覆盖活动任务目标进度。
-        /// </summary>
-        /// <param name="taskId">任务标识。</param>
-        /// <param name="objectiveId">目标标识。</param>
-        /// <param name="value">非负当前值。</param>
-        /// <returns>目标或任务状态变化时返回 true。</returns>
-        internal bool SetObjectiveProgress(TaskId taskId, ObjectiveId objectiveId, int value)
+        /// <param name="stageId">发起变化的阶段标识，用于忽略已停止 Handler 的迟到回调。</param>
+        /// <param name="objectiveId">当前阶段目标标识。</param>
+        /// <param name="value">增加量或绝对进度。</param>
+        /// <param name="absolute">是否按绝对进度覆盖。</param>
+        /// <returns>目标进度发生变化时返回 true。</returns>
+        internal bool ApplyObjectiveProgress(
+            TaskId taskId,
+            TaskStageId stageId,
+            ObjectiveId objectiveId,
+            int value,
+            bool absolute)
         {
             if (value < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(value), "目标当前进度不能为负数。");
+                throw new ArgumentOutOfRangeException(nameof(value), "目标进度值不能为负数。");
             }
 
+            int previousValue;
+            int currentValue;
             lock (stateGate)
             {
-                return ApplyObjectiveUpdateInternal(taskId, objectiveId, value, true);
+                if (!taskRecordByIdMap.TryGetValue(taskId, out TaskRecord record) ||
+                    record.CurrentStageId != stageId)
+                {
+                    return false;
+                }
+
+                if (!record.TryGetProgress(objectiveId, out TaskObjectiveProgress progress))
+                {
+                    throw new InvalidOperationException(
+                        $"任务 {taskId} 的当前阶段 {stageId} 不包含目标 {objectiveId}。 ");
+                }
+
+                previousValue = progress.Current;
+                bool changed = absolute
+                    ? record.SetObjectiveProgress(objectiveId, value)
+                    : record.AddObjectiveProgress(objectiveId, value);
+                if (!changed)
+                {
+                    return false;
+                }
+
+                currentValue = progress.Current;
             }
+
+            Publish(new TaskObjectiveProgressChangedEventArgs(
+                taskId,
+                stageId,
+                objectiveId,
+                previousValue,
+                currentValue));
+            return true;
         }
 
+        #endregion
+
+        #region 存档快照
+
         /// <summary>
-        /// 将当前任务状态转换为存档快照；不包含运行时订阅和 Handler 引用。
+        /// 将当前任务事实转换为不含配置引用和监听句柄的存档快照。
         /// </summary>
         /// <returns>当前任务快照。</returns>
         public TaskSaveSnapshot CaptureSnapshot()
@@ -336,15 +514,15 @@ namespace RPG.TaskSystem
                     UnreadTaskIds = new List<string>()
                 };
 
-                foreach (TaskRecord record in activeRecords.Values)
+                foreach (TaskRecord record in taskRecordByIdMap.Values)
                 {
                     var recordSnapshot = new TaskRecordSnapshot
                     {
                         TaskId = record.TaskId.Value,
+                        CurrentStageId = record.CurrentStageId.Value,
                         State = record.State,
                         ObjectiveProgress = new List<TaskObjectiveProgressSnapshot>()
                     };
-
                     foreach (TaskObjectiveProgress progress in record.ObjectiveProgress)
                     {
                         recordSnapshot.ObjectiveProgress.Add(new TaskObjectiveProgressSnapshot
@@ -373,11 +551,11 @@ namespace RPG.TaskSystem
         }
 
         /// <summary>
-        /// 在不发送普通任务事件的前提下恢复已验证的任务快照。
+        /// 在不发送普通任务事件的前提下原子恢复已经校验的快照。
         /// </summary>
         /// <param name="snapshot">待恢复任务快照。</param>
         /// <exception cref="ArgumentNullException">快照为空时抛出。</exception>
-        /// <exception cref="InvalidOperationException">快照引用未知任务、重复数据或非法进度时抛出。</exception>
+        /// <exception cref="InvalidOperationException">快照与当前定义不匹配时抛出。</exception>
         public void RestoreSnapshot(TaskSaveSnapshot snapshot)
         {
             EnsureConfigured();
@@ -386,35 +564,36 @@ namespace RPG.TaskSystem
                 throw new ArgumentNullException(nameof(snapshot));
             }
 
+            snapshot.ValidateShape();
             lock (stateGate)
             {
-                var restoredRecords = new Dictionary<TaskId, TaskRecord>();
+                var restoredTaskRecordByIdMap = new Dictionary<TaskId, TaskRecord>();
                 var restoredCompleted = new HashSet<TaskId>();
                 var restoredUnread = new HashSet<TaskId>();
 
-                RestoreActiveRecords(snapshot, restoredRecords);
-                RestoreCompletedIds(snapshot, restoredCompleted);
-                RestoreUnreadIds(snapshot, restoredRecords, restoredCompleted, restoredUnread);
+                RestoreActiveRecords(snapshot, restoredTaskRecordByIdMap);
+                RestoreCompletedIds(snapshot, restoredCompleted, restoredTaskRecordByIdMap);
+                RestoreUnreadIds(snapshot, restoredTaskRecordByIdMap, restoredUnread);
 
                 TaskId restoredTracked = default;
                 if (!string.IsNullOrEmpty(snapshot.TrackedTaskId))
                 {
-                    restoredTracked = ParseTaskId(snapshot.TrackedTaskId);
-                    if (!restoredRecords.ContainsKey(restoredTracked))
+                    restoredTracked = new TaskId(snapshot.TrackedTaskId);
+                    if (!restoredTaskRecordByIdMap.ContainsKey(restoredTracked))
                     {
                         throw new InvalidOperationException("存档追踪任务必须存在于活动任务集合中。");
                     }
                 }
 
-                activeRecords.Clear();
-                completedTaskIds.Clear();
-                unreadTaskIds.Clear();
-                foreach (KeyValuePair<TaskId, TaskRecord> pair in restoredRecords)
+                taskRecordByIdMap.Clear();
+                foreach (KeyValuePair<TaskId, TaskRecord> pair in restoredTaskRecordByIdMap)
                 {
-                    activeRecords.Add(pair.Key, pair.Value);
+                    taskRecordByIdMap.Add(pair.Key, pair.Value);
                 }
 
+                completedTaskIds.Clear();
                 completedTaskIds.UnionWith(restoredCompleted);
+                unreadTaskIds.Clear();
                 unreadTaskIds.UnionWith(restoredUnread);
                 trackedTaskId = restoredTracked;
             }
@@ -423,21 +602,27 @@ namespace RPG.TaskSystem
                       $"completed={snapshot.CompletedTaskIds.Count}, unread={snapshot.UnreadTaskIds.Count}。");
         }
 
+        #endregion
+
+        #region 测试与内部校验
+
         /// <summary>
-        /// 清理当前运行时任务事实，不注销 Singleton 实例和已注入配置。
+        /// 清理玩家任务状态，不注销 Singleton 实例和已注入配置。
         /// </summary>
-        internal void ClearRuntimeState()
+        internal void ClearPlayerTaskState()
         {
             lock (stateGate)
             {
-                ClearRuntimeStateInternal();
+                ClearPlayerTaskStateInternal();
             }
+
+            Debug.Log("[TaskManager] 已清理玩家任务状态。");
         }
 
         /// <summary>
-        /// 为 Odin 手动测试替换配置数据库并清空旧运行时状态。
+        /// 为 Odin 手动测试替换数据库并清理旧任务事实。
         /// </summary>
-        /// <param name="taskDatabase">测试使用的任务数据库。</param>
+        /// <param name="taskDatabase">测试使用的临时任务数据库。</param>
         /// <exception cref="ArgumentNullException">数据库为空时抛出。</exception>
         internal void ResetForTests(TaskDatabase taskDatabase)
         {
@@ -448,12 +633,11 @@ namespace RPG.TaskSystem
 
             lock (configurationGate)
             {
-                // 测试需要同时清理静态配置和当前实例状态，避免不同测试之间共享数据库或任务事实。
                 lock (stateGate)
                 {
                     configured = false;
                     database = null;
-                    ClearRuntimeStateInternal();
+                    ClearPlayerTaskStateInternal();
                 }
 
                 Initialize(taskDatabase);
@@ -461,194 +645,152 @@ namespace RPG.TaskSystem
         }
 
         /// <summary>
-        /// 应用一次目标变化并发布进度和状态事实事件。
+        /// 恢复手动测试前的数据库与玩家任务快照。
         /// </summary>
-        /// <param name="taskId">任务标识。</param>
-        /// <param name="objectiveId">目标标识。</param>
-        /// <param name="value">增量或当前值。</param>
-        /// <param name="absolute">是否覆盖为当前值。</param>
-        /// <returns>目标或任务状态变化时返回 true。</returns>
-        private bool ApplyObjectiveUpdateInternal(
-            TaskId taskId,
-            ObjectiveId objectiveId,
-            int value,
-            bool absolute)
+        /// <param name="previousDatabase">测试前的任务数据库；原先未配置时为 null。</param>
+        /// <param name="previousSnapshot">测试前的任务事实；无原数据库时必须为 null。</param>
+        /// <exception cref="ArgumentException">缺少原数据库但快照非空时抛出。</exception>
+        internal void RestoreAfterTests(TaskDatabase previousDatabase, TaskSaveSnapshot previousSnapshot)
         {
-            if (!activeRecords.TryGetValue(taskId, out TaskRecord record))
+            if (previousDatabase == null && previousSnapshot != null)
             {
-                return false;
+                throw new ArgumentException("恢复测试快照前必须同时提供原任务数据库。", nameof(previousSnapshot));
             }
 
-            if (!record.TryGetProgress(objectiveId, out TaskObjectiveProgress progress))
+            lock (configurationGate)
             {
-                throw new InvalidOperationException($"任务 {taskId} 不包含目标 {objectiveId}。 ");
+                lock (stateGate)
+                {
+                    configured = false;
+                    database = null;
+                    ClearPlayerTaskStateInternal();
+                }
+
+                if (previousDatabase == null)
+                {
+                    return;
+                }
+
+                Initialize(previousDatabase);
+                if (previousSnapshot != null)
+                {
+                    RestoreSnapshot(previousSnapshot);
+                }
             }
-
-            int previousValue = progress.Current;
-            TaskLifecycleState previousState = record.State;
-            bool changed = absolute
-                ? record.SetObjectiveProgress(objectiveId, value)
-                : record.AddObjectiveProgress(objectiveId, value);
-
-            if (!changed)
-            {
-                return false;
-            }
-
-            if (previousValue != progress.Current)
-            {
-                Publish(new TaskObjectiveProgressChangedEventArgs(
-                    taskId,
-                    objectiveId,
-                    previousValue,
-                    progress.Current));
-            }
-
-            if (previousState != record.State)
-            {
-                Publish(new TaskStateChangedEventArgs(taskId, previousState, record.State));
-            }
-
-            return true;
         }
 
         /// <summary>
-        /// 恢复全部活动任务记录并校验目标 ID 与版本需求。
+        /// 校验并重建存档中的活动任务记录。
         /// </summary>
-        /// <param name="snapshot">任务存档快照。</param>
-        /// <param name="target">待写入的临时活动任务表。</param>
-        private void RestoreActiveRecords(TaskSaveSnapshot snapshot, Dictionary<TaskId, TaskRecord> target)
+        /// <param name="snapshot">任务快照。</param>
+        /// <param name="restoredTaskRecordByIdMap">临时活动记录表，成功后才替换当前状态。</param>
+        private void RestoreActiveRecords(
+            TaskSaveSnapshot snapshot,
+            Dictionary<TaskId, TaskRecord> restoredTaskRecordByIdMap)
         {
-            if (snapshot.ActiveTasks == null)
-            {
-                return;
-            }
-
             foreach (TaskRecordSnapshot recordSnapshot in snapshot.ActiveTasks)
             {
-                if (recordSnapshot == null)
-                {
-                    throw new InvalidOperationException("任务存档包含空活动任务记录。");
-                }
-
-                TaskId taskId = ParseTaskId(recordSnapshot.TaskId);
+                TaskId taskId = new TaskId(recordSnapshot.TaskId);
                 if (!database.TryGetDefinition(taskId, out TaskDefinition definition))
                 {
                     throw new InvalidOperationException($"任务存档引用了不存在的任务：{taskId}。 ");
                 }
 
-                if (target.ContainsKey(taskId))
+                if (restoredTaskRecordByIdMap.ContainsKey(taskId))
                 {
                     throw new InvalidOperationException($"任务存档包含重复活动任务：{taskId}。 ");
                 }
 
-                var restoredRecord = new TaskRecord(definition);
-                target.Add(taskId, restoredRecord);
-                TaskRecord record = restoredRecord;
-                var restoredObjectiveIds = new HashSet<ObjectiveId>();
-                if (recordSnapshot.ObjectiveProgress == null)
+                TaskStageId stageId = new TaskStageId(recordSnapshot.CurrentStageId);
+                if (!definition.TryGetStage(stageId, out TaskStageDefinition stage, out int stageIndex))
                 {
-                    throw new InvalidOperationException($"任务 {taskId} 缺少目标进度列表。 ");
+                    throw new InvalidOperationException($"任务 {taskId} 存档阶段无法匹配定义：{stageId}。 ");
                 }
 
+                var record = new TaskRecord(definition);
+                record.ActivateStage(stage);
+                var restoredObjectiveIds = new HashSet<ObjectiveId>();
                 foreach (TaskObjectiveProgressSnapshot progressSnapshot in recordSnapshot.ObjectiveProgress)
                 {
-                    if (progressSnapshot == null)
-                    {
-                        throw new InvalidOperationException($"任务 {taskId} 包含空目标进度。 ");
-                    }
-
-                    ObjectiveId objectiveId = ParseObjectiveId(progressSnapshot.ObjectiveId);
+                    ObjectiveId objectiveId = new ObjectiveId(progressSnapshot.ObjectiveId);
                     if (!restoredObjectiveIds.Add(objectiveId) ||
                         !record.TryGetProgress(objectiveId, out TaskObjectiveProgress progress))
                     {
-                        throw new InvalidOperationException($"任务 {taskId} 的目标进度无法匹配定义：{objectiveId}。 ");
+                        throw new InvalidOperationException(
+                            $"任务 {taskId} 当前阶段进度无法匹配定义：{objectiveId}。 ");
                     }
 
                     if (progress.Required != progressSnapshot.Required ||
                         progressSnapshot.Current < 0 ||
                         progressSnapshot.Current > progress.Required)
                     {
-                        throw new InvalidOperationException($"任务 {taskId} 的目标进度范围或需求不匹配：{objectiveId}。 ");
+                        throw new InvalidOperationException(
+                            $"任务 {taskId} 的目标进度范围或需求不匹配：{objectiveId}。 ");
                     }
 
                     record.SetObjectiveProgress(objectiveId, progressSnapshot.Current);
                 }
 
-                if (recordSnapshot.State != TaskLifecycleState.InProgress &&
-                    recordSnapshot.State != TaskLifecycleState.Claimable)
+                if (restoredObjectiveIds.Count != stage.Objectives.Count)
                 {
-                    throw new InvalidOperationException($"任务 {taskId} 的生命周期状态无效。 ");
+                    throw new InvalidOperationException($"任务 {taskId} 当前阶段快照缺少目标进度。");
                 }
 
-                TaskLifecycleState expectedState = TaskLifecycleState.Claimable;
-                foreach (TaskObjectiveProgress progress in record.ObjectiveProgress)
+                bool stageComplete = record.IsCurrentStageComplete();
+                bool isLastStage = stageIndex == definition.Stages.Count - 1;
+                bool expectedClaimable = isLastStage && stageComplete;
+                if ((recordSnapshot.State == TaskLifecycleState.Claimable) != expectedClaimable ||
+                    (!isLastStage && stageComplete))
                 {
-                    if (!progress.IsComplete)
-                    {
-                        expectedState = TaskLifecycleState.InProgress;
-                        break;
-                    }
-                }
-
-                if (recordSnapshot.State != expectedState)
-                {
-                    throw new InvalidOperationException($"任务 {taskId} 的状态与目标进度不一致。 ");
+                    throw new InvalidOperationException($"任务 {taskId} 的阶段状态与目标进度不一致。");
                 }
 
                 record.SetState(recordSnapshot.State);
+                restoredTaskRecordByIdMap.Add(taskId, record);
             }
         }
 
         /// <summary>
-        /// 恢复完成任务集合并校验任务标识存在且不重复。
+        /// 校验已完成集合并拒绝与活动任务重复的 ID。
         /// </summary>
-        /// <param name="snapshot">任务存档快照。</param>
-        /// <param name="target">待写入的临时完成集合。</param>
-        private void RestoreCompletedIds(TaskSaveSnapshot snapshot, HashSet<TaskId> target)
+        /// <param name="snapshot">任务快照。</param>
+        /// <param name="restoredCompletedTaskIds">临时完成集合。</param>
+        /// <param name="activeTaskRecordByIdMap">已恢复的活动任务记录。</param>
+        private void RestoreCompletedIds(
+            TaskSaveSnapshot snapshot,
+            HashSet<TaskId> restoredCompletedTaskIds,
+            Dictionary<TaskId, TaskRecord> activeTaskRecordByIdMap)
         {
-            if (snapshot.CompletedTaskIds == null)
-            {
-                return;
-            }
-
             foreach (string value in snapshot.CompletedTaskIds)
             {
-                TaskId taskId = ParseTaskId(value);
+                TaskId taskId = new TaskId(value);
                 if (!database.TryGetDefinition(taskId, out _))
                 {
                     throw new InvalidOperationException($"完成任务集合引用了不存在的任务：{taskId}。 ");
                 }
 
-                if (!target.Add(taskId))
+                if (activeTaskRecordByIdMap.ContainsKey(taskId) || !restoredCompletedTaskIds.Add(taskId))
                 {
-                    throw new InvalidOperationException($"完成任务集合包含重复任务：{taskId}。 ");
+                    throw new InvalidOperationException($"完成任务集合包含重复或活动任务：{taskId}。 ");
                 }
             }
         }
 
         /// <summary>
-        /// 恢复未读集合并确保其只引用活动且未完成的任务。
+        /// 校验未读集合只能引用活动且未完成的任务。
         /// </summary>
-        /// <param name="snapshot">任务存档快照。</param>
-        /// <param name="active">已恢复活动任务集合。</param>
-        /// <param name="completed">已恢复完成任务集合。</param>
-        /// <param name="target">待写入的临时未读集合。</param>
+        /// <param name="snapshot">任务快照。</param>
+        /// <param name="activeTaskRecordByIdMap">已恢复活动任务记录。</param>
+        /// <param name="restoredUnreadTaskIds">临时未读集合。</param>
         private void RestoreUnreadIds(
             TaskSaveSnapshot snapshot,
-            Dictionary<TaskId, TaskRecord> active,
-            HashSet<TaskId> completed,
-            HashSet<TaskId> target)
+            Dictionary<TaskId, TaskRecord> activeTaskRecordByIdMap,
+            HashSet<TaskId> restoredUnreadTaskIds)
         {
-            if (snapshot.UnreadTaskIds == null)
-            {
-                return;
-            }
-
             foreach (string value in snapshot.UnreadTaskIds)
             {
-                TaskId taskId = ParseTaskId(value);
-                if (!active.ContainsKey(taskId) || completed.Contains(taskId) || !target.Add(taskId))
+                TaskId taskId = new TaskId(value);
+                if (!activeTaskRecordByIdMap.ContainsKey(taskId) || !restoredUnreadTaskIds.Add(taskId))
                 {
                     throw new InvalidOperationException($"未读任务集合包含非法或重复任务：{taskId}。 ");
                 }
@@ -656,39 +798,20 @@ namespace RPG.TaskSystem
         }
 
         /// <summary>
-        /// 将字符串解析为严格任务标识。
+        /// 清空活动、完成、未读和追踪任务事实。
         /// </summary>
-        /// <param name="value">待解析字符串。</param>
-        /// <returns>任务标识。</returns>
-        private static TaskId ParseTaskId(string value)
+        private void ClearPlayerTaskStateInternal()
         {
-            return new TaskId(value);
-        }
-
-        /// <summary>
-        /// 将字符串解析为严格目标标识。
-        /// </summary>
-        /// <param name="value">待解析字符串。</param>
-        /// <returns>目标标识。</returns>
-        private static ObjectiveId ParseObjectiveId(string value)
-        {
-            return new ObjectiveId(value);
-        }
-
-        /// <summary>
-        /// 清空任务运行时状态集合。
-        /// </summary>
-        private void ClearRuntimeStateInternal()
-        {
-            activeRecords.Clear();
+            taskRecordByIdMap.Clear();
             completedTaskIds.Clear();
             unreadTaskIds.Clear();
             trackedTaskId = default;
         }
 
         /// <summary>
-        /// 确保调用方已经通过 ConfigInstaller 注入任务数据库。
+        /// 确认调用方已经通过 ConfigInstaller 注入任务数据库。
         /// </summary>
+        /// <exception cref="InvalidOperationException">数据库尚未配置时抛出。</exception>
         private void EnsureConfigured()
         {
             if (!configured || database == null)
@@ -698,7 +821,7 @@ namespace RPG.TaskSystem
         }
 
         /// <summary>
-        /// 通过 WSFrame 类型事件中心发布任务事实事件。
+        /// 通过 WSFrame 类型事件中心发布已经提交的任务事实。
         /// </summary>
         /// <typeparam name="TEvent">事件类型。</typeparam>
         /// <param name="eventArgs">事件数据。</param>
@@ -706,5 +829,7 @@ namespace RPG.TaskSystem
         {
             EventSystem.EventTrigger_Type(typeof(TEvent), eventArgs);
         }
+
+        #endregion
     }
 }

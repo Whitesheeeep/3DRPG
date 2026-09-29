@@ -1,11 +1,11 @@
 # 任务系统需求说明
 
-> 文档状态：核心剧情任务需求确认稿
+> 文档状态：核心剧情任务需求与当前实现边界
 > 适用范围：单机 RPG、线性任务阶段、任务链、NPC/场景交互、任务导航和本地存档
-> 当前实现基础：`TaskManager`、`TaskRuntime`、`TaskProgressSystem`、`TaskSaveModule`
+> 当前实现版本：任务生命周期 v2；手动领奖目前仅支持货币
 
-本文档承接任务产品需求。任务、红点和存档的当前实现边界仍记录在
-[`TaskRedDotSaveSystem_Architecture.md`](TaskRedDotSaveSystem_Architecture.md)；两份文档出现冲突时，本文档负责下一阶段产品行为，架构文档负责已落地代码行为。
+本文档承接任务产品需求。任务系统当前代码行为与数据模型见
+[`TaskSystem_Architecture.md`](TaskSystem_Architecture.md)；两份文档出现冲突时，本文档负责后续产品行为，架构文档负责已落地代码行为。
 
 ## 1. 目标与范围
 
@@ -24,7 +24,9 @@
 - [Quest Menu 参考](https://genshin-impact.fandom.com/wiki/Quest/Menu)
 - [Quest 参考](https://genshin-impact.fandom.com/wiki/Quest)
 
-### 1.2 本阶段包含
+### 1.2 完整产品目标范围
+
+下列条目描述任务系统的完整产品目标，不代表本次都已实现；当前代码边界以第 2 节状态表为准。
 
 - 一次性主线、支线和世界任务。
 - 任务链与章节分组。
@@ -45,33 +47,32 @@
 
 ## 2. 当前基础与目标形态
 
-当前代码已经具备以下事实状态：
+下表区分本轮已经落地的核心流程和仍属后续产品目标的功能：
 
 | 能力 | 当前状态 |
 | --- | --- |
-| 稳定 `TaskId`、任务数据库和多态配置 | 已实现 |
-| 活动任务、目标整数进度和 `InProgress/Claimable` | 已实现 |
-| 目标 Handler 订阅/取消订阅生命周期 | 已实现 |
-| 单任务追踪、未读集合和任务事实事件 | 已实现 |
-| 任务快照、存档恢复和运行时重建 | 已实现 |
-| 接取条件与统一接取流程 | 需求待实现 |
-| 任务链、章节和阶段 | 需求待实现 |
-| 奖励 Handler 与领奖事务 | 需求待实现 |
-| 导航目标、资源占用和阻塞解释 | 需求待实现 |
-| 任务查询层、UI 和任务红点数据源 | 需求待实现 |
+| 每任务独立 `TaskDefinition` 资产、按 `TaskId` 索引及配置校验 | 已实现 |
+| 按顺序执行任务阶段；当前阶段目标全部完成后推进 | 已实现 |
+| 统一资格查询和接取 API；前置任务已完成条件 | 已实现 |
+| 当前阶段目标 Handler 订阅与切换、追踪、未读和任务事实事件 | 已实现 |
+| 手动提交货币奖励；预检后一次批量发放 | 已实现 |
+| 保存当前阶段进度、活动状态、追踪、未读和完成 ID；任务模块 v2 | 已实现 |
+| 任务链/章节、更多接取条件和非货币奖励 | 后续扩展 |
+| 导航目标、资源占用和阻塞解释 | 后续扩展 |
+| 任务查询层、正式 UI/NPC/对话接入和任务红点数据源 | 后续扩展 |
 
-目标配置层级如下：
+当前配置层级为数据库引用多个独立任务资产，每个任务资产包含条件、顺序阶段、目标和奖励：
 
 ```mermaid
 flowchart TD
-    Database[TaskDatabase] --> Series[TaskSeriesDefinition]
-    Series --> Task[TaskDefinition]
+    Database[TaskDatabase] --> Task[TaskDefinition Asset]
     Task --> Stage[TaskStageDefinition]
     Stage --> Objective[TaskObjectiveDefinition]
-    Stage --> Navigation[TaskNavigationTargetDefinition]
-    Stage --> Resource[TaskResourceClaimDefinition]
-    Task --> Unlock[TaskUnlockConditionDefinition]
+    Task --> Unlock[TaskConditionDefinition]
     Task --> Reward[TaskRewardDefinition]
+    Series[TaskSeriesDefinition 后续扩展] -.-> Task
+    Stage -.-> Navigation[导航配置 后续扩展]
+    Stage -.-> Resource[资源占用配置 后续扩展]
 ```
 
 ### 2.1 稳定标识
@@ -85,9 +86,9 @@ flowchart TD
 
 ## 3. 任务链、任务和阶段
 
-### 3.1 `TaskSeries`
+### 3.1 `TaskSeries`（后续扩展）
 
-任务链负责展示和顺序关系，不直接保存玩家进度。
+任务链负责展示和顺序关系，不直接保存玩家进度；当前代码尚未实现任务链或章节配置。
 
 - 包含稳定 ID、分类、章节标题、排序和展示图标/背景引用。
 - 包含有序 `TaskId` 列表。
@@ -96,25 +97,27 @@ flowchart TD
 
 ### 3.2 `TaskDefinition`
 
-任务是一次性可接取单元，包含：
+当前 `TaskDefinition` 是每任务一个 ScriptableObject 资产的一次性可接取单元，包含：
 
-- 稳定 `TaskId`、所属 `TaskSeriesId`、分类、标题、描述和展示信息。
-- 接取条件列表，默认全部满足（AND）。
+- 稳定 `TaskId`、由静态分类表约束的 `TaskCategoryId`、标题和描述。首批分类为 `main`（主线）与 `side`（支线）；任务资产在 Inspector 中通过下拉框选择，显示名称调整不改变已保存 ID。
+- 接取条件列表，全部满足（AND）；当前支持“前置任务已完成”。
 - 有序阶段列表，至少一个阶段。
-- 奖励列表和奖励策略 `AutoGrant` 或 `ManualClaim`。
-- 后继任务策略 `UnlockOnly` 或 `AutoAccept`。
-- 可选的推荐等级、推荐区域和剧情提示。
+- 奖励列表；当前只接受 `TaskCurrencyRewardDefinition`，并统一手动领取。
+
+任务链归属、奖励策略、自动接取、推荐信息和更多展示字段属于后续扩展。
+
+新增任务分类时需在 `TaskCategoryCatalog` 中登记稳定 ID 和显示名称；任务资产 Drawer 与任务配置校验共用该表。
 
 ### 3.3 `TaskStageDefinition`
 
 阶段是任务内部的线性执行单元：
 
-- 具有稳定 `StageId`、标题、描述和排序序号。
+- 具有所属任务内唯一的 `TaskStageId`、标题和描述；列表位置就是执行顺序。
 - 包含一个或多个目标；阶段内目标默认全部完成才算阶段完成。
-- 可声明一个当前导航目标。
-- 可声明零个或多个独占资源 Key。
+- `ObjectiveId` 在所属阶段内唯一。
+- 导航目标和独占资源声明尚未接入。
 - 可配置进入阶段时发布的业务事实或交给 DialogueSystem 的 Action；任务系统不执行对话分支。
-- 阶段完成后自动进入下一个阶段；最后阶段完成后进入奖励流程。
+- 阶段完成后自动进入下一个阶段；最后阶段完成后进入 `Claimable`，等待显式领奖。
 
 阶段推进时序：
 
@@ -122,7 +125,7 @@ flowchart TD
 stateDiagram-v2
     [*] --> Locked
     Locked --> Available: 条件满足
-    Available --> InProgress: AcceptTask 成功
+    Available --> InProgress: TryAcceptTask 成功
     InProgress --> InProgress: 当前阶段目标变化
     InProgress --> InProgress: 资源冲突，仅动态阻塞
     InProgress --> NextStage: 当前阶段全部完成
@@ -144,7 +147,7 @@ stateDiagram-v2
 - `Available`：所有条件满足，且任务未活动、未完成。
 - 已活动或已完成任务不再返回可接取状态。
 
-条件 Handler 只回答当前是否满足，不主动调用接取 API。条件至少支持：
+通过 `TaskProgressSystem.GetAvailability(TaskId)` 查询资格。条件 Handler 只回答当前是否满足，不主动调用接取 API。当前实现只有“前置任务已完成”；以下条件仍待扩展：
 
 - 玩家等级或章节进度。
 - 前置任务完成。
@@ -153,11 +156,11 @@ stateDiagram-v2
 - 区域、世界状态或其他业务只读事实。
 - 资源冲突导致的可执行性限制。
 
-条件查询必须返回结构化原因，而不是只返回一条字符串。例如：
+资格结果包含 `NotFound / Locked / Available / Active / Completed` 状态和结构化原因。当前结构化原因记录前置 `TaskId` 与可读说明，例如：
 
 ```text
 TaskAvailabilityResult
-├─ Status: Locked / Available / Active / Completed
+├─ Status: NotFound / Locked / Available / Active / Completed
 └─ Reasons[]
    ├─ ReasonType: RequiredTask
    ├─ RelatedTaskId: main.chapter01.002
@@ -166,48 +169,45 @@ TaskAvailabilityResult
 
 ### 4.2 统一接取入口
 
-所有调用方使用同一入口：
+所有来源都通过 `TaskProgressSystem.TryAcceptTask` 使用同一入口：
 
 ```text
 TryAcceptTask(TaskId taskId, TaskAcceptSource source) -> TaskAcceptResult
 ```
 
-调用方包括 NPC、Dialogue Action、剧情触发器、任务链协调器和 UI ViewModel。`source` 只用于日志、调试和埋点，不改变规则。
+计划中的调用方包括 NPC、Dialogue Action、剧情触发器、任务链协调器和 UI ViewModel；这些正式入口目前尚未接入。`source` 只用于日志、调试和埋点，不改变规则。
 
 接取入口按以下顺序执行：
 
 1. 解析任务定义并校验配置。
-2. 检查已完成和已活动状态。
-3. 实时评估全部接取条件。
-4. 创建活动记录，初始化第一个阶段和目标进度。
-5. 记录活动序号，供资源冲突排序和存档恢复使用。
-6. 将任务加入未读集合并发布接取事实。
-7. 创建当前阶段运行时；状态型目标在此时首次查询。
-8. 若配置了 `AutoAccept` 后继关系，则在当前任务完成后再次通过同一入口尝试接取后继任务。
+2. 检查任务是否已完成或已活动，并评估接取条件。
+3. 预解析全部阶段的目标 Handler，配置缺失时明确抛出错误。
+4. 创建临时活动记录并启动首阶段监听。
+5. 监听建立成功后才提交接取事实、加入未读集合并发布接取事件。
 
-后继任务的 `AutoAccept` 尝试失败不会回滚当前任务完成；后继任务保留为 `Available` 或带原因的 `Locked`。
+存档恢复使用专用恢复入口，不调用接取 API。调用来源只写入接取事实事件和诊断日志，不改变资格判断。任务链自动接取尚未实现。
 
 ### 4.3 接取失败语义
 
-业务拒绝使用结构化结果：
+业务拒绝通过 `TaskAcceptResult` 或 `TaskClaimResult` 返回结构化结果。当前 `TaskCommandFailure` 包含：
 
 - `TaskNotFound`
 - `AlreadyActive`
 - `AlreadyCompleted`
 - `ConditionNotMet`
-- `BlockedByResource`
-- `InvalidConfiguration`
+- `NotClaimable`（领奖时）
+- `RewardClaimInProgress`（同一任务已有领奖流程执行时）
+- `RewardRejected`（货币钱包预检或发放拒绝）
 
-配置契约错误（重复 ID、缺少 Handler、非法阶段顺序）直接抛出或上报，不转换成普通玩家可恢复失败。
+任务不存在、已活动、已完成、条件未满足分别映射为 `TaskNotFound`、`AlreadyActive`、`AlreadyCompleted`、`ConditionNotMet`。重复 ID、缺少 Handler、非法阶段或奖励配置直接抛出或上报，不转换成普通玩家可恢复失败。资源阻塞与配置错误结果尚未实现。
 
 ## 5. 目标与阶段运行时
 
 ### 5.1 目标语义
 
-每个目标归属一个阶段，继续使用当前 `TaskObjectiveHandlerRegistry` 的显式类型注册模式：
+每个目标归属一个阶段，继续使用 `TaskObjectiveHandlerRegistry` 的显式类型注册模式：
 
-- 累计型目标：只统计接取后发生且匹配的领域事实。
-- 状态型目标：接取阶段时查询一次；相关业务事件发生后重新查询并覆盖进度。
+- Handler 可按玩法领域实现累计或状态查询语义；当前框架提供注册契约及 Odin 测试事件，具体战斗、背包、对话 Handler 后续接入。
 - 阶段完成只由当前阶段目标决定，后续阶段目标不能提前计入。
 - 阶段切换时停止旧阶段目标监听，再创建并启动新阶段目标监听。
 
@@ -216,11 +216,11 @@ TryAcceptTask(TaskId taskId, TaskAcceptSource source) -> TaskAcceptResult
 ### 5.2 阶段切换约束
 
 - 当前阶段未全部完成时不能手动跳阶段。
-- 阶段切换是一次有序状态修改：停止旧运行时、写入新 `StageId`、初始化新目标、重建新运行时。
-- 新阶段初始化失败属于配置/集成错误，不能伪造阶段完成。
+- 阶段切换是一次有序状态修改：停止旧运行时、写入新阶段进度、建立并启动新阶段监听；成功后才发布阶段切换事件。
+- 新阶段初始化失败属于配置/集成错误，不能伪造阶段完成。配置 Handler 在接取时预解析，运行期建立监听仍可能暴露集成错误。
 - 追踪任务切换不影响任何任务阶段或目标进度。
 
-## 6. 导航契约
+## 6. 导航契约（后续能力）
 
 任务系统提供语义导航，不直接引用地图或 HUD：
 
@@ -242,7 +242,7 @@ TaskNavigationInfo
 - 当前阶段没有导航配置，或目标暂不可解析时，任务仍可追踪，但导航层只收到 `IsAvailable = false`。
 - 任务系统不自动打开地图、不移动玩家、不选择传送点，也不负责寻路。
 
-## 7. NPC/场景资源冲突
+## 7. NPC/场景资源冲突（后续能力）
 
 ### 7.1 资源声明
 
@@ -279,36 +279,32 @@ flowchart TD
 
 ## 8. 奖励策略与完成事务
 
-### 8.1 奖励策略
+### 8.1 当前奖励策略
 
-- `AutoGrant`：最后阶段完成后自动执行奖励预检和发放。
-- `ManualClaim`：最后阶段完成后进入 `Claimable`，由 UI 或 NPC 调用领奖入口。
+- 当前只支持手动领取：最后阶段完成后进入 `Claimable`，调用 `TaskProgressSystem.TryClaimReward(TaskId)` 领奖。
+- 当前只支持货币奖励；其它奖励类型在 `TaskDefinition.Validate()` 阶段明确拒绝。
 
-两种策略共用同一奖励 Handler 注册表和同一预检规则。
+自动发奖及其他奖励类型需要具备跨系统事务方案后再扩展。
 
 ### 8.2 奖励事务
 
 ```mermaid
 flowchart TD
-    CompleteStage[最后阶段完成] --> Policy{奖励策略}
-    Policy -->|AutoGrant| Claim[执行 ClaimTaskReward]
-    Policy -->|ManualClaim| Claimable[进入 Claimable]
-    Claimable --> Claim
-    Claim --> Resolve[解析全部 Reward Handler]
-    Resolve --> Preflight[按确定顺序 CanGrant]
-    Preflight -->|失败| Keep[零发放，保持 Claimable]
-    Preflight -->|成功| Grant[按相同顺序 Grant]
-    Grant --> Finish[记录 CompletedTaskId 并清理活动记录]
+    CompleteStage[最后阶段完成] --> Claimable[进入 Claimable]
+    Claimable --> Preflight[CanAddCurrencies 无副作用预检]
+    Preflight -->|失败| Keep[零发放，保持 Claimable，可重试]
+    Preflight -->|成功| Grant[一次 AddCurrencies 原子批量增加]
+    Grant --> Finish[移除活动记录并记录 CompletedTaskId]
     Finish --> Event[发布 TaskCompletedEvent]
 ```
 
 奖励流程约束：
 
-- 所有奖励 `CanGrant` 成功前不能产生副作用。
-- 预检失败返回结构化原因，例如背包容量不足；任务保持 `Claimable`。
-- `Grant` 失败属于 Handler 契约错误，不伪造完成，不允许静默吞异常。
+- 合并同任务内相同货币项后，调用无副作用的 `CanAddCurrencies`；失败返回结构化钱包状态且不发放。
+- 预检成功后只调用一次现有原子批量增加 API `AddCurrencies`。
+- 货币超过上限时任务保持 `Claimable`，修正钱包余额后可重试。
 - 成功完成后删除活动记录和阶段进度，清除追踪与未读状态，记录完成 ID。
-- 任务完成后再按任务定义尝试后继任务的 `AutoAccept` 策略。
+- 发放成功后才执行任务完成提交；自动接取后继任务尚未实现。
 
 ## 9. 查询、UI 与红点
 
@@ -346,17 +342,16 @@ Query 只读，不修改任务状态；ViewModel 通过 Command 调用接取、�
 
 ### 10.1 活动任务快照
 
-活动任务至少保存：
+当前 v2 活动任务快照保存：
 
 ```text
 TaskRecordSnapshot
 ├─ TaskId
 ├─ CurrentStageId
 ├─ State: InProgress / Claimable
-├─ ActivationOrdinal
 ├─ ObjectiveProgress[]
-├─ RewardState
 ├─ TrackedTaskId（全局字段）
+├─ CompletedTaskIds（全局字段）
 └─ UnreadTaskIds（全局字段）
 ```
 
@@ -382,42 +377,42 @@ sequenceDiagram
 - 资源阻塞和状态型目标在依赖业务模块恢复后重新计算。
 - 恢复失败时不得部分覆盖当前任务状态。
 
-### 10.3 旧版迁移
+### 10.3 版本策略
 
-- 旧版直接挂在 `TaskDefinition` 下的目标进度迁移到该任务的首个 `TaskStageDefinition`。
-- 旧版 `InProgress/Claimable` 状态保持原语义。
-- 旧版没有 `ActivationOrdinal` 时按活动记录稳定排序生成，并立即在下一次保存时写入。
-- TaskId、StageId、ObjectiveId 无法匹配定义时拒绝加载并保持当前状态不变。
-- 迁移必须按模块版本链执行，不在业务查询期间隐式修复存档。
+- 任务快照模块版本当前为 v2，包含当前阶段 ID 和当前阶段目标进度。
+- 按已确认的项目情况，目前没有实际任务存档槽位，因此本次不提供 v1 到 v2 迁移。
+- 任务、阶段或目标 ID 无法匹配定义时拒绝恢复并保持当前状态不变；存档模块的通用版本迁移机制仍按需使用。
 
 ## 11. 业务边界与接口方向
 
 ### 11.1 任务核心
 
-`TaskManager` 继续只持有任务事实；不直接依赖战斗、背包、对话、地图、UI 或 NPC GameObject。
+`TaskManager` 持有已校验的任务数据库引用和玩家任务事实；不直接依赖战斗、背包、对话、地图、UI 或 NPC GameObject。它负责查询和写入任务数据，`TaskProgressSystem` 负责接取、阶段推进、领奖以及目标监听生命周期。
 
 `TaskProgressSystem` 继续负责跨业务编排、目标运行时生命周期和存档恢复后的订阅重建。
 
-### 11.2 待实现契约
+### 11.2 已实现与待实现契约
 
-下一阶段按现有显式注册模式定义：
+已经提供的业务契约与 API：
 
-- `ITaskUnlockConditionHandler`：评估接取条件并返回结构化原因。
 - `ITaskObjectiveHandler`：创建阶段目标运行时。
-- `ITaskRewardHandler`：执行 `CanGrant` 与 `Grant`。
+- `ITaskConditionHandler`：评估接取条件并返回结构化原因；目前注册前置任务已完成 Handler。
+- `TaskProgressSystem.GetAvailability`、`TryAcceptTask` 和 `TryClaimReward`。
+- `TaskCurrencyRewardHandler` 与 `ICurrencyWallet.CanAddCurrencies` / `AddCurrencies`。
+
+后续按现有显式注册模式扩展：
+
+- 更多接取条件与奖励 Handler。
 - `ITaskNavigationResolver`：把语义导航目标解析成当前世界导航信息。
 - `ITaskResourceOccupancyResolver`：取得、释放和查询资源占用。
-- 任务 Command：接取、领奖、追踪、清除追踪和确认查看。
-- 任务 Query：列表、详情、可用性、导航和阻塞信息。
+- 任务列表与详情 Query、正式 UI/NPC/对话调用方及任务红点数据源。
 
 ### 11.3 任务事实事件
 
-在现有事件基础上补充：
+当前已提供 `TaskAcceptedEventArgs`、`TaskObjectiveProgressChangedEventArgs`、`TaskStageChangedEventArgs`、`TaskStateChangedEventArgs`、`TaskRewardClaimableEventArgs`、`TaskCompletedEventArgs`、`TaskTrackedChangedEventArgs` 和 `TaskAcknowledgedEventArgs`。后续导航与占用能力再补充：
 
-- `TaskStageChangedEvent`
 - `TaskBlockedChangedEvent`
 - `TaskNavigationChangedEvent`
-- `TaskRewardClaimableEvent`
 - `TaskRewardClaimFailedEvent`
 
 事件只表达已经发生的事实；接取、推进和领奖的核心顺序由 Command/System 保证。
@@ -460,11 +455,10 @@ sequenceDiagram
 
 ## 13. 后续实现顺序
 
-1. 扩展配置模型和数据库校验，加入 Series/Stage 稳定 ID。
-2. 实现统一接取、条件 Handler 和任务链衔接。
-3. 把目标运行时从任务级调整为当前阶段级。
-4. 实现奖励 Handler、自动/手动领奖和完成事务。
-5. 接入导航 Resolver 与资源 Occupancy Resolver。
-6. 升级任务存档快照及迁移链。
-7. 实现 Query、红点数据源和 UI ViewModel。
-8. 用 Odin 手动测试覆盖本文档的验收场景，并补充 Unity 生命周期、场景和交互验证。
+1. 接入真实玩法目标 Handler，并补足 Unity 生命周期、场景和运行时交互验证。
+2. 创建正式任务定义资产，并继续维护 TaskDatabase 配置。
+3. 接入任务列表与详情 Query、正式 NPC/对话/剧情调用方和 UI ViewModel。
+4. 接入任务红点数据源。
+5. 在具备跨系统事务方案后扩展非货币奖励与自动奖励。
+6. 增加任务链/章节、导航 Resolver 与资源 Occupancy Resolver。
+7. 若未来存在需要保留的旧版本任务存档，再按真实数据添加迁移器。
