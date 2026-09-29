@@ -52,8 +52,21 @@ namespace RPG.Game.UI.Character
             CharacterEquipmentSystem equipmentSystem,
             CharacterAttributeProgressionResolver attributeResolver)
         {
+            return ResolveStatValues(instance, instance.Level, equipmentSystem, attributeResolver);
+        }
+
+        /// <summary>按目标等级重新解析角色 Stat，并沿用当前角色装备静态效果生成升级预览。</summary>
+        /// <param name="instance">当前稳定角色实例，用于读取配置、身份和装备关系。</param>
+        /// <param name="level">待投影的角色等级。</param>
+        /// <param name="equipmentSystem">读取已装备物品的权威系统。</param>
+        /// <param name="attributeResolver">读取角色目标等级烘焙基础值的解析器。</param>
+        /// <returns>只包含角色配置中定义的 Stat，且保持 AttributeSet 顺序的总值。</returns>
+        internal static IReadOnlyList<CharacterAttributeProjectionValue> ResolveStatValues(
+            CharacterInstance instance, int level, CharacterEquipmentSystem equipmentSystem,
+            CharacterAttributeProgressionResolver attributeResolver)
+        {
             IReadOnlyList<GameplayAttributeValue> baseValues =
-                attributeResolver.ResolveBaseValues(instance.Config, instance.Level);
+                attributeResolver.ResolveBaseValues(instance.Config, level);
             var definitionByAttributeIdMap = new Dictionary<int, GameplayAttributeDefinition>();
             var modifierListByAttributeIdMap = new Dictionary<int, List<GameplayEffectStaticModifierResult>>();
 

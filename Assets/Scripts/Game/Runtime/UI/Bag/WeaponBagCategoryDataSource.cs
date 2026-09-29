@@ -1,10 +1,7 @@
 using System;
 using System.Collections.Generic;
 using RPG.Character;
-using RPG.Game.UI.WeaponDevelopment;
 using RPG.ItemSystem;
-using WS_Modules.GAS.AttributeSystem;
-using WS_Modules.GAS.GameplayEffect;
 
 namespace RPG.Game.UI.Bag
 {
@@ -124,8 +121,7 @@ namespace RPG.Game.UI.Bag
                 SpriteParts(character.SideIconAddress, character.SideIconSpriteName, out ownerIcon);
             }
 
-            WeaponDetails weaponDetails = WeaponDetailsQuery.Create(weapon, instance);
-            IReadOnlyList<string> attributes = BuildAttributeTexts(weaponDetails);
+            IReadOnlyList<BagWeaponAttributeViewData> weaponAttributes = BuildWeaponAttributeViews(weapon, instance);
             details = new BagDetailViewData(
                 entryKey,
                 weapon.DisplayName,
@@ -134,15 +130,48 @@ namespace RPG.Game.UI.Bag
                 weapon.WeaponType.ToString(),
                 $"Lv.{instance.Level}/{weapon.MaxLevel}",
                 $"精炼 {instance.RefinementRank}",
-                attributes,
+                Array.Empty<string>(),
                 weapon.Description,
                 ownerText,
                 ownerIcon,
                 isEquipped && ownerIcon != null,
                 true,
-                true);
+                true,
+                weaponAttributes);
             return true;
         }
+
+        #region 详情与排序辅助
+
+        // 详情属性投影
+
+        /// <summary>将合并后的武器静态属性限制为上半详情区的两个固定槽位。</summary>
+        /// <param name="weapon">武器定义。</param>
+        /// <param name="instance">武器实例。</param>
+        /// <returns>按等级效果优先顺序排列的最多两条展示属性。</returns>
+        private static IReadOnlyList<BagWeaponAttributeViewData> BuildWeaponAttributeViews(
+            WeaponDefinition weapon, WeaponInstance instance)
+        {
+            IReadOnlyList<StaticGameplayAttributePresentationValue> values =
+                BagGameplayEffectPresentationBuilder.BuildWeaponAttributeValues(
+                    weapon, instance, $"背包武器 {weapon.DisplayName}");
+            int count = Math.Min(2, values.Count);
+            var result = new List<BagWeaponAttributeViewData>(count);
+            for (int index = 0; index < count; index++)
+            {
+                StaticGameplayAttributePresentationValue value = values[index];
+                string attributeName = string.IsNullOrWhiteSpace(value.Attribute.DisplayName)
+                    ? value.Attribute.Name
+                    : value.Attribute.DisplayName;
+                string formattedValue = BagGameplayEffectPresentationBuilder.FormatStaticAttributeValue(
+                    value.Type, value.Value);
+                result.Add(new BagWeaponAttributeViewData(attributeName, formattedValue));
+            }
+
+            return result;
+        }
+
+        // 排序、资源和实例标识处理
 
         /// <summary>按武器数据和当前排序设置比较两个条目。</summary>
         private static int Compare(WeaponEntry left, WeaponEntry right, BagSortMode mode, BagSortDirection direction)
@@ -172,105 +201,6 @@ namespace RPG.Game.UI.Bag
             if (sequence != 0) return sequence;
             return string.Compare(left.Instance.InstanceId.ToString(), right.Instance.InstanceId.ToString(), StringComparison.Ordinal);
         }
-
-        /// <summary>生成最多两个静态属性文本，并按 Modifier 类型选择数值格式。</summary>
-        /// <param name="details">当前武器的详情快照。</param>
-        /// <returns>按首次出现顺序排列的属性文本。</returns>
-        private static IReadOnlyList<string> BuildAttributeTexts(WeaponDetails details)
-        {
-            var contributions = new List<AttributeValue>();
-            AppendAttributes(details.LevelEffects, contributions);
-            AppendAttributes(details.RefinementEffects, contributions);
-
-            // 同一 Attribute 同时出现 Add 与 Multiply 是配置冲突；聚合仍继续，保证 UI 能显示其余详情。
-            for (int index = 0; index < contributions.Count; index++)
-            {
-                AttributeValue value = contributions[index];
-                if (!value.HasTypeConflict) continue;
-                UnityEngine.Debug.LogError(
-                    $"[WeaponBag] 武器 '{details.DisplayName}' ({details.DefinitionId}) 的 Attribute " +
-                    $"'{value.Attribute.DisplayName}' 同时配置了 Add 和 Multiply；详情优先显示 Multiply。", details.Definition);
-            }
-
-            var result = new List<string>(2);
-            for (int index = 0; index < contributions.Count && result.Count < 2; index++)
-            {
-                AttributeValue value = contributions[index];
-                result.Add($"{value.Attribute.DisplayName}: {FormatAttributeValue(value)}");
-            }
-
-            return result;
-        }
-
-        /// <summary>合并同一 Attribute 的 Add 或 Multiply 贡献并保持首次出现顺序。</summary>
-        /// <param name="evaluations">按效果顺序排列的静态 Modifier 结果。</param>
-        /// <param name="values">接收按 Attribute 合并后的显示值。</param>
-        private static void AppendAttributes(
-            IReadOnlyList<WeaponEffectEvaluation> evaluations,
-            List<AttributeValue> values)
-        {
-            for (int effectIndex = 0; effectIndex < evaluations.Count; effectIndex++)
-            {
-                IReadOnlyList<WeaponEffectContribution> contributions = evaluations[effectIndex].Contributions;
-                for (int contributionIndex = 0; contributionIndex < contributions.Count; contributionIndex++)
-                {
-                    GameplayEffectStaticModifierResult result = contributions[contributionIndex].Result;
-                    if ((result.Type != AttributeModifierType.Add && result.Type != AttributeModifierType.Multiply) ||
-                        !result.Attribute.IsValid)
-                    {
-                        continue;
-                    }
-
-                    int existingIndex = values.FindIndex(item => item.Attribute.Id == result.Attribute.Id);
-
-                    // 首次出现的 Attribute 决定列表顺序；Multiply 的中性聚合值由实际首项提供。
-                    if (existingIndex < 0)
-                    {
-                        values.Add(new AttributeValue(result.Attribute, result.Type, result.Magnitude, false));
-                        continue;
-                    }
-
-                    AttributeValue existing = values[existingIndex];
-                    if (existing.Type != result.Type)
-                    {
-                        // 原神式武器词条不应同时对同一 Attribute 配置 Add 与 Multiply；发生冲突时保留 Multiply。
-                        if (result.Type == AttributeModifierType.Multiply)
-                        {
-                            values[existingIndex] = new AttributeValue(
-                                existing.Attribute,
-                                AttributeModifierType.Multiply,
-                                result.Magnitude,
-                                true);
-                        }
-                        else
-                        {
-                            values[existingIndex] = new AttributeValue(
-                                existing.Attribute,
-                                existing.Type,
-                                existing.Value,
-                                true);
-                        }
-
-                        continue;
-                    }
-
-                    float aggregatedValue = existing.Type == AttributeModifierType.Add
-                        ? existing.Value + result.Magnitude
-                        : existing.Value * result.Magnitude;
-                    values[existingIndex] = new AttributeValue(
-                        existing.Attribute,
-                        existing.Type,
-                        aggregatedValue,
-                        existing.HasTypeConflict);
-                }
-            }
-        }
-
-        /// <summary>按 Modifier 类型格式化一个武器详情属性值。</summary>
-        /// <param name="value">已完成聚合的属性值。</param>
-        /// <returns>适合详情面板显示的数值文本。</returns>
-        private static string FormatAttributeValue(AttributeValue value) =>
-            WeaponAttributeTextFormatter.Format(value.Type, value.Value);
 
         /// <summary>按 Address 和 SpriteName 解析一个图标；缺失时返回空。</summary>
         private void SpriteParts(string address, string spriteName, out UnityEngine.Sprite sprite)
@@ -309,30 +239,7 @@ namespace RPG.Game.UI.Bag
             public WeaponDefinition Weapon { get; }
         }
 
-        /// <summary>缓存一个按 Attribute Id 合并后的显示值及其 Modifier 类型。</summary>
-        private readonly struct AttributeValue
-        {
-            /// <summary>创建一个属性显示值。</summary>
-            /// <param name="attribute">属性定义。</param>
-            /// <param name="type">当前采用的 Modifier 类型。</param>
-            /// <param name="value">按类型合并后的数值或倍率。</param>
-            /// <param name="hasTypeConflict">是否曾同时遇到 Add 与 Multiply。</param>
-            public AttributeValue(
-                GameplayAttribute attribute,
-                AttributeModifierType type,
-                float value,
-                bool hasTypeConflict)
-            {
-                Attribute = attribute;
-                Type = type;
-                Value = value;
-                HasTypeConflict = hasTypeConflict;
-            }
+        #endregion
 
-            public GameplayAttribute Attribute { get; }
-            public AttributeModifierType Type { get; }
-            public float Value { get; }
-            public bool HasTypeConflict { get; }
-        }
     }
 }

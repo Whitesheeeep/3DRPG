@@ -14,7 +14,7 @@ namespace RPG.Game.UI.Views.WeaponDevelopment
         [Header("页面 View")]
         [SerializeField] private WeaponDevelopmentTabView growthTabView;
         [SerializeField] private WeaponDevelopmentTabView refinementTabView;
-        [SerializeField] private EquipmentEnhancementPageView enhancementPageView;
+        [SerializeField] private DevelopmentEnhancementPageView enhancementPageView;
         [SerializeField] private WeaponAscensionPageView ascensionPageView;
         [SerializeField] private WeaponRefinementPageView refinementPageView;
 

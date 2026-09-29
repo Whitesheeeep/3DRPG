@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using WS_Modules.GAS.AttributeSystem;
 using WS_Modules.GAS.GameplayEffect;
+using RPG.ItemSystem;
 
 namespace RPG.Game.UI.Bag
 {
@@ -61,6 +62,30 @@ namespace RPG.Game.UI.Bag
             return values;
         }
 
+        /// <summary>按角色面板与背包共用的规则合并武器等级及精炼静态属性。</summary>
+        /// <param name="definition">武器的等级、精炼效果配置。</param>
+        /// <param name="instance">用于读取等级和精炼阶数的武器实例。</param>
+        /// <param name="context">用于静态效果异常诊断的业务上下文。</param>
+        /// <returns>按首次出现顺序合并后的武器静态属性。</returns>
+        public static IReadOnlyList<StaticGameplayAttributePresentationValue> BuildWeaponAttributeValues(
+            WeaponDefinition definition, WeaponInstance instance, string context)
+        {
+            if (definition == null) throw new ArgumentNullException(nameof(definition));
+            if (instance == null) throw new ArgumentNullException(nameof(instance));
+
+            IReadOnlyList<StaticGameplayAttributePresentationValue> levelValues =
+                BuildStaticAttributeValues(definition.LevelEffects, instance.Level, $"{context} 等级");
+            IReadOnlyList<StaticGameplayAttributePresentationValue> refinementValues =
+                BuildStaticAttributeValues(definition.RefinementEffects, instance.RefinementRank, $"{context} 精炼");
+            var mergedValues = new List<StaticGameplayAttributePresentationValue>(
+                levelValues.Count + refinementValues.Count);
+
+            // 等级先建立属性顺序，精炼随后并入同一 Attribute，两个窗口因此读取完全相同的聚合结果。
+            AppendWeaponValues(mergedValues, levelValues, definition, instance, context);
+            AppendWeaponValues(mergedValues, refinementValues, definition, instance, context);
+            return mergedValues;
+        }
+
         #endregion
 
         #region 描述构建
@@ -110,6 +135,53 @@ namespace RPG.Game.UI.Bag
         #endregion
 
         #region 聚合与格式化
+
+        /// <summary>把等级或精炼结果合并进武器属性列表并记录跨效果类型冲突。</summary>
+        /// <param name="mergedValues">当前聚合结果，按 Attribute 首次出现顺序排列。</param>
+        /// <param name="incomingValues">当前效果组的静态属性结果。</param>
+        /// <param name="definition">用于冲突诊断的武器定义。</param>
+        /// <param name="instance">用于冲突诊断的武器实例。</param>
+        /// <param name="context">武器详情来源上下文。</param>
+        private static void AppendWeaponValues(
+            List<StaticGameplayAttributePresentationValue> mergedValues,
+            IReadOnlyList<StaticGameplayAttributePresentationValue> incomingValues,
+            WeaponDefinition definition,
+            WeaponInstance instance,
+            string context)
+        {
+            for (int index = 0; index < incomingValues.Count; index++)
+            {
+                StaticGameplayAttributePresentationValue incoming = incomingValues[index];
+                int existingIndex = mergedValues.FindIndex(value => value.Attribute.Id == incoming.Attribute.Id);
+                if (existingIndex < 0)
+                {
+                    mergedValues.Add(incoming);
+                    continue;
+                }
+
+                StaticGameplayAttributePresentationValue existing = mergedValues[existingIndex];
+                if (existing.Type != incoming.Type)
+                {
+                    UnityEngine.Debug.LogError(
+                        $"[BagGameplayEffect] {context} 的武器 '{definition.DisplayName}' ({instance.InstanceId}) " +
+                        $"在等级与精炼效果中对 Attribute '{incoming.Attribute.DisplayName}' 混用 Add/Multiply；详情采用 Multiply。",
+                        definition);
+                    mergedValues[existingIndex] = incoming.Type == AttributeModifierType.Multiply
+                        ? new StaticGameplayAttributePresentationValue(existing.Attribute, incoming.Type,
+                            incoming.Value, true)
+                        : new StaticGameplayAttributePresentationValue(existing.Attribute, existing.Type,
+                            existing.Value, true);
+                    continue;
+                }
+
+                float aggregate = existing.Type == AttributeModifierType.Add
+                    ? existing.Value + incoming.Value
+                    : existing.Value * incoming.Value;
+                mergedValues[existingIndex] = new StaticGameplayAttributePresentationValue(
+                    existing.Attribute, existing.Type, aggregate,
+                    existing.HasTypeConflict || incoming.HasTypeConflict);
+            }
+        }
 
         /// <summary>追加一个 Modifier，并处理同一 Attribute 的 Add/Multiply 冲突。</summary>
         /// <param name="result">静态 Modifier 结果。</param>

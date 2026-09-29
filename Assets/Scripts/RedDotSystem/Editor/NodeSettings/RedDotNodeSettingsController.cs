@@ -25,6 +25,7 @@ namespace RPG.RedDotSystemNS.Editor
         private RedDotConfig currentConfig;
         private string lastValidNodeFolder;
         private bool disposed;
+        private readonly HashSet<RedDotKey> assetNameManagedKeySet = new HashSet<RedDotKey>();
 
         #endregion
 
@@ -251,8 +252,10 @@ namespace RPG.RedDotSystemNS.Editor
 
                 ValidateSiblingName(segmentName, parent, null);
                 int siblingOrder = GetSiblingKeys(parent).Count;
+                // 文件名体现节点当前路径；后续父级变化会沿相同规则同步整个子树。
+                string derivedPath = BuildDerivedPath(parent, segmentName);
                 string assetPath = AssetDatabase.GenerateUniqueAssetPath(
-                    $"{folderPath}/{SanitizeFileName(segmentName)}.asset");
+                    $"{folderPath}/{GetAssetNameStem(derivedPath)}.asset");
 
                 int undoGroup = Undo.GetCurrentGroup();
                 Undo.SetCurrentGroupName("创建红点节点");
@@ -301,12 +304,37 @@ namespace RPG.RedDotSystemNS.Editor
                 }
 
                 ValidateSiblingName(segmentName, key.Parent, key);
-                SetKeySerializedValues(key, segmentName, key.Parent, key.SiblingOrder, "修改红点节点名称");
-                AssetDatabase.SaveAssets();
+                string nextDerivedPath = BuildDerivedPath(key.Parent, segmentName);
+                List<AssetRenameOperation> renameOperations = BuildSubtreeAssetRenameOperations(
+                    key,
+                    nextDerivedPath);
+                // 先完成文件名事务；AssetDatabase 报错时，节点序列化字段仍保持原值。
+                ExecuteAssetRenames(renameOperations);
+
+                Undo.IncrementCurrentGroup();
+                int undoGroup = Undo.GetCurrentGroup();
+                Undo.SetCurrentGroupName("修改红点节点名称");
+                try
+                {
+                    SetKeySerializedValues(key, segmentName, key.Parent, key.SiblingOrder, "修改红点节点名称");
+                    Undo.CollapseUndoOperations(undoGroup);
+                    AssetDatabase.SaveAssets();
+                }
+                catch (Exception exception)
+                {
+                    Undo.RevertAllDownToGroup(undoGroup);
+                    RollbackAssetRenames(renameOperations, renameOperations.Count);
+                    throw new InvalidOperationException(
+                        $"节点名称写入失败，已恢复 Asset 文件名。reason={exception.Message}",
+                        exception);
+                }
+
+                assetNameManagedKeySet.UnionWith(CollectSubtree(key));
                 view.Render(currentConfig);
                 view.SelectNode(key);
                 view.ShowStatus($"已改名：{key.DerivedPath}", false);
-                Debug.Log($"[RedDotNodeSettings] 修改节点名称，key={key.name}，segmentName={segmentName}。");
+                Debug.Log(
+                    $"[RedDotNodeSettings] 修改节点名称并同步子树 Asset 文件名，key={key.name}，segmentName={segmentName}，renamedCount={renameOperations.Count}。");
             }
             catch (ArgumentException exception)
             {
@@ -531,19 +559,49 @@ namespace RPG.RedDotSystemNS.Editor
                 var affectedKeys = new HashSet<RedDotKey>(oldSiblings);
                 affectedKeys.UnionWith(newSiblings);
                 affectedKeys.Add(key);
+                string previousDerivedPath = key.DerivedPath;
+                string nextDerivedPath = BuildDerivedPath(newParent, key.SegmentName);
+                List<RedDotKey> movedSubtreeKeys = CollectSubtree(key);
+                List<AssetRenameOperation> renameOperations = string.Equals(
+                    previousDerivedPath,
+                    nextDerivedPath,
+                    StringComparison.Ordinal)
+                    ? new List<AssetRenameOperation>()
+                    : BuildSubtreeAssetRenameOperations(key, nextDerivedPath);
+                // 同级排序不会改变派生路径，因此只在路径变化时改名子树 Asset。
+                ExecuteAssetRenames(renameOperations);
+
+                Undo.IncrementCurrentGroup();
                 int undoGroup = Undo.GetCurrentGroup();
                 Undo.SetCurrentGroupName("迁移红点节点");
-                Undo.RecordObjects(affectedKeys.Cast<UnityEngine.Object>().ToArray(), "迁移红点节点");
+                try
+                {
+                    Undo.RecordObjects(affectedKeys.Cast<UnityEngine.Object>().ToArray(), "迁移红点节点");
+                    SetParentSerializedValue(key, newParent);
+                    ApplySiblingOrders(oldSiblings);
+                    ApplySiblingOrders(newSiblings);
+                    Undo.CollapseUndoOperations(undoGroup);
+                    AssetDatabase.SaveAssets();
+                }
+                catch (Exception exception)
+                {
+                    Undo.RevertAllDownToGroup(undoGroup);
+                    RollbackAssetRenames(renameOperations, renameOperations.Count);
+                    throw new InvalidOperationException(
+                        $"节点迁移写入失败，已恢复 Asset 文件名。reason={exception.Message}",
+                        exception);
+                }
 
-                SetParentSerializedValue(key, newParent);
-                ApplySiblingOrders(oldSiblings);
-                ApplySiblingOrders(newSiblings);
-                Undo.CollapseUndoOperations(undoGroup);
-                AssetDatabase.SaveAssets();
+                if (renameOperations.Count > 0)
+                {
+                    assetNameManagedKeySet.UnionWith(movedSubtreeKeys);
+                }
+
                 view.Render(currentConfig);
                 view.SelectNode(key);
                 view.ShowStatus($"已迁移节点：{key.DerivedPath}", false);
-                Debug.Log($"[RedDotNodeSettings] 迁移节点，key={key.name}，parent={(newParent == null ? "<root>" : newParent.name)}。");
+                Debug.Log(
+                    $"[RedDotNodeSettings] 迁移节点并同步子树 Asset 文件名，key={key.name}，parent={(newParent == null ? "<root>" : newParent.name)}，renamedCount={renameOperations.Count}。");
             }
             catch (InvalidOperationException exception)
             {
@@ -943,7 +1001,19 @@ namespace RPG.RedDotSystemNS.Editor
         /// <summary>响应 Undo/Redo 后重新读取当前 Config。</summary>
         private void OnUndoRedoPerformed()
         {
+            // Undo/Redo 只重读序列化树；这里不调用 AssetDatabase.RenameAsset，避免回调再写入资源操作。
             view.Render(currentConfig);
+            RedDotNodeSettingsViewData selectedNode = view.GetSelectedNode();
+            if (selectedNode != null &&
+                assetNameManagedKeySet.Contains(selectedNode.Key) &&
+                !IsAssetNameForDerivedPath(
+                    Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(selectedNode.Key)),
+                    selectedNode.Key.DerivedPath))
+            {
+                view.ShowStatus(
+                    "Undo/Redo 已恢复节点树；Asset 文件名保留最近一次节点操作结果，可能与当前派生路径暂时不一致。",
+                    true);
+            }
         }
 
         /// <summary>响应项目 Asset 变化并刷新当前树。</summary>
@@ -994,6 +1064,254 @@ namespace RPG.RedDotSystemNS.Editor
             }
 
             return builder.ToString();
+        }
+
+        #region Asset 路径同步
+
+        /// <summary>由父节点路径和当前分段名称生成节点派生路径。</summary>
+        /// <param name="parent">目标父节点；为空时表示根节点。</param>
+        /// <param name="segmentName">当前节点分段名称。</param>
+        /// <returns>目标节点的完整派生路径。</returns>
+        private static string BuildDerivedPath(RedDotKey parent, string segmentName)
+        {
+            return parent == null
+                ? segmentName
+                : $"{parent.DerivedPath}/{segmentName}";
+        }
+
+        /// <summary>将完整派生路径转换为 Asset 文件名主干。</summary>
+        /// <param name="derivedPath">节点完整派生路径。</param>
+        /// <returns>以下划线分隔层级且已处理非法字符的文件名主干。</returns>
+        private static string GetAssetNameStem(string derivedPath)
+        {
+            return SanitizeFileName(derivedPath.Replace('/', '_'));
+        }
+
+        /// <summary>为节点子树计算文件名更新计划，但不执行资源修改。</summary>
+        /// <param name="subtreeRoot">派生路径即将变化的子树根节点。</param>
+        /// <param name="nextRootDerivedPath">修改后的子树根派生路径。</param>
+        /// <returns>按稳定子树顺序排列的文件名更新操作。</returns>
+        private List<AssetRenameOperation> BuildSubtreeAssetRenameOperations(
+            RedDotKey subtreeRoot,
+            string nextRootDerivedPath)
+        {
+            string previousRootDerivedPath = subtreeRoot.DerivedPath;
+            List<RedDotKey> subtreeKeys = CollectSubtree(subtreeRoot);
+            var reservedTargetPathSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var operations = new List<AssetRenameOperation>(subtreeKeys.Count);
+
+            // 先保留已符合路径规则的节点文件名，避免后续节点占用其已有唯一名称。
+            for (int index = 0; index < subtreeKeys.Count; index++)
+            {
+                RedDotKey key = subtreeKeys[index];
+                string currentAssetPath = AssetDatabase.GetAssetPath(key);
+                if (string.IsNullOrEmpty(currentAssetPath))
+                {
+                    throw new InvalidOperationException(
+                        $"RedDotKey 没有可重命名的 Asset 路径：{key.name}。");
+                }
+
+                string suffix = ReferenceEquals(key, subtreeRoot)
+                    ? string.Empty
+                    : key.DerivedPath.Substring(previousRootDerivedPath.Length);
+                string nextDerivedPath = $"{nextRootDerivedPath}{suffix}";
+                string currentAssetName = Path.GetFileNameWithoutExtension(currentAssetPath);
+                if (IsAssetNameForDerivedPath(currentAssetName, nextDerivedPath))
+                {
+                    reservedTargetPathSet.Add(currentAssetPath.Replace('\\', '/'));
+                    continue;
+                }
+
+                string targetAssetPath = BuildUniqueTargetAssetPath(
+                    currentAssetPath,
+                    nextDerivedPath,
+                    reservedTargetPathSet);
+                if (!string.Equals(
+                        currentAssetPath.Replace('\\', '/'),
+                        targetAssetPath,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    operations.Add(new AssetRenameOperation(key, currentAssetPath, targetAssetPath));
+                }
+            }
+
+            return operations;
+        }
+
+        /// <summary>在节点 Asset 原目录内生成不冲突的完整路径文件名。</summary>
+        /// <param name="currentAssetPath">当前 Asset 项目相对路径。</param>
+        /// <param name="derivedPath">新派生路径。</param>
+        /// <param name="reservedTargetPathSet">本批次已经预留的目标路径集合。</param>
+        /// <returns>经过 Unity 唯一路径规则处理的目标 Asset 路径。</returns>
+        private static string BuildUniqueTargetAssetPath(
+            string currentAssetPath,
+            string derivedPath,
+            HashSet<string> reservedTargetPathSet)
+        {
+            string assetFolderPath = Path.GetDirectoryName(currentAssetPath)?.Replace('\\', '/');
+            if (string.IsNullOrEmpty(assetFolderPath))
+            {
+                throw new InvalidOperationException(
+                    $"无法确定 RedDotKey 的 Asset 目录：{currentAssetPath}。");
+            }
+
+            string extension = Path.GetExtension(currentAssetPath);
+            string assetNameStem = GetAssetNameStem(derivedPath);
+            string targetAssetPath = AssetDatabase.GenerateUniqueAssetPath(
+                $"{assetFolderPath}/{assetNameStem}{extension}").Replace('\\', '/');
+            int suffixIndex = 1;
+            while (!reservedTargetPathSet.Add(targetAssetPath))
+            {
+                targetAssetPath = AssetDatabase.GenerateUniqueAssetPath(
+                    $"{assetFolderPath}/{assetNameStem} {suffixIndex++}{extension}").Replace('\\', '/');
+            }
+
+            return targetAssetPath;
+        }
+
+        /// <summary>执行一批 Asset 改名；任一操作失败时按逆序恢复已完成的改名。</summary>
+        /// <param name="operations">预先计算且已避开当前占用路径的改名操作。</param>
+        private static void ExecuteAssetRenames(IReadOnlyList<AssetRenameOperation> operations)
+        {
+            int completedCount = 0;
+            try
+            {
+                for (int index = 0; index < operations.Count; index++)
+                {
+                    AssetRenameOperation operation = operations[index];
+                    string error = AssetDatabase.RenameAsset(
+                        operation.OriginalAssetPath,
+                        Path.GetFileNameWithoutExtension(operation.TargetAssetPath));
+                    if (!string.IsNullOrEmpty(error))
+                    {
+                        throw new InvalidOperationException(
+                            $"无法重命名 RedDotKey Asset：{operation.OriginalAssetPath} -> {operation.TargetAssetPath}；{error}");
+                    }
+
+                    completedCount++;
+                    string renamedAssetPath = AssetDatabase.GetAssetPath(operation.Key).Replace('\\', '/');
+                    if (!string.Equals(
+                            renamedAssetPath,
+                            operation.TargetAssetPath,
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new InvalidOperationException(
+                            $"RedDotKey Asset 改名结果与预期不符：expected={operation.TargetAssetPath}，actual={renamedAssetPath}。");
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                string rollbackFailure = RollbackAssetRenames(operations, completedCount);
+                string rollbackSummary = string.IsNullOrEmpty(rollbackFailure)
+                    ? "已恢复本批次已完成的 Asset 改名。"
+                    : $"Asset 改名恢复不完整：{rollbackFailure}";
+                Debug.LogWarning(
+                    $"[RedDotNodeSettings] 子树 Asset 改名失败，renamedCount={completedCount}，{rollbackSummary}");
+                throw new InvalidOperationException(
+                    $"同步 RedDotKey Asset 文件名失败。{rollbackSummary} reason={exception.Message}",
+                    exception);
+            }
+        }
+
+        /// <summary>按原始路径逆序恢复一批 Asset 改名并汇总无法恢复的项目。</summary>
+        /// <param name="operations">原始改名计划。</param>
+        /// <param name="completedCount">已成功完成的操作数量。</param>
+        /// <returns>回滚错误摘要；全部恢复成功时为空字符串。</returns>
+        private static string RollbackAssetRenames(
+            IReadOnlyList<AssetRenameOperation> operations,
+            int completedCount)
+        {
+            var failureMessages = new List<string>();
+            for (int index = completedCount - 1; index >= 0; index--)
+            {
+                AssetRenameOperation operation = operations[index];
+                string currentAssetPath = AssetDatabase.GetAssetPath(operation.Key).Replace('\\', '/');
+                string originalAssetPath = operation.OriginalAssetPath.Replace('\\', '/');
+                if (string.Equals(currentAssetPath, originalAssetPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    string error = AssetDatabase.RenameAsset(
+                        currentAssetPath,
+                        Path.GetFileNameWithoutExtension(originalAssetPath));
+                    string restoredAssetPath = AssetDatabase.GetAssetPath(operation.Key).Replace('\\', '/');
+                    if (!string.IsNullOrEmpty(error) ||
+                        !string.Equals(restoredAssetPath, originalAssetPath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        failureMessages.Add(
+                            $"{originalAssetPath} ({(string.IsNullOrEmpty(error) ? restoredAssetPath : error)})");
+                    }
+                }
+                catch (Exception exception)
+                {
+                    failureMessages.Add($"{originalAssetPath} ({exception.Message})");
+                }
+            }
+
+            if (failureMessages.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            string failureSummary = string.Join("；", failureMessages);
+            Debug.LogError($"[RedDotNodeSettings] 部分 RedDotKey Asset 文件名无法回滚：{failureSummary}");
+            return failureSummary;
+        }
+
+        /// <summary>判断 Asset 文件名是否为派生路径主干或 Unity 冲突序号形式。</summary>
+        /// <param name="assetName">不含扩展名的 Asset 文件名。</param>
+        /// <param name="derivedPath">节点派生路径。</param>
+        /// <returns>文件名符合路径规则时返回 true。</returns>
+        private static bool IsAssetNameForDerivedPath(string assetName, string derivedPath)
+        {
+            string expectedAssetName = GetAssetNameStem(derivedPath);
+            if (string.Equals(assetName, expectedAssetName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            string numberedPrefix = $"{expectedAssetName} ";
+            if (string.IsNullOrEmpty(assetName) || !assetName.StartsWith(numberedPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            string suffix = assetName.Substring(numberedPrefix.Length);
+            return suffix.Length > 0 && suffix.All(char.IsDigit);
+        }
+
+        #endregion Asset 路径同步
+
+        #endregion
+
+        #region 嵌套类型
+
+        /// <summary>保存单个 RedDotKey Asset 改名前后的路径，用于失败回滚。</summary>
+        private sealed class AssetRenameOperation
+        {
+            /// <summary>初始化 Asset 改名操作数据。</summary>
+            /// <param name="key">发生改名的节点 Asset。</param>
+            /// <param name="originalAssetPath">改名前的项目相对路径。</param>
+            /// <param name="targetAssetPath">改名后的目标项目相对路径。</param>
+            public AssetRenameOperation(RedDotKey key, string originalAssetPath, string targetAssetPath)
+            {
+                Key = key;
+                OriginalAssetPath = originalAssetPath;
+                TargetAssetPath = targetAssetPath;
+            }
+
+            /// <summary>获取被改名的节点 Asset。</summary>
+            public RedDotKey Key { get; }
+
+            /// <summary>获取改名前的项目相对路径。</summary>
+            public string OriginalAssetPath { get; }
+
+            /// <summary>获取目标项目相对路径。</summary>
+            public string TargetAssetPath { get; }
         }
 
         #endregion

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Cysharp.Threading.Tasks;
 using RPG.Character;
+using RPG.CurrencySystemNS;
+using RPG.Game.Runtime.CharacterDevelopment;
 using RPG.Game.UI.Bag;
 using RPG.Game.UI.Character;
 using RPG.Game.UI.EquipmentDevelopment;
@@ -11,6 +13,7 @@ using RPG.Game.UI.Views.Character;
 using RPG.Game.UI.Views.Common;
 using RPG.Game.UI.WeaponDevelopment;
 using RPG.ItemSystem;
+using WS_Modules.GAS.AttributeSystem;
 using UnityEngine;
 using WS_Modules.BusinessArchitecture;
 using WS_Modules.CustomEventSystem;
@@ -33,9 +36,13 @@ namespace RPG.Game.UI.Controllers
         private CharacterEquipmentSystem equipmentSystem;
         private WeaponInventoryManager weaponInventoryManager;
         private ArtifactInventoryManager artifactInventoryManager;
+        private StackableInventoryManager stackableInventoryManager;
+        private CurrencyManager currencyManager;
         private WindowSpriteAtlasLeaseService spriteAtlasLeaseService;
         private CharacterWindowPresentationBuilder presentationBuilder;
         private CharacterEquipmentSelectionPresentationBuilder selectionPresentationBuilder;
+        private CharacterDevelopmentService characterDevelopmentService;
+        private CharacterDevelopmentPresentationBuilder characterDevelopmentPresentationBuilder;
         private ItemSelectionPanelView selectionPanel;
         private IUnRegister characterInstanceChangedUnregister;
         private IUnRegister characterRosterRestoredUnregister;
@@ -44,6 +51,10 @@ namespace RPG.Game.UI.Controllers
         private IUnRegister weaponRestoredUnregister;
         private IUnRegister artifactChangedUnregister;
         private IUnRegister artifactRestoredUnregister;
+        private IUnRegister stackableChangedUnregister;
+        private IUnRegister stackableRestoredUnregister;
+        private IUnRegister currencyChangedUnregister;
+        private IUnRegister currencyRestoredUnregister;
 
         #endregion
 
@@ -59,6 +70,12 @@ namespace RPG.Game.UI.Controllers
         private BagSortMode selectionSortMode = BagSortMode.Quality;
         private BagSortDirection selectionSortDirection = BagSortDirection.Descending;
         private bool selectionMode;
+        private CharacterDevelopmentMode characterDevelopmentMode;
+        private bool characterDevelopmentSelectionOpen;
+        // key：角色经验素材 ItemId；value：当前选择消耗数量，每类材料一项。
+        private readonly Dictionary<ItemId, int> selectedCharacterExperienceQuantityByItemIdMap = new();
+        private bool submittingCharacterDevelopment;
+        private string developmentStatusOverride;
         private bool initialized;
         private bool windowShown;
         private bool disposed;
@@ -86,6 +103,8 @@ namespace RPG.Game.UI.Controllers
             equipmentSystem = GameArchitecture.Interface.GetSystem<CharacterEquipmentSystem>();
             weaponInventoryManager = GameArchitecture.Interface.GetManager<WeaponInventoryManager>();
             artifactInventoryManager = GameArchitecture.Interface.GetManager<ArtifactInventoryManager>();
+            stackableInventoryManager = GameArchitecture.Interface.GetManager<StackableInventoryManager>();
+            currencyManager = CurrencyManager.Instance;
             selectionPanel = data.SelectionPanel;
             spriteAtlasLeaseService = new WindowSpriteAtlasLeaseService(
                 data.DynamicAtlasAddresses, data.AtlasReleaseDelaySeconds);
@@ -93,6 +112,10 @@ namespace RPG.Game.UI.Controllers
                 data.PartyMarkSprites);
             selectionPresentationBuilder = new CharacterEquipmentSelectionPresentationBuilder(
                 weaponInventoryManager, artifactInventoryManager, rosterManager, ResolveSprite);
+            characterDevelopmentService = new CharacterDevelopmentService(rosterManager, stackableInventoryManager,
+                currencyManager, equipmentSystem, new CharacterAttributeProgressionResolver());
+            characterDevelopmentPresentationBuilder = new CharacterDevelopmentPresentationBuilder(
+                characterDevelopmentService, stackableInventoryManager, currencyManager, ResolveSprite);
 
             view.CharacterSelected += HandleCharacterSelected;
             view.CharacterCycleRequested += HandleCharacterCycleRequested;
@@ -103,7 +126,12 @@ namespace RPG.Game.UI.Controllers
             view.ArtifactDevelopmentRequested += HandleArtifactDevelopmentRequested;
             view.WeaponReplaceRequested += HandleWeaponReplaceRequested;
             view.ArtifactReplaceRequested += HandleArtifactReplaceRequested;
+            view.CharacterDevelopmentRequested += HandleCharacterDevelopmentRequested;
+            view.CharacterDevelopmentSubmitRequested += HandleCharacterDevelopmentSubmitRequested;
+            view.CharacterExperienceAutoFillRequested += HandleCharacterExperienceAutoFillRequested;
+            view.CharacterDevelopmentMaterialsRequested += HandleCharacterDevelopmentMaterialsRequested;
             selectionPanel.EntryClicked += HandleCandidateEntryClicked;
+            selectionPanel.QuantityChangeRequested += HandleCharacterExperienceQuantityChanged;
             selectionPanel.ReturnRequested += HandleSelectionReturnRequested;
             selectionPanel.SortModeChanged += HandleSelectionSortModeChanged;
             selectionPanel.SortDirectionRequested += HandleSelectionSortDirectionRequested;
@@ -125,6 +153,14 @@ namespace RPG.Game.UI.Controllers
                 typeof(ArtifactInstanceChangedEvent), HandleArtifactChanged);
             artifactRestoredUnregister = EventSystem.Register_Type<ArtifactInventoryRestoredEvent>(
                 typeof(ArtifactInventoryRestoredEvent), HandleArtifactRestored);
+            stackableChangedUnregister = EventSystem.Register_Type<StackableItemChangedEvent>(
+                typeof(StackableItemChangedEvent), HandleStackableChanged);
+            stackableRestoredUnregister = EventSystem.Register_Type<StackableInventoryRestoredEvent>(
+                typeof(StackableInventoryRestoredEvent), HandleStackableRestored);
+            currencyChangedUnregister = EventSystem.Register_Type<CurrencyBalanceChangedEvent>(
+                typeof(CurrencyBalanceChangedEvent), HandleCurrencyBalanceChanged);
+            currencyRestoredUnregister = EventSystem.Register_Type<CurrencyWalletRestoredEvent>(
+                typeof(CurrencyWalletRestoredEvent), HandleCurrencyWalletRestored);
             partyManager.Changed += HandlePartyChanged;
             initialized = true;
             WSLog.Log("[CharacterWindowController] CharacterWindow MVC 初始化完成。");
@@ -169,9 +205,14 @@ namespace RPG.Game.UI.Controllers
             view.ArtifactDevelopmentRequested -= HandleArtifactDevelopmentRequested;
             view.WeaponReplaceRequested -= HandleWeaponReplaceRequested;
             view.ArtifactReplaceRequested -= HandleArtifactReplaceRequested;
+            view.CharacterDevelopmentRequested -= HandleCharacterDevelopmentRequested;
+            view.CharacterDevelopmentSubmitRequested -= HandleCharacterDevelopmentSubmitRequested;
+            view.CharacterExperienceAutoFillRequested -= HandleCharacterExperienceAutoFillRequested;
+            view.CharacterDevelopmentMaterialsRequested -= HandleCharacterDevelopmentMaterialsRequested;
             if (selectionPanel != null)
             {
                 selectionPanel.EntryClicked -= HandleCandidateEntryClicked;
+                selectionPanel.QuantityChangeRequested -= HandleCharacterExperienceQuantityChanged;
                 selectionPanel.ReturnRequested -= HandleSelectionReturnRequested;
                 selectionPanel.SortModeChanged -= HandleSelectionSortModeChanged;
                 selectionPanel.SortDirectionRequested -= HandleSelectionSortDirectionRequested;
@@ -185,6 +226,10 @@ namespace RPG.Game.UI.Controllers
             weaponRestoredUnregister?.UnRegister();
             artifactChangedUnregister?.UnRegister();
             artifactRestoredUnregister?.UnRegister();
+            stackableChangedUnregister?.UnRegister();
+            stackableRestoredUnregister?.UnRegister();
+            currencyChangedUnregister?.UnRegister();
+            currencyRestoredUnregister?.UnRegister();
             if (partyManager != null) partyManager.Changed -= HandlePartyChanged;
             characterInstanceChangedUnregister = null;
             characterRosterRestoredUnregister = null;
@@ -193,10 +238,18 @@ namespace RPG.Game.UI.Controllers
             weaponRestoredUnregister = null;
             artifactChangedUnregister = null;
             artifactRestoredUnregister = null;
+            stackableChangedUnregister = null;
+            stackableRestoredUnregister = null;
+            currencyChangedUnregister = null;
+            currencyRestoredUnregister = null;
             spriteAtlasLeaseService?.Dispose();
             spriteAtlasLeaseService = null;
             presentationBuilder = null;
             selectionPresentationBuilder = null;
+            characterDevelopmentService = null;
+            characterDevelopmentPresentationBuilder = null;
+            stackableInventoryManager = null;
+            currencyManager = null;
             selectionPanel = null;
             view = null;
             partyManager = null;
@@ -235,7 +288,7 @@ namespace RPG.Game.UI.Controllers
         /// <summary>按当前稳定实例和页面完整重建 ViewData。</summary>
         private void Refresh()
         {
-            if (!initialized || disposed || !windowShown) return;
+            if (!initialized || disposed || !windowShown || submittingCharacterDevelopment) return;
             List<CharacterInstance> instances = GetSortedInstances();
             if (instances.Count == 0)
             {
@@ -265,6 +318,12 @@ namespace RPG.Game.UI.Controllers
             }
             view.Bind(viewData);
             view.SetSelectionMode(selectionMode);
+            view.SetCharacterDevelopmentMode(characterDevelopmentMode);
+            if (characterDevelopmentMode != CharacterDevelopmentMode.None)
+            {
+                RefreshCharacterDevelopmentState(selected);
+                return;
+            }
             if (selectionMode) RefreshSelectionCandidates(selected);
         }
 
@@ -346,6 +405,8 @@ namespace RPG.Game.UI.Controllers
         /// <param name="page">目标页面。</param>
         private void HandlePageRequested(CharacterWindowPage page)
         {
+            if (characterDevelopmentMode != CharacterDevelopmentMode.None || selectionMode)
+                ResetSelectionModeImmediately();
             currentPage = page;
             Refresh();
         }
@@ -411,24 +472,20 @@ namespace RPG.Game.UI.Controllers
             WSLog.Log($"[CharacterWindowController] 退出装备候选模式，character={selectedCharacterId}, category={selectionCategory}。");
         }
 
-        /// <summary>供窗口 Esc 栈执行；存在候选选择层时只收起该层，不关闭角色窗口。</summary>
-        /// <returns>处理了候选选择状态时返回 true。</returns>
-        public bool CloseSelectionModeFromCommand()
-        {
-            if (!selectionMode) return false;
-            ExitSelectionMode();
-            return true;
-        }
-
-        /// <summary>窗口关闭或重新打开时立即终止候选动画并清空临时选择状态。</summary>
+        /// <summary>窗口关闭或重新打开时立即终止所有子选择层并清空临时培养状态。</summary>
         private void ResetSelectionModeImmediately()
         {
             selectionMode = false;
+            characterDevelopmentMode = CharacterDevelopmentMode.None;
+            characterDevelopmentSelectionOpen = false;
             selectedCandidateEntryKey = null;
+            selectedCharacterExperienceQuantityByItemIdMap.Clear();
+            developmentStatusOverride = null;
             currentSelectionEntries = Array.Empty<BagItemViewData>();
             selectionPanel?.SetSortControl(false, selectionSortMode, selectionSortDirection, "等级");
             selectionPanel?.HideImmediateAndReset();
             view?.SetSelectionMode(false);
+            view?.SetCharacterDevelopmentMode(CharacterDevelopmentMode.None);
         }
 
         /// <summary>根据装备页按钮进入选择层，或提交已选择的武器候选。</summary>
@@ -453,6 +510,130 @@ namespace RPG.Game.UI.Controllers
             if (selectionCategory == ItemCategory.Artifact) CommitSelectedCandidate();
         }
 
+        /// <summary>按当前角色成长状态进入升级或突破面板，并打开共用材料选择层。</summary>
+        private void HandleCharacterDevelopmentRequested()
+        {
+            if (!windowShown || selectionMode || characterDevelopmentMode != CharacterDevelopmentMode.None ||
+                !rosterManager.TryGetInstance(selectedCharacterId, out CharacterInstance character)) return;
+
+            if (character.Level >= character.Config.MaxLevel)
+                return;
+
+            if (!TryGetCurrentLevelCap(character.Config, character.AscensionRank, out int currentLevelCap))
+            {
+                Debug.LogError($"[CharacterWindowController] 无法解析角色等级上限，character={character.CharacterId}, rank={character.AscensionRank}。", this);
+                return;
+            }
+
+            CharacterDevelopmentMode mode = character.Level >= currentLevelCap
+                ? CharacterDevelopmentMode.Ascension
+                : CharacterDevelopmentMode.LevelUp;
+            if (mode == CharacterDevelopmentMode.Ascension &&
+                character.AscensionRank >= character.Config.AscensionStages.Count) return;
+
+            currentPage = CharacterWindowPage.Attribute;
+            characterDevelopmentMode = mode;
+            characterDevelopmentSelectionOpen = false;
+            selectionMode = false;
+            selectedCharacterExperienceQuantityByItemIdMap.Clear();
+            developmentStatusOverride = null;
+            selectionSortMode = mode == CharacterDevelopmentMode.LevelUp
+                ? BagSortMode.AcquisitionSequence
+                : BagSortMode.Quality;
+            selectionSortDirection = BagSortDirection.Ascending;
+            view.SetSelectionMode(false);
+            view.SetCharacterDevelopmentMode(mode);
+            selectionPanel.SetSortControl(false, selectionSortMode, selectionSortDirection, "数量");
+            // 培养预览先完整显示；共用候选面板只在用户明确点选素材入口后展开。
+            selectionPanel.HideImmediateAndReset();
+            Refresh();
+            WSLog.Log($"[CharacterWindowController] 打开角色培养面板，character={selectedCharacterId}, mode={mode}, level={character.Level}, cap={currentLevelCap}。");
+        }
+
+        /// <summary>仅在角色升级时展开经验素材选择面板。</summary>
+        private void HandleCharacterDevelopmentMaterialsRequested()
+        {
+            if (!windowShown || characterDevelopmentMode != CharacterDevelopmentMode.LevelUp ||
+                characterDevelopmentSelectionOpen) return;
+
+            characterDevelopmentSelectionOpen = true;
+            selectionPanel.SetSortControl(true, selectionSortMode, selectionSortDirection, "数量");
+            selectionPanel.ShowAnimated();
+            Refresh();
+            WSLog.Log($"[CharacterWindowController] 展开角色经验素材面板，character={selectedCharacterId}。");
+        }
+
+        /// <summary>关闭角色培养左侧材料面板，同时保留当前升级或突破预览状态。</summary>
+        private void CloseCharacterDevelopmentSelection()
+        {
+            if (!characterDevelopmentSelectionOpen) return;
+            characterDevelopmentSelectionOpen = false;
+            selectionPanel.SetSortControl(false, selectionSortMode, selectionSortDirection, "数量");
+            selectionPanel.HideAnimated();
+            Refresh();
+            WSLog.Log($"[CharacterWindowController] 收起角色培养素材面板，character={selectedCharacterId}, mode={characterDevelopmentMode}。");
+        }
+
+        /// <summary>退出角色升级或突破状态并清理材料选择与池化属性行。</summary>
+        private void ExitCharacterDevelopmentMode()
+        {
+            if (characterDevelopmentMode == CharacterDevelopmentMode.None) return;
+            CharacterDevelopmentMode previousMode = characterDevelopmentMode;
+            bool selectionWasOpen = characterDevelopmentSelectionOpen;
+            characterDevelopmentMode = CharacterDevelopmentMode.None;
+            characterDevelopmentSelectionOpen = false;
+            selectedCharacterExperienceQuantityByItemIdMap.Clear();
+            developmentStatusOverride = null;
+            selectionPanel.SetSortControl(false, selectionSortMode, selectionSortDirection, "数量");
+            if (selectionWasOpen) selectionPanel.HideAnimated();
+            else selectionPanel.HideImmediateAndReset();
+            view.SetCharacterDevelopmentMode(CharacterDevelopmentMode.None);
+            Refresh();
+            WSLog.Log($"[CharacterWindowController] 退出角色培养面板，character={selectedCharacterId}, previousMode={previousMode}。");
+        }
+
+        /// <summary>供窗口 Esc 栈使用；培养或装备选择层优先于关闭整个角色窗口。</summary>
+        /// <returns>本次是否收起了窗口内子状态。</returns>
+        public bool CloseSelectionModeFromCommand()
+        {
+            if (characterDevelopmentMode != CharacterDevelopmentMode.None)
+            {
+                if (characterDevelopmentSelectionOpen)
+                {
+                    CloseCharacterDevelopmentSelection();
+                    return true;
+                }
+                ExitCharacterDevelopmentMode();
+                return true;
+            }
+            if (!selectionMode) return false;
+            ExitSelectionMode();
+            return true;
+        }
+
+        /// <summary>根据当前等级和突破阶数解析升级入口使用的等级上限。</summary>
+        /// <param name="config">角色成长配置。</param>
+        /// <param name="ascensionRank">当前突破阶数。</param>
+        /// <param name="levelCap">解析后的当前等级上限。</param>
+        /// <returns>配置合法时返回 true。</returns>
+        private static bool TryGetCurrentLevelCap(CharacterConfig config, int ascensionRank, out int levelCap)
+        {
+            levelCap = 0;
+            if (config == null || ascensionRank < 0 || ascensionRank > config.AscensionStages.Count) return false;
+            if (config.AscensionStages.Count == 0)
+            {
+                levelCap = config.MaxLevel;
+                return levelCap > 0;
+            }
+
+            CharacterAscensionStage stage = ascensionRank == 0
+                ? config.AscensionStages[0]
+                : config.AscensionStages[ascensionRank - 1];
+            if (stage == null) return false;
+            levelCap = ascensionRank == 0 ? stage.RequiredLevel : stage.MaxLevelAfter;
+            return levelCap > 0 && levelCap <= config.MaxLevel;
+        }
+
         /// <summary>只更新候选预览与选中框，不在网格点击时执行装备事务。</summary>
         /// <param name="entryKey">候选条目键。</param>
         private void HandleCandidateEntryClicked(BagEntryKey entryKey)
@@ -466,27 +647,37 @@ namespace RPG.Game.UI.Controllers
         /// <param name="sortMode">目标排序字段。</param>
         private void HandleSelectionSortModeChanged(BagSortMode sortMode)
         {
-            if (!selectionMode) return;
+            if (!selectionMode && (!characterDevelopmentSelectionOpen ||
+                                   characterDevelopmentMode != CharacterDevelopmentMode.LevelUp)) return;
             selectionSortMode = sortMode;
-            selectionPanel.SetSortControl(true, selectionSortMode, selectionSortDirection, "等级");
-            WSLog.Log($"[CharacterWindowController] 装备候选排序字段变更，mode={selectionSortMode}, direction={selectionSortDirection}。");
+            string primaryLabel = characterDevelopmentMode == CharacterDevelopmentMode.LevelUp ? "数量" : "等级";
+            selectionPanel.SetSortControl(true, selectionSortMode, selectionSortDirection, primaryLabel);
+            WSLog.Log($"[CharacterWindowController] 候选排序字段变更，mode={selectionSortMode}, direction={selectionSortDirection}, development={characterDevelopmentMode}。");
             Refresh();
         }
 
         /// <summary>切换装备候选升降序并保留当前稳定的装备实例选择。</summary>
         private void HandleSelectionSortDirectionRequested()
         {
-            if (!selectionMode) return;
+            if (!selectionMode && (!characterDevelopmentSelectionOpen ||
+                                   characterDevelopmentMode != CharacterDevelopmentMode.LevelUp)) return;
             selectionSortDirection = selectionSortDirection == BagSortDirection.Descending
                 ? BagSortDirection.Ascending
                 : BagSortDirection.Descending;
-            selectionPanel.SetSortControl(true, selectionSortMode, selectionSortDirection, "等级");
-            WSLog.Log($"[CharacterWindowController] 装备候选排序方向变更，mode={selectionSortMode}, direction={selectionSortDirection}。");
+            string primaryLabel = characterDevelopmentMode == CharacterDevelopmentMode.LevelUp ? "数量" : "等级";
+            selectionPanel.SetSortControl(true, selectionSortMode, selectionSortDirection, primaryLabel);
+            WSLog.Log($"[CharacterWindowController] 候选排序方向变更，mode={selectionSortMode}, direction={selectionSortDirection}, development={characterDevelopmentMode}。");
             Refresh();
         }
 
         /// <summary>通用候选面板返回按钮关闭当前选择层。</summary>
-        private void HandleSelectionReturnRequested() => ExitSelectionMode();
+        private void HandleSelectionReturnRequested()
+        {
+            if (characterDevelopmentMode != CharacterDevelopmentMode.None && characterDevelopmentSelectionOpen)
+                CloseCharacterDevelopmentSelection();
+            else if (characterDevelopmentMode != CharacterDevelopmentMode.None) ExitCharacterDevelopmentMode();
+            else ExitSelectionMode();
+        }
 
         /// <summary>将当前武器或目标圣遗物槽的库存过滤、排序并投影到共用网格。</summary>
         /// <param name="character">当前角色实例。</param>
@@ -520,6 +711,157 @@ namespace RPG.Game.UI.Controllers
             bool canEquip = TryGetCandidateEquipability(character, selectedCandidateEntryKey.Value,
                 out string statusText);
             BindSelectionCandidate(selectedCandidateEntryKey, details, canEquip, statusText);
+        }
+
+        /// <summary>刷新角色培养右侧预览和左侧经验素材或固定突破配方候选。</summary>
+        /// <param name="character">当前角色实例。</param>
+        private void RefreshCharacterDevelopmentState(CharacterInstance character)
+        {
+            CharacterDevelopmentPanelViewData panelData;
+            if (characterDevelopmentMode == CharacterDevelopmentMode.LevelUp)
+            {
+                ClampSelectedExperienceQuantities();
+                panelData = characterDevelopmentPresentationBuilder.BuildLevelUp(character,
+                    selectedCharacterExperienceQuantityByItemIdMap, selectionSortMode, selectionSortDirection,
+                    out IReadOnlyList<BagItemViewData> entries);
+                if (characterDevelopmentSelectionOpen)
+                {
+                    var selectedKeys = new List<BagEntryKey>(selectedCharacterExperienceQuantityByItemIdMap.Count);
+                    foreach (KeyValuePair<ItemId, int> pair in selectedCharacterExperienceQuantityByItemIdMap)
+                        if (pair.Value > 0)
+                            selectedKeys.Add(new BagEntryKey(ItemCategory.DevelopmentExperienceItem, pair.Key.ToString()));
+                    selectionPanel.SetSortControl(true, selectionSortMode, selectionSortDirection, "数量");
+                    selectionPanel.BindQuantitySelection(entries, selectedKeys);
+                }
+            }
+            else
+            {
+                panelData = characterDevelopmentPresentationBuilder.BuildAscension(character);
+            }
+
+            view.BindCharacterDevelopment(panelData);
+            if (!string.IsNullOrWhiteSpace(developmentStatusOverride))
+                view.SetCharacterDevelopmentStatus(developmentStatusOverride);
+        }
+
+        /// <summary>在库存变化后保留仍合法的经验材料数量，并限制总选中数为 99。</summary>
+        private void ClampSelectedExperienceQuantities()
+        {
+            IReadOnlyList<StackableInventoryEntry> inventoryEntries = stackableInventoryManager
+                .GetDevelopmentExperienceItems(DevelopmentExperienceItemType.Character);
+            var ownedQuantityByItemIdMap = new Dictionary<ItemId, int>(inventoryEntries.Count);
+            for (int index = 0; index < inventoryEntries.Count; index++)
+                ownedQuantityByItemIdMap[inventoryEntries[index].ItemId] = inventoryEntries[index].Quantity;
+
+            int remainingSelectionCount = 99;
+            var clampedQuantityByItemIdMap = new Dictionary<ItemId, int>(selectedCharacterExperienceQuantityByItemIdMap.Count);
+            foreach (KeyValuePair<ItemId, int> pair in selectedCharacterExperienceQuantityByItemIdMap)
+            {
+                if (!ownedQuantityByItemIdMap.TryGetValue(pair.Key, out int ownedQuantity) || ownedQuantity <= 0)
+                    continue;
+
+                int clampedQuantity = Mathf.Clamp(pair.Value, 0, Math.Min(ownedQuantity, remainingSelectionCount));
+                if (clampedQuantity <= 0)
+                    continue;
+
+                clampedQuantityByItemIdMap.Add(pair.Key, clampedQuantity);
+                remainingSelectionCount -= clampedQuantity;
+            }
+
+            selectedCharacterExperienceQuantityByItemIdMap.Clear();
+            foreach (KeyValuePair<ItemId, int> pair in clampedQuantityByItemIdMap)
+                selectedCharacterExperienceQuantityByItemIdMap.Add(pair.Key, pair.Value);
+        }
+
+        /// <summary>按网格左右键意图调整角色经验素材数量并重建同一份升级预览。</summary>
+        /// <param name="intent">物品数量调整意图。</param>
+        private void HandleCharacterExperienceQuantityChanged(BagItemQuantityIntent intent)
+        {
+            if (characterDevelopmentMode != CharacterDevelopmentMode.LevelUp ||
+                intent.EntryKey.Category != ItemCategory.DevelopmentExperienceItem ||
+                !ItemId.TryCreate(intent.EntryKey.Value, out ItemId itemId) ||
+                !ItemManager.Instance.TryGetDefinition(itemId, out ItemDefinition item) ||
+                !(item is DevelopmentExperienceItemDefinition definition) ||
+                !definition.SupportsExperienceType(DevelopmentExperienceItemType.Character)) return;
+
+            int ownedQuantity = stackableInventoryManager.GetQuantity(itemId);
+            selectedCharacterExperienceQuantityByItemIdMap.TryGetValue(itemId, out int selectedQuantity);
+            int totalSelected = 0;
+            foreach (KeyValuePair<ItemId, int> pair in selectedCharacterExperienceQuantityByItemIdMap)
+                totalSelected += pair.Value;
+
+            int requestedStep = Math.Max(1, intent.Step);
+            int nextQuantity = intent.Direction == BagItemQuantityDirection.Increase
+                ? Math.Min(ownedQuantity, selectedQuantity + Math.Min(requestedStep, 99 - totalSelected))
+                : Math.Max(0, selectedQuantity - requestedStep);
+            if (nextQuantity <= 0)
+                selectedCharacterExperienceQuantityByItemIdMap.Remove(itemId);
+            else
+                selectedCharacterExperienceQuantityByItemIdMap[itemId] = nextQuantity;
+
+            developmentStatusOverride = null;
+            Refresh();
+        }
+
+        /// <summary>按当前角色等级上限自动选取最多 99 个经验素材，再收敛到实际消耗计划。</summary>
+        private void HandleCharacterExperienceAutoFillRequested()
+        {
+            if (characterDevelopmentMode != CharacterDevelopmentMode.LevelUp ||
+                !rosterManager.TryGetInstance(selectedCharacterId, out CharacterInstance character)) return;
+
+            selectedCharacterExperienceQuantityByItemIdMap.Clear();
+            IReadOnlyList<StackableInventoryEntry> inventoryEntries = stackableInventoryManager
+                .GetDevelopmentExperienceItems(DevelopmentExperienceItemType.Character);
+            int remainingSelectionCount = 99;
+            for (int index = 0; index < inventoryEntries.Count && remainingSelectionCount > 0; index++)
+            {
+                StackableInventoryEntry entry = inventoryEntries[index];
+                int quantity = Math.Min(entry.Quantity, remainingSelectionCount);
+                if (quantity <= 0) continue;
+                selectedCharacterExperienceQuantityByItemIdMap[entry.ItemId] = quantity;
+                remainingSelectionCount -= quantity;
+            }
+
+            CharacterLevelUpPreview preview = characterDevelopmentService.BuildLevelUpPreview(
+                character.CharacterId, selectedCharacterExperienceQuantityByItemIdMap);
+            selectedCharacterExperienceQuantityByItemIdMap.Clear();
+            foreach (KeyValuePair<ItemId, int> pair in preview.ConsumedQuantityByItemIdMap)
+                selectedCharacterExperienceQuantityByItemIdMap.Add(pair.Key, pair.Value);
+            developmentStatusOverride = null;
+            Refresh();
+            WSLog.Log($"[CharacterWindowController] 自动填入角色经验素材，character={character.CharacterId}, materialTypes={selectedCharacterExperienceQuantityByItemIdMap.Count}。");
+        }
+
+        /// <summary>重新校验已选材料与费用后提交升级或突破事务。</summary>
+        private void HandleCharacterDevelopmentSubmitRequested()
+        {
+            if (characterDevelopmentMode == CharacterDevelopmentMode.None || !hasSelectedCharacter) return;
+
+            submittingCharacterDevelopment = true;
+            CharacterDevelopmentOperationResult result;
+            try
+            {
+                result = characterDevelopmentMode == CharacterDevelopmentMode.LevelUp
+                    ? characterDevelopmentService.LevelUp(selectedCharacterId,
+                        selectedCharacterExperienceQuantityByItemIdMap)
+                    : characterDevelopmentService.Ascend(selectedCharacterId);
+            }
+            finally
+            {
+                submittingCharacterDevelopment = false;
+            }
+
+            if (result.Succeeded)
+            {
+                WSLog.Log($"[CharacterWindowController] 角色培养事务完成，character={selectedCharacterId}, mode={characterDevelopmentMode}。");
+                ExitCharacterDevelopmentMode();
+                return;
+            }
+
+            developmentStatusOverride = result.Message;
+            Refresh();
+            view.SetCharacterDevelopmentStatus(result.Message);
+            WSLog.LogWarning($"[CharacterWindowController] 角色培养事务未完成，character={selectedCharacterId}, mode={characterDevelopmentMode}, status={result.Status}。");
         }
 
         /// <summary>确认候选仍存在且属于当前槽位，并拒绝已被其他角色装备的实例。</summary>
@@ -749,6 +1091,52 @@ namespace RPG.Game.UI.Controllers
         /// <summary>圣遗物库存恢复后刷新显示。</summary>
         /// <param name="restoredEvent">圣遗物恢复事件。</param>
         private void HandleArtifactRestored(ArtifactInventoryRestoredEvent restoredEvent) => Refresh();
+
+        /// <summary>角色培养所需的材料变化后刷新数量、费用和候选卡片。</summary>
+        /// <param name="eventArgs">可堆叠物品变化事件。</param>
+        private void HandleStackableChanged(StackableItemChangedEvent eventArgs)
+        {
+            if (!windowShown || characterDevelopmentMode == CharacterDevelopmentMode.None ||
+                !ItemManager.Instance.TryGetDefinition(eventArgs.ItemId, out ItemDefinition item)) return;
+
+            bool relevant = characterDevelopmentMode == CharacterDevelopmentMode.LevelUp
+                ? item is DevelopmentExperienceItemDefinition experience &&
+                  experience.SupportsExperienceType(DevelopmentExperienceItemType.Character)
+                : item is DevelopmentItemDefinition development &&
+                  development.SupportsDevelopmentType(DevelopmentItemType.CharacterAscension);
+            if (!relevant) return;
+
+            developmentStatusOverride = null;
+            Refresh();
+        }
+
+        /// <summary>背包库存恢复后刷新当前升级或突破的资源投影。</summary>
+        /// <param name="restoredEvent">可堆叠库存恢复事件。</param>
+        private void HandleStackableRestored(StackableInventoryRestoredEvent restoredEvent)
+        {
+            if (!windowShown || characterDevelopmentMode == CharacterDevelopmentMode.None) return;
+            developmentStatusOverride = null;
+            Refresh();
+        }
+
+        /// <summary>摩拉变化后刷新培养费用条件。</summary>
+        /// <param name="eventArgs">货币变化事件。</param>
+        private void HandleCurrencyBalanceChanged(CurrencyBalanceChangedEvent eventArgs)
+        {
+            if (!windowShown || characterDevelopmentMode == CharacterDevelopmentMode.None ||
+                eventArgs.CurrencyId != CurrencyId.Mola) return;
+            developmentStatusOverride = null;
+            Refresh();
+        }
+
+        /// <summary>货币钱包恢复后刷新培养费用与可提交状态。</summary>
+        /// <param name="restoredEvent">货币钱包恢复事件。</param>
+        private void HandleCurrencyWalletRestored(CurrencyWalletRestoredEvent restoredEvent)
+        {
+            if (!windowShown || characterDevelopmentMode == CharacterDevelopmentMode.None) return;
+            developmentStatusOverride = null;
+            Refresh();
+        }
 
         /// <summary>图集释放后清空旧 Sprite；重新打开会重新绑定。</summary>
         private void HandleAtlasReleased()

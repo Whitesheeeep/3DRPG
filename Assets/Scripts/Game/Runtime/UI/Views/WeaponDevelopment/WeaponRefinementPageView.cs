@@ -10,7 +10,7 @@ namespace RPG.Game.UI.Views.WeaponDevelopment
 {
     /// <summary>精炼页面的阶数、效果、已选材料、费用和动作表现。</summary>
     [DisallowMultipleComponent]
-    [InfoBox("依赖精炼页面 Root 内的 Rank 文本、箭头、效果文本、横向材料列表、数量文本、费用区域和按钮。")]
+    [InfoBox("依赖精炼页面 Root 内的 Rank 文本、属性对比列表、空状态文本、横向材料列表、数量文本、费用区域和按钮。")]
     public sealed class WeaponRefinementPageView : MonoBehaviour
     {
         #region 依赖字段
@@ -20,7 +20,8 @@ namespace RPG.Game.UI.Views.WeaponDevelopment
         [SerializeField] private TMP_Text currentRankText;
         [SerializeField] private TMP_Text nextRankText;
         [SerializeField] private Image nextRankArrow;
-        [SerializeField] private TMP_Text effectComparisonText;
+        [SerializeField] private EquipmentAttributeUpgradeListView attributeUpgradeListView;
+        [SerializeField] private TMP_Text emptyEffectText;
         [SerializeField] private HorizontalBagItemListView selectedMaterialsView;
         [SerializeField] private GameObject currencyCostRoot;
         [SerializeField] private TMP_Text currencyCostText;
@@ -60,11 +61,13 @@ namespace RPG.Game.UI.Views.WeaponDevelopment
         public void ValidateConfiguration()
         {
             if (titleText == null || subtitleText == null || currentRankText == null || nextRankText == null ||
-                nextRankArrow == null || effectComparisonText == null || selectedMaterialsView == null ||
+                nextRankArrow == null || attributeUpgradeListView == null || emptyEffectText == null ||
+                selectedMaterialsView == null ||
                  currencyCostRoot == null || currencyCostText == null ||
                 actionButton == null || actionLabelText == null || addMaterialButton == null)
                 throw new InvalidOperationException("[WeaponRefinementPageView] 精炼页面存在未绑定控件。");
             selectedMaterialsView.ValidateConfiguration();
+            attributeUpgradeListView.ValidateConfiguration();
         }
 
         #endregion
@@ -82,7 +85,9 @@ namespace RPG.Game.UI.Views.WeaponDevelopment
             nextRankText.text = data.ShowNextRank ? $"R{data.NextRank}" : string.Empty;
             nextRankText.gameObject.SetActive(data.ShowNextRank);
             nextRankArrow.gameObject.SetActive(data.ShowNextRank);
-            effectComparisonText.text = string.Join("\n", data.EffectComparisonLines);
+            attributeUpgradeListView.Bind(data.AttributeLines);
+            emptyEffectText.text = data.EmptyEffectText;
+            emptyEffectText.gameObject.SetActive(data.AttributeLines.Count == 0);
             selectedMaterialsView.gameObject.SetActive(data.ShowNextRank);
             selectedMaterialsView.Bind(data.SelectedMaterials);
 

@@ -30,7 +30,6 @@ namespace WS_Modules.UIModule
         [SerializeField] private Button closeButton;
         [SerializeField] private TMP_Dropdown sortDropdown;
         [SerializeField] private Button sortDirectionButton;
-        [SerializeField] private Button deleteButton;
         [SerializeField] private Button detailsButton;
         [SerializeField, Required] private BagGridView gridView;
         [SerializeField, Required] private BagDetailView detailView;
@@ -99,9 +98,6 @@ namespace WS_Modules.UIModule
 
         /// <summary>获取升降序按钮。</summary>
         public Button SortDirectionButton => sortDirectionButton;
-
-        /// <summary>获取删除请求按钮。</summary>
-        public Button DeleteButton => deleteButton;
 
         /// <summary>获取详情请求按钮。</summary>
         public Button DetailsButton => detailsButton;

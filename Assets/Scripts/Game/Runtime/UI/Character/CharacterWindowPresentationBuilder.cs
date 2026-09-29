@@ -286,20 +286,9 @@ namespace RPG.Game.UI.Character
             WeaponDefinition definition, WeaponInstance weapon, CharacterId characterId)
         {
             string context = $"CharacterWindow Weapon {characterId} / {weapon.InstanceId}";
-            IReadOnlyList<StaticGameplayAttributePresentationValue> levelValues =
-                BagGameplayEffectPresentationBuilder.BuildStaticAttributeValues(
-                    definition.LevelEffects, weapon.Level, $"{context} Level");
-            IReadOnlyList<StaticGameplayAttributePresentationValue> refinementValues =
-                BagGameplayEffectPresentationBuilder.BuildStaticAttributeValues(
-                    definition.RefinementEffects, weapon.RefinementRank, $"{context} Refinement");
-            var mergedValues = new List<StaticGameplayAttributePresentationValue>(
-                levelValues.Count + refinementValues.Count);
-
-            // 先放等级结果，再并入精炼结果，使详情顺序稳定且与用户阅读顺序一致。
-            AppendWeaponAttributeValues(mergedValues, levelValues, definition, weapon);
-            AppendWeaponAttributeValues(mergedValues, refinementValues, definition, weapon);
-
-            return ConvertAttributeLines(mergedValues);
+            IReadOnlyList<StaticGameplayAttributePresentationValue> values =
+                BagGameplayEffectPresentationBuilder.BuildWeaponAttributeValues(definition, weapon, context);
+            return ConvertAttributeLines(values);
         }
 
         /// <summary>把结构化 Modifier 值转换为名称和值分开的详情行。</summary>
@@ -320,52 +309,6 @@ namespace RPG.Game.UI.Character
                 lines.Add(new CharacterEquipmentAttributeLineViewData(attributeName, formattedValue));
             }
             return lines;
-        }
-
-        /// <summary>将一组武器效果的静态数值并入按 Attribute 聚合的列表。</summary>
-        /// <param name="mergedValues">当前合并结果，按首次出现顺序保存。</param>
-        /// <param name="incomingValues">本次计算得到的等级或精炼结果。</param>
-        /// <param name="definition">武器定义，用于冲突诊断。</param>
-        /// <param name="weapon">武器实例，用于冲突诊断。</param>
-        private static void AppendWeaponAttributeValues(
-            List<StaticGameplayAttributePresentationValue> mergedValues,
-            IReadOnlyList<StaticGameplayAttributePresentationValue> incomingValues,
-            WeaponDefinition definition,
-            WeaponInstance weapon)
-        {
-            for (int index = 0; index < incomingValues.Count; index++)
-            {
-                StaticGameplayAttributePresentationValue incoming = incomingValues[index];
-                int existingIndex = mergedValues.FindIndex(
-                    value => value.Attribute.Id == incoming.Attribute.Id);
-                if (existingIndex < 0)
-                {
-                    mergedValues.Add(incoming);
-                    continue;
-                }
-
-                StaticGameplayAttributePresentationValue existing = mergedValues[existingIndex];
-                if (existing.Type != incoming.Type)
-                {
-                    Debug.LogError(
-                        $"[CharacterWindow] 武器 {definition.DisplayName} ({weapon.InstanceId}) 的 Attribute " +
-                        $"'{incoming.Attribute.DisplayName}' 同时配置 Add 与 Multiply，按背包规则采用 Multiply。",
-                        definition);
-                    mergedValues[existingIndex] = incoming.Type == AttributeModifierType.Multiply
-                        ? new StaticGameplayAttributePresentationValue(
-                            existing.Attribute, incoming.Type, incoming.Value, true)
-                        : new StaticGameplayAttributePresentationValue(
-                            existing.Attribute, existing.Type, existing.Value, true);
-                    continue;
-                }
-
-                float aggregate = existing.Type == AttributeModifierType.Add
-                    ? existing.Value + incoming.Value
-                    : existing.Value * incoming.Value;
-                mergedValues[existingIndex] = new StaticGameplayAttributePresentationValue(
-                    existing.Attribute, existing.Type, aggregate,
-                    existing.HasTypeConflict || incoming.HasTypeConflict);
-            }
         }
 
         /// <summary>构建五个固定圣遗物槽位。</summary>

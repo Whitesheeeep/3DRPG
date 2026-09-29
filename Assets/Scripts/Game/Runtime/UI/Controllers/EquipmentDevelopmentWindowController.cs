@@ -773,8 +773,7 @@ namespace RPG.Game.UI.Controllers
                 !(item is WeaponDefinition definition)) return;
 
             WeaponDetails details = WeaponDetailsQuery.Create(definition, instance);
-            IReadOnlyList<string> lines = BuildDetailsLines(details);
-            EquipmentDevelopmentViewData pageData = BuildPageData(definition, instance, lines);
+            EquipmentDevelopmentViewData pageData = BuildPageData(definition, instance, details);
             string mora = CurrencyManager.Instance.GetBalance(CurrencyId.Mola).ToString();
             view.Bind(definition.DisplayName, definition.WeaponType.ToString(), mora, null,
                 EquipmentDevelopmentTargetKind.Weapon, pageData);
@@ -829,17 +828,17 @@ namespace RPG.Game.UI.Controllers
                 : EquipmentGrowthMode.ConfigurationUnavailable;
             currentGrowthMode = mode;
 
-            IReadOnlyList<string> currentLines = BagGameplayEffectPresentationBuilder.BuildStaticAttributeLines(
-                definition.LevelEffects, instance.Level, $"圣遗物 {definition.DisplayName}");
-            IReadOnlyList<string> projectedLines = validProjection
-                ? BagGameplayEffectPresentationBuilder.BuildStaticAttributeLines(
-                    definition.LevelEffects, projection.Level, $"圣遗物 {definition.DisplayName} 预计")
-                : currentLines;
-            IReadOnlyList<string> previewLines = BuildComparisonLines(currentLines, projectedLines);
+            int projectedLevel = validProjection ? projection.Level : instance.Level;
+            IReadOnlyList<AttributeDisplayValue> currentValues = BuildArtifactAttributeValues(
+                definition, instance.Level, $"圣遗物 {definition.DisplayName}");
+            IReadOnlyList<AttributeDisplayValue> projectedValues = validProjection
+                ? BuildArtifactAttributeValues(definition, projectedLevel, $"圣遗物 {definition.DisplayName} 预计")
+                : currentValues;
+            IReadOnlyList<EquipmentAttributeUpgradeLineViewData> previewLines =
+                BuildAttributeUpgradeLines(currentValues, projectedValues);
             IReadOnlyList<BagItemViewData> selectedMaterials = BuildSelectedArtifactEnhancementEntries();
             long currencyOwned = CurrencyManager.Instance.GetBalance(CurrencyId.Mola);
             long selectedExperience = GetSelectedArtifactExperience();
-            int projectedLevel = validProjection ? projection.Level : instance.Level;
             int projectedExperience = validProjection ? projection.CurrentExperience : instance.CurrentExperience;
             int projectedNextExperience = validProjection ? projection.NextExperience : 0;
             float progress = validProjection ? projection.Progress : 0f;
@@ -956,15 +955,15 @@ namespace RPG.Game.UI.Controllers
         /// <summary>根据当前页生成升级、突破或精炼页面的专用展示数据。</summary>
         /// <param name="definition">武器定义。</param>
         /// <param name="instance">武器实例。</param>
-        /// <param name="detailsLines">当前属性文本。</param>
+        /// <param name="details">当前武器静态效果快照。</param>
         /// <returns>页面数据。</returns>
         private EquipmentDevelopmentViewData BuildPageData(WeaponDefinition definition, WeaponInstance instance,
-            IReadOnlyList<string> detailsLines)
+            WeaponDetails details)
         {
             switch (stateModel.CurrentPage)
             {
                 case EquipmentDevelopmentPage.Growth:
-                    return BuildGrowthData(definition, instance, detailsLines);
+                    return BuildGrowthData(definition, instance, details);
                 case EquipmentDevelopmentPage.Refinement:
                     return BuildRefinementData(definition, instance);
                 default:
@@ -973,9 +972,13 @@ namespace RPG.Game.UI.Controllers
             }
         }
 
-        /// <summary>根据当前等级构建升级、突破、满级或配置不可用状态的数据。</summary>
+        /// <summary>按当前武器成长状态构建升级、突破、满级或配置不可用页面。</summary>
+        /// <param name="definition">武器静态定义。</param>
+        /// <param name="instance">武器实例进度。</param>
+        /// <param name="details">当前等级与精炼阶数对应的静态效果快照。</param>
+        /// <returns>统一装备培养页面数据。</returns>
         private EquipmentDevelopmentViewData BuildGrowthData(WeaponDefinition definition, WeaponInstance instance,
-            IReadOnlyList<string> detailsLines)
+            WeaponDetails details)
         {
             EquipmentGrowthMode mode = ResolveGrowthMode(definition, instance, out int currentCap,
                 out WeaponAscensionStage nextStage);
@@ -983,27 +986,35 @@ namespace RPG.Game.UI.Controllers
             switch (mode)
             {
                 case EquipmentGrowthMode.Enhancement:
-                    return BuildEnhancementData(definition, instance, detailsLines, currentCap);
+                    return BuildEnhancementData(definition, instance, details, currentCap);
                 case EquipmentGrowthMode.Ascension:
-                    return BuildAscensionData(definition, instance, detailsLines, currentCap, nextStage);
+                    return BuildAscensionData(instance, currentCap, nextStage);
                 case EquipmentGrowthMode.MaxLevel:
-                    return BuildMaxLevelData(instance, detailsLines);
+                    return BuildMaxLevelData(instance);
                 default:
-                    return BuildUnavailableGrowthData(instance, detailsLines, currentCap);
+                    return BuildUnavailableGrowthData(instance, currentCap);
             }
         }
 
-        /// <summary>构建可使用经验素材升级时的等级、经验和素材预览数据。</summary>
+        /// <summary>构建武器升级页的当前与预计静态属性对比数据。</summary>
+        /// <param name="definition">武器静态定义。</param>
+        /// <param name="instance">武器实例进度。</param>
+        /// <param name="currentDetails">当前等级与精炼阶数对应的静态效果快照。</param>
+        /// <param name="currentCap">当前突破阶段的等级上限。</param>
+        /// <returns>包含升级进度、结构化属性行及素材费用的页面数据。</returns>
         private EquipmentDevelopmentViewData BuildEnhancementData(WeaponDefinition definition, WeaponInstance instance,
-            IReadOnlyList<string> detailsLines, int currentCap)
+            WeaponDetails currentDetails, int currentCap)
         {
             long selectedExperience = GetSelectedEnhancementExperience();
             BuildProjectedProgress(definition.GrowthProfile, instance, currentCap, selectedExperience,
                 out int projectedLevel, out int projectedExperience, out int projectedNextExperience,
                 out long projectedCost);
-            IReadOnlyList<string> previewLines = BuildComparisonLines(detailsLines,
-                BuildDetailsLines(WeaponDetailsQuery.CreateProjected(definition, instance, projectedLevel,
-                    instance.AscensionRank, instance.RefinementRank)));
+            IReadOnlyList<AttributeDisplayValue> currentValues = BuildWeaponAttributeValues(currentDetails);
+            WeaponDetails projectedDetails = WeaponDetailsQuery.CreateProjected(definition, instance, projectedLevel,
+                instance.AscensionRank, instance.RefinementRank);
+            IReadOnlyList<AttributeDisplayValue> projectedValues = BuildWeaponAttributeValues(projectedDetails);
+            IReadOnlyList<EquipmentAttributeUpgradeLineViewData> previewLines =
+                BuildAttributeUpgradeLines(currentValues, projectedValues);
             IReadOnlyList<BagItemViewData> selectedMaterials = BuildSelectedEnhancementEntries();
             bool hasCandidates = HasEnhancementCandidates();
             bool hasSelectedMaterials = HasSelectedEnhancementMaterials();
@@ -1023,48 +1034,57 @@ namespace RPG.Game.UI.Controllers
                 EquipmentGrowthMode.Enhancement, enhancement, null, null);
         }
 
-        /// <summary>构建达到阶段上限后显示的突破星级、等级上限和材料数据。</summary>
-        private EquipmentDevelopmentViewData BuildAscensionData(WeaponDefinition definition, WeaponInstance instance,
-            IReadOnlyList<string> detailsLines, int currentCap, WeaponAscensionStage nextStage)
+        /// <summary>构建武器突破阶数、等级上限和固定消耗数据。</summary>
+        /// <param name="instance">武器当前进度。</param>
+        /// <param name="currentCap">当前阶段的等级上限。</param>
+        /// <param name="nextStage">下一突破阶段配置。</param>
+        /// <returns>可直接绑定到突破页的展示数据。</returns>
+        private EquipmentDevelopmentViewData BuildAscensionData(WeaponInstance instance, int currentCap,
+            WeaponAscensionStage nextStage)
         {
-            IReadOnlyList<string> lines = detailsLines;
             IReadOnlyList<BagItemViewData> requiredMaterials = BuildRequiredAscensionEntries(nextStage.Cost);
             long currencyOwned = CurrencyManager.Instance.GetBalance(CurrencyId.Mola);
             long currencyCost = GetCurrencyCost(nextStage.Cost, CurrencyId.Mola);
             bool canAscend = instance.Level >= nextStage.RequiredLevel &&
                              CanAffordGrowthCost(nextStage.Cost, DevelopmentItemType.WeaponAscension);
             var ascension = new WeaponAscensionViewData(EquipmentGrowthMode.Ascension,
-                "达到当前等级上限后解锁下一阶段", instance.AscensionRank, instance.AscensionRank + 1,
-                instance.Level, currentCap, nextStage.MaxLevelAfter, true, lines, requiredMaterials,
+                string.Empty, instance.AscensionRank, instance.AscensionRank + 1,
+                instance.Level, currentCap, nextStage.MaxLevelAfter, true, requiredMaterials,
                 currencyOwned, currencyCost, canAscend, "突破");
             return new EquipmentDevelopmentViewData(EquipmentDevelopmentPage.Growth, "突破",
                 EquipmentGrowthMode.Ascension, null, ascension, null);
         }
 
-        /// <summary>构建已经达到 Definition 全局等级上限时的突破布局终态。</summary>
-        private static EquipmentDevelopmentViewData BuildMaxLevelData(WeaponInstance instance,
-            IReadOnlyList<string> detailsLines)
+        /// <summary>构建已经达到 Definition 全局等级上限时的页面终态。</summary>
+        /// <param name="instance">达到武器最高等级的实例。</param>
+        /// <returns>显示满级状态且禁用突破的页面数据。</returns>
+        private static EquipmentDevelopmentViewData BuildMaxLevelData(WeaponInstance instance)
         {
             var ascension = new WeaponAscensionViewData(EquipmentGrowthMode.MaxLevel,
-                "当前 Definition 没有更高等级", instance.AscensionRank, 0, instance.Level, instance.Level,
-                instance.Level, false, detailsLines, Array.Empty<BagItemViewData>(), 0L, 0L, false, "已满级");
+                "已达到武器等级上限", instance.AscensionRank, 0, instance.Level, instance.Level,
+                instance.Level, false, Array.Empty<BagItemViewData>(), 0L, 0L, false, "已满级");
             return new EquipmentDevelopmentViewData(EquipmentDevelopmentPage.Growth, "已满级",
                 EquipmentGrowthMode.MaxLevel, null, ascension, null);
         }
 
         /// <summary>构建突破配置不完整时的明确错误展示。</summary>
-        private static EquipmentDevelopmentViewData BuildUnavailableGrowthData(WeaponInstance instance,
-            IReadOnlyList<string> detailsLines, int currentCap)
+        /// <param name="instance">当前武器实例。</param>
+        /// <param name="currentCap">当前阶段可确认的等级上限。</param>
+        /// <returns>明确标出配置缺失并禁用突破的页面数据。</returns>
+        private static EquipmentDevelopmentViewData BuildUnavailableGrowthData(WeaponInstance instance, int currentCap)
         {
             var ascension = new WeaponAscensionViewData(EquipmentGrowthMode.ConfigurationUnavailable,
-                "请补齐突破阶段配置", instance.AscensionRank, 0, instance.Level, currentCap, currentCap,
-                false, detailsLines, Array.Empty<BagItemViewData>(), 0L, 0L, false,
+                "突破配置不可用", instance.AscensionRank, 0, instance.Level, currentCap, currentCap,
+                false, Array.Empty<BagItemViewData>(), 0L, 0L, false,
                     "配置不可用");
             return new EquipmentDevelopmentViewData(EquipmentDevelopmentPage.Growth, "培养",
                 EquipmentGrowthMode.ConfigurationUnavailable, null, ascension, null);
         }
 
-        /// <summary>构建精炼页的阶数、效果、已选武器和费用数据。</summary>
+        /// <summary>构建精炼页的阶数、静态属性对比、已选武器和费用数据。</summary>
+        /// <param name="definition">武器静态定义及精炼阶段配置。</param>
+        /// <param name="instance">当前武器实例的等级、突破与精炼进度。</param>
+        /// <returns>可直接绑定到精炼页的展示数据。</returns>
         private EquipmentDevelopmentViewData BuildRefinementData(WeaponDefinition definition, WeaponInstance instance)
         {
             EquipmentGrowthMode growthMode = ResolveGrowthMode(definition, instance, out _, out _);
@@ -1073,11 +1093,15 @@ namespace RPG.Game.UI.Controllers
             WeaponRefinementStage nextStage = FindNextRefinementStage(definition, instance.RefinementRank);
             if (nextStage == null || nextStage.RequiredDuplicateCount <= 0)
             {
+                WeaponDetails terminalDetails = WeaponDetailsQuery.CreateProjected(definition, instance,
+                    instance.Level, instance.AscensionRank, instance.RefinementRank);
+                IReadOnlyList<AttributeDisplayValue> currentValues = BuildRefinementAttributeValues(terminalDetails);
+                IReadOnlyList<EquipmentAttributeUpgradeLineViewData> currentRows =
+                    BuildAttributeUpgradeLines(currentValues, currentValues, false);
                 return new EquipmentDevelopmentViewData(EquipmentDevelopmentPage.Refinement, growthTabLabel,
                     growthMode, null, null,
                     new WeaponRefinementViewData("武器精炼", "不可继续精炼", instance.RefinementRank, 0,
-                        false, BuildRefinementEffectLines(WeaponDetailsQuery.CreateProjected(definition, instance,
-                            instance.Level, instance.AscensionRank, instance.RefinementRank)),
+                        false, currentRows, currentRows.Count == 0 ? "精炼效果暂未配置" : string.Empty,
                         Array.Empty<BagItemViewData>(), 0, 0,
                         CurrencyManager.Instance.GetBalance(CurrencyId.Mola), 0L, false,
                         "已达上限或未配置", false));
@@ -1087,8 +1111,10 @@ namespace RPG.Game.UI.Controllers
                 instance.Level, instance.AscensionRank, instance.RefinementRank);
             WeaponDetails projectedDetails = WeaponDetailsQuery.CreateProjected(definition, instance,
                 instance.Level, instance.AscensionRank, nextStage.Rank);
-            IReadOnlyList<string> currentEffects = BuildRefinementEffectLines(currentDetails);
-            IReadOnlyList<string> projectedEffects = BuildRefinementEffectLines(projectedDetails);
+            IReadOnlyList<AttributeDisplayValue> currentRefinementValues = BuildRefinementAttributeValues(currentDetails);
+            IReadOnlyList<AttributeDisplayValue> projectedRefinementValues = BuildRefinementAttributeValues(projectedDetails);
+            IReadOnlyList<EquipmentAttributeUpgradeLineViewData> refinementRows =
+                BuildAttributeUpgradeLines(currentRefinementValues, projectedRefinementValues);
             IReadOnlyList<BagItemViewData> selectedMaterials = BuildSelectedRefinementEntries(definition, instance);
             long currencyOwned = CurrencyManager.Instance.GetBalance(CurrencyId.Mola);
             long currencyCost = GetCurrencyCost(nextStage.Cost, CurrencyId.Mola);
@@ -1098,7 +1124,7 @@ namespace RPG.Game.UI.Controllers
                 growthMode, null, null,
                 new WeaponRefinementViewData("武器精炼", "精炼效果与材料预览",
                     instance.RefinementRank, nextStage.Rank, true,
-                    BuildComparisonLines(currentEffects, projectedEffects), selectedMaterials,
+                    refinementRows, refinementRows.Count == 0 ? "精炼效果暂未配置" : string.Empty, selectedMaterials,
                     stateModel.SelectedMaterialIds.Count, nextStage.RequiredDuplicateCount,
                     currencyOwned, currencyCost, canRefine, "精炼", true));
         }
@@ -1145,61 +1171,6 @@ namespace RPG.Game.UI.Controllers
                 default:
                     return "培养";
             }
-        }
-
-        /// <summary>将当前和预计属性行按相同顺序合并为前后对比文本。</summary>
-        /// <param name="currentLines">当前属性行。</param>
-        /// <param name="previewLines">预计属性行。</param>
-        /// <returns>属性对比行。</returns>
-        private static IReadOnlyList<string> BuildComparisonLines(IReadOnlyList<string> currentLines,
-            IReadOnlyList<string> previewLines)
-        {
-            int count = Math.Max(currentLines?.Count ?? 0, previewLines?.Count ?? 0);
-            var lines = new List<string>(count);
-            for (int index = 0; index < count; index++)
-            {
-                string current = currentLines != null && index < currentLines.Count ? currentLines[index] : "—";
-                string preview = previewLines != null && index < previewLines.Count ? previewLines[index] : "—";
-                lines.Add(current == preview ? current : BuildComparisonLine(current, preview));
-            }
-
-            return lines;
-        }
-
-        /// <summary>构建属性前后对比行，并仅将提升后的数值标记为金色。</summary>
-        /// <param name="current">当前属性文本。</param>
-        /// <param name="preview">预计属性文本。</param>
-        /// <returns>带富文本颜色标记的属性对比行。</returns>
-        private static string BuildComparisonLine(string current, string preview)
-        {
-            int currentSeparator = FindAttributeSeparator(current);
-            int previewSeparator = FindAttributeSeparator(preview);
-            if (currentSeparator >= 0 && previewSeparator >= 0)
-            {
-                string currentLabel = current.Substring(0, currentSeparator).Trim();
-                string previewLabel = preview.Substring(0, previewSeparator).Trim();
-                if (string.Equals(currentLabel, previewLabel, StringComparison.Ordinal))
-                {
-                    string currentValue = current.Substring(currentSeparator + 1).Trim();
-                    string previewValue = preview.Substring(previewSeparator + 1).Trim();
-                    return $"{currentLabel}: {currentValue} → <color=#FBB000>{previewValue}</color>";
-                }
-            }
-
-            return $"{current} → <color=#FBB000>{preview}</color>";
-        }
-
-        /// <summary>查找属性名称与数值之间的中英文冒号分隔符。</summary>
-        /// <param name="value">待解析的属性文本。</param>
-        /// <returns>分隔符索引；不存在时返回负数。</returns>
-        private static int FindAttributeSeparator(string value)
-        {
-            if (string.IsNullOrEmpty(value)) return -1;
-            int asciiSeparator = value.IndexOf(':');
-            int fullWidthSeparator = value.IndexOf('：');
-            if (asciiSeparator < 0) return fullWidthSeparator;
-            if (fullWidthSeparator < 0) return asciiSeparator;
-            return Math.Min(asciiSeparator, fullWidthSeparator);
         }
 
         /// <summary>获取当前等级下一等级所需的烘焙经验。</summary>
@@ -1450,39 +1421,138 @@ namespace RPG.Game.UI.Controllers
                 requiredExperience, selections, MaxSelectedExperienceMaterialCount);
         }
 
-        /// <summary>从静态 GE 贡献聚合同一属性并生成最多两条属性文本。</summary>
-        private static IReadOnlyList<string> BuildDetailsLines(WeaponDetails details)
+        /// <summary>聚合武器等级与精炼的静态属性，升级页使用完整结果而不受两行详情限制。</summary>
+        /// <param name="details">指定等级和精炼阶数下的武器详情快照。</param>
+        /// <returns>按 Attribute 首次出现顺序聚合的属性值。</returns>
+        private static IReadOnlyList<AttributeDisplayValue> BuildWeaponAttributeValues(WeaponDetails details)
         {
             var values = new List<AttributeDisplayValue>();
             AppendAttributes(details.LevelEffects, values);
             AppendAttributes(details.RefinementEffects, values);
-            var lines = new List<string>(2);
-            for (int index = 0; index < values.Count && lines.Count < 2; index++)
-            {
-                AttributeDisplayValue value = values[index];
-                lines.Add($"{value.Attribute.DisplayName}: {WeaponAttributeTextFormatter.Format(value.Type, value.Value)}");
-            }
-
-            return lines;
+            return values;
         }
 
-        /// <summary>只构建精炼效果贡献文本，不混入等级效果或突破属性。</summary>
-        /// <param name="details">指定精炼阶数的武器详情快照。</param>
-        /// <returns>精炼效果文本；没有静态效果时返回明确的未配置提示。</returns>
-        private static IReadOnlyList<string> BuildRefinementEffectLines(WeaponDetails details)
+        /// <summary>计算指定等级的圣遗物静态效果，并映射到升级页共用的属性值结构。</summary>
+        /// <param name="definition">圣遗物等级效果配置。</param>
+        /// <param name="level">参与效果缩放的等级。</param>
+        /// <param name="context">静态效果诊断所需的业务上下文。</param>
+        /// <returns>按 Attribute 首次出现顺序排列的聚合属性值。</returns>
+        private static IReadOnlyList<AttributeDisplayValue> BuildArtifactAttributeValues(
+            ArtifactDefinition definition, int level, string context)
+        {
+            IReadOnlyList<StaticGameplayAttributePresentationValue> staticValues =
+                BagGameplayEffectPresentationBuilder.BuildStaticAttributeValues(definition.LevelEffects, level, context);
+            var values = new List<AttributeDisplayValue>(staticValues.Count);
+            for (int index = 0; index < staticValues.Count; index++)
+            {
+                StaticGameplayAttributePresentationValue value = staticValues[index];
+                values.Add(new AttributeDisplayValue(value.Attribute, value.Type, value.Value));
+            }
+
+            return values;
+        }
+
+        /// <summary>按 Attribute ID 合并当前和预计属性，并为缺失的一侧使用 Modifier 中性值。</summary>
+        /// <param name="currentValues">当前培养状态下聚合的静态属性。</param>
+        /// <param name="projectedValues">预计培养状态下聚合的静态属性。</param>
+        /// <param name="showProjectedValue">精炼满阶时隐藏预计值、比较箭头及涨跌标记。</param>
+        /// <returns>按当前属性顺序并追加新增属性的结构化对比行。</returns>
+        private static IReadOnlyList<EquipmentAttributeUpgradeLineViewData> BuildAttributeUpgradeLines(
+            IReadOnlyList<AttributeDisplayValue> currentValues,
+            IReadOnlyList<AttributeDisplayValue> projectedValues,
+            bool showProjectedValue = true)
+        {
+            var projectedAttributeValueByIdMap = new Dictionary<int, AttributeDisplayValue>();
+            for (int index = 0; index < projectedValues.Count; index++)
+            {
+                AttributeDisplayValue value = projectedValues[index];
+                if (value.Attribute.IsValid)
+                    projectedAttributeValueByIdMap[value.Attribute.Id] = value;
+            }
+
+            var rows = new List<EquipmentAttributeUpgradeLineViewData>(
+                currentValues.Count + projectedAttributeValueByIdMap.Count);
+            var displayedAttributeIdSet = new HashSet<int>();
+            for (int index = 0; index < currentValues.Count; index++)
+            {
+                AttributeDisplayValue current = currentValues[index];
+                if (!current.Attribute.IsValid) continue;
+                bool hasProjected = projectedAttributeValueByIdMap.TryGetValue(
+                    current.Attribute.Id, out AttributeDisplayValue projected);
+                AttributeModifierType projectedType = hasProjected ? projected.Type : current.Type;
+                float projectedValue = hasProjected
+                    ? projected.Value
+                    : ResolveModifierNeutralValue(current.Type);
+                EquipmentAttributeUpgradeDirection direction = hasProjected && current.Type != projected.Type
+                    ? EquipmentAttributeUpgradeDirection.None
+                    : ResolveDirection(current.Value, projectedValue);
+                rows.Add(CreateAttributeUpgradeLine(current.Attribute, current.Type, current.Value,
+                    projectedType, projectedValue, direction, showProjectedValue));
+                displayedAttributeIdSet.Add(current.Attribute.Id);
+            }
+
+            for (int index = 0; index < projectedValues.Count; index++)
+            {
+                AttributeDisplayValue projected = projectedValues[index];
+                if (!projected.Attribute.IsValid || displayedAttributeIdSet.Contains(projected.Attribute.Id)) continue;
+                float currentValue = ResolveModifierNeutralValue(projected.Type);
+                rows.Add(CreateAttributeUpgradeLine(projected.Attribute, projected.Type, currentValue,
+                    projected.Type, projected.Value, ResolveDirection(currentValue, projected.Value), showProjectedValue));
+                displayedAttributeIdSet.Add(projected.Attribute.Id);
+            }
+
+            return rows;
+        }
+
+        /// <summary>构造格式化名称、前后数值和涨跌方向组成的升级展示行。</summary>
+        /// <param name="attribute">被展示的 Gameplay Attribute。</param>
+        /// <param name="currentType">当前值的 Modifier 格式类型。</param>
+        /// <param name="currentValue">当前值；缺少当前 Modifier 时为其中性值。</param>
+        /// <param name="projectedType">预计值的 Modifier 格式类型。</param>
+        /// <param name="projectedValue">预计值；缺少预计 Modifier 时为其中性值。</param>
+        /// <param name="direction">涨跌方向。</param>
+        /// <param name="showProjectedValue">满阶展示时不显示预计列。</param>
+        /// <returns>可直接绑定 UI 的升级属性行。</returns>
+        private static EquipmentAttributeUpgradeLineViewData CreateAttributeUpgradeLine(
+            GameplayAttribute attribute, AttributeModifierType currentType, float currentValue,
+            AttributeModifierType projectedType, float projectedValue,
+            EquipmentAttributeUpgradeDirection direction, bool showProjectedValue = true)
+        {
+            string attributeName = string.IsNullOrWhiteSpace(attribute.DisplayName)
+                ? attribute.Name
+                : attribute.DisplayName;
+            return new EquipmentAttributeUpgradeLineViewData(attribute.Id, attributeName,
+                WeaponAttributeTextFormatter.Format(currentType, currentValue),
+                WeaponAttributeTextFormatter.Format(projectedType, projectedValue), direction, showProjectedValue);
+        }
+
+        /// <summary>返回静态 Modifier 未出现时的中性值，Add 为零、Multiply 为一。</summary>
+        /// <param name="type">中性值所属 Modifier 类型。</param>
+        /// <returns>不改变目标数值的 Modifier 值。</returns>
+        private static float ResolveModifierNeutralValue(AttributeModifierType type)
+        {
+            return type == AttributeModifierType.Multiply ? 1f : 0f;
+        }
+
+        /// <summary>根据未格式化的静态值确定升级方向，避免舍入后漏掉变化。</summary>
+        /// <param name="currentValue">当前聚合值。</param>
+        /// <param name="projectedValue">预计聚合值。</param>
+        /// <returns>值变化方向。</returns>
+        private static EquipmentAttributeUpgradeDirection ResolveDirection(float currentValue, float projectedValue)
+        {
+            if (projectedValue > currentValue) return EquipmentAttributeUpgradeDirection.Increase;
+            if (projectedValue < currentValue) return EquipmentAttributeUpgradeDirection.Decrease;
+            return EquipmentAttributeUpgradeDirection.None;
+        }
+
+        /// <summary>聚合武器详情中的精炼静态属性，供精炼前后结构化比较使用。</summary>
+        /// <param name="details">指定精炼阶数下的武器详情快照。</param>
+        /// <returns>按属性首次出现顺序合并后的精炼属性。</returns>
+        private static IReadOnlyList<AttributeDisplayValue> BuildRefinementAttributeValues(WeaponDetails details)
         {
             var values = new List<AttributeDisplayValue>();
             AppendAttributes(details.RefinementEffects, values);
-            if (values.Count == 0) return new[] { "精炼效果暂未配置" };
-
-            var lines = new List<string>(values.Count);
-            for (int index = 0; index < values.Count; index++)
-            {
-                AttributeDisplayValue value = values[index];
-                lines.Add($"{value.Attribute.DisplayName}: {WeaponAttributeTextFormatter.Format(value.Type, value.Value)}");
-            }
-
-            return lines;
+            return values;
         }
 
         /// <summary>按属性首次出现顺序聚合 Add 或 Multiply 贡献。</summary>

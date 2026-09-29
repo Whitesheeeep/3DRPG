@@ -42,6 +42,7 @@ namespace WS_Modules.UIModule
             "Artifacts_00",
             "Artifacts_01",
             "Artifacts_02",
+            "ItemIcons_DevelopmentMaterial",
             RPG.Character.CharacterAssetAddresses.FullBodyPortraitsAtlas
         };
         [SerializeField, MinValue(0f)] private float atlasReleaseDelaySeconds = 30f;

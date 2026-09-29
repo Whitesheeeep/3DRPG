@@ -120,6 +120,9 @@ int SiblingOrder;
 - `SegmentName` 只表示当前层级名称，不能包含 `/` 或 `\\`。
 - `SiblingOrder` 只影响同级显示和稳定计算顺序。
 - `DerivedPath` 由 Parent 链推导，例如 `Bag/Weapon/New`；它是展示、搜索和诊断信息，不是运行时身份。
+- 节点设置页新建节点、修改名称或迁移 Parent 时，会在 Asset 原目录按完整 `DerivedPath` 同步文件名，例如 `Bag/Weapon/New` 对应 `Bag_Weapon_New.asset`；路径中的 `/` 转为 `_`。
+- 当改名或迁移改变一个父节点的路径时，编辑器同步更新该节点及全部后代 Asset 的文件名；仅调整同级顺序不改名。同目录目标名冲突时自动追加 Unity 唯一序号。
+- Undo/Redo 只恢复节点字段与树结构，不在 Undo 回调中再次改名 Asset；因此文件名可能暂时保留最近一次正常节点操作的结果，节点身份和业务引用仍由 Asset GUID 决定。
 - Children 不序列化，由 Config 中所有节点的 Parent 引用反向组装。
 
 节点约束在 Runtime 初始化和 Editor 操作中都必须满足：
@@ -453,6 +456,8 @@ value > 99  → 显示 99+
 - 删除整个子树会把目标及后代从 Config 移除，并按后代到祖先顺序移入系统回收站。
 
 节点拖拽只修改被拖节点自己的 Parent；后代仍然引用原 Parent，不逐个改写。迁移、Parent 字段和排序共用 Controller 的校验与 Undo 事务。当前删除流程不扫描外部业务引用，也不弹确认框；业务中的 Missing 引用由业务自行发现和修复。
+
+新建节点按完整派生路径命名 Asset。改名或迁移节点时，同步改名整棵受影响子树中的 Asset，但文件仍留在各自原目录；同目录重名时自动追加唯一序号。Undo/Redo 仅恢复序列化节点数据和 TreeView，不触发 Asset 改名，所以节点树与文件名在撤销后可能暂时不一致；后续正常改名或迁移会再次按新派生路径同步。
 
 ### 8.2 Runtime Debugger 页
 

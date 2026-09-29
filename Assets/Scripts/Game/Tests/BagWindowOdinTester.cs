@@ -27,6 +27,8 @@ namespace RPG.Game.Tests
         [SerializeField, LabelText("测试武器经验素材")] private DevelopmentExperienceItemDefinition[] testEnhancementMaterials = new DevelopmentExperienceItemDefinition[0];
         [SerializeField, LabelText("测试圣遗物经验素材")] private DevelopmentExperienceItemDefinition testArtifactExperienceMaterial;
         [SerializeField, LabelText("测试武器突破素材")] private DevelopmentItemDefinition testAscensionMaterial;
+        [SerializeField, LabelText("测试角色经验素材")] private DevelopmentExperienceItemDefinition testCharacterExperienceMaterial;
+        [SerializeField, LabelText("测试角色突破素材")] private DevelopmentItemDefinition[] testCharacterAscensionMaterials = new DevelopmentItemDefinition[0];
 
         #endregion
 
@@ -37,6 +39,7 @@ namespace RPG.Game.Tests
         [SerializeField, MinValue(1), LabelText("食物添加数量")] private int foodQuantity = 5;
         [SerializeField, MinValue(1), LabelText("每种经验素材添加数量")] private int enhancementMaterialQuantity = 20;
         [SerializeField, MinValue(1), LabelText("圣遗物经验素材添加数量")] private int artifactExperienceMaterialQuantity = 20;
+        [SerializeField, MinValue(1), LabelText("角色经验素材添加数量")] private int characterExperienceMaterialQuantity = 20;
         [SerializeField, MinValue(1), LabelText("突破素材添加数量")] private int ascensionMaterialQuantity = 3;
         [SerializeField, MinValue(1), LabelText("测试摩拉添加数量")] private int testMolaAmount = 100000;
         [SerializeField, MinValue(1), LabelText("目标等级")] private int targetLevel = 20;
@@ -77,6 +80,20 @@ namespace RPG.Game.Tests
         #endregion
 
         #region 窗口与添加操作
+
+        /// <summary>通过正式库存与钱包 API 一次准备各类背包和角色培养测试数据。</summary>
+        [Button("一键添加背包与角色培养测试资源")]
+        private void AddAllTestData()
+        {
+            AddTestArtifact();
+            AddTestWeapon();
+            AddBatchTestWeapons();
+            AddTestFood();
+            AddTestDevelopmentMaterials();
+            AddTestArtifactExperienceMaterial();
+            AddTestCharacterDevelopmentMaterials();
+            AddTestMola();
+        }
 
         /// <summary>通过正式圣遗物库存 API 添加测试实例并记录实例标识。</summary>
         [Button("添加测试圣遗物")]
@@ -291,6 +308,47 @@ namespace RPG.Game.Tests
         public void AddAllWeaponDevelopmentTestResources()
         {
             AddTestDevelopmentMaterials();
+            AddTestMola();
+        }
+
+        /// <summary>向正式堆叠库存加入角色经验素材和各阶段角色突破材料。</summary>
+        [Button("添加角色培养测试素材")]
+        public void AddTestCharacterDevelopmentMaterials()
+        {
+            if (!EnsureInventoryReady("添加角色培养素材")) return;
+
+            int addedKinds = 0;
+            if (IsExperienceMaterial(testCharacterExperienceMaterial, DevelopmentExperienceItemType.Character))
+            {
+                StackableItemOperationResult experienceResult = StackableManager.AddItem(
+                    testCharacterExperienceMaterial.ItemId, characterExperienceMaterialQuantity);
+                Debug.Log($"[BagWindowTest] add character experience material status={experienceResult.Status}, " +
+                          $"item={testCharacterExperienceMaterial.ItemId}, quantity={characterExperienceMaterialQuantity}。", this);
+                if (experienceResult.Succeeded) addedKinds++;
+            }
+
+            if (testCharacterAscensionMaterials != null)
+            {
+                for (int index = 0; index < testCharacterAscensionMaterials.Length; index++)
+                {
+                    DevelopmentItemDefinition material = testCharacterAscensionMaterials[index];
+                    if (!IsDevelopmentMaterial(material, DevelopmentItemType.CharacterAscension)) continue;
+                    StackableItemOperationResult result = StackableManager.AddItem(
+                        material.ItemId, ascensionMaterialQuantity);
+                    Debug.Log($"[BagWindowTest] add character ascension material status={result.Status}, " +
+                              $"item={material.ItemId}, quantity={ascensionMaterialQuantity}。", this);
+                    if (result.Succeeded) addedKinds++;
+                }
+            }
+
+            Debug.Log($"[BagWindowTest] 角色培养测试素材添加完成：成功种类={addedKinds}。", this);
+        }
+
+        /// <summary>一次准备角色升级、突破所需的经验素材、突破材料和摩拉。</summary>
+        [Button("添加角色培养测试资源")]
+        public void AddAllCharacterDevelopmentTestResources()
+        {
+            AddTestCharacterDevelopmentMaterials();
             AddTestMola();
         }
 

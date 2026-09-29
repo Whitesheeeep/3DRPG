@@ -141,7 +141,6 @@ namespace RPG.Game.UI.Controllers
             data?.NextCategoryButton?.onClick.RemoveListener(SelectNextCategory);
             data?.CloseButton?.onClick.RemoveListener(SubmitCloseRequest);
             data?.SortDirectionButton?.onClick.RemoveListener(ToggleSortDirection);
-            data?.DeleteButton?.onClick.RemoveListener(SubmitDeleteRequest);
             data?.DetailsButton?.onClick.RemoveListener(SubmitDetailsRequest);
             data?.SortDropdown?.onValueChanged.RemoveListener(HandleSortDropdownChanged);
             categoryButtonActions.Clear();
@@ -172,13 +171,18 @@ namespace RPG.Game.UI.Controllers
             RefreshCurrentCategory(false);
         }
 
-        /// <summary>窗口稳定隐藏时停止交互并启动 30 秒动态图集缓存释放倒计时。</summary>
+        /// <summary>窗口稳定隐藏时清空装备详情、停止交互并启动动态图集缓存释放倒计时。</summary>
         public void OnWindowHidden()
         {
             if (disposed) return;
+            bool wasShown = windowShown;
             windowShown = false;
             data.GridView.SetInteractable(false);
+            // 隐藏窗口时立即归还装备属性行，避免图集释放后池化行仍握有旧装备显示状态。
+            data.DetailView.Clear();
             spriteAtlasLeaseService.ScheduleRelease();
+            if (wasShown)
+                Debug.Log("[BagWindowController] 窗口隐藏，已清空详情并归还装备属性行，动态图集进入延迟释放。", this);
         }
 
         /// <summary>
@@ -249,7 +253,6 @@ namespace RPG.Game.UI.Controllers
             data.NextCategoryButton?.onClick.AddListener(SelectNextCategory);
             data.CloseButton?.onClick.AddListener(SubmitCloseRequest);
             data.SortDirectionButton?.onClick.AddListener(ToggleSortDirection);
-            data.DeleteButton?.onClick.AddListener(SubmitDeleteRequest);
             data.DetailsButton?.onClick.AddListener(SubmitDetailsRequest);
             if (data.SortDropdown != null)
             {
@@ -466,13 +469,11 @@ namespace RPG.Game.UI.Controllers
                 !source.TryBuildDetails(key.Value, out BagDetailViewData details))
             {
                 data.DetailView?.Clear();
-                if (data.DeleteButton != null) data.DeleteButton.interactable = false;
                 if (data.DetailsButton != null) data.DetailsButton.interactable = false;
                 return;
             }
 
             data.DetailView?.Bind(details);
-            if (data.DeleteButton != null) data.DeleteButton.interactable = details.ShowDeleteAction;
             if (data.DetailsButton != null) data.DetailsButton.interactable = details.ShowDetailsAction;
         }
         #endregion

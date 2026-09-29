@@ -148,6 +148,32 @@ namespace RPG.Game.UI.Bag
         public bool IsEquipped { get; }
     }
 
+    /// <summary>武器品质详情上半区的一条固定属性展示数据。</summary>
+    public readonly struct BagWeaponAttributeViewData
+    {
+        #region 初始化
+
+        /// <summary>创建固定武器属性展示数据。</summary>
+        /// <param name="attributeName">属性名称。</param>
+        /// <param name="formattedValue">已经格式化的属性数值。</param>
+        public BagWeaponAttributeViewData(string attributeName, string formattedValue)
+        {
+            AttributeName = attributeName ?? string.Empty;
+            FormattedValue = formattedValue ?? string.Empty;
+        }
+
+        #endregion
+
+        #region 属性
+
+        /// <summary>获取属性名称。</summary>
+        public string AttributeName { get; }
+        /// <summary>获取已格式化的属性数值。</summary>
+        public string FormattedValue { get; }
+
+        #endregion
+    }
+
     /// <summary>供所有背包分类共用详情 View 使用的只读详情数据。</summary>
     public sealed class BagDetailViewData
     {
@@ -166,6 +192,7 @@ namespace RPG.Game.UI.Bag
         /// <param name="showOwner">是否显示装备者区域。</param>
         /// <param name="showDeleteAction">是否显示删除操作。</param>
         /// <param name="showDetailsAction">是否显示详情/培养操作。</param>
+        /// <param name="weaponAttributes">显示在武器品质面板中的固定属性；最多包含两项。</param>
         public BagDetailViewData(
             BagEntryKey entryKey,
             string displayName,
@@ -180,7 +207,8 @@ namespace RPG.Game.UI.Bag
             Sprite ownerIcon,
             bool showOwner,
             bool showDeleteAction,
-            bool showDetailsAction)
+            bool showDetailsAction,
+            IReadOnlyList<BagWeaponAttributeViewData> weaponAttributes = null)
         {
             EntryKey = entryKey;
             DisplayName = displayName ?? string.Empty;
@@ -196,6 +224,7 @@ namespace RPG.Game.UI.Bag
             ShowOwner = showOwner;
             ShowDeleteAction = showDeleteAction;
             ShowDetailsAction = showDetailsAction;
+            WeaponAttributes = weaponAttributes ?? Array.Empty<BagWeaponAttributeViewData>();
         }
 
         /// <summary>获取稳定条目标识。</summary>
@@ -226,5 +255,7 @@ namespace RPG.Game.UI.Bag
         public bool ShowDeleteAction { get; }
         /// <summary>获取是否允许详情/培养操作。</summary>
         public bool ShowDetailsAction { get; }
+        /// <summary>获取武器上半品质面板的固定属性；圣遗物与其他分类为空。</summary>
+        public IReadOnlyList<BagWeaponAttributeViewData> WeaponAttributes { get; }
     }
 }

@@ -36,7 +36,7 @@ namespace RPG.RedDotSystemNS.Editor
         #region 公开入口
 
         /// <summary>打开红点节点设置和运行时调试窗口。</summary>
-        [MenuItem("Tools/RPG/Red Dot Editor")]
+        [MenuItem("RPG/Red Dot Editor")]
         public static void Open()
         {
             RedDotEditorWindow window = GetWindow<RedDotEditorWindow>();

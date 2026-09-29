@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using RPG.Game.UI.Bag;
 using RPG.Character;
 using RPG.Game.UI.Character;
+using RPG.Game.Runtime.CharacterDevelopment;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
@@ -38,12 +39,15 @@ namespace RPG.Game.UI.Views.Character
         [SerializeField] private GameObject attributePageRoot;
         [SerializeField] private GameObject weaponPageRoot;
         [SerializeField] private GameObject artifactPageRoot;
+        [SerializeField] private GameObject characterDevelopmentPageRoot;
         [SerializeField] private GameObject leftNavigationRoot;
         [SerializeField] private CharacterAttributePageView attributePage;
         [SerializeField] private CharacterWeaponPageView weaponPage;
         [SerializeField] private CharacterArtifactPageView artifactPage;
+        [SerializeField] private CharacterDevelopmentPageView characterDevelopmentPage;
         private bool selectionMode;
         private CharacterWindowPage boundPage;
+        private CharacterDevelopmentMode characterDevelopmentMode;
 
         #endregion
 
@@ -67,6 +71,14 @@ namespace RPG.Game.UI.Views.Character
         public event Action WeaponReplaceRequested;
         /// <summary>圣遗物页装备/交换操作意图。</summary>
         public event Action ArtifactReplaceRequested;
+        /// <summary>属性页升级／突破入口意图。</summary>
+        public event Action CharacterDevelopmentRequested;
+        /// <summary>角色培养页确认升级／突破意图。</summary>
+        public event Action CharacterDevelopmentSubmitRequested;
+        /// <summary>角色培养页自动填入经验材料意图。</summary>
+        public event Action CharacterExperienceAutoFillRequested;
+        /// <summary>请求打开当前角色培养模式的素材选择面板。</summary>
+        public event Action CharacterDevelopmentMaterialsRequested;
 
         #endregion
 
@@ -82,7 +94,8 @@ namespace RPG.Game.UI.Views.Character
                 weaponSelectedIcon == null || weaponUnselectedIcon == null ||
                 artifactSelectedIcon == null || artifactUnselectedIcon == null ||
                 attributePageRoot == null || weaponPageRoot == null || artifactPageRoot == null ||
-                leftNavigationRoot == null || attributePage == null || weaponPage == null || artifactPage == null)
+                characterDevelopmentPageRoot == null || leftNavigationRoot == null || attributePage == null ||
+                weaponPage == null || artifactPage == null || characterDevelopmentPage == null)
                 throw new InvalidOperationException("[CharacterWindowView] 角色窗口绑定不完整。");
             rosterStrip.CharacterSelected += HandleCharacterSelected;
             previousCharacterButton.onClick.AddListener(HandlePreviousClicked);
@@ -96,6 +109,10 @@ namespace RPG.Game.UI.Views.Character
             artifactPage.SlotSelected += HandleArtifactSlotSelected;
             artifactPage.DevelopmentRequested += HandleArtifactDevelopmentRequested;
             artifactPage.ReplaceRequested += HandleArtifactReplaceRequested;
+            attributePage.DevelopmentRequested += HandleCharacterDevelopmentRequested;
+            characterDevelopmentPage.SubmitRequested += HandleCharacterDevelopmentSubmitRequested;
+            characterDevelopmentPage.AutoFillRequested += HandleCharacterExperienceAutoFillRequested;
+            characterDevelopmentPage.SelectMaterialsRequested += HandleCharacterDevelopmentMaterialsRequested;
             fullBodyPortraitImage.preserveAspect = true;
             fullBodyPortraitImage.raycastTarget = false;
             centralWeaponImage.preserveAspect = true;
@@ -119,6 +136,13 @@ namespace RPG.Game.UI.Views.Character
                 artifactPage.SlotSelected -= HandleArtifactSlotSelected;
                 artifactPage.DevelopmentRequested -= HandleArtifactDevelopmentRequested;
                 artifactPage.ReplaceRequested -= HandleArtifactReplaceRequested;
+            }
+            if (attributePage != null) attributePage.DevelopmentRequested -= HandleCharacterDevelopmentRequested;
+            if (characterDevelopmentPage != null)
+            {
+                characterDevelopmentPage.SubmitRequested -= HandleCharacterDevelopmentSubmitRequested;
+                characterDevelopmentPage.AutoFillRequested -= HandleCharacterExperienceAutoFillRequested;
+                characterDevelopmentPage.SelectMaterialsRequested -= HandleCharacterDevelopmentMaterialsRequested;
             }
         }
 
@@ -159,6 +183,7 @@ namespace RPG.Game.UI.Views.Character
         /// <summary>清空所有角色内容并隐藏页面。</summary>
         public void Clear()
         {
+            selectionMode = false;
             rosterStrip.Clear();
             fullBodyPortraitImage.sprite = null;
             fullBodyPortraitImage.enabled = false;
@@ -173,6 +198,8 @@ namespace RPG.Game.UI.Views.Character
             attributePage.Clear();
             weaponPage.Clear();
             artifactPage.Clear();
+            characterDevelopmentPage.Clear();
+            characterDevelopmentMode = CharacterDevelopmentMode.None;
             ApplySelectionModeState();
         }
 
@@ -182,6 +209,29 @@ namespace RPG.Game.UI.Views.Character
         {
             selectionMode = selecting;
             ApplySelectionModeState();
+        }
+
+        /// <summary>切换同一 CharacterWindow 内的角色升级或突破右侧页面。</summary>
+        /// <param name="mode">要显示的角色培养模式；None 表示回到普通角色页。</param>
+        public void SetCharacterDevelopmentMode(CharacterDevelopmentMode mode)
+        {
+            characterDevelopmentMode = mode;
+            if (mode == CharacterDevelopmentMode.None) characterDevelopmentPage.Clear();
+            ApplySelectionModeState();
+        }
+
+        /// <summary>绑定角色升级或突破右侧面板数据。</summary>
+        /// <param name="data">当前培养模式的展示快照。</param>
+        public void BindCharacterDevelopment(CharacterDevelopmentPanelViewData data)
+        {
+            characterDevelopmentPage.Bind(data);
+        }
+
+        /// <summary>显示角色培养服务返回的失败或成功说明。</summary>
+        /// <param name="message">事务结果文字。</param>
+        public void SetCharacterDevelopmentStatus(string message)
+        {
+            characterDevelopmentPage.SetStatusMessage(message);
         }
 
         /// <summary>将被点击的背包候选详情绑定到当前装备页面的右侧详情区。</summary>
@@ -221,18 +271,27 @@ namespace RPG.Game.UI.Views.Character
         /// <summary>同步选择模式对角色条、翻页按钮、左导航和两个装备页操作的显隐影响。</summary>
         private void ApplySelectionModeState()
         {
-            if (rosterStrip != null) rosterStrip.gameObject.SetActive(!selectionMode);
-            if (previousCharacterButton != null) previousCharacterButton.gameObject.SetActive(!selectionMode);
-            if (nextCharacterButton != null) nextCharacterButton.gameObject.SetActive(!selectionMode);
-            if (leftNavigationRoot != null) leftNavigationRoot.SetActive(!selectionMode);
+            bool developmentActive = characterDevelopmentMode != CharacterDevelopmentMode.None;
+            bool overlayActive = selectionMode || developmentActive;
+            if (rosterStrip != null) rosterStrip.gameObject.SetActive(!overlayActive);
+            if (previousCharacterButton != null) previousCharacterButton.gameObject.SetActive(!overlayActive);
+            if (nextCharacterButton != null) nextCharacterButton.gameObject.SetActive(!overlayActive);
+            if (leftNavigationRoot != null) leftNavigationRoot.SetActive(!overlayActive);
+            if (attributePageRoot != null)
+                attributePageRoot.SetActive(!developmentActive && boundPage == CharacterWindowPage.Attribute);
+            if (weaponPageRoot != null)
+                weaponPageRoot.SetActive(!developmentActive && boundPage == CharacterWindowPage.Weapon);
+            if (artifactPageRoot != null)
+                artifactPageRoot.SetActive(!developmentActive && boundPage == CharacterWindowPage.Artifact);
+            if (characterDevelopmentPageRoot != null) characterDevelopmentPageRoot.SetActive(developmentActive);
             if (centralWeaponImage != null)
             {
                 bool showWeapon = boundPage == CharacterWindowPage.Weapon && centralWeaponImage.sprite != null;
                 centralWeaponImage.gameObject.SetActive(showWeapon);
                 centralWeaponImage.enabled = showWeapon;
             }
-            if (weaponPage != null) weaponPage.SetSelectionMode(selectionMode && boundPage == CharacterWindowPage.Weapon);
-            if (artifactPage != null) artifactPage.SetSelectionMode(selectionMode && boundPage == CharacterWindowPage.Artifact);
+            if (weaponPage != null) weaponPage.SetSelectionMode(selectionMode && !developmentActive && boundPage == CharacterWindowPage.Weapon);
+            if (artifactPage != null) artifactPage.SetSelectionMode(selectionMode && !developmentActive && boundPage == CharacterWindowPage.Artifact);
         }
 
         /// <summary>转发头像选择。</summary>
@@ -263,6 +322,14 @@ namespace RPG.Game.UI.Views.Character
         private void HandleArtifactDevelopmentRequested(RPG.ItemSystem.EquipmentInstanceId instanceId) => ArtifactDevelopmentRequested?.Invoke(instanceId);
         /// <summary>转发圣遗物页装备/交换按钮意图。</summary>
         private void HandleArtifactReplaceRequested() => ArtifactReplaceRequested?.Invoke();
+        /// <summary>转发角色属性页的成长入口请求。</summary>
+        private void HandleCharacterDevelopmentRequested() => CharacterDevelopmentRequested?.Invoke();
+        /// <summary>转发角色培养确认请求。</summary>
+        private void HandleCharacterDevelopmentSubmitRequested() => CharacterDevelopmentSubmitRequested?.Invoke();
+        /// <summary>转发经验素材自动填充请求。</summary>
+        private void HandleCharacterExperienceAutoFillRequested() => CharacterExperienceAutoFillRequested?.Invoke();
+        /// <summary>转发角色培养页打开素材选择面板的请求。</summary>
+        private void HandleCharacterDevelopmentMaterialsRequested() => CharacterDevelopmentMaterialsRequested?.Invoke();
 
         #endregion
     }

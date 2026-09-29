@@ -1414,11 +1414,17 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 669cc4e2c7af19f4e9b5ed3e9c747389, type: 2}
   testArtifactExperienceMaterial: {fileID: 11400000, guid: fb993ad77455429dbeb9bb69be1724f1, type: 2}
   testAscensionMaterial: {fileID: 11400000, guid: b342ce4ad484fec438584c086ecc557c, type: 2}
+  testCharacterExperienceMaterial: {fileID: 11400000, guid: d7fd4cfa86e628146b6dcd9034a95ba8, type: 2}
+  testCharacterAscensionMaterials:
+  - {fileID: 11400000, guid: b342ce4ad484fec438584c086ecc557c, type: 2}
+  - {fileID: 11400000, guid: 42639cb5b83457f498e08c8245edc054, type: 2}
+  - {fileID: 11400000, guid: e97147e99b1fb174cac0fec4d893da32, type: 2}
   batchQuantity: 8
   artifactQuantity: 3
   foodQuantity: 5
   enhancementMaterialQuantity: 20
   artifactExperienceMaterialQuantity: 20
+  characterExperienceMaterialQuantity: 20
   ascensionMaterialQuantity: 3
   testMolaAmount: 100000
   targetLevel: 20

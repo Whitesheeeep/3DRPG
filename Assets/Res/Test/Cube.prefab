@@ -138,3 +138,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bb4e55a2427d8f84eae93cc22bc76890, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  requiredMarkerKeys: []

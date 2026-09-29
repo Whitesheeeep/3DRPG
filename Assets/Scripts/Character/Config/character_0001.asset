@@ -37,33 +37,63 @@ MonoBehaviour:
     - requiredLevel: 20
       maxLevelAfter: 40
       cost:
-        itemCosts: []
-        currencyCosts: []
+        itemCosts:
+        - itemId:
+            value: material_0014
+          quantity: 1
+        currencyCosts:
+        - currencyId: 1
+          amount: 100
     - requiredLevel: 40
       maxLevelAfter: 50
       cost:
-        itemCosts: []
-        currencyCosts: []
+        itemCosts:
+        - itemId:
+            value: material_0014
+          quantity: 2
+        currencyCosts:
+        - currencyId: 1
+          amount: 200
     - requiredLevel: 50
       maxLevelAfter: 60
       cost:
-        itemCosts: []
-        currencyCosts: []
+        itemCosts:
+        - itemId:
+            value: material_0015
+          quantity: 1
+        currencyCosts:
+        - currencyId: 1
+          amount: 300
     - requiredLevel: 60
       maxLevelAfter: 70
       cost:
-        itemCosts: []
-        currencyCosts: []
+        itemCosts:
+        - itemId:
+            value: material_0015
+          quantity: 2
+        currencyCosts:
+        - currencyId: 1
+          amount: 400
     - requiredLevel: 70
       maxLevelAfter: 80
       cost:
-        itemCosts: []
-        currencyCosts: []
+        itemCosts:
+        - itemId:
+            value: material_0016
+          quantity: 1
+        currencyCosts:
+        - currencyId: 1
+          amount: 500
     - requiredLevel: 80
       maxLevelAfter: 90
       cost:
-        itemCosts: []
-        currencyCosts: []
+        itemCosts:
+        - itemId:
+            value: material_0016
+          quantity: 2
+        currencyCosts:
+        - currencyId: 1
+          amount: 600
     initialAttributeSets:
     - {fileID: 11400000, guid: fa050d1171257b24bbba13162066da88, type: 2}
     resourceRules:

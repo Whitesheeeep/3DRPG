@@ -23,6 +23,8 @@ namespace RPG.Game.UI.Views.Character
         [SerializeField] private TMP_Text experiencePercentText;
         [SerializeField] private TMP_Text capStateText;
         [SerializeField] private Image experienceProgressImage;
+        [SerializeField] private Button developmentButton;
+        [SerializeField] private TMP_Text developmentButtonText;
         [SerializeField] private ScrollRect introductionScrollRect;
         [SerializeField] private TMP_Text introductionText;
         [SerializeField] private GameObject introductionRoot;
@@ -34,6 +36,13 @@ namespace RPG.Game.UI.Views.Character
 
         #endregion
 
+        #region 事件
+
+        /// <summary>角色属性页请求升级或突破培养。</summary>
+        public event Action DevelopmentRequested;
+
+        #endregion
+
         #region 生命周期
 
         /// <summary>校验并初始化角色标题、经验、介绍区与固定属性行依赖。</summary>
@@ -42,6 +51,7 @@ namespace RPG.Game.UI.Views.Character
             if (rarityStars == null || ascensionRankStars == null || characterNameText == null ||
                 currentLevelText == null || levelCapText == null || experienceText == null ||
                 experiencePercentText == null || capStateText == null || experienceProgressImage == null ||
+                developmentButton == null || developmentButtonText == null ||
                 introductionScrollRect == null || introductionScrollRect.viewport == null ||
                 introductionText == null || introductionRoot == null)
                 throw new InvalidOperationException("[CharacterAttributePageView] 角色标题、经验条或介绍区未绑定完整。");
@@ -59,7 +69,14 @@ namespace RPG.Game.UI.Views.Character
             experienceProgressImage.type = Image.Type.Filled;
             experienceProgressImage.fillMethod = Image.FillMethod.Horizontal;
             experienceProgressImage.raycastTarget = false;
+            developmentButton.onClick.AddListener(HandleDevelopmentClicked);
             Debug.Log("[CharacterAttributePageView] 初始化完成，标题、介绍区与五条固定属性行已绑定。");
+        }
+
+        /// <summary>销毁时移除角色升级入口按钮回调。</summary>
+        private void OnDestroy()
+        {
+            if (developmentButton != null) developmentButton.onClick.RemoveListener(HandleDevelopmentClicked);
         }
 
         #endregion
@@ -110,6 +127,11 @@ namespace RPG.Game.UI.Views.Character
             experienceText.gameObject.SetActive(string.IsNullOrWhiteSpace(header.CapStateText));
             capStateText.text = header.CapStateText;
             capStateText.gameObject.SetActive(!string.IsNullOrWhiteSpace(header.CapStateText));
+            bool isMaxLevel = string.Equals(header.CapStateText, "已满级", StringComparison.Ordinal);
+            bool canAscend = string.Equals(header.CapStateText, "已达当前等级上限", StringComparison.Ordinal);
+            developmentButtonText.text = isMaxLevel ? "已满级" : canAscend ? "突破" : "升级";
+            developmentButton.interactable = !isMaxLevel;
+            developmentButton.gameObject.SetActive(true);
             experienceProgressImage.fillAmount = header.ExperienceProgress;
             experienceProgressImage.gameObject.SetActive(header.ShowExperienceProgress);
             experiencePercentText.text = header.ExperiencePercentText;
@@ -132,6 +154,8 @@ namespace RPG.Game.UI.Views.Character
             experiencePercentText.gameObject.SetActive(false);
             capStateText.text = string.Empty;
             capStateText.gameObject.SetActive(false);
+            developmentButton.interactable = false;
+            developmentButtonText.text = string.Empty;
             experienceProgressImage.fillAmount = 0f;
             experienceProgressImage.gameObject.SetActive(false);
             rarityStars.gameObject.SetActive(false);
@@ -149,7 +173,7 @@ namespace RPG.Game.UI.Views.Character
             int count = Mathf.Clamp(starCount, 0, 7);
             starImage.type = Image.Type.Tiled;
             starImage.raycastTarget = false;
-            starImage.rectTransform.sizeDelta = new Vector2(count * 8f, 10f);
+            starImage.rectTransform.sizeDelta = new Vector2(count * 8f, starImage.rectTransform.sizeDelta.y);
             starImage.gameObject.SetActive(count > 0);
         }
 
@@ -179,6 +203,9 @@ namespace RPG.Game.UI.Views.Character
             if (line == null)
                 throw new InvalidOperationException($"[CharacterAttributePageView] 固定属性行 {fieldName} 未绑定。");
         }
+
+        /// <summary>转发属性页升级或突破按钮请求。</summary>
+        private void HandleDevelopmentClicked() => DevelopmentRequested?.Invoke();
 
         /// <summary>按 AttributeId 将数据绑定到固定行，避免列表顺序变化导致图标与数值错位。</summary>
         /// <param name="data">待显示属性。</param>
