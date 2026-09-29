@@ -129,8 +129,8 @@ NonAlloc 缓冲区满时会扩容并立即重查，不能把“返回数量等�
 `ChoiceWindowView` 在收到 `ISelectHandler` 后通过 `SelectionRequested` 同步 `PlayerInteractor.Select`。
 点击或 Submit 则走同一条路径：先选择稳定 `InteractionOptionId`，再调用 `SubmitSelected()`。
 
-全局 `UI/Navigate` 不绑定 W/A/S/D；这些按键只进入独立 `CharacterMovement` 资产中的 `Character/Move` Action。这样 UI 焦点的
-移动由 EventSystem 单独负责，角色移动不会意外触发交互选项导航。旧的交互 Intent 和其兼容枚举仍可被
+全局 `UI/Navigate` 不绑定 W/A/S/D；这些按键只进入 `InputSystem_Actions` 资源中的 `Player/Move` Action。虽然角色与 UI 导航
+共用一份 Actions 资源，但各自位于独立 Map，因此关闭 `Player` Map 不会影响 EventSystem 的 UI 导航。旧的交互 Intent 和其兼容枚举仍可被
 其他调用方使用，但当前默认玩家配置不把它们接入 ChoiceWindow 输入链。
 
 `PlayerInteractor` 不再在 `Update` 中自动读取 `PlayerStateBlackboard` 的交互 Intent，也不负责消费

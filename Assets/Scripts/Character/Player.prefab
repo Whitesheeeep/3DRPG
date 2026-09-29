@@ -148,6 +148,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2e94126f49984bb69432cfc6a091aaba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  inputActionAsset: {fileID: -944628639613478452, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
   bindings:
   - {fileID: 11400000, guid: 50abc3d337614f188de4053bd8ecee5e, type: 2}
   - {fileID: 11400000, guid: 4e70b024e60a4135a85700f989b09546, type: 2}
@@ -164,7 +165,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c52e445abbfb4846992e0b270e869e4d, type: 2}
   - {fileID: 11400000, guid: 45d15af516774018bcb13c849456095a, type: 2}
   - {fileID: 11400000, guid: c63acec59ce845e7afc4444b5723fb41, type: 2}
-  moveAction: {fileID: 5930871493289717904, guid: cfc20ea7c00b94a4781015c818a9deb0, type: 3}
+  moveAction: {fileID: -6439902812146969066, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
   moveDeadzone: 0.1
 --- !u!114 &7100000000000000001
 MonoBehaviour:
