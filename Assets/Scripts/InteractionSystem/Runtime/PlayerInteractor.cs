@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
 using RPG.Character;
-using RPG.Game.UI.Events;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.Serialization;
-using WS_Modules.CustomEventSystem;
 
 namespace RPG.InteractionSystem
 {
@@ -21,15 +19,27 @@ namespace RPG.InteractionSystem
         "业务执行使用 PlayerController 所在对象，空间检测与距离计算使用当前角色节点。")]
     public sealed class PlayerInteractor : MonoBehaviour
     {
-        #region 序列化引用与状态
+        #region 配置字段
 
         [SerializeField, Tooltip("传给 Provider 查询上下文的摄像机，一般就是主摄像机。")]
         private Camera viewCamera;
         [SerializeField, Tooltip("保留视口与遮挡配置，当前版本不作为 Option 评分或硬筛选。")]
         private LayerMask occlusionMask = ~0;
-        [SerializeField] private InteractionDetector detector;
         [SerializeField, FormerlySerializedAs("startDetect")]
         private bool startDetectOnEnable = true;
+
+        #endregion
+
+        #region 依赖字段
+
+        [SerializeField] private InteractionDetector detector;
+        private InteractionDetectionController detectionController;
+        // 依赖父级 PlayerController 的稳定玩家身份；角色节点只承担移动空间基准。
+        private GameObject interactorObject;
+
+        #endregion
+
+        #region 交互状态字段
 
         private readonly List<InteractionOption> options = new();
         private readonly List<InteractionOption> collectedOptions = new();
@@ -37,14 +47,7 @@ namespace RPG.InteractionSystem
 
         private readonly List<InteractionOption> filteredOptions = new();
         private readonly List<InteractionOptionId> previousOptionIds = new();
-        // GameUILock 来源按 SourceId 去重；每个独占流程只拥有自己的一份锁定引用。
-        private readonly HashSet<string> gameUILockSources = new();
-        private bool isDetecting;
-        // 只在锁定从 0 变为 1 时记录，最后一个来源释放后按此状态决定是否恢复。
-        private bool resumeDetectionAfterGameUIUnlock;
         private RaycastHit[] occlusionHits = new RaycastHit[16];
-        // 依赖父级 PlayerController 的稳定玩家身份；角色节点只承担移动空间基准。
-        private GameObject interactorObject;
 
         #endregion
 
@@ -92,11 +95,8 @@ namespace RPG.InteractionSystem
                     $"[PlayerInteractor] '{name}' 的自身或父级缺少 PlayerController。");
             // 业务接收器位于稳定 Player 上；查询位置仍取本组件所在的移动 CharacterRoot。
             interactorObject = playerController.gameObject;
-            EventSystem
-                .Register_Type<GameUILockChangeRequestedEventArgs>(
-                    typeof(GameUILockChangeRequestedEventArgs),
-                    OnGameUILockChangeRequested)
-                .UnRegisterWhenGameObjectDestroyed(gameObject);
+            detectionController = new InteractionDetectionController(
+                detector, startDetectOnEnable, RefreshOptions, ClearOptions);
             Instance = this;
             InstanceChanged?.Invoke(this);
         }
@@ -104,6 +104,7 @@ namespace RPG.InteractionSystem
         /// <summary>当前实例随所属玩家销毁时清空静态引用，并通知窗口 Controller 解除模型绑定。</summary>
         private void OnDestroy()
         {
+            detectionController?.Dispose();
             if (Instance != this) return;
             Instance = null;
             InstanceChanged?.Invoke(null);
@@ -114,16 +115,14 @@ namespace RPG.InteractionSystem
         {
             // Awake 配置失败的实例未发布，不能继续扫描或订阅事件。
             if (Instance != this) return;
-            if (detector != null) detector.ScanCompleted += OnScanCompleted;
-            if (gameUILockSources.Count == 0 && startDetectOnEnable) StartDetect();
+            detectionController.Activate();
         }
 
         /// <summary>解绑检测事件、暂停检测并清理当前交互状态。</summary>
         private void OnDisable()
         {
             if (Instance != this) return;
-            if (detector != null) detector.ScanCompleted -= OnScanCompleted;
-            PauseDetect();
+            detectionController.Deactivate();
         }
 
         #endregion
@@ -133,55 +132,13 @@ namespace RPG.InteractionSystem
         /// <summary>开启交互检测并立即刷新 Option 列表。</summary>
         public void StartDetect()
         {
-            if (gameUILockSources.Count != 0) return;
-            isDetecting = true;
-            detector.StartDetect();
+            detectionController.StartDetect();
         }
 
         /// <summary>暂停交互检测并清空 Option 与选择状态。</summary>
         public void PauseDetect()
         {
-            isDetecting = false;
-            if (detector != null && detector.IsDetecting) detector.PauseDetect();
-            ClearOptions();
-        }
-
-        /// <summary>响应检测器扫描完成，重建包含动态业务状态的最终 Option 列表。</summary>
-        private void OnScanCompleted()
-        {
-            // PauseDetect 后可能仍有同帧扫描回调，锁定期间不得重新暴露交互选项。
-            if (gameUILockSources.Count != 0) return;
-            RefreshOptions();
-        }
-
-        #endregion
-
-        #region GameUILock 处理
-
-        /// <summary>
-        /// 按来源接收独占 Game UI 请求；第一个来源暂停检测，最后一个来源释放时恢复原状态。
-        /// </summary>
-        /// <param name="eventArgs">GameUILock 变更请求。</param>
-        private void OnGameUILockChangeRequested(GameUILockChangeRequestedEventArgs eventArgs)
-        {
-            if (eventArgs.Operation == GameUILockOperation.Acquire)
-            {
-                if (!gameUILockSources.Add(eventArgs.SourceId)) return;
-                if (gameUILockSources.Count != 1) return;
-
-                // 只有从无锁到首个锁定时记录状态，避免后续来源覆盖恢复依据。
-                resumeDetectionAfterGameUIUnlock = isDetecting;
-                PauseDetect();
-                return;
-            }
-
-            if (!gameUILockSources.Remove(eventArgs.SourceId) || gameUILockSources.Count != 0)
-                return;
-
-            bool shouldResume = resumeDetectionAfterGameUIUnlock;
-            resumeDetectionAfterGameUIUnlock = false;
-            // Disable 状态不主动启动检测；重新启用时由 OnEnable 按原有配置处理。
-            if (shouldResume && isActiveAndEnabled) StartDetect();
+            detectionController.PauseDetect();
         }
 
         #endregion
