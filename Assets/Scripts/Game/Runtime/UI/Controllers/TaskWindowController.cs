@@ -5,6 +5,7 @@ using RPG.Game;
 using RPG.Game.UI.Services;
 using RPG.Game.UI.Task;
 using RPG.Game.UI.Views.Task;
+using RPG.CurrencySystemNS;
 using RPG.ItemSystem;
 using RPG.RewardSystemNS;
 using RPG.SaveSystem;
@@ -303,14 +304,25 @@ namespace RPG.Game.UI.Controllers
         private void RefreshRewardAtlasLease(IReadOnlyList<TaskRecord> records)
         {
             var atlasAddresses = new List<string>();
-            if (ItemManager.Instance.IsConfigured)
+            for (int recordIndex = 0; recordIndex < records.Count; recordIndex++)
             {
-                for (int recordIndex = 0; recordIndex < records.Count; recordIndex++)
+                TaskDefinition definition = TaskConfigManager.Instance.GetRequiredDefinition(records[recordIndex].TaskId);
+                for (int rewardIndex = 0; rewardIndex < definition.Rewards.Count; rewardIndex++)
                 {
-                    TaskDefinition definition = TaskConfigManager.Instance.GetRequiredDefinition(records[recordIndex].TaskId);
-                    for (int rewardIndex = 0; rewardIndex < definition.Rewards.Count; rewardIndex++)
+                    if (definition.Rewards[rewardIndex] is CurrencyRewardDefinition currencyReward)
                     {
-                        if (!(definition.Rewards[rewardIndex] is ItemRewardDefinition itemReward)) continue;
+                        for (int amountIndex = 0; amountIndex < currencyReward.Amounts.Count; amountIndex++)
+                        {
+                            string currencyAtlasAddress = CurrencyManager.Instance.GetIconAtlasAddress(
+                                currencyReward.Amounts[amountIndex].CurrencyId);
+                            if (!atlasAddresses.Contains(currencyAtlasAddress))
+                                atlasAddresses.Add(currencyAtlasAddress);
+                        }
+                    }
+
+                    if (ItemManager.Instance.IsConfigured &&
+                        definition.Rewards[rewardIndex] is ItemRewardDefinition itemReward)
+                    {
                         for (int itemIndex = 0; itemIndex < itemReward.Items.Count; itemIndex++)
                         {
                             if (!ItemManager.Instance.TryGetDefinition(itemReward.Items[itemIndex].ItemId,

@@ -4438,8 +4438,6 @@ MonoBehaviour:
   objectiveRowPrefab: {fileID: 6348609977347458547, guid: ccda583f68d9f774ca710807bee9ac85, type: 3}
   claimFailureText: {fileID: 6308913351145363626}
   rewardListView: {fileID: 3100307224031892497}
-  molaIcon: {fileID: 21300000, guid: bd90617aa15bf2c4fa5e8fb4b00c4277, type: 3}
-  yuanShiIcon: {fileID: 21300000, guid: 99edf9931a7547348b8b1eb0b105664f, type: 3}
   currencyDisplayRarity: 5
   actionButtonContainer: {fileID: 770111901728430513}
   trackButton: {fileID: 2202559681021593725}

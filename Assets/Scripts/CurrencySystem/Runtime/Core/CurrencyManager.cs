@@ -9,6 +9,82 @@ namespace RPG.CurrencySystemNS
     /// <summary>独立管理账号货币余额，不将货币混入 GAS 属性或物品背包。</summary>
     public sealed class CurrencyManager : SingletonBase<CurrencyManager>, ICurrencyWallet
     {
+        #region 图标元数据
+
+        /// <summary>货币图标共用的 Addressables 图集地址。</summary>
+        public const string CurrencyIconsAtlasAddress = "CurrencyIcons";
+        /// <summary>摩拉在货币图集中的 Sprite 名称。</summary>
+        public const string MolaIconSpriteName = "UI_ItemIcon_202";
+        /// <summary>原石在货币图集中的 Sprite 名称。</summary>
+        public const string YuanShiIconSpriteName = "UI_ItemIcon_201";
+
+        /// <summary>获取货币的玩家可见名称。</summary>
+        /// <param name="currencyId">稳定货币标识。</param>
+        /// <returns>本地化显示名称。</returns>
+        /// <exception cref="ArgumentOutOfRangeException">货币标识没有展示配置时抛出。</exception>
+        public string GetDisplayName(CurrencyId currencyId)
+        {
+            switch (currencyId)
+            {
+                case CurrencyId.Mola:
+                    return "摩拉";
+                case CurrencyId.YuanShi:
+                    return "原石";
+                default:
+                    throw CreateMissingDisplayConfigurationException(currencyId, "显示名称");
+            }
+        }
+
+        /// <summary>获取货币图标所在的 Addressables 图集地址。</summary>
+        /// <param name="currencyId">稳定货币标识。</param>
+        /// <returns>货币图集地址。</returns>
+        /// <exception cref="ArgumentOutOfRangeException">货币标识没有图标配置时抛出。</exception>
+        public string GetIconAtlasAddress(CurrencyId currencyId)
+        {
+            EnsureIconConfigured(currencyId);
+            return CurrencyIconsAtlasAddress;
+        }
+
+        /// <summary>获取货币图标在货币图集中的 Sprite 名称。</summary>
+        /// <param name="currencyId">稳定货币标识。</param>
+        /// <returns>图集内 Sprite 名称。</returns>
+        /// <exception cref="ArgumentOutOfRangeException">货币标识没有图标配置时抛出。</exception>
+        public string GetIconSpriteName(CurrencyId currencyId)
+        {
+            switch (currencyId)
+            {
+                case CurrencyId.Mola:
+                    return MolaIconSpriteName;
+                case CurrencyId.YuanShi:
+                    return YuanShiIconSpriteName;
+                default:
+                    throw CreateMissingDisplayConfigurationException(currencyId, "图标");
+            }
+        }
+
+        /// <summary>校验货币展示字段可由静态图标元数据提供。</summary>
+        /// <param name="currencyId">待查询的货币标识。</param>
+        /// <exception cref="ArgumentOutOfRangeException">货币标识没有图标配置时抛出。</exception>
+        private static void EnsureIconConfigured(CurrencyId currencyId)
+        {
+            if (currencyId != CurrencyId.Mola && currencyId != CurrencyId.YuanShi)
+                throw CreateMissingDisplayConfigurationException(currencyId, "图标");
+        }
+
+        /// <summary>记录缺失的货币展示元数据并创建参数异常。</summary>
+        /// <param name="currencyId">没有完成展示配置的货币标识。</param>
+        /// <param name="metadataName">缺失字段的可读名称。</param>
+        /// <returns>供调用方抛出的配置参数异常。</returns>
+        private static ArgumentOutOfRangeException CreateMissingDisplayConfigurationException(
+            CurrencyId currencyId, string metadataName)
+        {
+            string message = $"[CurrencyManager] currencyId={currencyId} 未配置货币{metadataName}。";
+            Debug.LogError(message);
+            return new ArgumentOutOfRangeException(nameof(currencyId), currencyId, message);
+        }
+
+        #endregion
+
         #region 配置与生命周期
 
         private static CurrencySettings settings;

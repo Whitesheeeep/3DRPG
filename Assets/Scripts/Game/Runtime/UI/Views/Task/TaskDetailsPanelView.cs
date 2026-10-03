@@ -27,8 +27,6 @@ namespace RPG.Game.UI.Views.Task
         [SerializeField, Required] private TaskObjectiveRowView objectiveRowPrefab;
         [SerializeField, Required] private TMP_Text claimFailureText;
         [SerializeField, Required] private HorizontalBagItemListView rewardListView;
-        [SerializeField] private Sprite molaIcon;
-        [SerializeField] private Sprite yuanShiIcon;
         [SerializeField, MinValue(1), MaxValue(5)] private int currencyDisplayRarity = 1;
         [SerializeField, Required] private GameObject actionButtonContainer;
         [SerializeField, Required] private Button trackButton;
@@ -191,8 +189,8 @@ namespace RPG.Game.UI.Views.Task
             for (int index = 0; index < rewardEntries.Count; index++)
             {
                 RewardDisplayEntry entry = rewardEntries[index];
-                Sprite icon = entry.FixedIcon;
-                if (icon == null && spriteResolver != null && entry.IconAddress.Length > 0)
+                Sprite icon = null;
+                if (spriteResolver != null && entry.IconAddress.Length > 0)
                     icon = spriteResolver(entry.IconAddress, entry.IconSpriteName);
 
                 signatureBuilder.Append(entry.CurrencyId).Append('|').Append(entry.ItemId).Append('|')
@@ -246,13 +244,13 @@ namespace RPG.Game.UI.Views.Task
                                 continue;
                             }
 
-                            string displayName = amount.CurrencyId == CurrencyId.Mola ? "摩拉" :
-                                amount.CurrencyId == CurrencyId.YuanShi ? "原石" : amount.CurrencyId.ToString();
-                            Sprite icon = amount.CurrencyId == CurrencyId.Mola ? molaIcon :
-                                amount.CurrencyId == CurrencyId.YuanShi ? yuanShiIcon : null;
+                            CurrencyManager currencyManager = CurrencyManager.Instance;
+                            string displayName = currencyManager.GetDisplayName(amount.CurrencyId);
+                            string iconAddress = currencyManager.GetIconAtlasAddress(amount.CurrencyId);
+                            string iconSpriteName = currencyManager.GetIconSpriteName(amount.CurrencyId);
                             rewardIndexByCurrencyIdMap.Add(amount.CurrencyId, entries.Count);
                             entries.Add(new RewardDisplayEntry(amount.CurrencyId, default, displayName,
-                                amount.Amount, icon, string.Empty, string.Empty, 0));
+                                amount.Amount, iconAddress, iconSpriteName, 0));
                         }
                         break;
                     case ItemRewardDefinition itemReward:
@@ -280,7 +278,7 @@ namespace RPG.Game.UI.Views.Task
 
                             rewardIndexByItemIdMap.Add(item.ItemId, entries.Count);
                             entries.Add(new RewardDisplayEntry(CurrencyId.None, item.ItemId, displayName,
-                                item.Quantity, null, iconAddress, iconSpriteName, rarity));
+                                item.Quantity, iconAddress, iconSpriteName, rarity));
                         }
                         break;
                     default:
@@ -307,18 +305,16 @@ namespace RPG.Game.UI.Views.Task
             /// <param name="itemId">Item ID；货币奖励使用默认值。</param>
             /// <param name="displayName">本地化名称或配置标题。</param>
             /// <param name="quantity">合并后的数量。</param>
-            /// <param name="fixedIcon">Prefab 显式配置的货币图标。</param>
-            /// <param name="iconAddress">Item 图集地址。</param>
-            /// <param name="iconSpriteName">图集内 Sprite 名称。</param>
+            /// <param name="iconAddress">货币或 Item 图集地址。</param>
+            /// <param name="iconSpriteName">图集中 Sprite 名称。</param>
             /// <param name="rarity">Item 配置的品质。</param>
             public RewardDisplayEntry(CurrencyId currencyId, ItemId itemId, string displayName, int quantity,
-                Sprite fixedIcon, string iconAddress, string iconSpriteName, int rarity)
+                string iconAddress, string iconSpriteName, int rarity)
             {
                 CurrencyId = currencyId;
                 ItemId = itemId;
                 DisplayName = displayName;
                 Quantity = quantity;
-                FixedIcon = fixedIcon;
                 IconAddress = iconAddress;
                 IconSpriteName = iconSpriteName;
                 Rarity = rarity;
@@ -332,9 +328,7 @@ namespace RPG.Game.UI.Views.Task
             public string DisplayName { get; }
             /// <summary>获取或设置合并后的数量。</summary>
             public int Quantity { get; set; }
-            /// <summary>获取显式货币图标。</summary>
-            public Sprite FixedIcon { get; }
-            /// <summary>获取 Item 图集地址。</summary>
+            /// <summary>获取货币或 Item 图集地址。</summary>
             public string IconAddress { get; }
             /// <summary>获取图集中 Sprite 的名称。</summary>
             public string IconSpriteName { get; }

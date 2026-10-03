@@ -64,6 +64,12 @@ MonoBehaviour:
     m_SerializedLabels:
     - Bag
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2527ff38d0454a68a30de08bf1d9ccb0
+    m_Address: CurrencyIcons
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Bag
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: a9a3adba221c9fa4f9951a4f6c37940c
     m_Address: Artifacts_02
     m_ReadOnly: 0
