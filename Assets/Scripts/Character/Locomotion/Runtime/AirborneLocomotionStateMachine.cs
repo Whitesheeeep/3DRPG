@@ -23,7 +23,7 @@ namespace RPG.Character
             return CurrentState is FallLandState fallLand &&
                 fallLand.IsInputOpen &&
                 Owner.Blackboard.InputRequests.TryGetRequest(
-                    PlayerInputType.Jump,
+                    E_PlayerInputType.Jump,
                     out IReadOnlyPlayerInputRequest request) &&
                 request.HasBufferedPress &&
                 Owner.Blackboard.TimeSinceGrounded <= Owner.Transition.CoyoteTime &&

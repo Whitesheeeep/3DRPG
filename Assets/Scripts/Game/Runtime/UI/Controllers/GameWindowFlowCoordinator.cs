@@ -31,12 +31,13 @@ namespace RPG.Game.UI.Controllers
                 new HudWindowLockCoordinator(),
                 new PlayerGameplayInputWindowLockCoordinator(),
                 new BagWindowFlowCoordinator(),
-                new CharacterWindowFlowCoordinator()
+                new CharacterWindowFlowCoordinator(),
+                new TaskWindowFlowCoordinator()
             };
             for (int index = 0; index < subCoordinators.Length; index++)
                 subCoordinators[index].Register();
 
-            WSLog.Log("[GameWindowFlowCoordinator] 已注册 HUD、Gameplay 输入、Bag 与 Character 流程子协调器。");
+            WSLog.Log("[GameWindowFlowCoordinator] 已注册 HUD、Gameplay 输入、Bag、Character 与 Task 窗口流程子协调器。");
         }
 
         /// <summary>按注册逆序释放所有子协调器和其事件订阅。</summary>

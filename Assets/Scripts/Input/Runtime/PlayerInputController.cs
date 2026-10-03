@@ -30,8 +30,8 @@ namespace RPG.PlayerInputSystem
         #region 请求状态与运行时映射
 
         // 请求状态
-        // key：PlayerInputType；value：该输入当前手势的 Request。
-        private readonly Dictionary<PlayerInputType, PlayerInputRequest> requestsByType = new();
+        // key：E_PlayerInputType；value：该输入当前手势的 Request。
+        private readonly Dictionary<E_PlayerInputType, PlayerInputRequest> requestsByType = new();
         // key：InputAction；value：该动作唯一对应的输入绑定资产。
         private readonly Dictionary<InputAction, ResolvedBinding> bindingsByAction = new();
         private readonly List<PlayerInputRequest> requests = new();
@@ -40,6 +40,7 @@ namespace RPG.PlayerInputSystem
         private InputAction resolvedMoveAction;
         private InputActionMap playerActionMap;
         private InputActionMap uiActionMap;
+        private InputAction taskWindowAction;
         private bool gameplayInputBlocked;
 
         /// <inheritdoc />
@@ -53,13 +54,13 @@ namespace RPG.PlayerInputSystem
         public static event Action<PlayerInputController> InstanceChanged;
 
         /// <summary>当配置为即时交付的 InputAction 发生 performed 时通知订阅者。</summary>
-        public event Action<PlayerInputType> ImmediateInputPerformed;
+        public event Action<E_PlayerInputType> ImmediateInputPerformed;
 
         /// <summary>通过输入类型从内部索引查询请求，供 Arbiter 在不扫描列表的情况下读取输入阶段。</summary>
         /// <param name="inputType">需要查询的输入类型。</param>
         /// <param name="request">找到时返回当前手势的只读请求。</param>
         /// <returns>存在该输入类型请求时返回 true。</returns>
-        public bool TryGetRequest(PlayerInputType inputType, out IReadOnlyPlayerInputRequest request)
+        public bool TryGetRequest(E_PlayerInputType inputType, out IReadOnlyPlayerInputRequest request)
         {
             if (requestsByType.TryGetValue(inputType, out PlayerInputRequest resolvedRequest))
             {
@@ -104,6 +105,9 @@ namespace RPG.PlayerInputSystem
             if (uiActionMap == null)
                 throw CreateConfigurationException(
                     $"[PlayerInputController] '{name}' 指定的 InputActionAsset 缺少 {UiActionMapName} Map。");
+            taskWindowAction = uiActionMap.FindAction("TaskWindow", false);
+            if (taskWindowAction == null)
+                throw CreateConfigurationException($"[PlayerInputController] '{name}' 的 UI Map 缺少 TaskWindow Action。");
 
             // 移动引用只声明具体 Action；所有权通过已指定的资源和 Player Map 进行校验。
             resolvedMoveAction = ResolveAndValidateActionReference(
@@ -132,6 +136,8 @@ namespace RPG.PlayerInputSystem
                 action.performed += OnPerformed;
                 action.canceled += OnCanceled;
             }
+
+            taskWindowAction.performed += OnTaskWindowShortcutPerformed;
 
             SetUiShortcutActionsEnabled(true);
             if (!gameplayInputBlocked)
@@ -169,6 +175,8 @@ namespace RPG.PlayerInputSystem
                 action.performed -= OnPerformed;
                 action.canceled -= OnCanceled;
             }
+
+            taskWindowAction.performed -= OnTaskWindowShortcutPerformed;
 
             playerActionMap?.Disable();
             SetUiShortcutActionsEnabled(false);
@@ -261,7 +269,7 @@ namespace RPG.PlayerInputSystem
 
         // 生产或者刷新 Handle 方法
         /// <inheritdoc />
-        public void NotifyPerformed(PlayerInputType inputType, float pressBufferDuration,
+        public void NotifyPerformed(E_PlayerInputType inputType, float pressBufferDuration,
             float releaseBufferDuration, float clickMaxHeldDuration, float clickBufferDuration)
         {
             if (gameplayInputBlocked) return;
@@ -284,7 +292,7 @@ namespace RPG.PlayerInputSystem
         }
 
         /// <inheritdoc />
-        public bool NotifyCanceled(PlayerInputType inputType)
+        public bool NotifyCanceled(E_PlayerInputType inputType)
         {
             if (gameplayInputBlocked) return false;
             if (!requestsByType.TryGetValue(inputType, out PlayerInputRequest request)) return false;
@@ -351,14 +359,14 @@ namespace RPG.PlayerInputSystem
                 throw CreateConfigurationException(
                     "[PlayerInputController] 至少需要一个显式 PlayerInputBinding。");
 
-            var inputTypes = new HashSet<PlayerInputType>();
+            var inputTypes = new HashSet<E_PlayerInputType>();
             for (int i = 0; i < bindings.Count; i++)
             {
                 PlayerInputBinding binding = bindings[i] ??
                     throw CreateConfigurationException($"[PlayerInputController] 输入绑定 {i} 未配置。");
-                if (!Enum.IsDefined(typeof(PlayerInputType), binding.InputType))
+                if (!Enum.IsDefined(typeof(E_PlayerInputType), binding.InputType))
                     throw CreateConfigurationException(
-                        $"[PlayerInputController] 输入绑定 {i} 使用未知 PlayerInputType 值 {(int)binding.InputType}。");
+                        $"[PlayerInputController] 输入绑定 {i} 使用未知 E_PlayerInputType 值 {(int)binding.InputType}。");
                 if (!Enum.IsDefined(typeof(PlayerInputDeliveryMode), binding.DeliveryMode))
                     throw CreateConfigurationException(
                         $"[PlayerInputController] 输入绑定 {binding.InputType} 使用未知交付模式 {(int)binding.DeliveryMode}。");
@@ -418,6 +426,20 @@ namespace RPG.PlayerInputSystem
                 else
                     bindingEntry.Key.Disable();
             }
+
+            // TaskWindow 是独立即时 UI Action；与序列化快捷键共享同一即时通知通道。
+            if (taskWindowAction != null)
+            {
+                if (enabled) taskWindowAction.Enable();
+                else taskWindowAction.Disable();
+            }
+        }
+
+        /// <summary>把 UI Map 的 TaskWindow Action 转发到即时输入通知。</summary>
+        /// <param name="context">触发任务窗口快捷键的 Input System 回调上下文。</param>
+        private void OnTaskWindowShortcutPerformed(InputAction.CallbackContext context)
+        {
+            ImmediateInputPerformed?.Invoke(E_PlayerInputType.TaskWindow);
         }
 
         /// <summary>记录配置边界校验失败并返回附带业务上下文的异常。</summary>
@@ -450,7 +472,7 @@ namespace RPG.PlayerInputSystem
             /// <summary>获取完整的每项输入设置资产。</summary>
             public PlayerInputBinding Binding { get; }
             /// <summary>获取建立监听时校验过的输入类型。</summary>
-            public PlayerInputType InputType { get; }
+            public E_PlayerInputType InputType { get; }
             /// <summary>获取 InputAction 触发后的交付方式。</summary>
             public PlayerInputDeliveryMode DeliveryMode { get; }
 

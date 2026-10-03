@@ -31,7 +31,7 @@ namespace RPG.Character
         // key：GameplayAbilityData；value：该角色 ASC 授予后的唯一 Handle。
         private readonly Dictionary<GameplayAbilityData, GameplayAbilityHandle> abilityHandleByDataMap = new();
         // key：Sprint、Secondary 或 Skill1 至 Skill4；value：对应技能的 Handle。
-        private readonly Dictionary<PlayerInputType, GameplayAbilityHandle> skillAbilityHandleByInputMap = new();
+        private readonly Dictionary<E_PlayerInputType, GameplayAbilityHandle> skillAbilityHandleByInputMap = new();
         private readonly List<GameplayAbilityHandle> normalAttackHandles = new();
 
         #endregion
@@ -141,13 +141,13 @@ namespace RPG.Character
                 if (!inputRequests.TryGetRequest(binding.InputType, out IReadOnlyPlayerInputRequest request))
                     continue;
 
-                bool isSprintClick = binding.InputType == PlayerInputType.Sprint;
+                bool isSprintClick = binding.InputType == E_PlayerInputType.Sprint;
                 bool stageBuffered = isSprintClick ? request.HasBufferedClick : request.HasBufferedPress;
                 if (!stageBuffered) continue;
                 InputRequestHandle stageHandle = isSprintClick ? request.ClickHandle : request.PressHandle;
 
                 // QuickShift 使用同一条 Action Mixer 状态；保留短按缓冲，等待当前冲刺结束再尝试下一次。
-                if (binding.InputType == PlayerInputType.Sprint && IsAbilityActive(binding.Ability))
+                if (binding.InputType == E_PlayerInputType.Sprint && IsAbilityActive(binding.Ability))
                     continue;
 
                 GameplayAbilityHandle handle = skillAbilityHandleByInputMap[binding.InputType];
@@ -215,7 +215,7 @@ namespace RPG.Character
             }
 
             // 没有 Primary Press 或 Press 已被消费时清除冻结段位，下一帧会尝试新的 Press。
-            if (!inputRequests.TryGetRequest(PlayerInputType.Primary, out IReadOnlyPlayerInputRequest request) ||
+            if (!inputRequests.TryGetRequest(E_PlayerInputType.Primary, out IReadOnlyPlayerInputRequest request) ||
                 !request.HasBufferedPress)
             {
                 ClearPendingNormalAttack();

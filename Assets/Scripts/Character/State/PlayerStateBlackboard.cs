@@ -29,7 +29,7 @@ namespace RPG.Character.State
         public IPlayerInputRequestBuffer InputRequests => inputRequests;
         /// <summary>判断 Sprint 是否仍被按住并超过同一输入手势的 Click 阈值。</summary>
         public bool IsSprintHeld => inputRequests.TryGetRequest(
-            PlayerInputType.Sprint,
+            E_PlayerInputType.Sprint,
             out IReadOnlyPlayerInputRequest request) &&
             request.PhysicalState != PlayerInputPhysicalState.Released &&
             request.HeldDuration >= request.ClickMaxHeldDuration;

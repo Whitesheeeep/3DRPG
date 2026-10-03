@@ -50,7 +50,7 @@ namespace RPG.Character
             if (skillInputBindings == null)
                 throw new InvalidOperationException($"CharacterConfig '{characterConfigName}' 的技能输入绑定列表为空引用。");
 
-            var configuredSkillInputs = new HashSet<PlayerInputType>();
+            var configuredSkillInputs = new HashSet<E_PlayerInputType>();
             for (int index = 0; index < skillInputBindings.Count; index++)
             {
                 CharacterAbilityInputBinding binding = skillInputBindings[index];
@@ -72,13 +72,13 @@ namespace RPG.Character
         /// <summary>判断输入是否属于 CombatSystem 管理的固定技能槽位。</summary>
         /// <param name="inputType">待检查的输入类型。</param>
         /// <returns>输入属于 Sprint、Secondary 或 Skill1 至 Skill4 时返回 true。</returns>
-        private static bool IsSkillInputType(PlayerInputType inputType) =>
-            inputType == PlayerInputType.Sprint ||
-            inputType == PlayerInputType.Secondary ||
-            inputType == PlayerInputType.Skill1 ||
-            inputType == PlayerInputType.Skill2 ||
-            inputType == PlayerInputType.Skill3 ||
-            inputType == PlayerInputType.Skill4;
+        private static bool IsSkillInputType(E_PlayerInputType inputType) =>
+            inputType == E_PlayerInputType.Sprint ||
+            inputType == E_PlayerInputType.Secondary ||
+            inputType == E_PlayerInputType.Skill1 ||
+            inputType == E_PlayerInputType.Skill2 ||
+            inputType == E_PlayerInputType.Skill3 ||
+            inputType == E_PlayerInputType.Skill4;
 
         #endregion
     }

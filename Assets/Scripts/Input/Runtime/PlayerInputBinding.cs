@@ -26,7 +26,7 @@ namespace RPG.PlayerInputSystem
         [SerializeField, LabelText("Input Action")]
         private InputActionReference action;
         [SerializeField, LabelText("输入类型")]
-        private PlayerInputType inputType;
+        private E_PlayerInputType inputType;
         [SerializeField, MinValue(0f), LabelText("Press 缓冲秒数")]
         private float pressBufferDuration = 0.2f;
         [SerializeField, MinValue(0f), LabelText("Release 缓冲秒数")]
@@ -45,7 +45,7 @@ namespace RPG.PlayerInputSystem
         /// <summary>获取被监听的 InputAction。</summary>
         public InputActionReference Action => action;
         /// <summary>获取 Request 使用的逻辑输入类型。</summary>
-        public PlayerInputType InputType => inputType;
+        public E_PlayerInputType InputType => inputType;
         /// <summary>获取 Press 阶段的缓冲时长。</summary>
         public float PressBufferDuration => pressBufferDuration;
         /// <summary>获取 Release 阶段的缓冲时长。</summary>

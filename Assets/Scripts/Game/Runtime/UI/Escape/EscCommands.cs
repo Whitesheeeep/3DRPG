@@ -60,6 +60,16 @@ namespace RPG.Game.UI.Escape
         }
     }
 
+    /// <summary>请求通过 UIManager 隐藏任务窗口。</summary>
+    public sealed class CloseTaskWindowCommand : AbstractCommand
+    {
+        /// <summary>执行任务窗口隐藏流程。</summary>
+        protected override void OnExecute()
+        {
+            UIManager.Instance.HideWindowAsync<TaskWindow>().Forget();
+        }
+    }
+
     /// <summary>请求通过 UIManager 关闭武器培养窗口。</summary>
     public sealed class CloseEquipmentDevelopmentWindowCommand : AbstractCommand
     {

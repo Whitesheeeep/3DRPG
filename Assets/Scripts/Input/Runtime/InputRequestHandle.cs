@@ -8,7 +8,7 @@ namespace RPG.PlayerInputSystem
     {
         #region 属性
         /// <summary>获取输入类型。</summary>
-        public PlayerInputType InputType { get; }
+        public E_PlayerInputType InputType { get; }
         /// <summary>获取手势版本。</summary>
         public uint GestureVersion { get; }
         /// <summary>获取请求阶段：Press、Release 或 Click。</summary>
@@ -20,7 +20,7 @@ namespace RPG.PlayerInputSystem
         /// <param name="inputType">输入类型。</param>
         /// <param name="gestureVersion">手势版本。</param>
         /// <param name="stage">请求阶段。</param>
-        public InputRequestHandle(PlayerInputType inputType, uint gestureVersion, PlayerInputRequestStage stage)
+        public InputRequestHandle(E_PlayerInputType inputType, uint gestureVersion, PlayerInputRequestStage stage)
         {
             InputType = inputType;
             GestureVersion = gestureVersion;

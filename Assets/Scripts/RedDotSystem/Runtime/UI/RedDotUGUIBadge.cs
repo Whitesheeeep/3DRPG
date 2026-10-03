@@ -39,6 +39,44 @@ namespace RPG.RedDotSystemNS
         /// <summary>启用徽标时连接唯一 RedDotSystem 并立即渲染当前值。</summary>
         private void OnEnable()
         {
+            // 通用 Badge Prefab 在 Instantiate 后会先启用；调用方随后通过 Initialize 提供运行时节点。
+            if (key == null)
+            {
+                if (visualRoot != null) visualRoot.SetActive(false);
+                Debug.Log("[RedDotUGUIBadge] 徽标等待业务入口初始化 RedDotKey。", this);
+                return;
+            }
+
+            BindToRedDotSystem();
+        }
+
+        /// <summary>禁用徽标时释放定向订阅，避免窗口重复启用产生多次回调。</summary>
+        private void OnDisable()
+        {
+            UnbindFromRedDotSystem();
+        }
+
+        #endregion
+
+        #region 业务绑定
+
+        /// <summary>初始化通用徽标实例使用的红点节点，并在组件启用时立即订阅。</summary>
+        /// <param name="redDotKey">该 HUD 入口需要展示的节点。</param>
+        /// <exception cref="ArgumentNullException">红点节点为空时抛出。</exception>
+        public void Initialize(RedDotKey redDotKey)
+        {
+            if (redDotKey == null) throw new ArgumentNullException(nameof(redDotKey));
+            if (key == redDotKey && valueChangedUnregister != null) return;
+            UnbindFromRedDotSystem();
+            key = redDotKey;
+            if (isActiveAndEnabled) BindToRedDotSystem();
+            Debug.Log($"[RedDotUGUIBadge] 已初始化红点徽标节点：{key.DerivedPath}。", this);
+        }
+
+        /// <summary>连接红点系统并用当前聚合值渲染初始状态。</summary>
+        private void BindToRedDotSystem()
+        {
+            if (valueChangedUnregister != null) return;
             ValidateReferences();
             redDotSystem = RPG.Game.GameArchitecture.Interface.GetSystem<RedDotSystem>();
             valueChangedUnregister = redDotSystem.RegisterValueChanged(key, OnValueChanged);
@@ -49,15 +87,15 @@ namespace RPG.RedDotSystemNS
                 this);
         }
 
-        /// <summary>禁用徽标时释放定向订阅，避免窗口重复启用产生多次回调。</summary>
-        private void OnDisable()
+        /// <summary>释放当前红点订阅并清除运行时系统引用。</summary>
+        private void UnbindFromRedDotSystem()
         {
+            bool wasBound = valueChangedUnregister != null;
             valueChangedUnregister?.UnRegister();
             valueChangedUnregister = null;
             redDotSystem = null;
-            Debug.Log(
-                $"[RedDotUGUIBadge] 已解绑红点徽标，key={(key == null ? "<null>" : key.name)}。",
-                this);
+            if (wasBound)
+                Debug.Log($"[RedDotUGUIBadge] 已解绑红点徽标，key={(key == null ? "<null>" : key.name)}。", this);
         }
 
         #endregion

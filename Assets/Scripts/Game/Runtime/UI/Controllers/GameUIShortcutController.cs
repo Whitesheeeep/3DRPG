@@ -2,6 +2,7 @@ using System;
 using RPG.Game;
 using RPG.Game.UI.Bag;
 using RPG.Game.UI.Escape;
+using RPG.Game.UI.Task;
 using RPG.PlayerInputSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
@@ -54,15 +55,18 @@ namespace RPG.Game.UI.Controllers
 
         /// <summary>将输入层提供的即时类型翻译为对应的游戏 UI 意图。</summary>
         /// <param name="inputType">由 PlayerInputController 转发的即时输入类型。</param>
-        private void OnImmediateInputPerformed(PlayerInputType inputType)
+        private void OnImmediateInputPerformed(E_PlayerInputType inputType)
         {
             switch (inputType)
             {
-                case PlayerInputType.BagWindow:
+                case E_PlayerInputType.BagWindow:
                     PublishBagOpenRequest();
                     break;
-                case PlayerInputType.CancelWindow:
+                case E_PlayerInputType.CancelWindow:
                     DispatchCancelCommand();
+                    break;
+                case E_PlayerInputType.TaskWindow:
+                    PublishTaskWindowOpenRequest();
                     break;
             }
         }
@@ -81,6 +85,13 @@ namespace RPG.Game.UI.Controllers
         {
             Debug.Log("[GameUIShortcutController] 转发 Esc 快捷键。");
             GameArchitecture.Interface.SendCommand(new DispatchEscCommand());
+        }
+
+        /// <summary>将任务面板快捷键转换为统一的窗口打开或切换意图。</summary>
+        private static void PublishTaskWindowOpenRequest()
+        {
+            Debug.Log("[GameUIShortcutController] 转发 TaskWindow 快捷键。");
+            EventSystem.EventTrigger_Type(typeof(TaskWindowOpenRequestedEventArgs), new TaskWindowOpenRequestedEventArgs());
         }
 
         #endregion

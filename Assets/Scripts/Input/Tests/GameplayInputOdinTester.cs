@@ -229,7 +229,7 @@ namespace RPG.PlayerInputSystem.Tests
         [Button("验证 Click 手势生命周期", ButtonSizes.Medium)]
         private void TestClickGestureLifecycle()
         {
-            var relaxedThresholdRequest = new PlayerInputRequest(PlayerInputType.Sprint);
+            var relaxedThresholdRequest = new PlayerInputRequest(E_PlayerInputType.Sprint);
             relaxedThresholdRequest.Perform(0.2f, 0.1f, 0.25f, 0.2f, 10, 100d);
             ExpectTest("Request 保留按下时的四项绑定时长快照",
                 Mathf.Approximately(relaxedThresholdRequest.PressBufferDuration, 0.2f) &&
@@ -252,25 +252,25 @@ namespace RPG.PlayerInputSystem.Tests
                 !duplicateRelease && releaseConsumed && !releaseConsumedTwice &&
                 clickConsumed && !clickConsumedTwice);
 
-            var strictThresholdRequest = new PlayerInputRequest(PlayerInputType.Sprint);
+            var strictThresholdRequest = new PlayerInputRequest(E_PlayerInputType.Sprint);
             strictThresholdRequest.Perform(0.2f, 0.1f, 0.2f, 0.2f, 20, 200d);
             strictThresholdRequest.Release(200.2d);
             ExpectTest("达到 0.20s 边界不生成 Click",
                 !strictThresholdRequest.HasBufferedClick);
 
-            var longPressRequest = new PlayerInputRequest(PlayerInputType.Sprint);
+            var longPressRequest = new PlayerInputRequest(E_PlayerInputType.Sprint);
             longPressRequest.Perform(0.2f, 0.1f, 0.2f, 0.2f, 30, 300d);
             longPressRequest.Release(300.25d);
             ExpectTest("超过 Click 阈值的长按不生成 Click",
                 !longPressRequest.HasBufferedClick);
 
-            var expiringRequest = new PlayerInputRequest(PlayerInputType.Sprint);
+            var expiringRequest = new PlayerInputRequest(E_PlayerInputType.Sprint);
             expiringRequest.Perform(0.2f, 0.1f, 0.25f, 0.1f, 40, 400d);
             expiringRequest.Release(400.05d);
             expiringRequest.Tick(41, 400.15d);
             ExpectTest("Click 缓冲到期后清除待消费状态", !expiringRequest.HasBufferedClick);
 
-            var replacedGestureRequest = new PlayerInputRequest(PlayerInputType.Sprint);
+            var replacedGestureRequest = new PlayerInputRequest(E_PlayerInputType.Sprint);
             replacedGestureRequest.Perform(0.2f, 0.1f, 0.25f, 0.2f, 50, 500d);
             replacedGestureRequest.Release(500.05d);
             InputRequestHandle previousGestureClick = replacedGestureRequest.ClickHandle;
@@ -280,11 +280,11 @@ namespace RPG.PlayerInputSystem.Tests
                 !replacedGestureRequest.TryConsume(previousGestureClick) &&
                 Mathf.Approximately(replacedGestureRequest.ClickMaxHeldDuration, 0.2f));
 
-            var removedRequest = new PlayerInputRequest(PlayerInputType.Sprint);
+            var removedRequest = new PlayerInputRequest(E_PlayerInputType.Sprint);
             removedRequest.Perform(0.2f, 0.1f, 0.25f, 0.2f, 60, 600d);
             removedRequest.Release(600.05d);
             InputRequestHandle removedRequestClick = removedRequest.ClickHandle;
-            var recreatedRequest = new PlayerInputRequest(PlayerInputType.Sprint);
+            var recreatedRequest = new PlayerInputRequest(E_PlayerInputType.Sprint);
             recreatedRequest.Perform(0.2f, 0.1f, 0.25f, 0.2f, 61, 601d);
             recreatedRequest.Release(601.05d);
             InputRequestHandle recreatedRequestClick = recreatedRequest.ClickHandle;
@@ -386,10 +386,10 @@ namespace RPG.PlayerInputSystem.Tests
                 PlayerStateBlackboard stateBlackboard,
                 Transform cameraTransform)
             {
-                Array inputTypes = Enum.GetValues(typeof(PlayerInputType));
+                Array inputTypes = Enum.GetValues(typeof(E_PlayerInputType));
                 for (int inputIndex = 0; inputIndex < inputTypes.Length; inputIndex++)
                 {
-                    PlayerInputType inputType = (PlayerInputType)inputTypes.GetValue(inputIndex);
+                    E_PlayerInputType inputType = (E_PlayerInputType)inputTypes.GetValue(inputIndex);
                     if (!inputController.TryGetRequest(inputType, out IReadOnlyPlayerInputRequest request)) continue;
                     Publish(request, PlayerInputRequestStage.Press, request.PressHandle,
                         request.HasBufferedPress, stateBlackboard);

@@ -34,7 +34,7 @@ namespace RPG.Character
         {
             if (execution == null || inputRequests == null)
                 return false;
-            if (!inputRequests.TryGetRequest(PlayerInputType.Jump, out IReadOnlyPlayerInputRequest request) ||
+            if (!inputRequests.TryGetRequest(E_PlayerInputType.Jump, out IReadOnlyPlayerInputRequest request) ||
                 !request.HasBufferedPress)
                 return false;
             if (!jumpTransitionQueryService.CanInterruptFullBodyActionByBufferedJump())

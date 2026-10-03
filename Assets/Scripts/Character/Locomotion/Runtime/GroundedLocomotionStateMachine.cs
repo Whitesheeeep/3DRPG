@@ -83,7 +83,7 @@ namespace RPG.Character
         /// <returns>允许主动跳跃时返回 true。</returns>
         internal bool CanEnterBufferedJump()
         {
-            return Owner.Owner.StateBlackboard.InputRequests.TryGetRequest(PlayerInputType.Jump,
+            return Owner.Owner.StateBlackboard.InputRequests.TryGetRequest(E_PlayerInputType.Jump,
                        out IReadOnlyPlayerInputRequest request) &&
                    request.HasBufferedPress &&
                    Owner.Owner.StateBlackboard.TimeSinceGrounded <= Owner.Transition.CoyoteTime &&
@@ -96,7 +96,7 @@ namespace RPG.Character
             if (hasPreparedTraversalAttempt)
                 Owner.Owner.StateBlackboard.InputRequests.TryConfirmConsumed(preparedTraversalAttempt.JumpPressHandle);
             else if (Owner.Owner.StateBlackboard.InputRequests.TryGetRequest(
-                         PlayerInputType.Jump,
+                         E_PlayerInputType.Jump,
                          out IReadOnlyPlayerInputRequest request) && request.HasBufferedPress)
                 Owner.Owner.StateBlackboard.InputRequests.TryConfirmConsumed(request.PressHandle);
             ClearPreparedJump();
@@ -129,7 +129,7 @@ namespace RPG.Character
         private bool TryPrepareTraversalAttempt()
         {
             // 检查是否拥有有效的 Jump Press；若无则清理缓存并返回 false。
-            if (!Owner.Owner.StateBlackboard.InputRequests.TryGetRequest(PlayerInputType.Jump,
+            if (!Owner.Owner.StateBlackboard.InputRequests.TryGetRequest(E_PlayerInputType.Jump,
                     out IReadOnlyPlayerInputRequest request) ||
                 !request.HasBufferedPress || !Owner.Owner.StateBlackboard.HasMovement)
             {

@@ -25,3 +25,5 @@ MonoBehaviour:
     windowPrefabPath: EquipmentDevelopmentWindow
   - windowName: CharacterWindow
     windowPrefabPath: CharacterWindow
+  - windowName: TaskWindow
+    windowPrefabPath: TaskWindow

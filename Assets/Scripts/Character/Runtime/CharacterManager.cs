@@ -35,12 +35,12 @@ namespace RPG.Character
         private IUnRegister rosterRestoredUnregister;
 
         // 固定槽位输入只在 Ready 阶段查询，不把 PlayerInputController 保存为 Manager 生命周期依赖。
-        private static readonly PlayerInputType[] characterSlotInputTypes =
+        private static readonly E_PlayerInputType[] characterSlotInputTypes =
         {
-            PlayerInputType.CharacterSlot1,
-            PlayerInputType.CharacterSlot2,
-            PlayerInputType.CharacterSlot3,
-            PlayerInputType.CharacterSlot4
+            E_PlayerInputType.CharacterSlot1,
+            E_PlayerInputType.CharacterSlot2,
+            E_PlayerInputType.CharacterSlot3,
+            E_PlayerInputType.CharacterSlot4
         };
 
         #endregion

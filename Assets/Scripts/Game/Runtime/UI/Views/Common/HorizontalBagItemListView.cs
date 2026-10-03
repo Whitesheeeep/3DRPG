@@ -28,6 +28,8 @@ namespace RPG.Game.UI.Views.Common
         #region 状态字段
 
         private readonly List<BagItemView> activeItemViews = new();
+        private Vector2 lastAppliedItemSize;
+        private bool hasAppliedItemSize;
 
         #endregion
 
@@ -58,6 +60,13 @@ namespace RPG.Game.UI.Views.Common
             RecycleAll();
         }
 
+        /// <summary>布局尺寸变化时只调整现有条目，不回收或重新获取池对象。</summary>
+        private void OnRectTransformDimensionsChange()
+        {
+            if (!isActiveAndEnabled || activeItemViews.Count == 0 || content == null || viewport == null) return;
+            RefreshLayoutSize();
+        }
+
         /// <summary>校验横向 ScrollView、Content 和条目模板。</summary>
         public void ValidateConfiguration()
         {
@@ -81,6 +90,8 @@ namespace RPG.Game.UI.Views.Common
             float previousContentOffset = content.anchoredPosition.x;
             RecycleAll();
             Vector2 itemSize = CalculateItemSize();
+            lastAppliedItemSize = itemSize;
+            hasAppliedItemSize = true;
             for (int index = 0; index < entries.Count; index++)
             {
                 BagItemViewData entry = entries[index] ?? throw new InvalidOperationException(
@@ -123,6 +134,30 @@ namespace RPG.Game.UI.Views.Common
             Debug.Log(
                 $"[HorizontalBagItemListView] 重新绑定横向素材列表：Count={entries.Count}，ItemSize={itemSize}，Offset={restoredContentOffset}。",
                 this);
+        }
+
+        /// <summary>依据 BagItem 模板比例更新当前条目尺寸并重建一次横向布局。</summary>
+        public void RefreshLayoutSize()
+        {
+            if (content == null || viewport == null || horizontalLayout == null) return;
+            Vector2 itemSize = CalculateItemSize();
+            if (hasAppliedItemSize && Vector2.SqrMagnitude(lastAppliedItemSize - itemSize) < 0.01f) return;
+
+            scrollRect.StopMovement();
+            float previousContentOffset = content.anchoredPosition.x;
+            for (int index = 0; index < activeItemViews.Count; index++)
+            {
+                RectTransform itemRect = activeItemViews[index].transform as RectTransform;
+                if (itemRect != null) itemRect.sizeDelta = itemSize;
+            }
+
+            lastAppliedItemSize = itemSize;
+            hasAppliedItemSize = true;
+            LayoutRebuilder.ForceRebuildLayoutImmediate(content);
+            Vector2 contentPosition = content.anchoredPosition;
+            contentPosition.x = ClampContentOffset(previousContentOffset);
+            content.anchoredPosition = contentPosition;
+            scrollRect.StopMovement();
         }
 
         /// <summary>根据条目模板比例和 Content 当前可用高度计算列表条目尺寸。</summary>

@@ -15,7 +15,7 @@ namespace RPG.Game.UI.Views.HUD
         #region 配置字段
 
         [SerializeField, LabelText("技能输入类型")]
-        private PlayerInputType inputType;
+        private E_PlayerInputType inputType;
         [SerializeField, Required, LabelText("展示按钮")]
         private Button slotButton;
         [SerializeField, Required, LabelText("底板")]
@@ -32,7 +32,7 @@ namespace RPG.Game.UI.Views.HUD
         #region 属性
 
         /// <summary>获取该固定技能格对应的玩家输入类型。</summary>
-        public PlayerInputType InputType => inputType;
+        public E_PlayerInputType InputType => inputType;
 
         #endregion
 
@@ -104,7 +104,7 @@ namespace RPG.Game.UI.Views.HUD
         /// <exception cref="InvalidOperationException">任一必需的静态 UI 引用缺失时抛出。</exception>
         public void ValidateConfiguration()
         {
-            if (!Enum.IsDefined(typeof(PlayerInputType), inputType))
+            if (!Enum.IsDefined(typeof(E_PlayerInputType), inputType))
                 throw new InvalidOperationException(
                     $"[HUDSkillSlotView] '{name}' 配置了未知输入类型 {(int)inputType}。");
             if (slotButton == null || backgroundImage == null || iconImage == null ||

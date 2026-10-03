@@ -8,6 +8,7 @@ using RPG.Game.UI.Character;
 using RPG.Game.UI.Services;
 using RPG.Game.UI.Views.HUD;
 using RPG.PlayerInputSystem;
+using RPG.TaskSystemNS;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.UI;
@@ -24,7 +25,7 @@ namespace RPG.Game.UI.Controllers
 {
     /// <summary>把 HUD 展示与当前队伍各角色的 ASC 属性及切换生命周期连接起来。</summary>
     [DisallowMultipleComponent]
-    [InfoBox("依赖 HUD 根节点的 HUDWindowDataComponent、Prefab 内静态血量与技能格 View，以及 PlayerController.Instance。没有 PlayerController 时保持空白，并在 HUD 再次显示时重试绑定。")]
+    [InfoBox("依赖 HUD 根节点的 HUDWindowDataComponent 与 HUDTaskController、Prefab 内静态血量和技能格 View，以及 PlayerController.Instance。TaskButton 红点由 Prefab 中 RedDotUGUIBadge 直接显示；HUDTaskController 在显示期间读取追踪任务并投影可选目标。")]
     public sealed class HUDWindowController : MonoBehaviour
     {
         #region 配置与依赖字段
@@ -32,6 +33,7 @@ namespace RPG.Game.UI.Controllers
         // Inspector 显式绑定的 Prefab View，以及角色业务数据源。
         [SerializeField, Required] private HUDHealthView healthView;
         [SerializeField, Required] private HUDSkillSlotView[] skillSlotViews = new HUDSkillSlotView[4];
+        [SerializeField, Required] private HUDTaskController taskController;
         private HUDWindowDataComponent windowData;
         private PlayerController playerController;
         private CharacterManager characterManager;
@@ -41,12 +43,12 @@ namespace RPG.Game.UI.Controllers
         private CharacterActor cooldownBoundActor;
         private IGameplayAbilityCtrl cooldownAbilityController;
         // 固定四格分别对应 Sprint Click 与 Skill2-4；不使用旧的 Skill1 输入类型。
-        private static readonly PlayerInputType[] SkillSlotInputTypes =
+        private static readonly E_PlayerInputType[] SkillSlotInputTypes =
         {
-            PlayerInputType.Sprint,
-            PlayerInputType.Skill2,
-            PlayerInputType.Skill3,
-            PlayerInputType.Skill4
+            E_PlayerInputType.Sprint,
+            E_PlayerInputType.Skill2,
+            E_PlayerInputType.Skill3,
+            E_PlayerInputType.Skill4
         };
         private readonly GameplayAbilityData[] abilityDataBySlot = new GameplayAbilityData[4];
         private readonly GameEffectRuntime[] cooldownRuntimeBySlot = new GameEffectRuntime[4];
@@ -71,16 +73,21 @@ namespace RPG.Game.UI.Controllers
             if (windowData == null)
                 throw new InvalidOperationException("[HUDWindowController] HUD 根节点缺少 HUDWindowDataComponent。");
             if (windowData.BagButton == null || windowData.DocumentUIPanelDocumentUIPanel == null ||
-                windowData.DocumentUIPanelDocumentUIPanel.CharacterButton == null)
-                throw new InvalidOperationException("[HUDWindowController] HUDWindowDataComponent 未绑定 BagButton 或 CharacterButton。");
+                windowData.DocumentUIPanelDocumentUIPanel.CharacterButton == null ||
+                windowData.DocumentUIPanelDocumentUIPanel.TaskButton == null)
+                throw new InvalidOperationException("[HUDWindowController] HUDWindowDataComponent 未绑定 BagButton、CharacterButton 或 TaskButton。");
             if (healthView == null)
                 throw new InvalidOperationException("[HUDWindowController] HUDWindow Prefab 未绑定静态 HUDHealthView。");
             healthView.ValidateConfiguration();
             ValidateSkillSlotViews();
+            if (taskController == null)
+                throw new InvalidOperationException("[HUDWindowController] HUDWindow Prefab 未绑定 HUDTaskController。");
             healthView.Clear();
             ClearSkillSlots();
+            taskController.Initialize();
             characterButton = windowData.DocumentUIPanelDocumentUIPanel.CharacterButton;
             characterButton.onClick.AddListener(HandleCharacterButtonClicked);
+            windowData.DocumentUIPanelDocumentUIPanel.TaskButton.onClick.AddListener(HandleTaskButtonClicked);
             initialized = true;
             TryBindRuntimeSources();
             WSLog.Log("[HUDWindowController] HUD 血量视图初始化完成。");
@@ -90,6 +97,7 @@ namespace RPG.Game.UI.Controllers
         public void HandleWindowShown()
         {
             if (!initialized || disposed) return;
+            taskController.OnWindowShown();
             TryBindRuntimeSources();
             if (characterManager != null && characterManager.IsReady)
             {
@@ -99,11 +107,39 @@ namespace RPG.Game.UI.Controllers
             }
         }
 
+        /// <summary>窗口隐藏时停止任务事实订阅并隐藏追踪摘要与世界标记。</summary>
+        public void HandleWindowHidden()
+        {
+            taskController?.OnWindowHidden();
+        }
+
+        /// <summary>向 HUD 任务控制器设置测试或玩法提供的导航目标。</summary>
+        /// <param name="taskId">目标所属任务标识。</param>
+        /// <param name="target">目标世界 Transform。</param>
+        /// <param name="offset">相对目标原点的世界坐标偏移。</param>
+        public void SetTaskNavigationTarget(TaskId taskId, Transform target, Vector3 offset)
+        {
+            taskController.SetNavigationTarget(taskId, target, offset);
+        }
+
+        /// <summary>清除 HUD 当前使用的导航目标输入。</summary>
+        public void ClearTaskNavigationTarget()
+        {
+            if (disposed)
+            {
+                WSLog.Log("[HUDWindowController] HUD 已释放，忽略迟到的任务导航清理请求。");
+                return;
+            }
+
+            taskController.ClearNavigationTarget();
+        }
+
         /// <summary>解除角色、队伍和 ASC 事件订阅，并释放 HUD 持有的头像图集引用。</summary>
         public void Dispose()
         {
             if (disposed) return;
             disposed = true;
+            taskController?.Dispose();
             if (characterManager != null)
             {
                 characterManager.Initialized -= HandleCharacterManagerInitialized;
@@ -112,6 +148,9 @@ namespace RPG.Game.UI.Controllers
             if (partyManager != null) partyManager.Changed -= HandlePartyChanged;
             characterButton?.onClick.RemoveListener(HandleCharacterButtonClicked);
             characterButton = null;
+            if (windowData != null && windowData.DocumentUIPanelDocumentUIPanel != null &&
+                windowData.DocumentUIPanelDocumentUIPanel.TaskButton != null)
+                windowData.DocumentUIPanelDocumentUIPanel.TaskButton.onClick.RemoveListener(HandleTaskButtonClicked);
             UnbindCharacterAttributes();
             UnbindActiveCharacterCooldowns();
             ClearSkillSlots();
@@ -123,6 +162,7 @@ namespace RPG.Game.UI.Controllers
             characterManager = null;
             partyManager = null;
             playerController = null;
+            taskController = null;
             WSLog.Log("[HUDWindowController] HUD 血量绑定与图集租约已释放。");
         }
 
@@ -152,6 +192,17 @@ namespace RPG.Game.UI.Controllers
             EventSystem.EventTrigger_Type(
                 typeof(CharacterWindowOpenRequestedEventArgs),
                 new CharacterWindowOpenRequestedEventArgs(CharacterWindowOpenSource.HudButton));
+        }
+
+        /// <summary>将 HUD 任务按钮点击转换为统一任务窗口打开意图。</summary>
+        public void HandleTaskButtonClicked()
+        {
+            if (!initialized)
+                throw new InvalidOperationException("[HUDWindowController] 尚未初始化，无法处理 Task 按钮。");
+            WSLog.Log("[HUDWindowController] 点击 HUD Task 按钮，发布任务窗口打开请求。");
+            EventSystem.EventTrigger_Type(
+                typeof(RPG.Game.UI.Task.TaskWindowOpenRequestedEventArgs),
+                new RPG.Game.UI.Task.TaskWindowOpenRequestedEventArgs());
         }
 
         #endregion
@@ -457,7 +508,7 @@ namespace RPG.Game.UI.Controllers
             bool abilityBindingsChanged = false;
             for (int slotIndex = 0; slotIndex < skillSlotViews.Length; slotIndex++)
             {
-                PlayerInputType inputType = skillSlotViews[slotIndex].InputType;
+                E_PlayerInputType inputType = skillSlotViews[slotIndex].InputType;
                 GameplayAbilityData abilityData = null;
                 for (int bindingIndex = 0; bindingIndex < bindings.Count; bindingIndex++)
                 {

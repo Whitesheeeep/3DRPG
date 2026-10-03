@@ -56,7 +56,7 @@ namespace RPG.Character
         internal bool CanEnterBufferedJump()
         {
             return CanExitByInput &&
-                Owner.Owner.StateBlackboard.InputRequests.TryGetRequest(PlayerInputType.Jump, out IReadOnlyPlayerInputRequest request) &&
+                Owner.Owner.StateBlackboard.InputRequests.TryGetRequest(E_PlayerInputType.Jump, out IReadOnlyPlayerInputRequest request) &&
                 request.HasBufferedPress && !Owner.Owner.StateBlackboard.IsCeilingBlocked;
         }
 
@@ -64,7 +64,7 @@ namespace RPG.Character
         internal void CommitBufferedJump()
         {
             if (Owner.Owner.StateBlackboard.InputRequests.TryGetRequest(
-                    PlayerInputType.Jump,
+                    E_PlayerInputType.Jump,
                     out IReadOnlyPlayerInputRequest request) && request.HasBufferedPress)
                 Owner.Owner.StateBlackboard.InputRequests.TryConfirmConsumed(request.PressHandle);
         }

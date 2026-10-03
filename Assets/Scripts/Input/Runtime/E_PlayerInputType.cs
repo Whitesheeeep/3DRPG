@@ -1,7 +1,7 @@
 namespace RPG.PlayerInputSystem
 {
     /// <summary>表示会进入游戏输入请求缓冲区的离散输入类型。</summary>
-    public enum PlayerInputType
+    public enum E_PlayerInputType
     {
         Primary,
         Secondary,
@@ -27,7 +27,9 @@ namespace RPG.PlayerInputSystem
         /// <summary>请求打开背包窗口；该输入由 PlayerInputController 即时转发，不进入玩法缓冲。</summary>
         BagWindow = 16,
         /// <summary>请求执行当前 UI 退出命令；该输入由 PlayerInputController 即时转发，不进入玩法缓冲。</summary>
-        CancelWindow = 17
+        CancelWindow = 17,
+        /// <summary>请求打开或关闭任务窗口；该输入由 UI Map 即时转发。</summary>
+        TaskWindow = 18
     }
 
     /// <summary>表示一次输入手势当前的物理阶段。</summary>

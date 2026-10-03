@@ -605,7 +605,7 @@ namespace RPG.Character
 
         /// <summary>判断跳跃输入是否仍在缓冲窗口内。</summary>
         private bool HasBufferedJump =>
-            Blackboard.InputRequests.TryGetRequest(PlayerInputType.Jump,
+            Blackboard.InputRequests.TryGetRequest(E_PlayerInputType.Jump,
                 out IReadOnlyPlayerInputRequest request) && request.HasBufferedPress &&
             Blackboard.TimeSinceGrounded <= Transition.CoyoteTime &&
             !Blackboard.IsCeilingBlocked;
@@ -642,7 +642,7 @@ namespace RPG.Character
         /// <summary>主动跳跃路径成功进入后确认输入句柄。</summary>
         private void ConfirmJumpPress()
         {
-            if (Blackboard.InputRequests.TryGetRequest(PlayerInputType.Jump,
+            if (Blackboard.InputRequests.TryGetRequest(E_PlayerInputType.Jump,
                     out IReadOnlyPlayerInputRequest request) && request.HasBufferedPress)
                 Blackboard.InputRequests.TryConfirmConsumed(request.PressHandle);
         }

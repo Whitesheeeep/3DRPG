@@ -7,7 +7,7 @@ namespace RPG.PlayerInputSystem
     public interface IReadOnlyPlayerInputRequest
     {
         /// <summary>获取输入类型。</summary>
-        PlayerInputType InputType { get; }
+        E_PlayerInputType InputType { get; }
         /// <summary>获取当前手势的物理状态。</summary>
         PlayerInputPhysicalState PhysicalState { get; }
         /// <summary>获取本手势已按住的真实时间。</summary>
@@ -46,7 +46,7 @@ namespace RPG.PlayerInputSystem
         #region 属性
 
         /// <summary>获取该实例唯一承载的输入类型。</summary>
-        public PlayerInputType InputType { get; }
+        public E_PlayerInputType InputType { get; }
         /// <summary>获取当前手势的物理状态。</summary>
         public PlayerInputPhysicalState PhysicalState { get; private set; }
         /// <summary>获取当前或最近一次手势已按住的真实时间。</summary>
@@ -99,7 +99,7 @@ namespace RPG.PlayerInputSystem
 
         /// <summary>创建指定类型的输入请求。</summary>
         /// <param name="inputType">该实例唯一承载的输入类型。</param>
-        public PlayerInputRequest(PlayerInputType inputType)
+        public PlayerInputRequest(E_PlayerInputType inputType)
         {
             InputType = inputType;
             PhysicalState = PlayerInputPhysicalState.Released;
