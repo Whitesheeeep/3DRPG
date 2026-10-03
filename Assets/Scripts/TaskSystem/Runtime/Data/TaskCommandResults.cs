@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using RPG.CurrencySystemNS;
+using RPG.RewardSystemNS;
 
-namespace RPG.TaskSystem
+namespace RPG.TaskSystemNS
 {
     #region 查询与命令结果
 
@@ -25,7 +25,7 @@ namespace RPG.TaskSystem
     /// <summary>
     /// 标识任务接取命令的调用来源，仅用于诊断和事件上下文。
     /// </summary>
-    public enum TaskAcceptSource
+    public enum E_TaskAcceptSource
     {
         /// <summary>来源尚未指定。</summary>
         Unknown = 0,
@@ -132,7 +132,7 @@ namespace RPG.TaskSystem
         ConditionNotMet = 4,
         /// <summary>任务还未达到领奖状态。</summary>
         NotClaimable = 5,
-        /// <summary>货币奖励预检或发放被拒绝。</summary>
+        /// <summary>通用奖励预检或发放被拒绝。</summary>
         RewardRejected = 6,
         /// <summary>该任务已有一次领奖流程正在执行。</summary>
         RewardClaimInProgress = 7
@@ -179,11 +179,11 @@ namespace RPG.TaskSystem
         /// 创建领奖结果。
         /// </summary>
         /// <param name="failure">拒绝原因；成功时为 None。</param>
-        /// <param name="currencyStatus">货币钱包操作状态。</param>
-        public TaskClaimResult(TaskCommandFailure failure, CurrencyOperationStatus? currencyStatus)
+        /// <param name="rewardResult">通用奖励准备或发放结果。</param>
+        public TaskClaimResult(TaskCommandFailure failure, RewardGrantResult rewardResult)
         {
             Failure = failure;
-            CurrencyStatus = currencyStatus;
+            RewardResult = rewardResult;
         }
 
         /// <summary>
@@ -197,9 +197,9 @@ namespace RPG.TaskSystem
         public TaskCommandFailure Failure { get; }
 
         /// <summary>
-        /// 获取货币预检或发放状态。
+        /// 获取通用奖励预检或发放状态。
         /// </summary>
-        public CurrencyOperationStatus? CurrencyStatus { get; }
+        public RewardGrantResult RewardResult { get; }
     }
 
     #endregion

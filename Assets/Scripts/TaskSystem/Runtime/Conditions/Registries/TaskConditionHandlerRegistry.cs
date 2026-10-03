@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace RPG.TaskSystem
+namespace RPG.TaskSystemNS
 {
     /// <summary>
     /// 管理接取条件类型到 Handler 的显式映射。

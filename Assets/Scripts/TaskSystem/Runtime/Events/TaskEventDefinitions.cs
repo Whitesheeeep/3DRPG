@@ -1,4 +1,4 @@
-namespace RPG.TaskSystem
+namespace RPG.TaskSystemNS
 {
     #region 任务事实事件
 
@@ -12,7 +12,7 @@ namespace RPG.TaskSystem
         /// </summary>
         /// <param name="taskId">已接取任务标识。</param>
         /// <param name="source">调用接取入口的来源。</param>
-        public TaskAcceptedEventArgs(TaskId taskId, TaskAcceptSource source)
+        public TaskAcceptedEventArgs(TaskId taskId, E_TaskAcceptSource source)
         {
             TaskId = taskId;
             Source = source;
@@ -26,7 +26,7 @@ namespace RPG.TaskSystem
         /// <summary>
         /// 获取接取调用来源。
         /// </summary>
-        public TaskAcceptSource Source { get; }
+        public E_TaskAcceptSource Source { get; }
     }
 
     /// <summary>
@@ -113,8 +113,8 @@ namespace RPG.TaskSystem
         /// <param name="currentState">变化后状态。</param>
         public TaskStateChangedEventArgs(
             TaskId taskId,
-            TaskLifecycleState previousState,
-            TaskLifecycleState currentState)
+            E_TaskLifecycleState previousState,
+            E_TaskLifecycleState currentState)
         {
             TaskId = taskId;
             PreviousState = previousState;
@@ -125,10 +125,10 @@ namespace RPG.TaskSystem
         public TaskId TaskId { get; }
 
         /// <summary>获取变化前状态。</summary>
-        public TaskLifecycleState PreviousState { get; }
+        public E_TaskLifecycleState PreviousState { get; }
 
         /// <summary>获取变化后状态。</summary>
-        public TaskLifecycleState CurrentState { get; }
+        public E_TaskLifecycleState CurrentState { get; }
     }
 
     /// <summary>

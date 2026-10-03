@@ -12,4 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f1831e67d0c246d7b4479a1c4f35a001, type: 3}
   m_Name: TaskDatabase
   m_EditorClassIdentifier: 
-  definitions: []
+  definitions:
+  - {fileID: 11400000, guid: 8004116f28d223442858083f9479c9ef, type: 2}
+  - {fileID: 11400000, guid: a6031b2791f045a4eb2c59dc3231da97, type: 2}

@@ -2,20 +2,8 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace RPG.TaskSystem
+namespace RPG.TaskSystemNS
 {
-    #region 奖励配置
-
-    /// <summary>
-    /// 描述任务完成后发放的多态奖励配置。
-    /// </summary>
-    [Serializable]
-    public abstract class TaskRewardDefinition
-    {
-    }
-
-    #endregion
-
     #region 阶段配置
 
     /// <summary>

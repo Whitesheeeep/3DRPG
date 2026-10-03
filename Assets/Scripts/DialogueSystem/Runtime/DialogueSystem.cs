@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using RPG.Game.UI.Events;
 using UnityEngine;
 using WS_Modules.BusinessArchitecture;
+using WS_Modules.CustomEventSystem;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.Generated;
 
@@ -228,6 +229,7 @@ namespace RPG.DialogueSystemModule
         /// 转发结束事实并解除 Session 事件订阅，避免窗口关闭后保留旧会话引用。
         /// </summary>
         /// <param name="eventArgs">会话结束事件。</param>
+        /// <exception cref="Exception">全局或本地结束事件订阅者抛出异常时继续传播。</exception>
         private void OnSessionEnded(DialogueEndedEvent eventArgs)
         {
             DialogueSession session = eventArgs.Session;
@@ -237,7 +239,26 @@ namespace RPG.DialogueSystemModule
             PublishGameUILockRequest(session, GameUILockOperation.Release);
             currentChoicePresentations.Clear();
             if (ReferenceEquals(CurrentSession, session)) CurrentSession = null;
-            Ended?.Invoke(eventArgs);
+
+            // 先发布清理完成后的全局事实，任务目标等系统只观察已经结束并释放资源的会话。
+            try
+            {
+                Debug.Log("[DialogueSystem] 触发 DialogueEndedEvent 事件。");
+                try
+                {
+                    EventSystem.EventTrigger_Type(typeof(DialogueEndedEvent), eventArgs);
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogException(exception);
+                    throw;
+                }
+            }
+            finally
+            {
+                // 保持原有本地 UI/表现订阅，即使某个全局事实订阅者抛错也必须完成结束通知。
+                Ended?.Invoke(eventArgs);
+            }
         }
 
         #endregion

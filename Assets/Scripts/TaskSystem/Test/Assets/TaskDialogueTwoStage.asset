@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c207a3c4376e36418e7c35d34013a6b, type: 3}
+  m_Name: TaskDialogueTwoStage
+  m_EditorClassIdentifier: 
+  taskId: test.task.dialogue.cube1.two_stage
+  categoryId: side
+  title: "Cube (1) \u7684\u4E24\u6BB5\u5BF9\u8BDD"
+  description: "\u5B8C\u6210 Cube (1) \u7684\u6307\u5B9A\u5BF9\u8BDD\u4E24\u6B21\uFF0C\u7136\u540E\u9886\u53D6\u6469\u62C9\u5956\u52B1\u3002"
+  unlockConditions: []
+  stages:
+  - stageId: stage.first
+    title: "\u542C\u5B8C\u7B2C\u4E00\u6BB5\u5BF9\u8BDD"
+    description: "\u4E0E Cube (1) \u5B8C\u6210\u6307\u5B9A\u5BF9\u8BDD\u4E00\u6B21\u3002"
+    objectives:
+    - rid: 2645455349243183116
+  - stageId: stage.second
+    title: "\u518D\u6B21\u786E\u8BA4\u5BF9\u8BDD"
+    description: "\u518D\u6B21\u4E0E Cube (1) \u5B8C\u6210\u540C\u4E00\u6BB5\u5BF9\u8BDD\u3002"
+    objectives:
+    - rid: 2645455349243183117
+  rewards:
+  - rid: 2645455349243183118
+  references:
+    version: 2
+    RefIds:
+    - rid: 2645455349243183116
+      type: {class: TaskDialogueCompletedObjectiveDefinition, ns: RPG.TaskSystemNS, asm: Assembly-CSharp}
+      data:
+        objectiveId: objective.first.dialogue
+        displayDescription: "\u4E0E Cube (1) \u5B8C\u6210\u6307\u5B9A\u5BF9\u8BDD"
+        required: 1
+        dialogueAsset: {fileID: 11400000, guid: 9e8374d0b9c554c43ba346806592a12c, type: 2}
+    - rid: 2645455349243183117
+      type: {class: TaskDialogueCompletedObjectiveDefinition, ns: RPG.TaskSystemNS, asm: Assembly-CSharp}
+      data:
+        objectiveId: objective.second.dialogue
+        displayDescription: "\u518D\u6B21\u4E0E Cube (1) \u5B8C\u6210\u540C\u4E00\u6BB5\u5BF9\u8BDD"
+        required: 1
+        dialogueAsset: {fileID: 11400000, guid: 9e8374d0b9c554c43ba346806592a12c, type: 2}
+    - rid: 2645455349243183118
+      type: {class: CurrencyRewardDefinition, ns: RPG.RewardSystemNS, asm: Assembly-CSharp}
+      data:
+        amounts:
+        - currencyId: 1
+          amount: 1

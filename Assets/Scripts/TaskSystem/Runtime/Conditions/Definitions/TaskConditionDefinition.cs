@@ -1,6 +1,6 @@
 using System;
 
-namespace RPG.TaskSystem
+namespace RPG.TaskSystemNS
 {
     /// <summary>
     /// 描述一个需要由资格 Handler 评估的任务接取条件。

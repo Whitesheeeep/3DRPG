@@ -171,9 +171,38 @@ namespace RPG.ItemSystem
         /// <returns>操作结果。</returns>
         public StackableItemOperationResult AddItems(IReadOnlyList<ItemQuantity> items)
         {
-            if (items == null || items.Count == 0) return new StackableItemOperationResult(InventoryOperationStatus.InvalidQuantity, default);
+            StackableItemOperationResult result = TryPrepareRewardAddition(
+                items,
+                out Func<bool> canCommit,
+                out Action commitState,
+                out Action publishNotifications);
+            if (!result.Succeeded) return result;
+            if (!canCommit()) throw new InvalidOperationException("[StackableInventoryManager] 奖励准备后库存状态发生变化。");
+            commitState();
+            publishNotifications();
+            return result;
+        }
+
+        /// <summary>为奖励系统准备可堆叠物品批次，不提前修改库存、发现或红点状态。</summary>
+        /// <param name="items">物品数量请求。</param>
+        /// <param name="canCommit">判断库存快照是否仍有效。</param>
+        /// <param name="commitState">写入库存、发现和红点自身值。</param>
+        /// <param name="publishNotifications">提交后发布物品变化事件。</param>
+        /// <returns>预检结果。</returns>
+        internal StackableItemOperationResult TryPrepareRewardAddition(
+            IReadOnlyList<ItemQuantity> items,
+            out Func<bool> canCommit,
+            out Action commitState,
+            out Action publishNotifications)
+        {
+            canCommit = null;
+            commitState = null;
+            publishNotifications = null;
+            if (items == null || items.Count == 0)
+                return new StackableItemOperationResult(InventoryOperationStatus.InvalidQuantity, default);
             // key：ItemId；value：本批次合并后的数量增量，避免同一批次重复扫描和写入。
             var quantityByItemIdMap = new Dictionary<ItemId, int>();
+            var itemOrder = new List<ItemId>();
             for (int index = 0; index < items.Count; index++)
             {
                 ItemQuantity request = items[index];
@@ -182,10 +211,13 @@ namespace RPG.ItemSystem
                 if (!(definition is StackableItemDefinition)) return new StackableItemOperationResult(InventoryOperationStatus.DefinitionTypeMismatch, request.ItemId);
                 try
                 {
-                    quantityByItemIdMap[request.ItemId] = checked(
-                        quantityByItemIdMap.TryGetValue(request.ItemId, out int current)
-                            ? current + request.Quantity
-                            : request.Quantity);
+                    if (quantityByItemIdMap.TryGetValue(request.ItemId, out int current))
+                        quantityByItemIdMap[request.ItemId] = checked(current + request.Quantity);
+                    else
+                    {
+                        quantityByItemIdMap.Add(request.ItemId, request.Quantity);
+                        itemOrder.Add(request.ItemId);
+                    }
                 }
                 catch (OverflowException)
                 {
@@ -193,46 +225,95 @@ namespace RPG.ItemSystem
                 }
             }
 
-            foreach (KeyValuePair<ItemId, int> pair in quantityByItemIdMap)
+            for (int index = 0; index < itemOrder.Count; index++)
             {
-                StackableItemDefinition definition = (StackableItemDefinition)GetDefinition(pair.Key);
-                int current = entries.TryGetValue(pair.Key, out StackableInventoryEntry entry) ? entry.Quantity : 0;
+                ItemId itemId = itemOrder[index];
+                StackableItemDefinition definition = (StackableItemDefinition)GetDefinition(itemId);
+                int current = entries.TryGetValue(itemId, out StackableInventoryEntry entry) ? entry.Quantity : 0;
                 try
                 {
-                    if (checked(current + pair.Value) > definition.MaxQuantity)
+                    if (checked(current + quantityByItemIdMap[itemId]) > definition.MaxQuantity)
                     {
-                        return new StackableItemOperationResult(InventoryOperationStatus.QuantityLimitExceeded, pair.Key);
+                        return new StackableItemOperationResult(InventoryOperationStatus.QuantityLimitExceeded, itemId);
                     }
                 }
                 catch (OverflowException)
                 {
-                    return new StackableItemOperationResult(InventoryOperationStatus.ArithmeticOverflow, pair.Key);
+                    return new StackableItemOperationResult(InventoryOperationStatus.ArithmeticOverflow, itemId);
                 }
             }
 
-            var changes = new List<StackableItemChangedEvent>(quantityByItemIdMap.Count);
-            // 所有条目都通过校验后才写入字典，保证批量添加不会留下部分状态。
+            long expectedNextSequence = nextAcquisitionSequence;
+            long nextSequence = nextAcquisitionSequence;
+            var previousEntryByItemIdMap = new Dictionary<ItemId, StackableInventoryEntry>(itemOrder.Count);
+            var updatedEntryByItemIdMap = new Dictionary<ItemId, StackableInventoryEntry>(itemOrder.Count);
+            var changes = new List<StackableItemChangedEvent>(itemOrder.Count);
             var affectedCategories = new HashSet<ItemCategory>();
-            foreach (KeyValuePair<ItemId, int> pair in quantityByItemIdMap)
+            for (int index = 0; index < itemOrder.Count; index++)
             {
-                int previous = entries.TryGetValue(pair.Key, out StackableInventoryEntry oldEntry) ? oldEntry.Quantity : 0;
-                // 永久发现与当前 New 解耦：只有第一次成功获得 Definition 才创建 New，追加数量不会重新标记。
-                bool newlyDiscovered = itemDiscoveryManager.MarkDiscovered(pair.Key);
+                ItemId itemId = itemOrder[index];
+                int previous = entries.TryGetValue(itemId, out StackableInventoryEntry oldEntry) ? oldEntry.Quantity : 0;
+                previousEntryByItemIdMap.Add(itemId, oldEntry);
+                // 首次发现只在提交阶段写入；准备阶段只读取当前发现事实。
+                bool newlyDiscovered = !itemDiscoveryManager.IsDiscovered(itemId);
                 bool isNew = (oldEntry != null && oldEntry.IsNew) || newlyDiscovered;
-                long sequence = oldEntry == null ? nextAcquisitionSequence++ : oldEntry.AcquisitionSequence;
-                int current = previous + pair.Value;
-                entries[pair.Key] = new StackableInventoryEntry(pair.Key, current, isNew, sequence);
-                changes.Add(new StackableItemChangedEvent(pair.Key, previous, current, isNew));
-                affectedCategories.Add(GetDefinition(pair.Key).Category);
+                long sequence = oldEntry == null ? nextSequence : oldEntry.AcquisitionSequence;
+                if (oldEntry == null)
+                {
+                    try { nextSequence = checked(nextSequence + 1); }
+                    catch (OverflowException)
+                    {
+                        return new StackableItemOperationResult(InventoryOperationStatus.ArithmeticOverflow, itemId);
+                    }
+                }
+                int current = previous + quantityByItemIdMap[itemId];
+                updatedEntryByItemIdMap.Add(itemId, new StackableInventoryEntry(itemId, current, isNew, sequence));
+                changes.Add(new StackableItemChangedEvent(itemId, previous, current, isNew));
+                affectedCategories.Add(GetDefinition(itemId).Category);
             }
 
             foreach (ItemCategory category in affectedCategories)
             {
-                RefreshNewRedDotCount(category);
+                RedDotKey redDotKey = GetNewRedDotKey(category);
+                if (!redDotSystem.HasNode(redDotKey))
+                {
+                    Debug.LogError(
+                        $"[StackableInventoryManager] 奖励提交缺少 New 红点配置，category={category}, key={redDotKey.name}。");
+                    throw new InvalidOperationException(
+                        $"[StackableInventoryManager] 奖励物品分类的 New 红点未注册，category={category}, key={redDotKey.name}。");
+                }
             }
 
-            // 只有全部条目写入后才广播，订阅方在第一个事件中读取到的是完整批次状态。
-            for (int index = 0; index < changes.Count; index++) PublishChanged(changes[index]);
+            canCommit = () =>
+            {
+                if (nextAcquisitionSequence != expectedNextSequence) return false;
+                for (int index = 0; index < itemOrder.Count; index++)
+                {
+                    ItemId itemId = itemOrder[index];
+                    previousEntryByItemIdMap.TryGetValue(itemId, out StackableInventoryEntry expectedEntry);
+                    if (!entries.TryGetValue(itemId, out StackableInventoryEntry currentEntry))
+                    {
+                        if (expectedEntry != null) return false;
+                    }
+                    else if (!ReferenceEquals(currentEntry, expectedEntry)) return false;
+                }
+                return true;
+            };
+            commitState = () =>
+            {
+                for (int index = 0; index < itemOrder.Count; index++)
+                {
+                    ItemId itemId = itemOrder[index];
+                    itemDiscoveryManager.MarkDiscovered(itemId);
+                    entries[itemId] = updatedEntryByItemIdMap[itemId];
+                }
+                nextAcquisitionSequence = nextSequence;
+                foreach (ItemCategory category in affectedCategories) RefreshNewRedDotCount(category);
+            };
+            publishNotifications = () =>
+            {
+                for (int index = 0; index < changes.Count; index++) PublishChanged(changes[index]);
+            };
 
             return new StackableItemOperationResult(InventoryOperationStatus.Succeeded, default);
         }
@@ -362,14 +443,7 @@ namespace RPG.ItemSystem
         /// <param name="category">待刷新的可堆叠分类。</param>
         private void RefreshNewRedDotCount(ItemCategory category)
         {
-            RedDotKey redDotKey = category switch
-            {
-                ItemCategory.DevelopmentExperienceItem => developmentExperienceItemNewRedDotKey,
-                ItemCategory.Food => foodNewRedDotKey,
-                ItemCategory.DevelopmentItem => developmentItemNewRedDotKey,
-                _ => throw new ArgumentException(
-                    $"[StackableInventoryManager] 分类 {category} 不是可堆叠分类。", nameof(category))
-            };
+            RedDotKey redDotKey = GetNewRedDotKey(category);
 
             IReadOnlyList<StackableInventoryEntry> categoryEntries = GetEntries(category);
             int newCount = 0;
@@ -383,6 +457,19 @@ namespace RPG.ItemSystem
 
             redDotSystem.SetSelfValue(redDotKey, newCount);
         }
+
+        /// <summary>取得可堆叠物品分类对应的 New 红点配置。</summary>
+        /// <param name="category">可堆叠物品分类。</param>
+        /// <returns>该分类配置的红点 Key。</returns>
+        /// <exception cref="ArgumentException">分类不是可堆叠物品分类时抛出。</exception>
+        private RedDotKey GetNewRedDotKey(ItemCategory category) => category switch
+        {
+            ItemCategory.DevelopmentExperienceItem => developmentExperienceItemNewRedDotKey,
+            ItemCategory.Food => foodNewRedDotKey,
+            ItemCategory.DevelopmentItem => developmentItemNewRedDotKey,
+            _ => throw new ArgumentException(
+                $"[StackableInventoryManager] 分类 {category} 不是可堆叠分类。", nameof(category))
+        };
 
         /// <summary>刷新三个可堆叠分类的 New 红点 Count。</summary>
         private void RefreshAllNewRedDotCounts()

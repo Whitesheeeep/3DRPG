@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace RPG.TaskSystem
+namespace RPG.TaskSystemNS
 {
     /// <summary>
     /// 描述接取任务所需完成的前置任务。
@@ -9,7 +9,7 @@ namespace RPG.TaskSystem
     [Serializable]
     public sealed class TaskPrerequisiteCompletedConditionDefinition : TaskConditionDefinition
     {
-        [SerializeField] private string prerequisiteTaskId = string.Empty;
+        [SerializeField, TaskIdDropdown] private string prerequisiteTaskId = string.Empty;
 
         /// <summary>
         /// 创建供 Unity 序列化使用的空前置条件。

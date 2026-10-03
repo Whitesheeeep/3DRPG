@@ -2,7 +2,7 @@
 
 > 文档状态：核心剧情任务需求与当前实现边界
 > 适用范围：单机 RPG、线性任务阶段、任务链、NPC/场景交互、任务导航和本地存档
-> 当前实现版本：任务生命周期 v2；手动领奖目前仅支持货币
+> 当前实现版本：任务生命周期 v2；手动领奖已接入货币、可堆叠道具、武器和圣遗物奖励；基础运行时任务窗口与未读红点已接入
 
 本文档承接任务产品需求。任务系统当前代码行为与数据模型见
 [`TaskSystem_Architecture.md`](TaskSystem_Architecture.md)；两份文档出现冲突时，本文档负责后续产品行为，架构文档负责已落地代码行为。
@@ -43,7 +43,7 @@
 - 任务失败、放弃、重新接取和任务重玩。
 - 任务自身的条件分支图、分支回溯和多结局。
 - 云存档、加密、历史恢复点和损坏存档自动重置。
-- 地图、寻路、HUD、NPC AI 或对话图实现；任务系统只提供业务契约和查询结果。
+- 地图、寻路与导航 HUD、NPC AI 和任务来源交互；基础任务窗口按第 9 节描述，任务目标可以消费对话系统提供的完成事实，但不负责实现对话图。
 
 ## 2. 当前基础与目标形态
 
@@ -55,11 +55,13 @@
 | 按顺序执行任务阶段；当前阶段目标全部完成后推进 | 已实现 |
 | 统一资格查询和接取 API；前置任务已完成条件 | 已实现 |
 | 当前阶段目标 Handler 订阅与切换、追踪、未读和任务事实事件 | 已实现 |
-| 手动提交货币奖励；预检后一次批量发放 | 已实现 |
+| 引用指定 `DialogueAsset` 并在其正常结束时累计目标进度 | 已实现；首个正式玩法目标 |
+| 手动提交通用奖励；摩拉、原石、可堆叠物品、武器和圣遗物统一预检与发放 | 已实现 |
 | 保存当前阶段进度、活动状态、追踪、未读和完成 ID；任务模块 v2 | 已实现 |
-| 任务链/章节、更多接取条件和非货币奖励 | 后续扩展 |
+| 任务链/章节、更多接取条件和新的奖励类型 | 后续扩展 |
 | 导航目标、资源占用和阻塞解释 | 后续扩展 |
-| 任务查询层、正式 UI/NPC/对话接入和任务红点数据源 | 后续扩展 |
+| 基础活动任务 UI、统一打开入口和任务未读红点数据源 | 已接入；当前不展示未接取任务 |
+| 更完整的任务查询层、正式 NPC/剧情接取调用方 | 后续扩展 |
 
 当前配置层级为数据库引用多个独立任务资产，每个任务资产包含条件、顺序阶段、目标和奖励：
 
@@ -69,7 +71,10 @@ flowchart TD
     Task --> Stage[TaskStageDefinition]
     Stage --> Objective[TaskObjectiveDefinition]
     Task --> Unlock[TaskConditionDefinition]
-    Task --> Reward[TaskRewardDefinition]
+    Task --> Reward[RewardDefinition]
+    Reward --> RewardSystem[RewardSystem]
+    RewardSystem --> Wallet[CurrencyManager]
+    RewardSystem --> Inventory[Item inventories]
     Series[TaskSeriesDefinition 后续扩展] -.-> Task
     Stage -.-> Navigation[导航配置 后续扩展]
     Stage -.-> Resource[资源占用配置 后续扩展]
@@ -102,7 +107,7 @@ flowchart TD
 - 稳定 `TaskId`、由静态分类表约束的 `TaskCategoryId`、标题和描述。首批分类为 `main`（主线）与 `side`（支线）；任务资产在 Inspector 中通过下拉框选择，显示名称调整不改变已保存 ID。
 - 接取条件列表，全部满足（AND）；当前支持“前置任务已完成”。
 - 有序阶段列表，至少一个阶段。
-- 奖励列表；当前只接受 `TaskCurrencyRewardDefinition`，并统一手动领取。
+- 奖励列表使用通用 `RewardDefinition` 多态配置，当前支持货币和物品奖励，并统一手动领取。
 
 任务链归属、奖励策略、自动接取、推荐信息和更多展示字段属于后续扩展。
 
@@ -147,7 +152,7 @@ stateDiagram-v2
 - `Available`：所有条件满足，且任务未活动、未完成。
 - 已活动或已完成任务不再返回可接取状态。
 
-通过 `TaskProgressSystem.GetAvailability(TaskId)` 查询资格。条件 Handler 只回答当前是否满足，不主动调用接取 API。当前实现只有“前置任务已完成”；以下条件仍待扩展：
+通过 `TaskSystem.GetAvailability(TaskId)` 查询资格。条件 Handler 只回答当前是否满足，不主动调用接取 API。当前实现只有“前置任务已完成”；以下条件仍待扩展：
 
 - 玩家等级或章节进度。
 - 前置任务完成。
@@ -169,7 +174,7 @@ TaskAvailabilityResult
 
 ### 4.2 统一接取入口
 
-所有来源都通过 `TaskProgressSystem.TryAcceptTask` 使用同一入口：
+所有来源都通过 `TaskSystem.TryAcceptTask` 使用同一入口：
 
 ```text
 TryAcceptTask(TaskId taskId, TaskAcceptSource source) -> TaskAcceptResult
@@ -207,11 +212,12 @@ TryAcceptTask(TaskId taskId, TaskAcceptSource source) -> TaskAcceptResult
 
 每个目标归属一个阶段，继续使用 `TaskObjectiveHandlerRegistry` 的显式类型注册模式：
 
-- Handler 可按玩法领域实现累计或状态查询语义；当前框架提供注册契约及 Odin 测试事件，具体战斗、背包、对话 Handler 后续接入。
+- 当前已接入首个正式目标 `TaskDialogueCompletedObjectiveDefinition`：任务资产引用一个 `DialogueAsset`，目标 Runtime 在当前阶段监听 `DialogueEndedEvent`；只有该资源以 `DialogueEndStatus.Completed` 结束时增加 1，`Required` 默认 1。开始会话、失败结束、其他资源和监听启动前的历史会话均不补计。
+- 其他玩法目标仍通过 `TaskObjectiveHandlerRegistry.RegisterDefault()` 接入；具体战斗、背包等 Handler 后续实现。
 - 阶段完成只由当前阶段目标决定，后续阶段目标不能提前计入。
 - 阶段切换时停止旧阶段目标监听，再创建并启动新阶段目标监听。
 
-目标进度变化发布任务事实事件；存档恢复不重放这些普通事件。
+目标进度变化发布任务事实事件；存档恢复只恢复目标进度并重新建立当前阶段监听，不重放对话结束或任务进度事件。任务 v2 快照不保存 DialogueAsset 引用，引用始终来自静态任务定义。
 
 ### 5.2 阶段切换约束
 
@@ -281,28 +287,27 @@ flowchart TD
 
 ### 8.1 当前奖励策略
 
-- 当前只支持手动领取：最后阶段完成后进入 `Claimable`，调用 `TaskProgressSystem.TryClaimReward(TaskId)` 领奖。
-- 当前只支持货币奖励；其它奖励类型在 `TaskDefinition.Validate()` 阶段明确拒绝。
-
-自动发奖及其他奖励类型需要具备跨系统事务方案后再扩展。
+- 当前只支持手动领取：最后阶段完成后进入 `Claimable`，调用 `TaskSystem.TryClaimReward(TaskId)` 领奖。
+- 当前通过通用 `RewardSystem` 发放摩拉、原石、可堆叠物品、武器和圣遗物；装备奖励创建未装备实例。
+- 更广泛的自动发奖策略和新的奖励领域按后续业务需求扩展。
 
 ### 8.2 奖励事务
 
 ```mermaid
 flowchart TD
     CompleteStage[最后阶段完成] --> Claimable[进入 Claimable]
-    Claimable --> Preflight[CanAddCurrencies 无副作用预检]
+    Claimable --> Preflight[RewardSystem 准备全部领域批次]
     Preflight -->|失败| Keep[零发放，保持 Claimable，可重试]
-    Preflight -->|成功| Grant[一次 AddCurrencies 原子批量增加]
+    Preflight -->|成功| Grant[统一提交货币与物品数据]
     Grant --> Finish[移除活动记录并记录 CompletedTaskId]
-    Finish --> Event[发布 TaskCompletedEvent]
+    Finish --> Event[发布奖励和任务事实事件]
 ```
 
 奖励流程约束：
 
-- 合并同任务内相同货币项后，调用无副作用的 `CanAddCurrencies`；失败返回结构化钱包状态且不发放。
-- 预检成功后只调用一次现有原子批量增加 API `AddCurrencies`。
-- 货币超过上限时任务保持 `Claimable`，修正钱包余额后可重试。
+- 奖励系统先合并重复货币和物品项，并无副作用准备涉及的全部钱包与库存批次；任一领域拒绝时整包不写入。
+- 货币上限、可堆叠数量上限、武器或圣遗物容量不足时任务保持 `Claimable`，条件恢复后可重试。
+- 全部奖励数据提交后才记录任务完成事实，再发送领域通知；通知异常会记录日志，不会撤销已提交奖励。
 - 成功完成后删除活动记录和阶段进度，清除追踪与未读状态，记录完成 ID。
 - 发放成功后才执行任务完成提交；自动接取后继任务尚未实现。
 
@@ -323,20 +328,40 @@ Query 只读，不修改任务状态；ViewModel 通过 Command 调用接取、�
 
 ### 9.2 UI 行为
 
+当前已接入的 `TaskWindow` 只显示活动任务：主线和支线分别分区，列表按 `TaskId` 排序；进行中和待领奖任务均保留在列表中。首次打开优先选中追踪任务，否则选择第一条活动任务。没有活动任务时显示空状态。J 快捷键和 HUD TaskButton 使用同一打开流程；HUD 会在任务窗口打开前隐藏，并在任务窗口关闭后恢复。已有其他全屏窗口显示或过渡期间，不叠开任务窗口。
+
+详情显示任务标题、描述、所有当前阶段目标的说明和进度，以及货币与物品奖励预览。目标完成标记使用独立图像；完成文字字号略小并显示为低对比度灰色。追踪操作调用任务系统的追踪 API；待领奖任务显示单独的领奖按钮。领奖业务拒绝时保留任务并显示失败原因，成功后从活动列表移除。只有当前选中任务的详情实际显示后，才确认该任务已读；打开窗口不批量清除其他未读任务。Reward UI 只读配置，不负责发放奖励。
+
+HUD 左侧摘要只显示当前追踪的活动任务，包含任务标题和当前阶段的全部目标进度；完成目标保留在列表并显示绿色图像标记，完成文字较小且显示为低对比度灰色。任务待领奖时摘要仍显示绿色“可领取奖励”，取消追踪或领奖完成后隐藏。该 HUD 只展示任务事实，不接收点击，也不确认任务未读。目标说明按“目标说明、阶段标题、完成目标”顺序回退；存在匹配的导航位置时显示三维距离，没有位置来源时隐藏距离行。摘要和目标行使用 UGUI LayoutGroup 管理排布。
+
+中间世界标记目前仅用于 `TestInteractableScene` 的 Cube (1) 两阶段对话任务验证：测试组件显式传入任务 ID、Cube Transform 和 `(0, 1.8, 0)` 偏移，默认关闭标记；玩家通过 Odin 按钮单独设置追踪任务和启停标记。标记只在绑定任务正在追踪且为 `InProgress` 时出现，屏幕外或相机背后的目标会显示在安全边缘并旋转方向箭头。正式 NPC 位置数据源尚未接入；后续来源应提供同一类展示输入，不把位置写入任务定义或存档。
+
+~~~mermaid
+flowchart LR
+    Facts[TaskSystem：追踪任务与阶段目标事实] --> Tracker[HUD 左侧摘要]
+    Test[Cube 1 测试按钮：TaskId、Transform、偏移] --> Gate{任务正被追踪且 InProgress?}
+    Player[活动角色] --> Marker[HUD 世界标记]
+    Camera[MainCamera 投影] --> Marker
+    Gate -->|是| Marker
+    Gate -->|否| Hidden[隐藏标记与距离行]
+~~~
+
+以下属于完整产品目标，尚未由当前基础窗口实现：
+
 - 任务列表按分类分组，章节/任务链可折叠。
 - 任务详情显示标题、描述、当前阶段、目标进度、奖励策略、导航按钮和阻塞原因。
 - 前置条件不满足时显示具体条件，并提供跳转到关联任务的入口。
-- 只有显式点击任务条目才确认未读；打开总窗口、切换页签或刷新列表不自动确认。
-- 追踪任务最多一个；可领取任务保持追踪，领奖成功后清除追踪，不自动选择下一个。
+- 完整查询层、未接取任务的资格浏览和已完成任务摘要。
 
 ### 9.3 红点规则
 
-任务红点继续只表示“新接取且未确认查看”的任务：
+已接入的任务红点只表示活动任务中“新接取且未确认查看”的数量，并按主线、支线分开聚合：
 
 - 接取成功加入 `UnreadTaskIds`。
-- 点击具体任务条目调用 `AcknowledgeTask(TaskId)`。
+- 当前选中任务的详情实际展示后调用 `AcknowledgeTask(TaskId)`；初次打开窗口时默认选中的任务也会在显示后确认。
 - 领奖完成时移除未读状态。
 - 阶段完成、可领奖、导航可用、资源阻塞都不新增任务红点。
+- `TaskSystem` 在未读集合变化及存档恢复后重算分类数量，直接写入 RedDotSystem 的 Task 主线／支线节点；RedDotSystem 负责帧末聚合和徽标通知。
 
 ## 10. 存档与迁移
 
@@ -362,8 +387,8 @@ TaskRecordSnapshot
 ```mermaid
 sequenceDiagram
     participant Save as SaveManager
-    participant Task as TaskManager
-    participant Runtime as TaskProgressSystem
+    participant Task as TaskSystem
+    participant Runtime as TaskRuntime
     participant World as 其他业务系统
     Save->>Task: 验证并恢复任务事实
     Task-->>Save: 完成状态恢复，不发布普通任务事件
@@ -387,9 +412,9 @@ sequenceDiagram
 
 ### 11.1 任务核心
 
-`TaskManager` 持有已校验的任务数据库引用和玩家任务事实；不直接依赖战斗、背包、对话、地图、UI 或 NPC GameObject。它负责查询和写入任务数据，`TaskProgressSystem` 负责接取、阶段推进、领奖以及目标监听生命周期。
+`TaskConfigManager` 持有已校验的任务数据库引用并按 `TaskId` 查询定义。`TaskSystem` 管理玩家任务集合、全局追踪和未读事实，并负责接取、领奖、存档与恢复编排。
 
-`TaskProgressSystem` 继续负责跨业务编排、目标运行时生命周期和存档恢复后的订阅重建。
+每个活动任务由 `TaskRuntime` 持有唯一 `TaskRecord`；它推进整条任务阶段。`TaskStageRuntime` 管理当前阶段，目标运行时负责最低层领域事件监听。任务逻辑不直接依赖战斗、背包、对话、地图、UI 或 NPC GameObject。
 
 ### 11.2 已实现与待实现契约
 
@@ -397,15 +422,18 @@ sequenceDiagram
 
 - `ITaskObjectiveHandler`：创建阶段目标运行时。
 - `ITaskConditionHandler`：评估接取条件并返回结构化原因；目前注册前置任务已完成 Handler。
-- `TaskProgressSystem.GetAvailability`、`TryAcceptTask` 和 `TryClaimReward`。
-- `TaskCurrencyRewardHandler` 与 `ICurrencyWallet.CanAddCurrencies` / `AddCurrencies`。
+- `TaskConfigManager.TryGetDefinition` 与 `GetRequiredDefinition`。
+- `TaskSystem.GetAvailability`、`TryAcceptTask`、`TryClaimReward`、追踪、未读和快照入口。
+- `TaskRuntime`、`TaskStageRuntime` 与目标运行时的分层生命周期。
+- `RewardSystem.CanGrant` 与 `RewardSystem.TryGrant`；任务领奖由 `TaskSystem` 统一编排。
+- `CurrencyRewardDefinition` 支持现有摩拉和原石；`ItemRewardDefinition` 支持可堆叠物品、武器和圣遗物。
 
 后续按现有显式注册模式扩展：
 
-- 更多接取条件与奖励 Handler。
+- 更多接取条件与奖励 Handler；默认 Handler 在 `RewardHandlerRegistry.RegisterDefault` 显式登记。
 - `ITaskNavigationResolver`：把语义导航目标解析成当前世界导航信息。
 - `ITaskResourceOccupancyResolver`：取得、释放和查询资源占用。
-- 任务列表与详情 Query、正式 UI/NPC/对话调用方及任务红点数据源。
+- 完整任务列表与详情 Query、未接取任务的资格浏览及正式 NPC/剧情接取调用方。
 
 ### 11.3 任务事实事件
 
@@ -450,15 +478,48 @@ sequenceDiagram
 ### 12.5 红点
 
 - 新接取任务增加对应分类未读计数。
-- 打开任务窗口不清除未读；点击具体任务条目才确认。
+- 只有详情实际展示的当前任务才会确认；打开时默认展示的任务也会确认，其他未读任务保持未读。
 - 阶段完成、可领奖、导航变化和资源阻塞不产生任务红点。
+- `TaskSystem` 直接更新 RedDotSystem 的分类节点，HUD TaskButton Prefab 中的 `RedDotUGUIBadge` 订阅聚合根并显示未读数量。
+
+### 12.6 HUD 追踪摘要与测试标记
+
+- 无追踪任务或追踪任务领奖完成时，左侧摘要和目标标记隐藏；切换追踪后摘要只显示新任务。
+- 当前阶段多个目标同时显示；未完成目标按事件更新，已完成目标保留绿色完成标记；阶段切换后只显示新阶段目标。
+- `Claimable` 状态保留摘要并显示领奖提示，世界标记隐藏；取消追踪后不再显示摘要或距离。
+- HUD 展示不会调用 `AcknowledgeTask()`，不清除未读状态；HUD 开关及读档不会重复订阅或累计目标进度。
+- 只有启用 Cube (1) 测试位置输入，且其任务正在追踪并处于 `InProgress` 时，才显示中间世界标记与左侧距离；没有目标或相机/活动角色时隐藏。
+- 屏幕内目标显示标记和整数米数；屏幕外及相机背后目标被限制到视口安全边缘，方向箭头指向目标方向。
+- 测试按钮不自动接取任务、不触发对话、不领奖；真实任务生命周期继续通过 TaskSystem 和 DialogueSystem 的既有 API 验证。
 
 ## 13. 后续实现顺序
 
-1. 接入真实玩法目标 Handler，并补足 Unity 生命周期、场景和运行时交互验证。
-2. 创建正式任务定义资产，并继续维护 TaskDatabase 配置。
-3. 接入任务列表与详情 Query、正式 NPC/对话/剧情调用方和 UI ViewModel。
-4. 接入任务红点数据源。
-5. 在具备跨系统事务方案后扩展非货币奖励与自动奖励。
-6. 增加任务链/章节、导航 Resolver 与资源 Occupancy Resolver。
-7. 若未来存在需要保留的旧版本任务存档，再按真实数据添加迁移器。
+1. 补足已接入目标与任务窗口的 Unity 生命周期、场景和运行时交互验证。
+2. 接入正式 NPC/剧情接取调用方及完整资格查询界面。
+3. 按后续需求扩展奖励领域与自动奖励策略。
+4. 增加任务链/章节、导航 Resolver 与资源 Occupancy Resolver。
+5. 若未来存在需要保留的旧版本任务存档，再按真实数据添加迁移器。
+
+## 14. 任务配置编辑器
+
+当前任务配置编辑器用于维护 `TaskDatabase` 和独立 `TaskDefinition` 资产，通过菜单 `RPG > TaskSystem > 任务配置编辑器` 打开，也支持双击对应资产进入。它属于 Editor 工具，不会创建运行时任务实例。
+
+~~~mermaid
+flowchart LR
+    User[编辑者] --> Window[任务配置编辑器]
+    Window --> Database[TaskDatabase 选择与登记]
+    Window --> List[搜索、筛选、排序和右键操作]
+    Window --> Detail[任务、条件、阶段、目标和奖励]
+    Detail -->|SerializedObject 和 Undo| Definition[TaskDefinition 资产]
+    Window --> Settings[ProjectSettings 中的后缀与编号设置]
+~~~
+
+- 支持当前数据库、项目全部任务、未加入当前数据库三种列表范围；搜索 TaskId、标题和资源路径，按分类过滤，并按 TaskId、分类或标题升降序排列。
+- 任务行右键提供重命名、复制、定位、加入/移出数据库和删除；列表空白处右键提供按“分类 > 后缀”新建、刷新和校验。删除会清理所有 `TaskDatabase` 对目标资产的引用；其他任务的前置引用由校验报告。
+- TaskId 由稳定分类 ID、分类共享递增编号和可选后缀组成，如 `main_001` 与 `side_001_dialogue`。编号至少三位，超过 999 自动扩位；任务删除后编号不复用。后缀配置修改不会改写已有 TaskId。
+- 后缀、已分配编号和新资产目录持久化在 `ProjectSettings/TaskConfigEditorSettings.asset`。默认任务定义目录为 `Assets/Scripts/TaskSystem/Runtime/Config/Assets/Definitions`。
+- 新任务自动加入当前数据库，初始化一个待配置目标的阶段及 1 摩拉奖励。空目标草稿可以保存，但详情校验会提示缺失目标，数据库校验不接受它。
+- 任务详情使用 Unity `SerializedObject`、`PropertyField` 和 Undo；接取条件、目标及奖励通过 Managed Reference 类型选择器配置。新增派生定义不需要改窗口，仍需依照本架构文档的 Registry 扩展约定登记运行时 Handler。
+- Play Mode 只允许查看和定位，不能修改任务资产或创建、删除、登记任务。关闭或重建窗口会清理序列化绑定和事件订阅。
+
+该工具不代替运行时资格查询、接取、任务进度、领奖或存档接口。任务来源仍调用 `TaskSystem` 的统一 API；配置修改后应使用窗口的“验证”检查数据库和当前任务。

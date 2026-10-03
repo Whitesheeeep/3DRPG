@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
-namespace RPG.TaskSystem
+namespace RPG.TaskSystemNS
 {
     /// <summary>
     /// 集中引用每任务独立配置资产并按稳定 TaskId 建立索引。

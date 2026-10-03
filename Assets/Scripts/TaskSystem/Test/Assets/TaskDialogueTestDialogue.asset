@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-661770897009987886
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43893bc859cd4e6086ef32b05a8d47f9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nodeId: ff8cb1a0-fcb7-481f-869d-092482ce3cb4
+  editorPosition: {x: 0, y: 0}
+  firstSpeechNode: {fileID: 2404751493292340337}
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8fc6020cc6de497bb9a10045174cd476, type: 3}
+  m_Name: TaskDialogueTestDialogue
+  m_EditorClassIdentifier: 
+  dialogueId: test.dialogue.cube1.two_stage
+  entryNode: {fileID: -661770897009987886}
+  nodes:
+  - {fileID: -661770897009987886}
+  - {fileID: 2404751493292340337}
+  - {fileID: 7344527974272818895}
+--- !u!114 &2404751493292340337
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afa82bc2ce69471a8fbb64b182a292ad, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nodeId: 6306c8ff-34bb-4344-a444-f66bc48fc25f
+  editorPosition: {x: 0, y: 0}
+  nodeName: "\u4EFB\u52A1\u6D4B\u8BD5\u5BF9\u767D"
+  speaker: {fileID: 11400000, guid: 4663cf08600c8fb4682d10fa508a0b57, type: 2}
+  dialogueName: "\u6D4B\u8BD5\u5C45\u6C11"
+  text: "\u8C22\u8C22\u4F60\u613F\u610F\u542C\u6211\u8BF4\u5B8C\u3002"
+  animationClip: {fileID: 0}
+  voiceClip: {fileID: 0}
+  animationFadeDuration: 0
+  nextNode: {fileID: 7344527974272818895}
+  choices: []
+--- !u!114 &7344527974272818895
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8553e8b9ae924407be47d6c9292d2d05, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nodeId: 8085edef-f6c8-42f9-a228-4766c7cdd7a1
+  editorPosition: {x: 0, y: 0}

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace RPG.TaskSystem
+namespace RPG.TaskSystemNS
 {
     /// <summary>
     /// 管理目标定义类型到 Handler 的显式注册表。
@@ -21,8 +21,9 @@ namespace RPG.TaskSystem
         #region 默认注册与显式注册
 
         /// <summary>
-        /// 注册正式玩法的默认目标 Handler；当前尚无已接入的玩法目标适配器。
+        /// 注册任务系统正式接入的默认玩法目标 Handler。
         /// </summary>
+        /// <exception cref="ArgumentException">默认目标类型已通过其他 Handler 手动登记时抛出。</exception>
         public void RegisterDefault()
         {
             if (defaultHandlersRegistered)
@@ -30,9 +31,11 @@ namespace RPG.TaskSystem
                 return;
             }
 
-            // 测试 Handler 由测试入口单独注入，避免把测试行为混入正式默认配置。
+            Register<TaskDialogueCompletedObjectiveDefinition>(new TaskDialogueCompletedObjectiveHandler());
+
+            // 测试 Handler 仍由测试入口单独注入，避免把测试行为混入正式默认配置。
             defaultHandlersRegistered = true;
-            Debug.Log("[TaskObjectiveHandlerRegistry] 默认目标 Handler 初始化完成，handlerCount=0；玩法目标适配器尚待接入。");
+            Debug.Log("[TaskObjectiveHandlerRegistry] 默认目标 Handler 初始化完成，handlerCount=1；已登记对话完成目标。");
         }
 
         /// <summary>

@@ -4,8 +4,9 @@ using RPG.Character;
 using RPG.DialogueSystemModule;
 using RPG.ItemSystem;
 using RPG.RedDotSystemNS;
+using RPG.RewardSystemNS;
 using RPG.SaveSystem;
-using RPG.TaskSystem;
+using RPG.TaskSystemNS;
 using RPG.Game.UI.Escape;
 using UnityEngine;
 using WS_Modules.BusinessArchitecture;
@@ -51,46 +52,63 @@ namespace RPG.Game
             // 业务配置由统一 Provider 建立类型索引；RedDotSystem 负责正式树的运行时组装和校验。
             BagRedDotConfig bagRedDotConfig =
                 RedDotBusinessConfigProvider.GetConfig<BagRedDotConfig>();
+            TaskRedDotConfig taskRedDotConfig =
+                RedDotBusinessConfigProvider.GetConfig<TaskRedDotConfig>();
 
             // 红点系统对象在 Manager 构造前创建并复用；实际 OnInit 会在所有 Manager 初始化后执行。
             var redDotSystem = new RedDotSystem();
 
             var itemDiscoveryManager = new ItemDiscoveryManager(saveManager);
             RegisterManager(itemDiscoveryManager);
-            RegisterManager(new StackableInventoryManager(
+            var stackableInventoryManager = new StackableInventoryManager(
                 saveManager,
                 itemDiscoveryManager,
                 redDotSystem,
                 bagRedDotConfig.DevelopmentExperienceItemNewKey,
                 bagRedDotConfig.FoodNewKey,
-                bagRedDotConfig.DevelopmentItemNewKey));
+                bagRedDotConfig.DevelopmentItemNewKey);
+            RegisterManager(stackableInventoryManager);
             RegisterSystem(redDotSystem);
 
-            RegisterManager(new WeaponInventoryManager(
+            var weaponInventoryManager = new WeaponInventoryManager(
                 saveManager,
                 characterRosterManager,
                 itemDiscoveryManager,
                 redDotSystem,
-                bagRedDotConfig.WeaponNewKey));
-            RegisterManager(new ArtifactInventoryManager(
+                bagRedDotConfig.WeaponNewKey);
+            RegisterManager(weaponInventoryManager);
+            var artifactInventoryManager = new ArtifactInventoryManager(
                 saveManager,
                 characterRosterManager,
                 itemDiscoveryManager,
                 redDotSystem,
-                bagRedDotConfig.ArtifactNewKey));
+                bagRedDotConfig.ArtifactNewKey);
+            RegisterManager(artifactInventoryManager);
 
-            // 货币钱包先初始化，任务领奖随后通过其预检和原子批量接口发放货币。
+            // 钱包和库存 Manager 先完成注册，再装配统一奖励 Handler。
             RegisterSystem(new CurrencySystem());
+            var rewardHandlerRegistry = new RewardHandlerRegistry();
+            rewardHandlerRegistry.RegisterDefault(
+                new CurrencyRewardHandler(CurrencyManager.Instance),
+                new ItemRewardHandler(
+                    stackableInventoryManager,
+                    weaponInventoryManager,
+                    artifactInventoryManager));
+            var rewardSystem = new RewardSystem(rewardHandlerRegistry);
+            RegisterSystem(rewardSystem);
 
             // 任务定义由 ConfigInstaller 注入；默认 Handler 由各领域注册表集中登记。
             var taskObjectiveHandlerRegistry = new TaskObjectiveHandlerRegistry();
             taskObjectiveHandlerRegistry.RegisterDefault();
             var taskConditionHandlerRegistry = new TaskConditionHandlerRegistry();
             taskConditionHandlerRegistry.RegisterDefault();
-            RegisterSystem(new TaskProgressSystem(
+            var taskSystem = new TaskSystem(
                 taskObjectiveHandlerRegistry,
                 taskConditionHandlerRegistry,
-                new TaskCurrencyRewardHandler(CurrencyManager.Instance)));
+                rewardSystem,
+                redDotSystem,
+                taskRedDotConfig);
+            RegisterSystem(taskSystem);
             RegisterSystem(new DialogueSystem());
             RegisterSystem(new CharacterEquipmentSystem());
             RegisterManager(new EscCommandManager());

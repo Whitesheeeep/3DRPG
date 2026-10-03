@@ -176,50 +176,144 @@ namespace RPG.ItemSystem
         /// <returns>添加结果。</returns>
         public EquipmentBatchAddResult<WeaponInstance> AddWeapons(IReadOnlyList<ItemId> definitionIds)
         {
+            bool prepared = TryPrepareRewardAddition(
+                definitionIds,
+                out InventoryOperationStatus status,
+                out _,
+                out IReadOnlyList<WeaponInstance> created,
+                out Func<bool> canCommit,
+                out Action commitState,
+                out Action publishNotifications);
+            if (!prepared)
+                return new EquipmentBatchAddResult<WeaponInstance>(status, Array.Empty<WeaponInstance>());
+            if (!canCommit()) throw new InvalidOperationException("[WeaponInventoryManager] 奖励准备后武器库存状态发生变化。");
+            commitState();
+            publishNotifications();
+            return new EquipmentBatchAddResult<WeaponInstance>(InventoryOperationStatus.Succeeded, created);
+        }
+
+        /// <summary>为奖励系统准备武器实例，不提前占用容量或记录发现状态。</summary>
+        /// <param name="definitionIds">武器 Definition 标识。</param>
+        /// <param name="status">预检状态。</param>
+        /// <param name="failedDefinitionId">失败时关联的 Definition。</param>
+        /// <param name="created">成功时预先构造的待入库实例。</param>
+        /// <param name="canCommit">判断容量和获得序号快照是否仍有效。</param>
+        /// <param name="commitState">提交实例、发现、New 和红点自身值。</param>
+        /// <param name="publishNotifications">提交后发布实例事件。</param>
+        /// <returns>预检成功时返回 true。</returns>
+        internal bool TryPrepareRewardAddition(
+            IReadOnlyList<ItemId> definitionIds,
+            out InventoryOperationStatus status,
+            out ItemId failedDefinitionId,
+            out IReadOnlyList<WeaponInstance> created,
+            out Func<bool> canCommit,
+            out Action commitState,
+            out Action publishNotifications)
+        {
+            failedDefinitionId = default;
+            created = Array.Empty<WeaponInstance>();
+            canCommit = null;
+            commitState = null;
+            publishNotifications = null;
             // 校验：输入参数是否有效
             if (definitionIds == null || definitionIds.Count == 0)
-                return new EquipmentBatchAddResult<WeaponInstance>(InventoryOperationStatus.InvalidQuantity,
-                    Array.Empty<WeaponInstance>());
+            {
+                status = InventoryOperationStatus.InvalidQuantity;
+                return false;
+            }
             if (definitionIds.Count > RemainingStorageCapacity)
-                return new EquipmentBatchAddResult<WeaponInstance>(InventoryOperationStatus.CapacityExceeded,
-                    Array.Empty<WeaponInstance>());
+            {
+                status = InventoryOperationStatus.CapacityExceeded;
+                failedDefinitionId = definitionIds[0];
+                return false;
+            }
 
             for (int index = 0; index < definitionIds.Count; index++)
             {
                 if (!definitionIds[index].IsValid ||
                     !TryGetDefinition(definitionIds[index], out ItemDefinition definition))
-                    return new EquipmentBatchAddResult<WeaponInstance>(InventoryOperationStatus.UnknownDefinition,
-                        Array.Empty<WeaponInstance>());
+                {
+                    status = InventoryOperationStatus.UnknownDefinition;
+                    failedDefinitionId = definitionIds[index];
+                    return false;
+                }
                 if (!(definition is WeaponDefinition))
-                    return new EquipmentBatchAddResult<WeaponInstance>(InventoryOperationStatus.DefinitionTypeMismatch,
-                        Array.Empty<WeaponInstance>());
+                {
+                    status = InventoryOperationStatus.DefinitionTypeMismatch;
+                    failedDefinitionId = definitionIds[index];
+                    return false;
+                }
             }
 
-            // 先创建实例并写入统一实例集合，再统一发布事件，保证观察者看到的是完整状态。
-            var created = new List<WeaponInstance>(definitionIds.Count);
+            long expectedSequence = NextAcquisitionSequence;
+            long nextSequence;
+            try { nextSequence = checked(expectedSequence + definitionIds.Count); }
+            catch (OverflowException)
+            {
+                status = InventoryOperationStatus.ArithmeticOverflow;
+                failedDefinitionId = definitionIds[0];
+                return false;
+            }
+
+            // 实例对象只暂存于局部批次；容量和序号在提交前没有变化。
+            var pendingInstances = new List<WeaponInstance>(definitionIds.Count);
             for (int index = 0; index < definitionIds.Count; index++)
             {
                 var instance = new WeaponInstance(
                     EquipmentInstanceId.Create(), definitionIds[index], 1, 0, 0, 1,
-                    false, TakeAcquisitionSequence());
-                instances.Add(instance.InstanceId, instance);
-                created.Add(instance);
+                    false, expectedSequence + index);
+                pendingInstances.Add(instance);
             }
 
-            // 先完成全部实例写入，再按 Definition 记录永久发现状态；同批次同名武器只会产生一次当前 New。
-            for (int index = 0; index < created.Count; index++)
+            int expectedCount = Count;
+            int expectedStoredCount = StoredCount;
+            if (!redDotSystem.HasNode(weaponNewRedDotKey))
             {
-                ItemId definitionId = created[index].DefinitionId;
-                if (itemDiscoveryManager.MarkDiscovered(definitionId)) MarkDefinitionNew(definitionId);
+                Debug.LogError(
+                    $"[WeaponInventoryManager] 奖励提交缺少 New 红点配置，key={weaponNewRedDotKey.name}。");
+                throw new InvalidOperationException(
+                    $"[WeaponInventoryManager] 武器 New 红点未注册，key={weaponNewRedDotKey.name}。");
             }
+            canCommit = () => Count == expectedCount && StoredCount == expectedStoredCount &&
+                              RemainingStorageCapacity >= pendingInstances.Count &&
+                              NextAcquisitionSequence == expectedSequence &&
+                              !ContainsPreparedInstanceId(pendingInstances);
+            commitState = () =>
+            {
+                for (int index = 0; index < pendingInstances.Count; index++)
+                    instances.Add(pendingInstances[index].InstanceId, pendingInstances[index]);
+                SetNextAcquisitionSequence(nextSequence);
+                for (int index = 0; index < pendingInstances.Count; index++)
+                {
+                    ItemId definitionId = pendingInstances[index].DefinitionId;
+                    if (itemDiscoveryManager.MarkDiscovered(definitionId)) MarkDefinitionNew(definitionId);
+                }
+                RefreshNewRedDotCount();
+            };
+            publishNotifications = () =>
+            {
+                for (int index = 0; index < pendingInstances.Count; index++)
+                    PublishChange(EquipmentInstanceChangeType.Added, pendingInstances[index]);
+                Debug.Log($"[WeaponInventoryManager] 添加容纳区武器，added={pendingInstances.Count}, stored={StoredCount}/{Capacity}, equipped={EquippedCount}。");
+            };
 
-            RefreshNewRedDotCount();
+            created = pendingInstances.AsReadOnly();
+            status = InventoryOperationStatus.Succeeded;
+            return true;
+        }
 
-            // 所有实例已经写入后才发布事件，订阅方读取 Manager 时能够拿到完整状态。
-            for (int index = 0; index < created.Count; index++)
-                PublishChange(EquipmentInstanceChangeType.Added, created[index]);
-            Debug.Log($"[WeaponInventoryManager] 添加容纳区武器，added={created.Count}, stored={StoredCount}/{Capacity}, equipped={EquippedCount}。 ");
-            return new EquipmentBatchAddResult<WeaponInstance>(InventoryOperationStatus.Succeeded, created);
+        /// <summary>确认待提交实例 ID 仍未被其他写入占用。</summary>
+        /// <param name="pendingInstances">待提交武器实例。</param>
+        /// <returns>全部实例 ID 可用时返回 true。</returns>
+        private bool ContainsPreparedInstanceId(IReadOnlyList<WeaponInstance> pendingInstances)
+        {
+            var instanceIdSet = new HashSet<EquipmentInstanceId>();
+            for (int index = 0; index < pendingInstances.Count; index++)
+            {
+                EquipmentInstanceId instanceId = pendingInstances[index].InstanceId;
+                if (instances.ContainsKey(instanceId) || !instanceIdSet.Add(instanceId)) return true;
+            }
+            return false;
         }
 
         /// <summary>直接创建一把已装备到指定角色的武器，绕过容纳区容量。</summary>

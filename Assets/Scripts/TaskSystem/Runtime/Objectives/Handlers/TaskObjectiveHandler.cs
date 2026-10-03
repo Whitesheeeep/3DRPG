@@ -1,6 +1,6 @@
 using System;
 
-namespace RPG.TaskSystem
+namespace RPG.TaskSystemNS
 {
     /// <summary>
     /// 为泛型 Handler 转发强类型目标定义的显式适配基类。

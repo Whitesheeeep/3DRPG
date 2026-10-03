@@ -129,42 +129,114 @@ namespace RPG.CurrencySystemNS
         /// <returns>操作结果。</returns>
         public CurrencyOperationResult ApplyChanges(IReadOnlyList<CurrencyDelta> changes)
         {
+            if (!TryPrepareRewardChanges(
+                    changes,
+                    out CurrencyOperationResult result,
+                    out Func<bool> canCommit,
+                    out Action commitState,
+                    out Action publishNotifications))
+            {
+                return result;
+            }
+
+            if (!canCommit())
+                throw new InvalidOperationException("[CurrencyManager] 钱包状态在同步提交前发生变化。");
+            commitState();
+            publishNotifications();
+            return new CurrencyOperationResult(CurrencyOperationStatus.Succeeded, CurrencyId.None);
+        }
+
+        /// <summary>为奖励系统准备货币增量，不写余额、不发布钱包事件。</summary>
+        /// <param name="changes">待提交的有符号变化。</param>
+        /// <param name="result">预检结果。</param>
+        /// <param name="canCommit">判断余额快照是否仍有效。</param>
+        /// <param name="commitState">提交全部余额的操作。</param>
+        /// <param name="publishNotifications">提交后发布货币事件的操作。</param>
+        /// <returns>准备成功时返回 true。</returns>
+        internal bool TryPrepareRewardChanges(
+            IReadOnlyList<CurrencyDelta> changes,
+            out CurrencyOperationResult result,
+            out Func<bool> canCommit,
+            out Action commitState,
+            out Action publishNotifications)
+        {
             EnsureConfigured();
-            if (changes == null || changes.Count == 0) return new CurrencyOperationResult(CurrencyOperationStatus.InvalidAmount, CurrencyId.None);
-            var merged = new Dictionary<CurrencyId, int>();
+            canCommit = null;
+            commitState = null;
+            publishNotifications = null;
+            if (changes == null || changes.Count == 0)
+            {
+                result = new CurrencyOperationResult(CurrencyOperationStatus.InvalidAmount, CurrencyId.None);
+                return false;
+            }
+            var deltaByCurrencyIdMap = new Dictionary<CurrencyId, int>();
             for (int index = 0; index < changes.Count; index++)
             {
                 CurrencyDelta change = changes[index];
                 CurrencyOperationResult validation = ValidateChange(change.CurrencyId, change.Delta);
-                if (!validation.Succeeded) return validation;
-                try { merged[change.CurrencyId] = checked(merged.TryGetValue(change.CurrencyId, out int current) ? current + change.Delta : change.Delta); }
-                catch (OverflowException) { return new CurrencyOperationResult(CurrencyOperationStatus.ArithmeticOverflow, change.CurrencyId); }
+                if (!validation.Succeeded) { result = validation; return false; }
+                try
+                {
+                    deltaByCurrencyIdMap[change.CurrencyId] = checked(
+                        deltaByCurrencyIdMap.TryGetValue(change.CurrencyId, out int current)
+                            ? current + change.Delta
+                            : change.Delta);
+                }
+                catch (OverflowException)
+                {
+                    result = new CurrencyOperationResult(CurrencyOperationStatus.ArithmeticOverflow, change.CurrencyId);
+                    return false;
+                }
             }
 
-            foreach (KeyValuePair<CurrencyId, int> pair in merged)
+            var nextBalanceByCurrencyIdMap = new Dictionary<CurrencyId, int>(deltaByCurrencyIdMap.Count);
+            var previousBalanceByCurrencyIdMap = new Dictionary<CurrencyId, int>(deltaByCurrencyIdMap.Count);
+            var committedChanges = new List<CurrencyBalanceChangedEvent>(deltaByCurrencyIdMap.Count);
+            foreach (KeyValuePair<CurrencyId, int> pair in deltaByCurrencyIdMap)
             {
                 int current = balances[pair.Key];
                 int next;
                 try { next = checked(current + pair.Value); }
-                catch (OverflowException) { return new CurrencyOperationResult(CurrencyOperationStatus.ArithmeticOverflow, pair.Key); }
-                if (next < 0) return new CurrencyOperationResult(CurrencyOperationStatus.InsufficientBalance, pair.Key);
-                if (next > GetRule(pair.Key).MaxBalance) return new CurrencyOperationResult(CurrencyOperationStatus.BalanceLimitExceeded, pair.Key);
+                catch (OverflowException)
+                {
+                    result = new CurrencyOperationResult(CurrencyOperationStatus.ArithmeticOverflow, pair.Key);
+                    return false;
+                }
+                if (next < 0)
+                {
+                    result = new CurrencyOperationResult(CurrencyOperationStatus.InsufficientBalance, pair.Key);
+                    return false;
+                }
+                if (next > GetRule(pair.Key).MaxBalance)
+                {
+                    result = new CurrencyOperationResult(CurrencyOperationStatus.BalanceLimitExceeded, pair.Key);
+                    return false;
+                }
+
+                previousBalanceByCurrencyIdMap.Add(pair.Key, current);
+                nextBalanceByCurrencyIdMap.Add(pair.Key, next);
+                committedChanges.Add(new CurrencyBalanceChangedEvent(pair.Key, current, next));
             }
 
-            var committedChanges = new List<CurrencyBalanceChangedEvent>(merged.Count);
-            foreach (KeyValuePair<CurrencyId, int> pair in merged)
+            canCommit = () =>
             {
-                int previous = balances[pair.Key];
-                int current = previous + pair.Value;
-                balances[pair.Key] = current;
-                committedChanges.Add(new CurrencyBalanceChangedEvent(pair.Key, previous, current));
-            }
+                foreach (KeyValuePair<CurrencyId, int> pair in previousBalanceByCurrencyIdMap)
+                    if (balances[pair.Key] != pair.Value) return false;
+                return true;
+            };
+            commitState = () =>
+            {
+                foreach (KeyValuePair<CurrencyId, int> pair in nextBalanceByCurrencyIdMap)
+                    balances[pair.Key] = pair.Value;
+            };
+            publishNotifications = () =>
+            {
+                for (int index = 0; index < committedChanges.Count; index++)
+                    WSEventSystem.EventTrigger_Type(typeof(CurrencyBalanceChangedEvent), committedChanges[index]);
+            };
 
-            // 所有货币余额写入完成后统一广播，保证多货币交易不会暴露半提交状态。
-            for (int index = 0; index < committedChanges.Count; index++)
-                WSEventSystem.EventTrigger_Type(typeof(CurrencyBalanceChangedEvent), committedChanges[index]);
-
-            return new CurrencyOperationResult(CurrencyOperationStatus.Succeeded, CurrencyId.None);
+            result = new CurrencyOperationResult(CurrencyOperationStatus.Succeeded, CurrencyId.None);
+            return true;
         }
 
         #endregion

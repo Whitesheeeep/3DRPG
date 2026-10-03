@@ -113,38 +113,137 @@ namespace RPG.ItemSystem
         /// <returns>添加结果。</returns>
         public EquipmentBatchAddResult<ArtifactInstance> AddArtifacts(IReadOnlyList<ItemId> definitionIds)
         {
+            bool prepared = TryPrepareRewardAddition(
+                definitionIds,
+                out InventoryOperationStatus status,
+                out _,
+                out IReadOnlyList<ArtifactInstance> created,
+                out Func<bool> canCommit,
+                out Action commitState,
+                out Action publishNotifications);
+            if (!prepared)
+                return new EquipmentBatchAddResult<ArtifactInstance>(status, Array.Empty<ArtifactInstance>());
+            if (!canCommit()) throw new InvalidOperationException("[ArtifactInventoryManager] 奖励准备后圣遗物库存状态发生变化。");
+            commitState();
+            publishNotifications();
+            return new EquipmentBatchAddResult<ArtifactInstance>(InventoryOperationStatus.Succeeded, created);
+        }
+
+        /// <summary>为奖励系统准备圣遗物实例，不提前占用容量或记录发现状态。</summary>
+        /// <param name="definitionIds">圣遗物 Definition 标识。</param>
+        /// <param name="status">预检状态。</param>
+        /// <param name="failedDefinitionId">失败时关联的 Definition。</param>
+        /// <param name="created">成功时预先构造的待入库实例。</param>
+        /// <param name="canCommit">判断容量和获得序号快照是否仍有效。</param>
+        /// <param name="commitState">提交实例、发现、New 和红点自身值。</param>
+        /// <param name="publishNotifications">提交后发布实例事件。</param>
+        /// <returns>预检成功时返回 true。</returns>
+        internal bool TryPrepareRewardAddition(
+            IReadOnlyList<ItemId> definitionIds,
+            out InventoryOperationStatus status,
+            out ItemId failedDefinitionId,
+            out IReadOnlyList<ArtifactInstance> created,
+            out Func<bool> canCommit,
+            out Action commitState,
+            out Action publishNotifications)
+        {
+            failedDefinitionId = default;
+            created = Array.Empty<ArtifactInstance>();
+            canCommit = null;
+            commitState = null;
+            publishNotifications = null;
             if (definitionIds == null || definitionIds.Count == 0)
-                return new EquipmentBatchAddResult<ArtifactInstance>(InventoryOperationStatus.InvalidQuantity, Array.Empty<ArtifactInstance>());
+            {
+                status = InventoryOperationStatus.InvalidQuantity;
+                return false;
+            }
             if (definitionIds.Count > Capacity - Count)
-                return new EquipmentBatchAddResult<ArtifactInstance>(InventoryOperationStatus.CapacityExceeded, Array.Empty<ArtifactInstance>());
+            {
+                status = InventoryOperationStatus.CapacityExceeded;
+                failedDefinitionId = definitionIds[0];
+                return false;
+            }
 
             for (int index = 0; index < definitionIds.Count; index++)
             {
                 if (!definitionIds[index].IsValid || !TryGetDefinition(definitionIds[index], out ItemDefinition definition))
-                    return new EquipmentBatchAddResult<ArtifactInstance>(InventoryOperationStatus.UnknownDefinition, Array.Empty<ArtifactInstance>());
+                {
+                    status = InventoryOperationStatus.UnknownDefinition;
+                    failedDefinitionId = definitionIds[index];
+                    return false;
+                }
                 if (!(definition is ArtifactDefinition))
-                    return new EquipmentBatchAddResult<ArtifactInstance>(InventoryOperationStatus.DefinitionTypeMismatch, Array.Empty<ArtifactInstance>());
+                {
+                    status = InventoryOperationStatus.DefinitionTypeMismatch;
+                    failedDefinitionId = definitionIds[index];
+                    return false;
+                }
             }
 
-            var created = new List<ArtifactInstance>(definitionIds.Count);
+            long expectedSequence = NextAcquisitionSequence;
+            long nextSequence;
+            try { nextSequence = checked(expectedSequence + definitionIds.Count); }
+            catch (OverflowException)
+            {
+                status = InventoryOperationStatus.ArithmeticOverflow;
+                failedDefinitionId = definitionIds[0];
+                return false;
+            }
+
+            var pendingInstances = new List<ArtifactInstance>(definitionIds.Count);
             for (int index = 0; index < definitionIds.Count; index++)
             {
-                var instance = new ArtifactInstance(EquipmentInstanceId.Create(), definitionIds[index], 0, 0, false, TakeAcquisitionSequence());
-                instances.Add(instance.InstanceId, instance);
-                created.Add(instance);
+                var instance = new ArtifactInstance(
+                    EquipmentInstanceId.Create(), definitionIds[index], 0, 0, false, expectedSequence + index);
+                pendingInstances.Add(instance);
             }
 
-            // 先完成全部实例写入，再按 Definition 记录永久发现状态；同批次同名圣遗物只会产生一次当前 New。
-            for (int index = 0; index < created.Count; index++)
+            int expectedCount = Count;
+            if (!redDotSystem.HasNode(artifactNewRedDotKey))
             {
-                ItemId definitionId = created[index].DefinitionId;
-                if (itemDiscoveryManager.MarkDiscovered(definitionId)) MarkDefinitionNew(definitionId);
+                Debug.LogError(
+                    $"[ArtifactInventoryManager] 奖励提交缺少 New 红点配置，key={artifactNewRedDotKey.name}。");
+                throw new InvalidOperationException(
+                    $"[ArtifactInventoryManager] 圣遗物 New 红点未注册，key={artifactNewRedDotKey.name}。");
             }
+            canCommit = () => Count == expectedCount && Capacity - Count >= pendingInstances.Count &&
+                              NextAcquisitionSequence == expectedSequence &&
+                              !ContainsPreparedInstanceId(pendingInstances);
+            commitState = () =>
+            {
+                for (int index = 0; index < pendingInstances.Count; index++)
+                    instances.Add(pendingInstances[index].InstanceId, pendingInstances[index]);
+                SetNextAcquisitionSequence(nextSequence);
+                for (int index = 0; index < pendingInstances.Count; index++)
+                {
+                    ItemId definitionId = pendingInstances[index].DefinitionId;
+                    if (itemDiscoveryManager.MarkDiscovered(definitionId)) MarkDefinitionNew(definitionId);
+                }
+                RefreshNewRedDotCount();
+            };
+            publishNotifications = () =>
+            {
+                for (int index = 0; index < pendingInstances.Count; index++)
+                    PublishChange(EquipmentInstanceChangeType.Added, pendingInstances[index]);
+            };
 
-            RefreshNewRedDotCount();
+            created = pendingInstances.AsReadOnly();
+            status = InventoryOperationStatus.Succeeded;
+            return true;
+        }
 
-            for (int index = 0; index < created.Count; index++) PublishChange(EquipmentInstanceChangeType.Added, created[index]);
-            return new EquipmentBatchAddResult<ArtifactInstance>(InventoryOperationStatus.Succeeded, created);
+        /// <summary>确认待提交实例 ID 仍未被其他写入占用。</summary>
+        /// <param name="pendingInstances">待提交圣遗物实例。</param>
+        /// <returns>全部实例 ID 可用时返回 true。</returns>
+        private bool ContainsPreparedInstanceId(IReadOnlyList<ArtifactInstance> pendingInstances)
+        {
+            var instanceIdSet = new HashSet<EquipmentInstanceId>();
+            for (int index = 0; index < pendingInstances.Count; index++)
+            {
+                EquipmentInstanceId instanceId = pendingInstances[index].InstanceId;
+                if (instances.ContainsKey(instanceId) || !instanceIdSet.Add(instanceId)) return true;
+            }
+            return false;
         }
 
         /// <summary>移除一件未锁定圣遗物。</summary>

@@ -1,6 +1,6 @@
 using System;
 
-namespace RPG.TaskSystem
+namespace RPG.TaskSystemNS
 {
     #region Handler 接口
 

@@ -10,8 +10,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5c25020b74f0ea9449d697d6398ed3f5, type: 3}
-  m_Name: New 2
+  m_Name: Task_Side_Unread
   m_EditorClassIdentifier: 
-  segmentName: Task
-  parent: {fileID: 0}
-  siblingOrder: 2
+  segmentName: SideUnread
+  parent: {fileID: 11400000, guid: a5a1c0a2b3d44eab92f14b2b8d914101, type: 2}
+  siblingOrder: 1

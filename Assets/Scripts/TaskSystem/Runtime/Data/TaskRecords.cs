@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
 
-namespace RPG.TaskSystem
+namespace RPG.TaskSystemNS
 {
     #region 状态与进度
 
     /// <summary>
     /// 表示活动任务可以持久化的生命周期状态。
     /// </summary>
-    public enum TaskLifecycleState
+    public enum E_TaskLifecycleState
     {
         /// <summary>任务已接取，当前阶段仍有目标未完成。</summary>
         InProgress = 0,
@@ -17,7 +17,7 @@ namespace RPG.TaskSystem
     }
 
     /// <summary>
-    /// 保存当前阶段单个目标的整数进度。
+    /// 保存当前阶段单个目标的整数进度。一个 TaskRuntime 中的 Stage Runtime 与 record 一致
     /// </summary>
     public sealed class TaskObjectiveProgress
     {
@@ -100,7 +100,7 @@ namespace RPG.TaskSystem
     }
 
     /// <summary>
-    /// 表示玩家已接取任务的可存档状态数据，仅保存当前阶段进度。
+    /// 表示由单条 TaskRuntime 独占并可存档的玩家任务状态，仅保存当前阶段进度。
     /// </summary>
     public sealed class TaskRecord
     {
@@ -121,7 +121,7 @@ namespace RPG.TaskSystem
             }
 
             TaskId = definition.TaskId;
-            State = TaskLifecycleState.InProgress;
+            State = E_TaskLifecycleState.InProgress;
             ActivateStage(definition.Stages[0]);
         }
 
@@ -138,7 +138,7 @@ namespace RPG.TaskSystem
         /// <summary>
         /// 获取任务生命周期状态。
         /// </summary>
-        public TaskLifecycleState State { get; private set; }
+        public E_TaskLifecycleState State { get; private set; }
 
         /// <summary>
         /// 获取当前阶段目标进度。
@@ -211,10 +211,10 @@ namespace RPG.TaskSystem
         /// 清空旧阶段进度并初始化新阶段的目标集合。
         /// </summary>
         /// <param name="stage">要激活的阶段定义。</param>
-        internal void ActivateStage(TaskStageDefinition stage)
+        internal void ActivateStage(in TaskStageDefinition stage)
         {
             CurrentStageId = stage.StageId;
-            State = TaskLifecycleState.InProgress;
+            State = E_TaskLifecycleState.InProgress;
             objectiveProgressByIdMap.Clear();
             for (int index = 0; index < stage.Objectives.Count; index++)
             {
@@ -229,7 +229,7 @@ namespace RPG.TaskSystem
         /// 恢复经过快照校验的生命周期状态。
         /// </summary>
         /// <param name="state">存档中的状态。</param>
-        internal void SetState(TaskLifecycleState state)
+        internal void SetState(E_TaskLifecycleState state)
         {
             State = state;
         }

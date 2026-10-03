@@ -82,8 +82,11 @@ flowchart TD
 - 调用 Condition 和 Action。
 - 校验图结构、节点引用和命令序列化配置。
 - 发布对话已经发生的事实事件。
+- 会话资源清理、解除输入锁并清空当前会话引用后，通过 WSFrame `EventSystem.EventTrigger_Type` 发布 `DialogueEndedEvent`；现有本地 `Ended` 通知仍会在全局订阅者异常时执行。
 
 `DialogueSystem` 不把 UI、输入和业务 Manager 引用写入 `DialogueAsset`。
+
+`DialogueEndedEvent` 携带结束的 `DialogueSession`，可通过 `Session.Request.Asset` 读取本次实际对话图。外部玩法可以同时检查 `Status` 和资源引用消费完成事实；任务系统的 `TaskDialogueCompletedObjectiveRuntime` 只在所属阶段监听期间累计其配置的同一 `DialogueAsset`，不依赖 DialogueSystem 对任务系统的直接引用。
 
 ### 2.3 InteractionInteractor
 
@@ -765,6 +768,8 @@ Condition 展示计算采用 AND 短路；Condition 异常直接结束会话。�
 4. 清理本会话启动的语音和全身动画状态。
 5. 发布 `DialogueEndedEvent`。
 
+全局 `DialogueEndedEvent` 在前四项清理完成后发布。进入 EndNode 才是 `Completed`；错误或架构注销产生 `Failed`。任务的“完成指定对话资源”目标监听该事件，按 `DialogueAsset` 对象引用匹配并只累计 `Completed`，因此失败、不同对话图和接取前发生的历史对话不会推进任务。
+
 ## 13. 验收场景与后续扩展边界
 
 ### 13.1 验收场景
@@ -781,6 +786,7 @@ Condition 展示计算采用 AND 短路；Condition 异常直接结束会话。�
 - Action 命令异常会被 DialogueSystem 转换为 Failed。
 - SpeechNode 可以播放指定参与者的全身 AnimationClip。
 - 任意 EndNode 都以 Completed 正常结束会话；空命令或 Action 异常以 Failed 结束。
+- `DialogueEndedEvent` 在资源和输入锁清理后经 WSFrame `EventSystem` 发布；配置任务目标的同一 DialogueAsset 正常进入 EndNode 时推进一次，Failed 与其他资源不推进。
 - 对话期间两个通用 LooseGameplayTag 请求按 SessionId 对称生效和移除。
 - `State.Block.Movement` 阻止水平移动但保留重力；`State.Block.AbilityActivation` 在 `TryActivate` 中统一阻断新 Ability。
 - Completed、Failed 都会清理 UI、来源 Tag、语音和动画状态。

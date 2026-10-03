@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace RPG.TaskSystem
+namespace RPG.TaskSystemNS
 {
     /// <summary>
     /// 指示 Inspector 使用静态任务分类表绘制字符串 ID 下拉框。

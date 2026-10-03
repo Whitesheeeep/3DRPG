@@ -1,10 +1,10 @@
 using UnityEngine;
 using WS_Modules.ConfigInstaller;
 
-namespace RPG.TaskSystem
+namespace RPG.TaskSystemNS
 {
     /// <summary>
-    /// 将任务数据库配置注入纯 C# TaskManager 的 ConfigInstaller 叶节点。
+    /// 将任务数据库配置注入静态 TaskConfigManager 的 ConfigInstaller 叶节点。
     /// </summary>
     [CreateAssetMenu(
         fileName = "TaskDatabaseConfigProvider",
@@ -15,7 +15,7 @@ namespace RPG.TaskSystem
         [SerializeField] private TaskDatabase database;
 
         /// <summary>
-        /// 将配置资产静态注入 TaskManager；此步骤不会创建 TaskManager 单例，且必须发生在业务架构启动前。
+        /// 将配置资产注入 TaskConfigManager；配置校验必须在任务业务系统启动前完成。
         /// </summary>
         /// <exception cref="System.InvalidOperationException">未配置数据库资产时抛出。</exception>
         public override void Register()
@@ -25,7 +25,7 @@ namespace RPG.TaskSystem
                 throw new System.InvalidOperationException("TaskDatabaseConfigProvider 未配置 TaskDatabase。 ");
             }
 
-            TaskManager.Initialize(database);
+            TaskConfigManager.Initialize(database);
         }
     }
 }

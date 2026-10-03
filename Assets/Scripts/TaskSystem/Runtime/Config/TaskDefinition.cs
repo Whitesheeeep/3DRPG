@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
+using RPG.RewardSystemNS;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
-namespace RPG.TaskSystem
+namespace RPG.TaskSystemNS
 {
     #region 每任务配置资产
 
@@ -20,8 +21,7 @@ namespace RPG.TaskSystem
         [SerializeReference] private List<TaskConditionDefinition> unlockConditions =
             new List<TaskConditionDefinition>();
         [SerializeField] private List<TaskStageDefinition> stages = new List<TaskStageDefinition>();
-        [SerializeReference] private List<TaskRewardDefinition> rewards =
-            new List<TaskRewardDefinition>();
+        [SerializeReference] private List<RewardDefinition> rewards = new List<RewardDefinition>();
 
         /// <summary>
         /// 获取任务稳定标识。
@@ -56,7 +56,7 @@ namespace RPG.TaskSystem
         /// <summary>
         /// 获取任务奖励只读列表。
         /// </summary>
-        public IReadOnlyList<TaskRewardDefinition> Rewards => rewards;
+        public IReadOnlyList<RewardDefinition> Rewards => rewards;
 
         /// <summary>
         /// 尝试按稳定阶段 ID 查找阶段及其顺序位置。
@@ -83,14 +83,14 @@ namespace RPG.TaskSystem
         }
 
         /// <summary>
-        /// 校验任务资产及阶段、条件和首期货币奖励配置。
+        /// 校验任务资产及阶段、条件和通用奖励配置。
         /// </summary>
         /// <exception cref="ArgumentException">任务、阶段、条件或奖励配置非法时抛出。</exception>
         public void Validate()
         {
             unlockConditions ??= new List<TaskConditionDefinition>();
             stages ??= new List<TaskStageDefinition>();
-            rewards ??= new List<TaskRewardDefinition>();
+            rewards ??= new List<RewardDefinition>();
 
             if (!TaskIdentifierRules.IsValid(taskId))
             {
@@ -147,14 +147,14 @@ namespace RPG.TaskSystem
 
             for (int index = 0; index < rewards.Count; index++)
             {
-                if (!(rewards[index] is TaskCurrencyRewardDefinition currencyReward))
+                if (rewards[index] == null)
                 {
                     throw new ArgumentException(
-                        $"任务 {taskId} 包含未支持的奖励类型：{rewards[index]?.GetType().FullName ?? "null"}。",
+                        $"任务 {taskId} 包含空奖励定义，index={index}。",
                         nameof(rewards));
                 }
 
-                currencyReward.Validate();
+                rewards[index].Validate();
             }
         }
 
@@ -177,7 +177,7 @@ namespace RPG.TaskSystem
             string description,
             IEnumerable<TaskConditionDefinition> conditions,
             IEnumerable<TaskStageDefinition> taskStages,
-            IEnumerable<TaskRewardDefinition> taskRewards)
+            IEnumerable<RewardDefinition> taskRewards)
         {
             TaskDefinition definition = CreateInstance<TaskDefinition>();
             definition.hideFlags = HideFlags.DontSave;
@@ -192,8 +192,8 @@ namespace RPG.TaskSystem
                 ? new List<TaskStageDefinition>()
                 : new List<TaskStageDefinition>(taskStages);
             definition.rewards = taskRewards == null
-                ? new List<TaskRewardDefinition>()
-                : new List<TaskRewardDefinition>(taskRewards);
+                ? new List<RewardDefinition>()
+                : new List<RewardDefinition>(taskRewards);
             definition.Validate();
             return definition;
         }

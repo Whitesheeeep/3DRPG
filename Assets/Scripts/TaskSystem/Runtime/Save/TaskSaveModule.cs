@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using RPG.SaveSystem;
 
-namespace RPG.TaskSystem
+namespace RPG.TaskSystemNS
 {
     #region 任务存档快照
 
@@ -52,8 +52,8 @@ namespace RPG.TaskSystem
 
                 _ = new TaskId(record.TaskId);
                 if (record.ObjectiveProgress == null || record.ObjectiveProgress.Count == 0 ||
-                    (record.State != TaskLifecycleState.InProgress &&
-                     record.State != TaskLifecycleState.Claimable))
+                    (record.State != E_TaskLifecycleState.InProgress &&
+                     record.State != E_TaskLifecycleState.Claimable))
                 {
                     throw new InvalidOperationException("任务快照活动记录的状态或目标列表非法。");
                 }
@@ -107,7 +107,7 @@ namespace RPG.TaskSystem
         /// <summary>
         /// 活动任务生命周期状态。
         /// </summary>
-        public TaskLifecycleState State { get; set; }
+        public E_TaskLifecycleState State { get; set; }
 
         /// <summary>
         /// 目标进度列表。
@@ -141,7 +141,7 @@ namespace RPG.TaskSystem
     #endregion
 
     /// <summary>
-    /// 将 TaskManager 状态适配到 SaveSystem 的版本化模块契约。
+    /// 将 TaskSystem 状态适配到 SaveSystem 的版本化模块契约。
     /// </summary>
     public sealed class TaskSaveModule : SaveModule<TaskSaveSnapshot>
     {
@@ -154,33 +154,33 @@ namespace RPG.TaskSystem
 
         #region 依赖字段
 
-        // 依赖字段：任务事实仍由 TaskManager 持有，模块只负责转换快照。
-        private readonly TaskManager taskManager;
+        // 依赖字段：TaskSystem 持有任务实例及玩家任务事实，模块只负责版本化快照转换。
+        private readonly TaskSystem taskSystem;
 
         #endregion
 
         /// <summary>
         /// 创建任务存档模块。
         /// </summary>
-        /// <param name="taskManager">任务状态 Manager。</param>
-        /// <exception cref="ArgumentNullException">Manager 为空时抛出。</exception>
-        public TaskSaveModule(TaskManager taskManager)
+        /// <param name="taskSystem">任务状态系统。</param>
+        /// <exception cref="ArgumentNullException">System 为空时抛出。</exception>
+        public TaskSaveModule(TaskSystem taskSystem)
             : base(
                 StableModuleId,
                 2,
                 SaveMissingModulePolicy.Required)
         {
-            this.taskManager = taskManager ?? throw new ArgumentNullException(nameof(taskManager));
+            this.taskSystem = taskSystem ?? throw new ArgumentNullException(nameof(taskSystem));
         }
 
-        /// <summary>从任务 Manager 采集强类型任务状态快照。</summary>
+        /// <summary>从任务系统采集强类型任务状态快照。</summary>
         /// <returns>当前任务快照。</returns>
-        protected override TaskSaveSnapshot CaptureTypedSnapshot() => taskManager.CaptureSnapshot();
+        protected override TaskSaveSnapshot CaptureTypedSnapshot() => taskSystem.CaptureSnapshot();
 
-        /// <summary>将已校验的任务快照恢复到任务 Manager。</summary>
+        /// <summary>将已校验的任务快照恢复到任务系统。</summary>
         /// <param name="snapshot">已校验的当前版本快照。</param>
         protected override void RestoreTypedSnapshot(TaskSaveSnapshot snapshot) =>
-            taskManager.RestoreSnapshot(snapshot);
+            taskSystem.RestoreSnapshot(snapshot);
 
         /// <summary>
         /// 校验任务快照的结构约束，不改变运行时状态。

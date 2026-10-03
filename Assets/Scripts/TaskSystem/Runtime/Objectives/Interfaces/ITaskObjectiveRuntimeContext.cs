@@ -1,7 +1,7 @@
-namespace RPG.TaskSystem
+namespace RPG.TaskSystemNS
 {
     /// <summary>
-    /// 为目标 Handler 提供受限的任务进度修改入口。
+    /// 为目标 Handler 提供受限的进度访问；写入由拥有 Record 的 TaskRuntime 校验。
     /// </summary>
     public interface ITaskObjectiveRuntimeContext
     {
@@ -16,7 +16,7 @@ namespace RPG.TaskSystem
         ObjectiveId ObjectiveId { get; }
 
         /// <summary>
-        /// 获取所属阶段标识；切换阶段后旧回调会被忽略。
+        /// 获取所属阶段标识；原阶段实例失效后由 TaskRuntime 忽略迟到写入。
         /// </summary>
         TaskStageId StageId { get; }
 

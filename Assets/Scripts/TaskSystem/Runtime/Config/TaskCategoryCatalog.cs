@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace RPG.TaskSystem
+namespace RPG.TaskSystemNS
 {
     #region 分类选项
 

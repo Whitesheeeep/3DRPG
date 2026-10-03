@@ -1,4 +1,4 @@
-namespace RPG.TaskSystem
+namespace RPG.TaskSystemNS
 {
     /// <summary>
     /// 表示具体任务目标运行时的订阅生命周期。
