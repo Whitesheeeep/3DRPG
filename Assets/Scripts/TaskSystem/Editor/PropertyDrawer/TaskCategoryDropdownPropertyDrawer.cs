@@ -5,7 +5,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace RPG.TaskSystem.Editor
+namespace RPG.TaskSystemNS.Editor
 {
     /// <summary>
     /// 从静态任务分类表绘制选择框，并保留资产中已有的未知 ID 供显式修复。

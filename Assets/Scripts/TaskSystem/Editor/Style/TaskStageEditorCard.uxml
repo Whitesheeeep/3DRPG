@@ -1,0 +1,12 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
+    <ui:VisualElement class="task-editor-stage-card">
+        <ui:VisualElement class="task-editor-stage-actions">
+            <ui:Button name="MoveStageUpButton" text="↑" tooltip="阶段上移" />
+            <ui:Button name="MoveStageDownButton" text="↓" tooltip="阶段下移" />
+            <ui:Button name="RemoveStageButton" text="删除阶段" class="task-editor-danger-button" />
+        </ui:VisualElement>
+        <ui:Foldout name="StageFoldout" text="阶段" value="true">
+            <ui:VisualElement name="StageFields" />
+        </ui:Foldout>
+    </ui:VisualElement>
+</ui:UXML>

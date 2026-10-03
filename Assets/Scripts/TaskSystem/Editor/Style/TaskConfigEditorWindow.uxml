@@ -1,0 +1,61 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <Style src="project://database/Assets/Scripts/TaskSystem/Editor/Style/TaskConfigEditorWindow.uss?fileID=7433441132597879392&amp;guid=9f3a4b7c2d1e4a88b5c6d7e8f9012345&amp;type=3#TaskConfigEditorWindow" />
+    <ui:VisualElement name="TaskEditorRoot" class="task-editor-root">
+        <ui:VisualElement class="task-editor-toolbar">
+            <uie:ObjectField name="DatabaseField" label="TaskDatabase" class="task-editor-database-field" style="flex-shrink: 1;" />
+            <ui:Button name="CreateTaskButton" text="新建任务 ▾" />
+            <ui:Button name="DuplicateButton" text="复制" />
+            <ui:Button name="RemoveFromDatabaseButton" text="移出数据库" />
+            <ui:Button name="DeleteTaskButton" text="删除资产" />
+            <ui:Button name="ValidateButton" text="验证" />
+            <ui:Button name="RefreshButton" text="刷新" />
+        </ui:VisualElement>
+        <ui:VisualElement class="task-editor-folder-row">
+            <ui:VisualElement name="DefinitionFolderField" class="task-editor-folder-host" />
+        </ui:VisualElement>
+        <ui:VisualElement class="task-editor-id-source-row">
+            <uie:ObjectField name="TaskIdSourceDatabaseField" label="TaskId 候选数据库" class="task-editor-id-source-field" />
+        </ui:VisualElement>
+        <WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView name="MainSplitView" fixed-pane-index="0" fixed-pane-initial-dimension="340" orientation="Horizontal" class="task-editor-main-split">
+            <ui:VisualElement class="task-editor-sidebar">
+                <WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView name="LeftSplitView" fixed-pane-index="0" fixed-pane-initial-dimension="410" orientation="Vertical" class="task-editor-left-split">
+                    <ui:VisualElement class="task-editor-list-pane">
+                        <ui:VisualElement class="task-editor-filter-grid">
+                            <uie:ToolbarSearchField name="SearchField" label="搜索 TaskId、标题或资源名" />
+                            <ui:VisualElement class="task-editor-filter-row">
+                                <ui:DropdownField name="ScopeField" label="范围" style="flex-shrink: 1;" />
+                                <ui:DropdownField name="CategoryFilterField" label="分类" style="flex-shrink: 1;" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="task-editor-filter-row">
+                                <ui:DropdownField name="SortField" label="排序" style="flex-shrink: 1;" />
+                                <ui:DropdownField name="SortDirectionField" label="方向" style="flex-shrink: 1;" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <ui:ListView name="TaskList" class="task-editor-task-list" />
+                        <ui:Label name="ListStatusLabel" class="task-editor-list-status" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="task-editor-suffix-pane">
+                        <ui:Label text="TaskId 后缀" class="task-editor-pane-title" />
+                        <ui:VisualElement class="task-editor-suffix-options-card">
+                            <ui:DropdownField name="SuffixCategoryField" label="后缀分类" />
+                            <ui:ListView name="SuffixList" class="task-editor-suffix-list" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="task-editor-suffix-form-card">
+                            <ui:TextField name="SuffixIdField" label="后缀稳定文本" />
+                            <ui:TextField name="SuffixDisplayNameField" label="显示说明" />
+                            <ui:VisualElement class="task-editor-suffix-actions">
+                                <ui:Button name="SaveSuffixButton" text="新增 / 保存" />
+                                <ui:Button name="RemoveSuffixButton" text="删除所选" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView>
+            </ui:VisualElement>
+            <ui:VisualElement class="task-editor-details-pane">
+                <ui:Label name="EmptyDetailsLabel" text="从左侧列表选择任务，或先选择 TaskDatabase 创建任务。" class="task-editor-empty-details" />
+                <ui:ScrollView name="DetailsContainer" class="task-editor-details-scroll" />
+                <ui:Label name="DetailStatusLabel" class="task-editor-detail-status" />
+            </ui:VisualElement>
+        </WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView>
+    </ui:VisualElement>
+</ui:UXML>

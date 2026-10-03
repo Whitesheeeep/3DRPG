@@ -1,0 +1,10 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="True">
+    <ui:VisualElement name="TaskRow" class="task-editor-list-row">
+        <ui:Label name="TaskTitle" class="task-editor-row-title" />
+        <ui:VisualElement class="task-editor-row-metadata">
+            <ui:Label name="TaskCategory" class="task-editor-row-category" />
+            <ui:Label name="TaskId" class="task-editor-row-id" />
+            <ui:Label name="TaskDatabaseState" class="task-editor-row-state" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
