@@ -70,6 +70,8 @@ namespace RPG.Character
         public GameplayInputIntentArbiterManager InputIntentArbiterManager { get; private set; }
         /// <summary>获取当前角色管理器。</summary>
         public CharacterManager CharacterManager => characterManager;
+        /// <summary>获取队伍共用的角色根节点，作为镜头跟随位置和锁定构图基准。</summary>
+        public Transform CharacterRoot => characterRoot;
         /// <summary>获取当前缓存摄像机上的 Camera 组件，用于锁定候选屏幕排序。</summary>
         public Camera GameplayCamera => gameplayCamera;
         /// <summary>向 GAS 与 Locomotion 暴露同一个运动请求接口。</summary>

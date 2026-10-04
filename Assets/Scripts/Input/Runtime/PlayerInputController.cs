@@ -16,6 +16,7 @@ namespace RPG.PlayerInputSystem
         // 输入 Map 名称
         private const string PlayerActionMapName = "Player";
         private const string UiActionMapName = "UI";
+        private const string LookActionName = "Look";
 
         // Inspector 配置字段
         [SerializeField, LabelText("Input Actions Asset")]
@@ -38,10 +39,13 @@ namespace RPG.PlayerInputSystem
 
         // 依赖映射
         private InputAction resolvedMoveAction;
+        private InputAction resolvedLookAction;
         private InputActionMap playerActionMap;
         private InputActionMap uiActionMap;
         private InputAction taskWindowAction;
         private bool gameplayInputBlocked;
+        private bool discardNextPointerLookDelta;
+        private bool applicationHasFocus = true;
 
         /// <inheritdoc />
         public IReadOnlyList<IReadOnlyPlayerInputRequest> Requests => requests;
@@ -74,6 +78,15 @@ namespace RPG.PlayerInputSystem
 
         /// <summary>获取当前帧采样的连续移动输入；该值保留模拟摇杆幅度。</summary>
         public Vector2 MoveInput { get; private set; }
+
+        /// <summary>获取当前帧连续镜头观察输入；Pointer 输入是像素增量，摇杆输入是归一化速率。</summary>
+        public Vector2 LookInput { get; private set; }
+
+        /// <summary>获取窗口协调器是否正在阻断 Player Map。</summary>
+        public bool IsGameplayInputBlocked => gameplayInputBlocked;
+
+        /// <summary>当前 Look 来源是否为需要按时间积分的摇杆或游戏手柄。</summary>
+        public bool LookInputIsRate => resolvedLookAction?.activeControl?.device is not Pointer;
         #endregion
 
         #region Unity 生命周期
@@ -117,6 +130,12 @@ namespace RPG.PlayerInputSystem
                 throw CreateConfigurationException(
                     $"[PlayerInputController] '{name}' 的 moveAction 必须是 Value/Vector2 Action。");
 
+            resolvedLookAction = playerActionMap.FindAction(LookActionName, false);
+            if (resolvedLookAction == null || resolvedLookAction.type != InputActionType.Value ||
+                !string.Equals(resolvedLookAction.expectedControlType, "Vector2", StringComparison.Ordinal))
+                throw CreateConfigurationException(
+                    $"[PlayerInputController] '{name}' 的 Player Map 必须包含 Value/Vector2 {LookActionName} Action。");
+
             BuildBindingLookup();
 
             // 单例注册和 DontDestroyOnLoad 由基类统一负责，放在所有输入校验之后。
@@ -154,6 +173,8 @@ namespace RPG.PlayerInputSystem
             if (gameplayInputBlocked)
             {
                 MoveInput = Vector2.zero;
+                LookInput = Vector2.zero;
+                discardNextPointerLookDelta = true;
                 return;
             }
 
@@ -162,6 +183,16 @@ namespace RPG.PlayerInputSystem
             MoveInput = value.sqrMagnitude <= moveDeadzone * moveDeadzone
                 ? Vector2.zero
                 : Vector2.ClampMagnitude(value, 1f);
+
+            LookInput = !applicationHasFocus || resolvedLookAction == null
+                ? Vector2.zero
+                : resolvedLookAction.ReadValue<Vector2>();
+            if (discardNextPointerLookDelta && resolvedLookAction?.activeControl?.device is Pointer)
+            {
+                // 锁输入或窗口恢复后的首个 Pointer delta 常包含光标跳转，只丢弃这一帧。
+                LookInput = Vector2.zero;
+                discardNextPointerLookDelta = false;
+            }
         }
 
         /// <summary>退订输入回调并停用 Player Map 与快捷键，清理可能残留的按住状态。</summary>
@@ -181,6 +212,8 @@ namespace RPG.PlayerInputSystem
             playerActionMap?.Disable();
             SetUiShortcutActionsEnabled(false);
             MoveInput = Vector2.zero;
+            LookInput = Vector2.zero;
+            discardNextPointerLookDelta = true;
 
             Clear();
             Debug.Log($"[PlayerInputController] 已停用输入监听并清空 Request。", this);
@@ -214,6 +247,8 @@ namespace RPG.PlayerInputSystem
                 // 先设置锁定状态再停用 Map，确保 Disable 引发的 canceled 回调不会补写 Release Request。
                 playerActionMap.Disable();
                 MoveInput = Vector2.zero;
+                LookInput = Vector2.zero;
+                discardNextPointerLookDelta = true;
                 Clear();
                 Debug.Log("[PlayerInputController] Player Map 已因窗口显示而停用。", this);
                 return;
@@ -223,6 +258,18 @@ namespace RPG.PlayerInputSystem
                 playerActionMap.Enable();
             Debug.Log(
                 $"[PlayerInputController] Player Map 已恢复，enabled={playerActionMap.enabled}。", this);
+        }
+
+        /// <summary>失焦时清空 Look；重新获得焦点后丢弃第一笔 Pointer 增量。</summary>
+        /// <param name="hasFocus">应用是否重新成为前台窗口。</param>
+        private void OnApplicationFocus(bool hasFocus)
+        {
+            if (applicationHasFocus == hasFocus) return;
+
+            applicationHasFocus = hasFocus;
+            LookInput = Vector2.zero;
+            discardNextPointerLookDelta = hasFocus;
+            Debug.Log($"[PlayerInputController] 应用焦点变化，hasFocus={hasFocus}，Look 输入已清理。", this);
         }
         #endregion
 

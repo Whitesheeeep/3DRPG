@@ -8,7 +8,7 @@ using WS_Modules.GAS.AbilitySystemComponent;
 namespace RPG.Game.UI.Controllers
 {
     /// <summary>连接全局锁定状态、Active 玩家摄像机和静态 HUD 锁定标记。</summary>
-    [DisallowMultipleComponent]
+    [DefaultExecutionOrder(200), DisallowMultipleComponent]
     [InfoBox("依赖 HUD Prefab 显式绑定的 HUDLockTargetView；通过 LockTargetSystem、PlayerController 单例读取运行时状态，并读取锁定 ASC Owner RootTransform 子层级中的 Renderer。")]
     public sealed class HUDLockTargetController : MonoBehaviour
     {

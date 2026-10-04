@@ -2,6 +2,7 @@
 using UnityEditor;
 using UnityEngine;
 using Cinemachine;
+using RPG.CameraSystem;
 
 namespace RPG.SkillSystem.Editor
 {
@@ -48,12 +49,25 @@ namespace RPG.SkillSystem.Editor
             }
         }
 
-        /// <summary>读取 Gameplay VCam Prefab 的唯一标准虚拟摄像机参考 FOV。</summary>
+        /// <summary>读取 Gameplay Camera Prefab 中自由 VCam 的标准参考 FOV，并兼容旧单 VCam 资产。</summary>
+        /// <param name="fieldOfView">成功读取时返回自由 VCam 的基础 FOV。</param>
+        /// <returns>Prefab 配置包含可用自由 VCam，或唯一旧版 VCam 时返回 true。</returns>
         public bool TryGetGameplayReferenceFov(out float fieldOfView)
         {
             fieldOfView = 0f;
             GameObject prefab = GameplayCameraPrefab;
             if (prefab == null) return false;
+
+            GameplayCameraController cameraController =
+                prefab.GetComponentInChildren<GameplayCameraController>(true);
+            if (cameraController != null)
+            {
+                CinemachineVirtualCamera freeCamera = cameraController.FreeLookVirtualCamera;
+                if (freeCamera == null) return false;
+                fieldOfView = freeCamera.m_Lens.FieldOfView;
+                return fieldOfView > 0f;
+            }
+
             CinemachineVirtualCamera[] cameras = prefab.GetComponentsInChildren<CinemachineVirtualCamera>(true);
             if (cameras.Length != 1) return false;
             fieldOfView = cameras[0].m_Lens.FieldOfView;

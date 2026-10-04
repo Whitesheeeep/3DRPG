@@ -100,7 +100,7 @@ namespace RPG.SkillSystem.Editor
             value.SetEnabled(hasReference);
             value.tooltip = hasReference
                 ? "Value 是 Gameplay VCam 参考 FOV 与 Scale 的换算结果，不会序列化。"
-                : "请在时间轴工具栏选择包含唯一 CinemachineVirtualCamera 的 Gameplay Prefab。";
+                : "请在时间轴工具栏选择配置了自由 VCam 的 Gameplay Camera Prefab，或仅含一个 Virtual Camera 的旧 Prefab。";
             value.SetValueWithoutNotify(hasReference ? referenceFov * scale.value : 0f);
 
             void SynchronizeFromScale()
