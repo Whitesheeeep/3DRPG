@@ -175,7 +175,7 @@ MonoBehaviour:
   clips:
   - id: aad4b3822063438d98b61646c4d171f8
     startFrame: 3
-    durationFrames: 2
+    durationFrames: 5
     sampleIntervalFrames: 1
     detectionId: 0
     markerKey: {fileID: 0}
@@ -183,29 +183,9 @@ MonoBehaviour:
     cueTags: []
     detectionData:
       rid: 2645455169077903392
-  - id: 0cedb05f6e1a4e52b4b0a375194065af
-    startFrame: 5
-    durationFrames: 2
-    sampleIntervalFrames: 1
-    detectionId: 1
-    markerKey: {fileID: 0}
-    followMode: 0
-    cueTags: []
-    detectionData:
-      rid: 2645455169077903405
-  - id: 1bab851ee66e46a9ae39f2d3bca229ae
-    startFrame: 7
-    durationFrames: 2
-    sampleIntervalFrames: 1
-    detectionId: 2
-    markerKey: {fileID: 0}
-    followMode: 0
-    cueTags: []
-    detectionData:
-      rid: 2645455169077903406
   - id: 9b0b95ae357846c586e2ddef1273c912
-    startFrame: 9
-    durationFrames: 2
+    startFrame: 8
+    durationFrames: 6
     sampleIntervalFrames: 1
     detectionId: 3
     markerKey: {fileID: 0}
@@ -213,39 +193,9 @@ MonoBehaviour:
     cueTags: []
     detectionData:
       rid: 2645455169077903407
-  - id: 42c6a2851bc6434480d2b2280af38a22
-    startFrame: 11
-    durationFrames: 2
-    sampleIntervalFrames: 1
-    detectionId: 4
-    markerKey: {fileID: 0}
-    followMode: 0
-    cueTags: []
-    detectionData:
-      rid: 2645455169077903408
-  - id: 2e6b28f334fc47649083e9c99ec363f2
-    startFrame: 13
-    durationFrames: 2
-    sampleIntervalFrames: 1
-    detectionId: 5
-    markerKey: {fileID: 0}
-    followMode: 0
-    cueTags: []
-    detectionData:
-      rid: 2645455169077903409
-  - id: 664d4068ed7148a39df81ceca38518c4
-    startFrame: 15
-    durationFrames: 2
-    sampleIntervalFrames: 1
-    detectionId: 6
-    markerKey: {fileID: 0}
-    followMode: 0
-    cueTags: []
-    detectionData:
-      rid: 2645455169077903410
   - id: 47e27b550def4220ad1ada788ec82b5b
-    startFrame: 17
-    durationFrames: 7
+    startFrame: 14
+    durationFrames: 10
     sampleIntervalFrames: 1
     detectionId: 7
     markerKey: {fileID: 0}
@@ -265,52 +215,7 @@ MonoBehaviour:
         outerRadius: 2
         angle: 360
         height: 1
-    - rid: 2645455169077903405
-      type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
-      data:
-        localPosition: {x: 0, y: 0.63261086, z: 0}
-        localEulerAngles: {x: 6.1190014, y: 0, z: 0}
-        innerRadius: 0.3
-        outerRadius: 2
-        angle: 360
-        height: 1
-    - rid: 2645455169077903406
-      type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
-      data:
-        localPosition: {x: 0, y: 0.63261086, z: 0}
-        localEulerAngles: {x: 6.1190014, y: 0, z: 0}
-        innerRadius: 0.3
-        outerRadius: 2
-        angle: 360
-        height: 1
     - rid: 2645455169077903407
-      type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
-      data:
-        localPosition: {x: 0, y: 0.63261086, z: 0}
-        localEulerAngles: {x: 6.1190014, y: 0, z: 0}
-        innerRadius: 0.3
-        outerRadius: 2
-        angle: 360
-        height: 1
-    - rid: 2645455169077903408
-      type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
-      data:
-        localPosition: {x: 0, y: 0.63261086, z: 0}
-        localEulerAngles: {x: 6.1190014, y: 0, z: 0}
-        innerRadius: 0.3
-        outerRadius: 2
-        angle: 360
-        height: 1
-    - rid: 2645455169077903409
-      type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
-      data:
-        localPosition: {x: 0, y: 0.63261086, z: 0}
-        localEulerAngles: {x: 6.1190014, y: 0, z: 0}
-        innerRadius: 0.3
-        outerRadius: 2
-        angle: 360
-        height: 1
-    - rid: 2645455169077903410
       type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
         localPosition: {x: 0, y: 0.63261086, z: 0}

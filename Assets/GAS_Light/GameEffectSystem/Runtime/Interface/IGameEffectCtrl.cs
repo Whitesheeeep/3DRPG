@@ -12,6 +12,8 @@ namespace WS_Modules.GAS.GameplayEffect
         event Action<GameEffectRuntime> EffectRemoved;
         /// <summary>一次 GE 计算成功并完成原子提交后发送一次。</summary>
         event Action<GameplayEffectApplicationResult> EffectExecuted;
+        /// <summary>非 Instant GE 成功加入或更新 Active Runtime 后发送一次。</summary>
+        event Action<GameplayEffectApplicationResult> EffectApplied;
 
         /// <summary>获取该 Controller 服务的目标 ASC。</summary>
         GameplayAbilitySystemComponent Owner { get; }

@@ -8,6 +8,8 @@ using RPG.Game.UI.Services;
 using RPG.Game.UI.Views.Bag;
 using RPG.Game.UI.WeaponDevelopment;
 using RPG.ItemSystem;
+using RPG.ItemSystem.Use;
+using WS_Modules.GAS.AbilitySystemComponent;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -18,8 +20,8 @@ using WS_Modules.UIModule;
 namespace RPG.Game.UI.Controllers
 {
     /// <summary>
-    /// 背包窗口根节点控制器，负责五类数据源、分类状态、虚拟网格和详情请求。
-    /// 它不轮询输入，也不直接修改武器库存。
+    /// 背包窗口根节点控制器，负责五类数据源、分类状态、虚拟网格、详情请求和食物使用协调。
+    /// 它不轮询输入；食物效果及消耗由独立服务执行。
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class BagWindowController : MonoBehaviour
@@ -31,6 +33,7 @@ namespace RPG.Game.UI.Controllers
         private WeaponInventoryManager weaponInventoryManager;
         private ArtifactInventoryManager artifactInventoryManager;
         private StackableInventoryManager stackableInventoryManager;
+        private FoodItemUseService foodItemUseService;
         private readonly Dictionary<ItemCategory, IBagCategoryDataSource> dataSourceByCategoryMap = new();
         // 每个分类按钮的对应回调，便于 Dispose 时注销。
         private readonly List<UnityAction> categoryButtonActions = new();
@@ -52,6 +55,7 @@ namespace RPG.Game.UI.Controllers
         private bool disposed;
         private bool windowShown;
         private bool atlasPreparationRunning;
+        private bool foodUseInProgress;
         private UniTaskCompletionSource atlasPreparationCompletionSource;
         #endregion
 
@@ -74,6 +78,7 @@ namespace RPG.Game.UI.Controllers
             weaponInventoryManager = architecture.GetManager<WeaponInventoryManager>();
             artifactInventoryManager = architecture.GetManager<ArtifactInventoryManager>();
             stackableInventoryManager = architecture.GetManager<StackableInventoryManager>();
+            foodItemUseService = new FoodItemUseService(stackableInventoryManager);
             spriteAtlasLeaseService = new WindowSpriteAtlasLeaseService(
                 data.DynamicAtlasAddresses,
                 data.AtlasReleaseDelaySeconds);
@@ -143,11 +148,14 @@ namespace RPG.Game.UI.Controllers
             data?.CloseButton?.onClick.RemoveListener(SubmitCloseRequest);
             data?.SortDirectionButton?.onClick.RemoveListener(ToggleSortDirection);
             data?.DetailsButton?.onClick.RemoveListener(SubmitDetailsRequest);
+            data?.FoodUseButton?.onClick.RemoveListener(SubmitFoodUseRequest);
+            Debug.Log("[BagWindowController] 已解绑食物使用按钮回调。", this);
             data?.SortDropdown?.onValueChanged.RemoveListener(HandleSortDropdownChanged);
             categoryButtonActions.Clear();
             weaponInventoryManager = null;
             artifactInventoryManager = null;
             stackableInventoryManager = null;
+            foodItemUseService = null;
             data?.GridView?.SetInteractable(false);
             data?.GridView?.Bind(Array.Empty<BagItemViewData>(), null);
             spriteAtlasLeaseService?.Dispose();
@@ -180,6 +188,7 @@ namespace RPG.Game.UI.Controllers
             bool wasShown = windowShown;
             windowShown = false;
             data.GridView.SetInteractable(false);
+            RefreshFoodUseButton();
             // 隐藏窗口时立即归还装备属性行，避免图集释放后池化行仍握有旧装备显示状态。
             data.DetailView.Clear();
             spriteAtlasLeaseService.ScheduleRelease();
@@ -256,6 +265,8 @@ namespace RPG.Game.UI.Controllers
             data.CloseButton?.onClick.AddListener(SubmitCloseRequest);
             data.SortDirectionButton?.onClick.AddListener(ToggleSortDirection);
             data.DetailsButton?.onClick.AddListener(SubmitDetailsRequest);
+            data.FoodUseButton?.onClick.AddListener(SubmitFoodUseRequest);
+            Debug.Log("[BagWindowController] 已绑定食物使用按钮回调。", this);
             if (data.SortDropdown != null)
             {
                 data.SortDropdown.ClearOptions();
@@ -470,6 +481,38 @@ namespace RPG.Game.UI.Controllers
             OpenEquipmentDevelopmentAsync(context).Forget(HandleAsyncException);
         }
 
+        /// <summary>将当前选中的食物应用到点击时的 Active 角色，并由服务在效果成功后消耗一份。</summary>
+        private void SubmitFoodUseRequest()
+        {
+            if (disposed || !windowShown || foodUseInProgress ||
+                stateModel.CurrentCategory != ItemCategory.Food ||
+                !stateModel.SelectedEntryKey.HasValue ||
+                !TryParseSelectedFoodId(stateModel.SelectedEntryKey.Value, out ItemId itemId))
+                return;
+
+            CharacterActor activeCharacter = PlayerController.Instance?.CharacterManager?.ActiveCharacter;
+            GameplayAbilitySystemComponent target = activeCharacter?.AbilitySystemComponent;
+            if (target == null || !target.IsInitialized)
+            {
+                Debug.LogWarning("[BagWindowController] 当前没有已初始化的 Active 角色 ASC，不能使用食物。", this);
+                RefreshFoodUseButton();
+                return;
+            }
+
+            // 先冻结点击时的 ItemId 和 ASC；食物 GE 列表由同步服务在应用前复制，库存事件不会改变本次目标。
+            foodUseInProgress = true;
+            RefreshFoodUseButton();
+            try
+            {
+                foodItemUseService.TryUseFood(itemId, target);
+            }
+            finally
+            {
+                foodUseInProgress = false;
+                RefreshFoodUseButton();
+            }
+        }
+
         /// <summary>直接打开统一装备培养窗口并传入当前实例上下文。</summary>
         /// <param name="context">目标装备实例上下文。</param>
         private async UniTask OpenEquipmentDevelopmentAsync(EquipmentDevelopmentOpenContext context)
@@ -493,11 +536,44 @@ namespace RPG.Game.UI.Controllers
             {
                 data.DetailView?.Clear();
                 if (data.DetailsButton != null) data.DetailsButton.interactable = false;
+                RefreshFoodUseButton();
                 return;
             }
 
             data.DetailView?.Bind(details);
             if (data.DetailsButton != null) data.DetailsButton.interactable = details.ShowDetailsAction;
+            RefreshFoodUseButton();
+        }
+
+        /// <summary>按当前分类、库存数量、Active ASC 和请求状态刷新食物按钮。</summary>
+        private void RefreshFoodUseButton()
+        {
+            if (data?.FoodUseButton == null || stateModel == null) return;
+
+            bool isFoodCategory = stateModel.CurrentCategory == ItemCategory.Food;
+            if (data.FoodUseButton.gameObject.activeSelf != isFoodCategory)
+            {
+                data.FoodUseButton.gameObject.SetActive(isFoodCategory);
+                Debug.Log($"[BagWindowController] 食物使用按钮显示状态已切换，visible={isFoodCategory}。", this);
+            }
+
+            bool hasSelectedFood = stateModel.SelectedEntryKey.HasValue &&
+                                   TryParseSelectedFoodId(stateModel.SelectedEntryKey.Value, out ItemId itemId) &&
+                                   stackableInventoryManager.GetQuantity(itemId) > 0;
+            GameplayAbilitySystemComponent target =
+                PlayerController.Instance?.CharacterManager?.ActiveCharacter?.AbilitySystemComponent;
+            data.FoodUseButton.interactable = isFoodCategory && windowShown && !foodUseInProgress &&
+                                              hasSelectedFood && target != null && target.IsInitialized;
+        }
+
+        /// <summary>解析选中的食物稳定标识，并拒绝来自其他分类或无效条目的选择。</summary>
+        /// <param name="entryKey">当前背包条目键。</param>
+        /// <param name="itemId">解析成功时返回食物 ItemId。</param>
+        /// <returns>选择属于有效食物条目时返回 true。</returns>
+        private static bool TryParseSelectedFoodId(BagEntryKey entryKey, out ItemId itemId)
+        {
+            itemId = default;
+            return entryKey.Category == ItemCategory.Food && ItemId.TryCreate(entryKey.Value, out itemId);
         }
         #endregion
 

@@ -28,6 +28,9 @@ namespace WS_Modules.GAS.GameplayEffect
         public event Action<GameplayEffectApplicationResult> EffectExecuted;
 
         /// <inheritdoc />
+        public event Action<GameplayEffectApplicationResult> EffectApplied;
+
+        /// <inheritdoc />
         public GameplayAbilitySystemComponent Owner { get; }
 
         /// <inheritdoc />
@@ -219,6 +222,8 @@ namespace WS_Modules.GAS.GameplayEffect
                 PublishCues(data, GameplayCueEventType.Execute, spec.Source, runtime, null, spec, result);
                 EffectExecuted?.Invoke(result);
             }
+            // 应用事件覆盖所有持续 GE，包括等待首次周期结算的 Runtime。
+            EffectApplied?.Invoke(result);
             return true;
         }
 
@@ -261,6 +266,8 @@ namespace WS_Modules.GAS.GameplayEffect
                 PublishCues(data, GameplayCueEventType.Execute, spec.Source, existing, null, spec, result);
                 EffectExecuted?.Invoke(result);
             }
+            // 重应用仍是同一 Runtime；订阅方可据此更新表现而无需重复创建条目。
+            EffectApplied?.Invoke(result);
             return true;
         }
 

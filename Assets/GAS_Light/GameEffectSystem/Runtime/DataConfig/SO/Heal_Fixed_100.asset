@@ -13,18 +13,20 @@ MonoBehaviour:
   m_Name: Heal_Fixed_100
   m_EditorClassIdentifier: 
   description: "\u6062\u590D 100 \u70B9\u8840"
-  durationType: 0
-  duration: 0
+  durationType: 1
+  duration: 100
   period: 0
   executePeriodicOnApplication: 0
   targetTagQuery:
     allTags: []
     anyTags: []
     banedTags: []
-  grantedTags: []
+  grantedTags:
+  - id: 191
   cueTags: []
   modifiers:
   - rid: 2645455014859374593
+  executions: []
   validationSets:
   - {fileID: 11400000, guid: fa050d1171257b24bbba13162066da88, type: 2}
   curveBakeXAxisLabel: Level / X
@@ -47,9 +49,9 @@ MonoBehaviour:
       type: {class: FixedGameplayEffectModifier, ns: WS_Modules.GAS.GameplayEffect, asm: Assembly-CSharp}
       data:
         attribute:
-          id: 0
-          name: Health
-          displayName: "\u5F53\u524D\u751F\u547D\u503C"
+          id: 2
+          name: Armor
+          displayName: "\u9632\u5FA1\u529B"
         type: 0
         priority: 0
         magnitude: 100
