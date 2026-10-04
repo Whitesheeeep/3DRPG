@@ -5,6 +5,7 @@ using RPG.Character.Animation;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
+using WS_Modules.GAS.AttributeSystem;
 using WS_Modules.GAS.GameplayAbilitySystem;
 
 namespace RPG.NPC
@@ -12,12 +13,14 @@ namespace RPG.NPC
     /// <summary>独立驱动 NPC 的 ASC、Boss 移动状态与 CharacterController 位移结算。</summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CharacterController), typeof(NPCActor))]
-    [InfoBox("依赖同节点 CharacterController 与 NPCActor；NPCActor 提供 ASC、Animator、SkillRuntimeHost 和挂点，NPCConfig 提供初始 AttributeSet、技能和 Idle/Move 动画。")]
+    [InfoBox("依赖同节点 CharacterController 与 NPCActor；NPCActor 提供 ASC、Animator、SkillRuntimeHost 和挂点，NPCConfig 提供等级成长、属性集、资源规则、技能和 Idle/Move 动画。生成等级必须位于 GrowthProfile 的烘焙范围。")]
     public sealed class NPCController : MonoBehaviour
     {
         #region 配置与依赖字段
 
+        // 配置与同节点控制依赖
         [SerializeField, Required] private NPCConfig config;
+        [SerializeField, MinValue(1), LabelText("生成等级")] private int generationLevel = 1;
         [SerializeField] private CharacterController characterController;
         [SerializeField] private NPCActor actor;
         [SerializeField] private MotionDriver motionDriver = new();
@@ -27,6 +30,7 @@ namespace RPG.NPC
 
         #region 运行时依赖
 
+        // ASC、Action 注册与初始化状态由本组件在 Awake/Start 生命周期中建立和释放。
         private GameplayAbilitySystemComponent abilitySystemComponent;
         private NPCActionArbiter actionArbiter;
         private bool initialized;
@@ -41,6 +45,9 @@ namespace RPG.NPC
 
         /// <summary>获取该 NPC 初始化时使用的 NPCConfig。</summary>
         public NPCConfig Config => config;
+
+        /// <summary>获取该 NPC 实例在生成时选定的等级。</summary>
+        public int Level => generationLevel;
 
         /// <summary>获取驱动所有 NPC 能力和移动状态的 MotionDriver。</summary>
         public IMotionDriver MotionDriver => motionDriver;
@@ -74,8 +81,13 @@ namespace RPG.NPC
             if (actor == null)
                 actor = GetComponent<NPCActor>();
             if (characterController == null || actor == null)
+            {
+                Debug.LogError(
+                    $"[NPCController] '{name}' 缺少同节点 CharacterController 或 NPCActor，无法建立运行时依赖。",
+                    this);
                 throw new InvalidOperationException(
-                    $"NPCController '{name}' 必须与 CharacterController 和 NPCActor 挂在同一 GameObject。 ");
+                    $"NPCController '{name}' 必须与 CharacterController 和 NPCActor 挂在同一 GameObject。");
+            }
 
             motionDriver.Initialize(characterController);
             actionArbiter = new NPCActionArbiter(this);
@@ -154,20 +166,45 @@ namespace RPG.NPC
         }
 
         // 配置初始化
-        /// <summary>校验 NPCConfig 并按固定顺序初始化 ASC、Granted Ability 与 Boss Locomotion。</summary>
+        /// <summary>校验等级烘焙输入，依序初始化 ASC 属性、Resource、Ability 与 Locomotion。</summary>
         private void InitializeRuntime()
         {
             if (initialized)
                 return;
             if (config == null)
-                throw new InvalidOperationException($"NPCController '{name}' 未配置 NPCConfig。");
+                throw CreateInitializationFailure("未配置 NPCConfig。");
 
-            config.Validate();
+            Debug.Log($"[NPCController] 开始初始化 NPC '{name}'，level={generationLevel}。", this);
+            try
+            {
+                config.Validate();
+            }
+            catch (InvalidOperationException exception)
+            {
+                throw CreateInitializationFailure(
+                    $"NPCConfig '{config.name}' 校验失败：{exception.Message}",
+                    exception);
+            }
+            if (generationLevel < 1 || generationLevel > config.GrowthProfile.MaxLevel)
+                throw CreateInitializationFailure(
+                    $"生成等级 {generationLevel} 超出 NPCGrowthProfile 范围 1–{config.GrowthProfile.MaxLevel}。");
             if (!ReferenceEquals(abilitySystemComponent.Owner, actor))
-                throw new InvalidOperationException(
-                    $"NPCController '{name}' 的 ASC Owner 不是同节点 NPCActor。");
+                throw CreateInitializationFailure("ASC Owner 不是同节点 NPCActor。");
+
+            // 在导入 AttributeSet 前取出固定等级快照，避免初始化过程隐式读取曲线或等级状态。
+            IReadOnlyList<GameplayAttributeValue> initialBaseValues = config.ResolveBaseValues(generationLevel);
             if (!abilitySystemComponent.IsInitialized)
+            {
                 abilitySystemComponent.Initialize(config.InitialAttributeSets);
+                if (!abilitySystemComponent.IsInitialized)
+                    throw CreateInitializationFailure(
+                        $"无法导入 NPCConfig '{config.name}' 的 AttributeSet。");
+            }
+            if (!abilitySystemComponent.TryApplyBaseValues(initialBaseValues))
+                throw CreateInitializationFailure(
+                    $"无法将 level={generationLevel} 的全部烘焙 BaseValue 应用到 ASC。");
+
+            InitializeResourceCurrentValues();
 
             GrantConfiguredAbilities();
             locomotion.Initialize(this, config.IdleTransition, config.MoveTransition);
@@ -175,6 +212,65 @@ namespace RPG.NPC
             Debug.Log(
                 $"[NPCController] NPC '{name}' 初始化完成，AttributeSets={config.InitialAttributeSets.Count}，" +
                 $"Abilities={config.GrantedAbilities.Count}，State={locomotion.CurrentState}。",
+                this);
+        }
+
+        /// <summary>在等级 BaseValue 应用后按资源规则设置全部 Resource CurrentValue。</summary>
+        private void InitializeResourceCurrentValues()
+        {
+            IReadOnlyList<CharacterResourceRule> resourceRules = config.ResourceRules;
+            var initialResourceValues = new List<GameplayAttributeValue>();
+            for (int setIndex = 0; setIndex < config.InitialAttributeSets.Count; setIndex++)
+            {
+                IReadOnlyList<GameplayAttributeDefinition> definitions =
+                    config.InitialAttributeSets[setIndex].Definitions;
+                for (int definitionIndex = 0; definitionIndex < definitions.Count; definitionIndex++)
+                {
+                    GameplayAttributeDefinition definition = definitions[definitionIndex];
+                    if (definition.Type != GameplayAttributeType.Resource)
+                        continue;
+
+                    CharacterResourceRule rule = null;
+                    for (int ruleIndex = 0; ruleIndex < resourceRules.Count; ruleIndex++)
+                    {
+                        if (resourceRules[ruleIndex].ResourceAttribute.Id != definition.Attribute.Id)
+                            continue;
+                        rule = resourceRules[ruleIndex];
+                        break;
+                    }
+
+                    float currentValue;
+                    if (rule != null && rule.InitialValueMode == CharacterResourceInitialValueMode.FullCapacity)
+                    {
+                        if (!abilitySystemComponent.TryGetCurrentValue(rule.CapacityAttribute, out currentValue))
+                            throw CreateInitializationFailure(
+                                $"找不到资源 {definition.Attribute} 的容量 Attribute {rule.CapacityAttribute}。");
+                    }
+                    else
+                    {
+                        // 未配置专用规则或选用 DefinitionDefault 时，恢复资源定义自身的生成默认值。
+                        currentValue = definition.DefaultValue;
+                    }
+
+                    if (rule != null && rule.CapacityAttribute.IsValid)
+                    {
+                        if (!abilitySystemComponent.TryGetCurrentValue(rule.CapacityAttribute, out float capacity))
+                            throw CreateInitializationFailure(
+                                $"找不到资源 {definition.Attribute} 的容量 Attribute {rule.CapacityAttribute}。");
+                        currentValue = Mathf.Min(currentValue, capacity);
+                    }
+
+                    initialResourceValues.Add(new GameplayAttributeValue(definition.Attribute, currentValue));
+                }
+            }
+
+            if (initialResourceValues.Count > 0 &&
+                !abilitySystemComponent.TrySetResourceCurrentValues(initialResourceValues))
+                throw CreateInitializationFailure(
+                    $"无法提交 {initialResourceValues.Count} 个 Resource CurrentValue。");
+
+            Debug.Log(
+                $"[NPCController] NPC '{name}' 完成等级属性与资源初始化，level={generationLevel}, resources={initialResourceValues.Count}。",
                 this);
         }
 
@@ -200,18 +296,32 @@ namespace RPG.NPC
 
                 GameplayAbilityHandle handle = abilitySystemComponent.GiveAbility(ability, 1);
                 if (!handle.IsValid)
-                    throw new InvalidOperationException(
-                        $"NPCController '{name}' 无法授予配置 Ability '{ability.name}'。");
+                    throw CreateInitializationFailure(
+                        $"无法授予配置 Ability '{ability.name}'。");
                 Debug.Log(
                     $"[NPCController] NPC '{name}' 授予 Ability '{ability.Name}'，Handle={handle}。",
                     this);
             }
         }
 
+        /// <summary>记录初始化失败的 NPC 与输入上下文，并创建保留原始异常的契约错误。</summary>
+        /// <param name="reason">导致初始化无法继续的具体原因。</param>
+        /// <param name="innerException">底层配置校验异常；直接失败时为空。</param>
+        /// <returns>包含 NPC 上下文的初始化异常。</returns>
+        private InvalidOperationException CreateInitializationFailure(
+            string reason,
+            Exception innerException = null)
+        {
+            string message = $"NPCController '{name}' 初始化失败：{reason}";
+            Debug.LogError($"[NPCController] {message}", this);
+            return new InvalidOperationException(message, innerException);
+        }
+
         #endregion
 
         #region 测试与技能入口
 
+        // Locomotion 状态入口
         /// <summary>请求进入 Idle 或 Move 状态；被 FullBody 技能占据时拒绝切换。</summary>
         /// <param name="stateId">测试或后续 AI 选择的目标状态。</param>
         /// <returns>状态成功切换时返回 true。</returns>
@@ -237,6 +347,7 @@ namespace RPG.NPC
             return changed;
         }
 
+        // Ability 入口与取消
         /// <summary>激活 NPCConfig 已授予的指定 Ability。</summary>
         /// <param name="ability">NPCConfig 中的技能资产。</param>
         /// <param name="runtime">成功时返回新建 Ability Runtime。</param>
@@ -292,6 +403,7 @@ namespace RPG.NPC
                 this);
         }
 
+        // Animator 运动结算
         /// <summary>接收 Animator 阶段增量并按 GAS 提交结果执行一次运动结算。</summary>
         /// <param name="deltaPosition">Animator 本次根位移。</param>
         /// <param name="deltaRotation">Animator 本次根旋转。</param>

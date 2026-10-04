@@ -1,0 +1,69 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 92a3fd70e0644c4da339c935362b3d99, type: 3}
+  m_Name: GA_Boss_Odetta_Attack_4
+  m_EditorClassIdentifier: 
+  abilityId: 17
+  abilityName: "\u5965\u9EDB\u5854\u666E\u653B4"
+  icon: {fileID: 0}
+  description: GAS SkillRuntimeHost integration fixture using the existing 35-frame
+    SkillConfig.
+  abilityTags:
+  - id: 174
+  cancelTags:
+  - id: 164
+  blockAbilityTags: []
+  isCancelable: 1
+  activationTagQuery:
+    allTags: []
+    anyTags: []
+    banedTags:
+    - id: 161
+    - id: 162
+    - id: 163
+    - id: 154
+    - id: 156
+  costEffect: {fileID: 0}
+  cooldownEffect: {fileID: 0}
+  effects: []
+  cueTags:
+  - id: 187
+  damageMultiplier:
+    baseValue: 1
+    levelCurve:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  rootTask:
+    rid: 8492673064478303488
+  references:
+    version: 2
+    RefIds:
+    - rid: 8492673064478303488
+      type: {class: SequenceGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
+      data:
+        children:
+        - rid: 8492673064478303489
+        - rid: 8492673064478303490
+    - rid: 8492673064478303489
+      type: {class: AttackFacingGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
+      data:
+        scanRadius: 5
+        targetLayers:
+          serializedVersion: 2
+          m_Bits: 128
+    - rid: 8492673064478303490
+      type: {class: PlaySkillConfigGameplayAbilityTaskConfig, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        skillConfig: {fileID: 11400000, guid: 02b2d648431434a4c900124cfe71074e, type: 2}

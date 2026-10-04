@@ -27374,6 +27374,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   config: {fileID: 11400000, guid: 31c08d7aa0a65ab4c828c16f53337b3f, type: 2}
+  generationLevel: 1
   characterController: {fileID: 2720963218489226058}
   actor: {fileID: 1156644827643649595}
   motionDriver:
