@@ -166,6 +166,7 @@ MonoBehaviour:
     detectionId: 0
     markerKey: {fileID: 0}
     followMode: 1
+    cueTags: []
     detectionData:
       rid: 2645455169077903367
   references:
@@ -199,6 +200,7 @@ MonoBehaviour:
     detectionId: 0
     markerKey: {fileID: 0}
     followMode: 1
+    cueTags: []
     detectionData:
       rid: 2645455169077903373
   references:

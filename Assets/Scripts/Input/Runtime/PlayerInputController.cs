@@ -232,12 +232,20 @@ namespace RPG.PlayerInputSystem
         private void OnPerformed(InputAction.CallbackContext context)
         {
             ResolvedBinding binding = bindingsByAction[context.action];
-            if (gameplayInputBlocked && binding.DeliveryMode == PlayerInputDeliveryMode.BufferedRequest)
+            if (gameplayInputBlocked && context.action.actionMap == playerActionMap)
                 return;
 
             if (binding.DeliveryMode == PlayerInputDeliveryMode.ImmediateNotification)
             {
-                // UI 快捷键只转发一次物理 performed，不进入玩法 Request 生命周期。
+                // 滚轮正负由独立反向处理器区分；每个动作只接受自己负责的负向脉冲。
+                if (binding.InputType == E_PlayerInputType.LockPrevious ||
+                    binding.InputType == E_PlayerInputType.LockNext)
+                {
+                    if (context.ReadValue<float>() >= 0f)
+                        return;
+                }
+
+                // 即时输入不进入玩法 Request 生命周期；Player Map 锁定动作另受 UI 门禁控制。
                 Debug.Log($"[PlayerInputController] 即时转发 {binding.InputType}。", this);
                 ImmediateInputPerformed?.Invoke(binding.InputType);
                 return;
@@ -370,9 +378,13 @@ namespace RPG.PlayerInputSystem
                 if (!Enum.IsDefined(typeof(PlayerInputDeliveryMode), binding.DeliveryMode))
                     throw CreateConfigurationException(
                         $"[PlayerInputController] 输入绑定 {binding.InputType} 使用未知交付模式 {(int)binding.DeliveryMode}。");
-                InputActionMap expectedMap = binding.DeliveryMode == PlayerInputDeliveryMode.ImmediateNotification
-                    ? uiActionMap
-                    : playerActionMap;
+                bool isPlayerLockInput = binding.InputType == E_PlayerInputType.LockToggle ||
+                                         binding.InputType == E_PlayerInputType.LockPrevious ||
+                                         binding.InputType == E_PlayerInputType.LockNext;
+                InputActionMap expectedMap = binding.DeliveryMode == PlayerInputDeliveryMode.BufferedRequest ||
+                                             isPlayerLockInput
+                    ? playerActionMap
+                    : uiActionMap;
                 InputAction action = ResolveAndValidateActionReference(
                     binding.Action, expectedMap, $"输入绑定 {i} ({binding.InputType})");
                 ValidateDuration(binding.PressBufferDuration, $"bindings[{i}].PressBufferDuration");
@@ -412,13 +424,15 @@ namespace RPG.PlayerInputSystem
             return action;
         }
 
-        /// <summary>单独启停背包和取消快捷键，避免窗口期间影响 EventSystem 正在使用的 UI Map。</summary>
+        /// <summary>只启停 UI Map 的快捷键，避免窗口期间影响 EventSystem 使用的滚轮和鼠标输入。</summary>
         /// <param name="enabled">是否启用即时 UI 通知 Action。</param>
         private void SetUiShortcutActionsEnabled(bool enabled)
         {
             foreach (KeyValuePair<InputAction, ResolvedBinding> bindingEntry in bindingsByAction)
             {
                 if (bindingEntry.Value.DeliveryMode != PlayerInputDeliveryMode.ImmediateNotification)
+                    continue;
+                if (bindingEntry.Key.actionMap != uiActionMap)
                     continue;
 
                 if (enabled)

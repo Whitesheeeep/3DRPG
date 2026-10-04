@@ -24,6 +24,7 @@ MonoBehaviour:
     detectionId: 7
     markerKey: {fileID: 0}
     followMode: 1
+    cueTags: []
     detectionData:
       rid: 2645455169077903436
   references:
@@ -179,6 +180,7 @@ MonoBehaviour:
     detectionId: 0
     markerKey: {fileID: 0}
     followMode: 0
+    cueTags: []
     detectionData:
       rid: 2645455169077903392
   - id: 0cedb05f6e1a4e52b4b0a375194065af
@@ -188,6 +190,7 @@ MonoBehaviour:
     detectionId: 1
     markerKey: {fileID: 0}
     followMode: 0
+    cueTags: []
     detectionData:
       rid: 2645455169077903405
   - id: 1bab851ee66e46a9ae39f2d3bca229ae
@@ -197,6 +200,7 @@ MonoBehaviour:
     detectionId: 2
     markerKey: {fileID: 0}
     followMode: 0
+    cueTags: []
     detectionData:
       rid: 2645455169077903406
   - id: 9b0b95ae357846c586e2ddef1273c912
@@ -206,6 +210,7 @@ MonoBehaviour:
     detectionId: 3
     markerKey: {fileID: 0}
     followMode: 0
+    cueTags: []
     detectionData:
       rid: 2645455169077903407
   - id: 42c6a2851bc6434480d2b2280af38a22
@@ -215,6 +220,7 @@ MonoBehaviour:
     detectionId: 4
     markerKey: {fileID: 0}
     followMode: 0
+    cueTags: []
     detectionData:
       rid: 2645455169077903408
   - id: 2e6b28f334fc47649083e9c99ec363f2
@@ -224,6 +230,7 @@ MonoBehaviour:
     detectionId: 5
     markerKey: {fileID: 0}
     followMode: 0
+    cueTags: []
     detectionData:
       rid: 2645455169077903409
   - id: 664d4068ed7148a39df81ceca38518c4
@@ -233,6 +240,7 @@ MonoBehaviour:
     detectionId: 6
     markerKey: {fileID: 0}
     followMode: 0
+    cueTags: []
     detectionData:
       rid: 2645455169077903410
   - id: 47e27b550def4220ad1ada788ec82b5b
@@ -242,6 +250,7 @@ MonoBehaviour:
     detectionId: 7
     markerKey: {fileID: 0}
     followMode: 0
+    cueTags: []
     detectionData:
       rid: 2645455169077903425
   references:

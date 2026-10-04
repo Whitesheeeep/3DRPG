@@ -44,7 +44,7 @@ MonoBehaviour:
       m_RotationOrder: 4
   effects: []
   cueTags:
-  - id: 57
+  - id: 187
   damageMultiplier:
     baseValue: 1
     levelCurve:
@@ -59,6 +59,19 @@ MonoBehaviour:
     version: 2
     RefIds:
     - rid: 8492673064478303488
+      type: {class: SequenceGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
+      data:
+        children:
+        - rid: 8492673064478303489
+        - rid: 8492673064478303490
+    - rid: 8492673064478303489
+      type: {class: AttackFacingGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
+      data:
+        scanRadius: 3
+        targetLayers:
+          serializedVersion: 2
+          m_Bits: 128
+    - rid: 8492673064478303490
       type: {class: PlaySkillConfigGameplayAbilityTaskConfig, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
         skillConfig: {fileID: 11400000, guid: 1a22c28fe6b30d94c8a5dbbb06a734df, type: 2}

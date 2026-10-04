@@ -29,7 +29,13 @@ namespace RPG.PlayerInputSystem
         /// <summary>请求执行当前 UI 退出命令；该输入由 PlayerInputController 即时转发，不进入玩法缓冲。</summary>
         CancelWindow = 17,
         /// <summary>请求打开或关闭任务窗口；该输入由 UI Map 即时转发。</summary>
-        TaskWindow = 18
+        TaskWindow = 18,
+        /// <summary>切换当前锁定目标状态；该输入由 Player Map 即时转发。</summary>
+        LockToggle = 19,
+        /// <summary>向屏幕左侧切换锁定候选；由滚轮向下操作触发。</summary>
+        LockPrevious = 20,
+        /// <summary>向屏幕右侧切换锁定候选；由滚轮向上操作触发。</summary>
+        LockNext = 21
     }
 
     /// <summary>表示一次输入手势当前的物理阶段。</summary>

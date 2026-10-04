@@ -1623,6 +1623,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4b0799f21e062a46bc8ef0c1cb35599, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  localCueHandlers: []
+  references:
+    version: 2
+    RefIds: []
 --- !u!114 &116627714227793541
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1670,7 +1674,7 @@ MonoBehaviour:
   animationLayer: 1
   attackLayerMask:
     serializedVersion: 2
-    m_Bits: 55
+    m_Bits: 128
   triggerInteraction: 0
   drawAttackDetectionDebug: 1
   attackDetectionDebugDuration: 5
@@ -1686,12 +1690,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac71317f1bf754941a3931f9f072b399, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  config: {fileID: 11400000, guid: b25abd678e4be2b489491d72056e6411, type: 2}
   abilitySystemComponent: {fileID: 6761911549025505142}
   animator: {fileID: 6227145297061794045}
   markerProvider: {fileID: 116627714227793541}
   skillRuntimeHost: {fileID: 3371867524053529535}
   animationController: {fileID: 970769239237553936}
+  config: {fileID: 11400000, guid: b25abd678e4be2b489491d72056e6411, type: 2}
 --- !u!114 &8279487316754353969
 MonoBehaviour:
   m_ObjectHideFlags: 0

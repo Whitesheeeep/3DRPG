@@ -12,12 +12,9 @@ GameObject:
   - component: {fileID: 7316959808771529357}
   - component: {fileID: 3408626327944978715}
   - component: {fileID: 6089726963410338055}
-  - component: {fileID: 5783138430455601769}
-  - component: {fileID: 6236332136201973222}
-  - component: {fileID: 1232515278871343685}
   - component: {fileID: 4099463995280340719}
   - component: {fileID: 7100000000000000001}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Player
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -165,19 +162,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c52e445abbfb4846992e0b270e869e4d, type: 2}
   - {fileID: 11400000, guid: 45d15af516774018bcb13c849456095a, type: 2}
   - {fileID: 11400000, guid: c63acec59ce845e7afc4444b5723fb41, type: 2}
+  - {fileID: 11400000, guid: be30d7eb4361eda43b7783c405d06a31, type: 2}
+  - {fileID: 11400000, guid: 60af83b1acf922e4781446bc7a1d1b53, type: 2}
+  - {fileID: 11400000, guid: 4c8066cd14bab4d48afc00e70f177780, type: 2}
   moveAction: {fileID: -6439902812146969066, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
   moveDeadzone: 0.1
---- !u!114 &7100000000000000001
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5482557129118236183}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe6f29de2f174726b82de06d19265c7b, type: 3}
-  inputController: {fileID: 3408626327944978715}
 --- !u!114 &6089726963410338055
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -231,49 +220,10 @@ MonoBehaviour:
         m_Bits: 51
       queryTriggerInteraction: 1
   cameraTransform: {fileID: 0}
---- !u!114 &5783138430455601769
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5482557129118236183}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 539658e4227f3b547b101e5f77f53cae, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  playerController: {fileID: 6089726963410338055}
-  targetCharacterId:
-    value: 
-  targetSlotIndex: 0
---- !u!114 &6236332136201973222
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5482557129118236183}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2c79d588c2ec895428dc817b3acfb27a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  playerController: {fileID: 6089726963410338055}
---- !u!114 &1232515278871343685
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5482557129118236183}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: eaa79acb2c42c4c4c821af9a6ddb5159, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  playerController: {fileID: 6089726963410338055}
-  targetState: 1
+  lockTargetRadius: 15
+  lockTargetLayers:
+    serializedVersion: 2
+    m_Bits: 128
 --- !u!114 &4099463995280340719
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -288,6 +238,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   speaker: {fileID: 11400000, guid: 032bd966221ad854ab394fca1df0980c, type: 2}
   voiceAudioSource: {fileID: 7316959808771529357}
+--- !u!114 &7100000000000000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5482557129118236183}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe6f29de2f174726b82de06d19265c7b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  inputController: {fileID: 3408626327944978715}
 --- !u!1 &8060642726113311870
 GameObject:
   m_ObjectHideFlags: 0
@@ -301,7 +264,7 @@ GameObject:
   - component: {fileID: 6495212430660579562}
   - component: {fileID: 8419130012551366636}
   - component: {fileID: 1484645441517636016}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: CharacterRoot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -381,7 +344,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   detectionShape:
     type: 1
-    canDrawGizmos: 1
+    canDrawGizmos: 0
     localPosition: {x: 0, y: 0.78326863, z: 1.027071}
     localEulerAngles: {x: 0, y: 0, z: 0}
     size: {x: 3.9456964, y: 1, z: 2.042484}
@@ -414,5 +377,5 @@ MonoBehaviour:
   occlusionMask:
     serializedVersion: 2
     m_Bits: 55
-  detector: {fileID: 0}
   startDetectOnEnable: 1
+  detector: {fileID: 8419130012551366636}

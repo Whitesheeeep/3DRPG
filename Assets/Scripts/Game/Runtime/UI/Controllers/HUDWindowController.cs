@@ -25,7 +25,7 @@ namespace RPG.Game.UI.Controllers
 {
     /// <summary>把 HUD 展示与当前队伍各角色的 ASC 属性及切换生命周期连接起来。</summary>
     [DisallowMultipleComponent]
-    [InfoBox("依赖 HUD 根节点的 HUDWindowDataComponent 与 HUDTaskController、Prefab 内静态血量和技能格 View，以及 PlayerController.Instance。TaskButton 红点由 Prefab 中 RedDotUGUIBadge 直接显示；HUDTaskController 在显示期间读取追踪任务并投影可选目标。")]
+    [InfoBox("依赖 HUD 根节点的 HUDWindowDataComponent、HUDTaskController、HUDLockTargetController，Prefab 内静态血量、技能格和锁定标记 View，以及 PlayerController.Instance。TaskButton 红点由 Prefab 中 RedDotUGUIBadge 直接显示。")]
     public sealed class HUDWindowController : MonoBehaviour
     {
         #region 配置与依赖字段
@@ -34,6 +34,7 @@ namespace RPG.Game.UI.Controllers
         [SerializeField, Required] private HUDHealthView healthView;
         [SerializeField, Required] private HUDSkillSlotView[] skillSlotViews = new HUDSkillSlotView[4];
         [SerializeField, Required] private HUDTaskController taskController;
+        [SerializeField, Required] private HUDLockTargetController lockTargetController;
         private HUDWindowDataComponent windowData;
         private PlayerController playerController;
         private CharacterManager characterManager;
@@ -82,9 +83,12 @@ namespace RPG.Game.UI.Controllers
             ValidateSkillSlotViews();
             if (taskController == null)
                 throw new InvalidOperationException("[HUDWindowController] HUDWindow Prefab 未绑定 HUDTaskController。");
+            if (lockTargetController == null)
+                throw new InvalidOperationException("[HUDWindowController] HUDWindow Prefab 未绑定 HUDLockTargetController。");
             healthView.Clear();
             ClearSkillSlots();
             taskController.Initialize();
+            lockTargetController.Initialize();
             characterButton = windowData.DocumentUIPanelDocumentUIPanel.CharacterButton;
             characterButton.onClick.AddListener(HandleCharacterButtonClicked);
             windowData.DocumentUIPanelDocumentUIPanel.TaskButton.onClick.AddListener(HandleTaskButtonClicked);
@@ -98,6 +102,7 @@ namespace RPG.Game.UI.Controllers
         {
             if (!initialized || disposed) return;
             taskController.OnWindowShown();
+            lockTargetController.HandleWindowShown();
             TryBindRuntimeSources();
             if (characterManager != null && characterManager.IsReady)
             {
@@ -111,6 +116,7 @@ namespace RPG.Game.UI.Controllers
         public void HandleWindowHidden()
         {
             taskController?.OnWindowHidden();
+            lockTargetController?.HandleWindowHidden();
         }
 
         /// <summary>向 HUD 任务控制器设置测试或玩法提供的导航目标。</summary>
@@ -140,6 +146,7 @@ namespace RPG.Game.UI.Controllers
             if (disposed) return;
             disposed = true;
             taskController?.Dispose();
+            lockTargetController?.Dispose();
             if (characterManager != null)
             {
                 characterManager.Initialized -= HandleCharacterManagerInitialized;
@@ -163,6 +170,7 @@ namespace RPG.Game.UI.Controllers
             partyManager = null;
             playerController = null;
             taskController = null;
+            lockTargetController = null;
             WSLog.Log("[HUDWindowController] HUD 血量绑定与图集租约已释放。");
         }
 

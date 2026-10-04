@@ -3,6 +3,7 @@ using System.Collections;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using RPG.Character.State;
+using RPG.Character.Combat;
 using RPG.DialogueSystemModule;
 using RPG.PlayerInputSystem;
 using Sirenix.OdinInspector;
@@ -19,7 +20,7 @@ namespace RPG.Character
     /// <summary>稳定编排玩家输入、当前角色能力、Locomotion 与最终运动结算。</summary>
     [DefaultExecutionOrder(-800), DisallowMultipleComponent]
     [InfoBox(
-        "依赖 Player 上的 PlayerInputController、DialogueParticipant，以及 CharacterRoot 上的 CharacterManager 和唯一 CharacterController；cameraTransform 可在 Inspector 指定，未绑定时低频查找 MainCamera。")]
+        "依赖 Player 上的 PlayerInputController、DialogueParticipant，以及 CharacterRoot 上的 CharacterManager 和唯一 CharacterController；cameraTransform 可在 Inspector 指定，未绑定时低频查找 MainCamera；MainCamera 需要包含 Camera 组件。")]
     public sealed class PlayerController : SingletonMonoBase<PlayerController>, ILooseGameplayTagEventTarget
     {
         #region 配置与运行时状态
@@ -40,6 +41,10 @@ namespace RPG.Character
         private CharacterEnvironmentDetector environmentDetector = new();
         // 缓存已绑定的 MainCamera；引用暂缺或被销毁时暂停移动输入并低频恢复。
         [SerializeField] private Transform cameraTransform;
+        [SerializeField, MinValue(1f)] private float lockTargetRadius = 15f;
+        [SerializeField] private LayerMask lockTargetLayers = 1 << 7;
+        private Camera gameplayCamera;
+        private LockTargetSystem lockTargetSystem;
         private LooseGameplayTagEventBridge looseGameplayTagEventBridge;
         private Coroutine frameIntentCleanupCoroutine;
         private Coroutine cameraResolveCoroutine;
@@ -65,6 +70,8 @@ namespace RPG.Character
         public GameplayInputIntentArbiterManager InputIntentArbiterManager { get; private set; }
         /// <summary>获取当前角色管理器。</summary>
         public CharacterManager CharacterManager => characterManager;
+        /// <summary>获取当前缓存摄像机上的 Camera 组件，用于锁定候选屏幕排序。</summary>
+        public Camera GameplayCamera => gameplayCamera;
         /// <summary>向 GAS 与 Locomotion 暴露同一个运动请求接口。</summary>
         public IMotionDriver MotionDriver => motionDriver;
         /// <inheritdoc />
@@ -97,6 +104,15 @@ namespace RPG.Character
                 characterRoot == null)
                 throw new InvalidOperationException(
                     $"PlayerController '{name}' 缺少输入、CharacterRoot、CharacterManager 或 CharacterController。");
+            if (lockTargetRadius <= 0f || float.IsNaN(lockTargetRadius) || float.IsInfinity(lockTargetRadius) ||
+                lockTargetLayers.value == 0)
+                throw new InvalidOperationException(
+                    $"[PlayerController] '{name}' 的锁定半径必须为有限正数，且 Enemy LayerMask 不能为空。");
+            if (cameraTransform != null)
+                gameplayCamera = cameraTransform.GetComponent<Camera>();
+            if (cameraTransform != null && gameplayCamera == null)
+                throw new InvalidOperationException(
+                    $"[PlayerController] '{name}' 的 cameraTransform 必须绑定带 Camera 组件的 MainCamera。");
             characterManager.InitializationFailed += OnCharacterInitializationFailed;
 
             // MotionDriver 只绑定共享 CharacterController；Tag 来源稍后随 ActiveCharacter 注入。
@@ -184,6 +200,7 @@ namespace RPG.Character
         {
             if (Instance != this) return;
 
+            inputController.ImmediateInputPerformed += OnImmediateInputPerformed;
             looseGameplayTagEventBridge?.Enable();
             if (cameraTransform == null && !ResolveMainCameraTransform("OnEnable"))
                 BeginMainCameraResolution();
@@ -202,6 +219,8 @@ namespace RPG.Character
         {
             if (Instance != this) return;
 
+            if (inputController != null)
+                inputController.ImmediateInputPerformed -= OnImmediateInputPerformed;
             looseGameplayTagEventBridge?.Disable();
             if (cameraResolveCoroutine != null) StopCoroutine(cameraResolveCoroutine);
             cameraResolveCoroutine = null;
@@ -219,6 +238,8 @@ namespace RPG.Character
         /// <summary>释放 Player 事件资源并由基类注销静态单例引用。</summary>
         protected override void OnDestroy()
         {
+            if (Instance == this)
+                lockTargetSystem?.ClearLockedTarget(E_LockTargetChangeReason.PlayerDestroyed);
             if (characterManager != null) characterManager.ActiveCharacterChanged -= OnActiveCharacterChanged;
             if (characterManager != null) characterManager.InitializationFailed -= OnCharacterInitializationFailed;
             initializationCancellationSource?.Cancel();
@@ -264,6 +285,8 @@ namespace RPG.Character
                     characterManager.ProcessSwitchInputRequests(inputController);
 
                 // 切换后由 Manager 重新读取 ActiveCharacter，确保同帧技能和 Locomotion 使用新角色。
+                lockTargetSystem = LockTargetSystem.Instance;
+                lockTargetSystem.ValidateTarget(characterManager.ActiveCharacter, lockTargetRadius);
                 characterManager.AdvanceActiveFrame(inputController, Time.deltaTime);
 
                 // HitStop 生效后丢弃本帧动作位移提交；缓冲输入仍由原输入系统按真实时间管理。
@@ -356,6 +379,7 @@ namespace RPG.Character
             if (mainCamera == null)
             {
                 cameraTransform = null;
+                gameplayCamera = null;
                 if (!hasLoggedMissingMainCamera)
                 {
                     Debug.LogWarning($"[PlayerController] {reason} 时未找到 MainCamera，移动输入暂时停用。", this);
@@ -367,6 +391,7 @@ namespace RPG.Character
             Transform resolvedTransform = mainCamera.transform;
             bool changed = cameraTransform != resolvedTransform;
             cameraTransform = resolvedTransform;
+            gameplayCamera = mainCamera;
             hasLoggedMissingMainCamera = false;
             if (changed)
             {
@@ -394,6 +419,38 @@ namespace RPG.Character
                 if (ResolveMainCameraTransform("低频恢复检查")) break;
             }
             cameraResolveCoroutine = null;
+        }
+
+        #endregion
+
+        #region 锁定输入回调
+
+        /// <summary>将 Player Map 即时锁定输入交给全局目标系统处理。</summary>
+        /// <param name="inputType">触发的锁定或滚轮输入。</param>
+        private void OnImmediateInputPerformed(E_PlayerInputType inputType)
+        {
+            if (!isActiveAndEnabled || characterManager == null || !characterManager.IsReady ||
+                cameraTransform == null)
+                return;
+
+            CharacterActor activeCharacter = characterManager.ActiveCharacter;
+            if (activeCharacter == null)
+                return;
+
+            lockTargetSystem ??= LockTargetSystem.Instance;
+            Camera gameplayCamera = GameplayCamera;
+            switch (inputType)
+            {
+                case E_PlayerInputType.LockToggle:
+                    lockTargetSystem.ToggleLock(activeCharacter, gameplayCamera, lockTargetRadius, lockTargetLayers);
+                    break;
+                case E_PlayerInputType.LockPrevious:
+                    lockTargetSystem.SwitchTarget(activeCharacter, gameplayCamera, -1, lockTargetRadius, lockTargetLayers);
+                    break;
+                case E_PlayerInputType.LockNext:
+                    lockTargetSystem.SwitchTarget(activeCharacter, gameplayCamera, 1, lockTargetRadius, lockTargetLayers);
+                    break;
+            }
         }
 
         #endregion

@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca76c19e8f7c66b4ca40df5b5ff980ba, type: 3}
+  m_Name: LockToggle
+  m_EditorClassIdentifier: 
+  action: {fileID: 3412263310572683572}
+  inputType: 19
+  pressBufferDuration: 0.2
+  releaseBufferDuration: 0.1
+  clickMaxHeldDuration: 0.2
+  clickBufferDuration: 0.2
+  deliveryMode: 1
+--- !u!114 &3412263310572683572
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fc1515ab76e54f068e2f2207940fab32, type: 3}
+  m_Name: LockToggleActionReference
+  m_EditorClassIdentifier: 
+  m_Asset: {fileID: -944628639613478452, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+  m_ActionId: 9421b0bf-09d5-4e70-a6c5-4f6861161291

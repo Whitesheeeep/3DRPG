@@ -362,3 +362,8 @@ Held 是物理状态的持续变化，不是第二次输入。Pressed 转 Held �
 ### 禁用组件时会发生什么？
 
 `PlayerInputController` 会退订并停用 Action，同时清空全部 Request。`PlayerController` 会停止消费回调、停止帧末协程，并清理当前帧 Intent 与连续 Move 快照。
+## 锁定目标输入
+
+锁定状态由纯 C# `LockTargetSystem` 单例持有。Player Map 的 `LockToggle` 中键切换锁定／解锁；`LockPrevious` 与 `LockNext` 绑定同一滚轮 Y 轴，通过反向 Axis 处理器区分向下与向上滚动。三个绑定均为 `ImmediateNotification`，窗口阻断玩法输入时 Player Map 会停用，因此不会在 UI 窗口期间改变锁定目标。
+
+锁定候选为 15 米内、位于当前摄像机视口中的 Enemy。切换先按屏幕 X 坐标排序，屏幕位置相同再按与玩家 Root 的距离排序，滚轮越过边缘时循环。此输入不建立 Press/Release/Click Request。

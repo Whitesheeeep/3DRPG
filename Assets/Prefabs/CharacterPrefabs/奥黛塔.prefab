@@ -19868,6 +19868,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4b0799f21e062a46bc8ef0c1cb35599, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  localCueHandlers: []
+  references:
+    version: 2
+    RefIds: []
 --- !u!114 &1729958254378028992
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -19896,22 +19900,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   origin: {fileID: 8690159965217775205}
   animationController: {fileID: 8655042630240369833}
-  markerProvider:
-    rid: -2
+  markerProvider: {fileID: 0}
   weaponRootMarkerKey: {fileID: 11400000, guid: ff3da6c08d6213942bdb11d5850dee20, type: 2}
   weaponTipMarkerKey: {fileID: 11400000, guid: 4913c7a9b75f0284a80b33d458f112ea, type: 2}
   animationLayer: 1
   attackLayerMask:
     serializedVersion: 2
-    m_Bits: 55
+    m_Bits: 128
   triggerInteraction: 0
   drawAttackDetectionDebug: 1
   attackDetectionDebugDuration: 4
-  references:
-    version: 2
-    RefIds:
-    - rid: -2
-      type: {class: , ns: , asm: }
 --- !u!114 &8544601749110623256
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -19937,12 +19935,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac71317f1bf754941a3931f9f072b399, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  config: {fileID: 11400000, guid: c36cba51eac191947936b273c1792996, type: 2}
   abilitySystemComponent: {fileID: 1787093305244954615}
   animator: {fileID: 6670003055308091609}
   markerProvider: {fileID: 1729958254378028992}
   skillRuntimeHost: {fileID: 3204242473358472931}
   animationController: {fileID: 8655042630240369833}
+  config: {fileID: 11400000, guid: c36cba51eac191947936b273c1792996, type: 2}
 --- !u!1 &3811133747735640794
 GameObject:
   m_ObjectHideFlags: 0

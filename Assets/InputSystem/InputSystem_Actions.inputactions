@@ -115,6 +115,33 @@
           "initialStateCheck": false
         },
         {
+          "name": "LockToggle",
+          "type": "Button",
+          "id": "9421b0bf-09d5-4e70-a6c5-4f6861161291",
+          "expectedControlType": "Button",
+          "processors": "",
+          "interactions": "",
+          "initialStateCheck": false
+        },
+        {
+          "name": "LockPrevious",
+          "type": "Button",
+          "id": "130718b5-5164-4b1d-bd54-15c41d086611",
+          "expectedControlType": "Button",
+          "processors": "",
+          "interactions": "",
+          "initialStateCheck": false
+        },
+        {
+          "name": "LockNext",
+          "type": "Button",
+          "id": "64e2e28e-8cce-4b16-bc40-46233a20de9e",
+          "expectedControlType": "Button",
+          "processors": "",
+          "interactions": "",
+          "initialStateCheck": false
+        },
+        {
           "name": "CharacterSlot1",
           "type": "Button",
           "id": "2a71a6b8-f28d-4b0f-9e2d-7dcd85c3c101",
@@ -578,6 +605,39 @@
           "processors": "",
           "groups": "",
           "action": "Move",
+          "isComposite": false,
+          "isPartOfComposite": false
+        },
+        {
+          "name": "",
+          "id": "54a855ac-79cf-4a01-b9c2-ed5d8f378443",
+          "path": "<Mouse>/middleButton",
+          "interactions": "",
+          "processors": "",
+          "groups": "",
+          "action": "LockToggle",
+          "isComposite": false,
+          "isPartOfComposite": false
+        },
+        {
+          "name": "",
+          "id": "f6380616-379d-468a-a558-13f7e89a5193",
+          "path": "<Mouse>/scroll/y",
+          "interactions": "Press",
+          "processors": "",
+          "groups": "",
+          "action": "LockPrevious",
+          "isComposite": false,
+          "isPartOfComposite": false
+        },
+        {
+          "name": "",
+          "id": "ef79d8a3-0929-4e4a-91fb-c23f2665df22",
+          "path": "<Mouse>/scroll/y",
+          "interactions": "Press",
+          "processors": "Invert",
+          "groups": "",
+          "action": "LockNext",
           "isComposite": false,
           "isPartOfComposite": false
         }
