@@ -1,5 +1,7 @@
-using System.Collections;
+using System;
+using System.Threading;
 using Cinemachine;
+using Cysharp.Threading.Tasks;
 using RPG.Character;
 using RPG.Character.Combat;
 using RPG.PlayerInputSystem;
@@ -11,7 +13,7 @@ namespace RPG.CameraSystem
 {
     /// <summary>协调自由与锁定两台 Virtual Camera 的输入、模式衔接和光标生命周期。</summary>
     [DefaultExecutionOrder(50), DisallowMultipleComponent]
-    [InfoBox("依赖 Prefab 内绑定的 Main Camera、Brain、自由与锁定 Virtual Camera、CameraPivot、Target Group、构图代理和 CinemachineManager；目标构图范围读取锁定对象子层级 Renderer，排除粒子和拖尾。")]
+    [InfoBox("依赖 Prefab 内绑定的 Main Camera、Brain、自由与锁定 Virtual Camera、CameraPivot、Target Group、构图代理和 CinemachineManager；自由 VCam 必须配置 Third Person Follow Body，镜头高度由 Shoulder Offset Y 决定；目标构图范围读取锁定对象子层级 Renderer，排除粒子和拖尾。")]
     public sealed class GameplayCameraController : MonoBehaviour
     {
         #region 镜头依赖与输入配置
@@ -22,7 +24,6 @@ namespace RPG.CameraSystem
         [SerializeField, Required, LabelText("镜头大脑（Cinemachine Brain）")] private CinemachineBrain brain;
         [SerializeField, Required, LabelText("自由观察虚拟相机")] private CinemachineVirtualCamera freeLookVirtualCamera;
         [SerializeField, Required, LabelText("锁定虚拟相机")] private CinemachineVirtualCamera lockedVirtualCamera;
-        [SerializeField, Required, LabelText("自由镜头第三人称跟随组件")] private Cinemachine3rdPersonFollow freeLookFollow;
         [SerializeField, Required, LabelText("镜头旋转支点")] private Transform cameraPivot;
         [SerializeField, Required, LabelText("目标组（Target Group）")] private CinemachineTargetGroup targetGroup;
         [SerializeField, Required, LabelText("玩家构图节点")] private Transform playerFramingTarget;
@@ -54,6 +55,9 @@ namespace RPG.CameraSystem
 
         #region 依赖字段与运行时状态
 
+        // 自由 VCam 的 Body 属于其 Cinemachine 管线配置；Awake 从该 VCam 获取后缓存供缩放使用。
+        private Cinemachine3rdPersonFollow freeLookFollow;
+
         // Player、输入单例及锁定系统可能在持久化相机 Prefab 之后才完成初始化。
         private PlayerController boundPlayer;
         private Transform boundPlayerRoot;
@@ -61,11 +65,11 @@ namespace RPG.CameraSystem
         private LockTargetSystem lockTargetSystem;
         private GameplayAbilitySystemComponent lockedTarget;
         private Transform lockedTargetRoot;
+        // 存储锁定目标的所有可见 Renderer，用于对不同体型的目标进行构图；粒子、拖尾和不可见对象不参与构图。
         private Renderer[] lockedTargetRenderers = System.Array.Empty<Renderer>();
-        private Coroutine playerBindingCoroutine;
+        private CancellationTokenSource playerBindingCancellationSource;
 
-        // Prefab 节点位置是偏移来源；自由缩放期望值不覆盖 VCam 的资产初始距离。
-        private Vector3 cameraPivotWorldOffset;
+        // 构图节点偏移由 Prefab 配置；支点位置直接跟随 CharacterRoot。
         private Vector3 playerFramingWorldOffset;
         private Vector3 targetFallbackWorldOffset;
         private float desiredFreeCameraDistance;
@@ -97,12 +101,12 @@ namespace RPG.CameraSystem
 
         #region Unity 生命周期
 
-        /// <summary>校验 Prefab 依赖并从资产配置的镜头方向和自由距离初始化状态。</summary>
-        /// <exception cref="System.InvalidOperationException">Prefab 缺少输出镜头或构图目标时抛出。</exception>
+        /// <summary>校验 Prefab 依赖，从自由 VCam 管线获取 Third Person Follow，并初始化距离与观察方向。</summary>
+        /// <exception cref="System.InvalidOperationException">Prefab 缺少输出镜头、构图目标或自由 VCam 的 Third Person Follow 时抛出。</exception>
         private void Awake()
         {
             if (outputCamera == null || brain == null || freeLookVirtualCamera == null ||
-                lockedVirtualCamera == null || freeLookFollow == null || cameraPivot == null ||
+                lockedVirtualCamera == null || cameraPivot == null ||
                 targetGroup == null || playerFramingTarget == null || lockedTargetFramingTarget == null ||
                 cameraManager == null)
             {
@@ -110,6 +114,16 @@ namespace RPG.CameraSystem
                 Debug.LogError(error, this);
                 throw new System.InvalidOperationException(error);
             }
+
+            // Body 配置由自由 VCam 自己持有，避免 Prefab Controller 重复保存同一组件引用。
+            freeLookFollow = freeLookVirtualCamera.GetCinemachineComponent<Cinemachine3rdPersonFollow>();
+            if (freeLookFollow == null)
+            {
+                string error = $"[GameplayCameraController] '{name}' 的自由 VCam '{freeLookVirtualCamera.name}' 缺少 Third Person Follow Body。";
+                Debug.LogError(error, this);
+                throw new System.InvalidOperationException(error);
+            }
+            Debug.Log($"[GameplayCameraController] 已从自由 VCam 获取 Third Person Follow Body，camera={freeLookVirtualCamera.name}。", this);
 
             if (brain.gameObject != outputCamera.gameObject)
             {
@@ -125,7 +139,6 @@ namespace RPG.CameraSystem
                 throw new System.InvalidOperationException(error);
             }
 
-            cameraPivotWorldOffset = cameraPivot.localPosition;
             playerFramingWorldOffset = playerFramingTarget.localPosition;
             targetFallbackWorldOffset = lockedTargetFramingTarget.localPosition;
             desiredFreeCameraDistance = Mathf.Clamp(
@@ -137,7 +150,7 @@ namespace RPG.CameraSystem
             SetCameraPriorities(false);
         }
 
-        /// <summary>确认本 Prefab 是唯一存活实例后订阅锁定状态并开始等待 Player。</summary>
+        /// <summary>确认唯一镜头实例后订阅目标与输入实例变化，并绑定或异步等待 Player。</summary>
         private void OnEnable()
         {
             if (cameraManager != CinemachineManager.Instance)
@@ -149,9 +162,10 @@ namespace RPG.CameraSystem
 
             lockTargetSystem = LockTargetSystem.Instance;
             lockTargetSystem.LockTargetChanged += HandleLockTargetChanged;
+            PlayerInputController.InstanceChanged += HandleInputControllerInstanceChanged;
             if (!TryBindPlayer())
-                playerBindingCoroutine = StartCoroutine(WaitForPlayerBinding());
-            Debug.Log($"[GameplayCameraController] 已订阅锁定事件，playerBound={boundPlayer != null}。", this);
+                StartPlayerBindingWait();
+            Debug.Log($"[GameplayCameraController] 已订阅锁定与输入实例变化，playerBound={boundPlayer != null}。", this);
         }
 
         /// <summary>在 Brain 更新前同步代理、目标组、输入视角和锁定观察方向。</summary>
@@ -163,18 +177,16 @@ namespace RPG.CameraSystem
                 return;
             }
 
-            UpdateInputSubscription();
             PlayerInputController input = boundInputController;
             bool inputAvailable = input != null && input.isActiveAndEnabled && !input.IsGameplayInputBlocked;
             UpdateCursorOwnership(applicationHasFocus && inputAvailable);
 
-            // 支点和代理偏移使用世界坐标轴，不继承角色模型的转身和局部缩放。
-            cameraPivot.position = boundPlayerRoot.position + cameraPivotWorldOffset;
+            // 自由 Follow 的高度由 Third Person Follow Offset 配置；支点只跟随玩家根位置。
+            cameraPivot.position = boundPlayerRoot.position;
             playerFramingTarget.position = boundPlayerRoot.position + playerFramingWorldOffset;
 
-            GameplayAbilitySystemComponent currentTarget = lockTargetSystem.CurrentTarget;
-            if (!ReferenceEquals(currentTarget, lockedTarget))
-                SetLockedTarget(currentTarget);
+            bool hasUsableLockedTarget = currentMode == E_GameplayCameraMode.Locked &&
+                                         RefreshLockedTargetRootCache();
             UpdateTargetFramingTarget();
             // 先刷新代理成员与组中心，再让更晚执行的 Brain 使用本帧构图数据。
             targetGroup.DoUpdate();
@@ -182,7 +194,10 @@ namespace RPG.CameraSystem
             if (Time.timeScale > 0f)
             {
                 if (currentMode == E_GameplayCameraMode.Locked)
-                    UpdateLockedOrientation();
+                {
+                    if (hasUsableLockedTarget)
+                        UpdateLockedOrientation();
+                }
                 else if (applicationHasFocus && inputAvailable)
                     UpdateFreeOrientation(input);
             }
@@ -204,22 +219,19 @@ namespace RPG.CameraSystem
             Debug.Log($"[GameplayCameraController] 应用焦点变化，hasFocus={hasFocus}。", this);
         }
 
-        /// <summary>对称解除事件、输入监听与协程，并恢复 Prefab 接管前的光标状态。</summary>
+        /// <summary>取消 Player 等待、对称解除事件和输入订阅，并恢复接管前的光标状态。</summary>
         private void OnDisable()
         {
             if (lockTargetSystem != null)
                 lockTargetSystem.LockTargetChanged -= HandleLockTargetChanged;
-            if (playerBindingCoroutine != null)
-                StopCoroutine(playerBindingCoroutine);
-            playerBindingCoroutine = null;
+            PlayerInputController.InstanceChanged -= HandleInputControllerInstanceChanged;
+            CancelPlayerBindingWait();
             UnbindInputController();
             boundPlayer = null;
             boundPlayerRoot = null;
-            lockedTarget = null;
-            lockedTargetRoot = null;
-            lockedTargetRenderers = System.Array.Empty<Renderer>();
+            ClearCameraTargetState(true);
             UpdateCursorOwnership(false);
-            Debug.Log("[GameplayCameraController] 已解除锁定、输入订阅并恢复光标。", this);
+            Debug.Log("[GameplayCameraController] 已取消 Player 等待、解除目标与输入订阅并恢复光标。", this);
         }
 
         /// <summary>确保对象销毁阶段不会遗留被锁定或隐藏的光标。</summary>
@@ -248,16 +260,64 @@ namespace RPG.CameraSystem
 
         #region Player 与输入绑定
 
-        // Player 查找：持久化镜头可能先于角色队伍创建。
-        /// <summary>以真实时间低频等待角色队伍完成初始化。</summary>
-        /// <returns>持续到 Player 成功绑定为止的等待协程。</returns>
-        private IEnumerator WaitForPlayerBinding()
+        // Player 查找：持久化镜头可能先于角色队伍创建；每个启用周期只保留一个可取消等待。
+        /// <summary>创建不受 timeScale 影响的 Player 绑定重试任务。</summary>
+        private void StartPlayerBindingWait()
         {
-            WaitForSecondsRealtime retryInterval = new(0.25f);
-            yield return retryInterval;
-            while (isActiveAndEnabled && !TryBindPlayer())
-                yield return retryInterval;
-            playerBindingCoroutine = null;
+            if (playerBindingCancellationSource != null) return;
+
+            playerBindingCancellationSource = new CancellationTokenSource();
+            WaitForPlayerBindingAsync(playerBindingCancellationSource)
+                .Forget(HandlePlayerBindingWaitException);
+            Debug.Log("[GameplayCameraController] Player 尚未就绪，已启动实时重试等待。", this);
+        }
+
+        /// <summary>每隔 0.25 秒检查 Player 是否已完成初始化，并在绑定或取消后释放本任务令牌。</summary>
+        /// <param name="cancellationSource">本次等待独占的取消源。</param>
+        private async UniTask WaitForPlayerBindingAsync(CancellationTokenSource cancellationSource)
+        {
+            CancellationToken cancellationToken = cancellationSource.Token;
+            try
+            {
+                while (isActiveAndEnabled && !cancellationToken.IsCancellationRequested)
+                {
+                    await UniTask.Delay(TimeSpan.FromSeconds(0.25f), DelayType.Realtime,
+                        PlayerLoopTiming.Update, cancellationToken);
+                    if (!isActiveAndEnabled || cancellationToken.IsCancellationRequested)
+                        break;
+                    if (TryBindPlayer())
+                        return;
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // 组件停用属于预期生命周期结束；不把取消记录为异步故障。
+            }
+            finally
+            {
+                bool wasCurrentWait = ReferenceEquals(playerBindingCancellationSource, cancellationSource);
+                if (wasCurrentWait)
+                    playerBindingCancellationSource = null;
+                cancellationSource.Dispose();
+            }
+        }
+
+        /// <summary>取消当前 Player 等待并立即释放槽位，让后续启用周期可创建新任务。</summary>
+        private void CancelPlayerBindingWait()
+        {
+            CancellationTokenSource cancellationSource = playerBindingCancellationSource;
+            if (cancellationSource == null) return;
+
+            playerBindingCancellationSource = null;
+            cancellationSource.Cancel();
+            Debug.Log("[GameplayCameraController] 已请求取消 Player 绑定等待。", this);
+        }
+
+        /// <summary>记录 Player 绑定等待中未被生命周期取消的异步异常。</summary>
+        /// <param name="exception">绑定流程抛出的异常。</param>
+        private void HandlePlayerBindingWaitException(Exception exception)
+        {
+            Debug.LogException(exception, this);
         }
 
         /// <summary>绑定当前有效 Player，并从其世界根节点初始化镜头跟随支点。</summary>
@@ -274,48 +334,68 @@ namespace RPG.CameraSystem
 
             boundPlayer = player;
             boundPlayerRoot = player.CharacterRoot;
-            cameraPivot.position = boundPlayerRoot.position + cameraPivotWorldOffset;
+            cameraPivot.position = boundPlayerRoot.position;
             playerFramingTarget.position = boundPlayerRoot.position + playerFramingWorldOffset;
-            UpdateInputSubscription();
-            SetLockedTarget(lockTargetSystem.CurrentTarget);
+            SynchronizeInputController(PlayerInputController.Instance);
+            ApplyLockSystemTarget(lockTargetSystem.CurrentTarget);
             Debug.Log($"[GameplayCameraController] 已绑定 Player，player={player.name}。", this);
             return true;
         }
 
-        /// <summary>处理 Player 销毁与重建，并启动后续低频绑定。</summary>
+        /// <summary>处理 Player 销毁与重建，清理镜头侧状态并启动后续低频绑定。</summary>
         /// <returns>当前 Player 仍可供镜头跟随时返回 true。</returns>
         private bool TryEnsurePlayerBinding()
         {
             if (boundPlayer != null && boundPlayer.isActiveAndEnabled && boundPlayerRoot != null)
                 return true;
 
-            UnbindInputController();
-            boundPlayer = null;
-            boundPlayerRoot = null;
-            SetLockedTarget(null);
-            if (playerBindingCoroutine == null)
-                playerBindingCoroutine = StartCoroutine(WaitForPlayerBinding());
+            bool hadPlayerBinding = !ReferenceEquals(boundPlayer, null) ||
+                                    !ReferenceEquals(boundPlayerRoot, null);
+            if (hadPlayerBinding)
+            {
+                UnbindInputController();
+                boundPlayer = null;
+                boundPlayerRoot = null;
+                ClearCameraTargetState(true);
+                UpdateCursorOwnership(false);
+                Debug.Log("[GameplayCameraController] Player 已失效，已清理镜头绑定并等待重建。", this);
+            }
+            StartPlayerBindingWait();
             return false;
         }
 
-        // 输入订阅：滚轮继续使用现有 Player Map 即时事件。
-        /// <summary>保持对当前 PlayerInputController 的即时输入事件只有一个订阅。</summary>
-        private void UpdateInputSubscription()
+        // 输入订阅：PlayerInputController.InstanceChanged 驱动替换，绑定 Player 后才接收滚轮。
+        /// <summary>将输入事件订阅同步到当前实例，避免未绑定 Player 时占用滚轮事件。</summary>
+        /// <param name="currentInput">当前 PlayerInputController 单例。</param>
+        private void SynchronizeInputController(PlayerInputController currentInput)
         {
-            PlayerInputController currentInput = PlayerInputController.Instance;
-            if (boundInputController == currentInput) return;
+            bool playerIsUsable = boundPlayer != null && boundPlayer.isActiveAndEnabled && boundPlayerRoot != null;
+            if (!playerIsUsable)
+            {
+                UnbindInputController();
+                return;
+            }
+
+            if (ReferenceEquals(boundInputController, currentInput)) return;
             UnbindInputController();
-            if (currentInput == null) return;
+            if (currentInput == null || !currentInput.isActiveAndEnabled) return;
 
             boundInputController = currentInput;
             boundInputController.ImmediateInputPerformed += HandleImmediateInputPerformed;
             Debug.Log("[GameplayCameraController] 已订阅 Player Map 的镜头滚轮事件。", this);
         }
 
+        /// <summary>输入单例变化时更新当前 Player 的滚轮事件订阅。</summary>
+        /// <param name="currentInput">新建或销毁后的当前输入单例。</param>
+        private void HandleInputControllerInstanceChanged(PlayerInputController currentInput)
+        {
+            SynchronizeInputController(currentInput);
+        }
+
         /// <summary>注销当前输入实例，避免 Player 或控制器重建后重复处理滚轮。</summary>
         private void UnbindInputController()
         {
-            if (boundInputController == null) return;
+            if (ReferenceEquals(boundInputController, null)) return;
             boundInputController.ImmediateInputPerformed -= HandleImmediateInputPerformed;
             boundInputController = null;
             Debug.Log("[GameplayCameraController] 已注销 Player Map 的镜头滚轮事件。", this);
@@ -335,6 +415,7 @@ namespace RPG.CameraSystem
             float scale = input.LookInputIsRate
                 ? stickDegreesPerSecond * Time.deltaTime
                 : pointerDegreesPerPixel;
+            // 计算俯仰角时反转 Y 轴输入，Yaw 角度在 -180~180 范围内循环。
             yaw = Mathf.Repeat(yaw + look.x * scale + 180f, 360f) - 180f;
             pitch = Mathf.Clamp(pitch + (invertLookY ? -look.y : look.y) * scale,
                 freeMinimumPitch, freeMaximumPitch);
@@ -377,15 +458,6 @@ namespace RPG.CameraSystem
         /// <summary>朝向玩家与目标构图范围中心，并由 Framing Transposer 决定镜头距离。</summary>
         private void UpdateLockedOrientation()
         {
-            if (!TryGetUsableTargetRoot(lockedTarget, out Transform targetRoot))
-            {
-                SetLockedTarget(null);
-                return;
-            }
-
-            if (targetRoot != lockedTargetRoot)
-                SetLockedTarget(lockedTarget);
-
             Vector3 playerFocus = playerFramingTarget.position;
             Vector3 targetFocus = lockedTargetFramingTarget.position;
             Vector3 horizontalOffset = Vector3.ProjectOnPlane(targetFocus - playerFocus, Vector3.up);
@@ -473,31 +545,77 @@ namespace RPG.CameraSystem
             GameplayAbilitySystemComponent currentTarget,
             E_LockTargetChangeReason reason)
         {
-            SetLockedTarget(currentTarget);
+            if (boundPlayer == null || !boundPlayer.isActiveAndEnabled || boundPlayerRoot == null)
+            {
+                Debug.Log($"[GameplayCameraController] 收到锁定变化但 Player 尚未绑定，稍后同步当前目标，reason={reason}。", this);
+                return;
+            }
+
+            ApplyLockSystemTarget(currentTarget);
             Debug.Log(
                 $"[GameplayCameraController] 锁定镜头目标变化，previous={GetTargetName(previousTarget)}，" +
                 $"current={GetTargetName(currentTarget)}，reason={reason}。", this);
         }
 
-        /// <summary>更新目标 Renderer 快照；相同锁定模式下切换目标不触发 VCam 再混合。</summary>
+        /// <summary>应用 LockTargetSystem 的最新目标；相同目标和 Root 的重复同步不会重建缓存或切换镜头。</summary>
         /// <param name="target">新锁定目标，为空时切回自由观察。</param>
-        private void SetLockedTarget(GameplayAbilitySystemComponent target)
+        private void ApplyLockSystemTarget(GameplayAbilitySystemComponent target)
         {
-            bool wasLocked = currentMode == E_GameplayCameraMode.Locked;
             if (!TryGetUsableTargetRoot(target, out Transform targetRoot))
             {
-                if (wasLocked) SynchronizeOrientationFromBrain();
-                lockedTarget = null;
-                lockedTargetRoot = null;
-                lockedTargetRenderers = System.Array.Empty<Renderer>();
-                currentMode = E_GameplayCameraMode.FreeLook;
-                targetGroup.m_Targets[1].weight = 0f;
-                if (wasLocked) SetCameraPriorities(false);
+                ClearCameraTargetState(true);
                 return;
             }
 
-            bool enteredLock = !wasLocked;
+            if (ReferenceEquals(lockedTarget, target) && ReferenceEquals(lockedTargetRoot, targetRoot))
+                return;
+
+            bool enteredLock = currentMode != E_GameplayCameraMode.Locked;
             lockedTarget = target;
+            CacheLockedTargetRenderers(targetRoot);
+
+            if (enteredLock)
+            {
+                SynchronizeOrientationFromBrain();
+                freeCameraDistanceVelocity = 0f;
+                lockYawVelocity = 0f;
+                lockPitchVelocity = 0f;
+            }
+            currentMode = E_GameplayCameraMode.Locked;
+            if (enteredLock) SetCameraPriorities(true);
+            Debug.Log(
+                $"[GameplayCameraController] 已应用锁定系统目标并缓存构图范围，target={target.name}，rendererCount={lockedTargetRenderers.Length}。",
+                this);
+        }
+
+        /// <summary>检查当前锁定目标的 Owner Root 是否仍有效，并仅在 Root 替换时刷新构图缓存。</summary>
+        /// <returns>目标 Root 可用于本帧构图时返回 true。</returns>
+        private bool RefreshLockedTargetRootCache()
+        {
+            if (!TryGetUsableTargetRoot(lockedTarget, out Transform currentTargetRoot))
+            {
+                if (!ReferenceEquals(lockedTargetRoot, null) || lockedTargetRenderers.Length > 0)
+                {
+                    lockedTargetRoot = null;
+                    lockedTargetRenderers = Array.Empty<Renderer>();
+                    Debug.LogWarning("[GameplayCameraController] 锁定目标 Root 暂不可用，等待 LockTargetSystem 更新状态。", this);
+                }
+                return false;
+            }
+
+            if (ReferenceEquals(lockedTargetRoot, currentTargetRoot))
+                return true;
+
+            // Root 替换时刷新构图缓存，避免锁定目标的子层级被替换后仍使用旧 Renderer。
+            CacheLockedTargetRenderers(currentTargetRoot);
+            Debug.Log($"[GameplayCameraController] 锁定目标 Root 已替换，刷新构图缓存，target={GetTargetName(lockedTarget)}。", this);
+            return true;
+        }
+
+        /// <summary>为目标 Root 重建普通 Renderer 快照，供逐帧 Bounds 合并使用。</summary>
+        /// <param name="targetRoot">锁定 ASC Owner 当前的世界根节点。</param>
+        private void CacheLockedTargetRenderers(Transform targetRoot)
+        {
             lockedTargetRoot = targetRoot;
             Renderer[] foundRenderers = targetRoot.GetComponentsInChildren<Renderer>(true);
             int validRendererCount = 0;
@@ -514,19 +632,29 @@ namespace RPG.CameraSystem
                 if (foundRenderers[rendererIndex] is ParticleSystemRenderer or TrailRenderer) continue;
                 lockedTargetRenderers[targetRendererIndex++] = foundRenderers[rendererIndex];
             }
+        }
 
-            if (enteredLock)
-            {
+        /// <summary>清理镜头侧锁定缓存和 Target Group 状态，不修改 LockTargetSystem 的业务目标。</summary>
+        /// <param name="synchronizeOrientation">离开锁定镜头时是否接续 Brain 当前的原始朝向。</param>
+        private void ClearCameraTargetState(bool synchronizeOrientation)
+        {
+            bool wasLocked = currentMode == E_GameplayCameraMode.Locked;
+            bool hadTargetState = !ReferenceEquals(lockedTarget, null) ||
+                                  !ReferenceEquals(lockedTargetRoot, null) ||
+                                  lockedTargetRenderers.Length > 0;
+            if (wasLocked && synchronizeOrientation)
                 SynchronizeOrientationFromBrain();
-                freeCameraDistanceVelocity = 0f;
-                lockYawVelocity = 0f;
-                lockPitchVelocity = 0f;
+
+            lockedTarget = null;
+            lockedTargetRoot = null;
+            lockedTargetRenderers = Array.Empty<Renderer>();
+            targetGroup.m_Targets[1].weight = 0f;
+            SetCameraPriorities(false);
+
+            if (hadTargetState || wasLocked)
+            {
+                Debug.Log("[GameplayCameraController] 已清理镜头侧锁定目标与构图缓存。", this);
             }
-            currentMode = E_GameplayCameraMode.Locked;
-            if (enteredLock) SetCameraPriorities(true);
-            Debug.Log(
-                $"[GameplayCameraController] 已缓存锁定构图目标，target={target.name}，rendererCount={validRendererCount}。",
-                this);
         }
 
         /// <summary>检查 ASC、Owner 和世界根节点仍可安全用于构图。</summary>
