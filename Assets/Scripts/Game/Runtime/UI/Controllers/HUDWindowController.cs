@@ -5,6 +5,7 @@ using RPG.Character;
 using RPG.Game;
 using RPG.Game.UI.Bag;
 using RPG.Game.UI.Character;
+using RPG.Game.UI.Config;
 using RPG.Game.UI.Services;
 using RPG.Game.UI.Views.HUD;
 using RPG.PlayerInputSystem;
@@ -18,6 +19,7 @@ using WS_Modules.GAS.AttributeSystem;
 using WS_Modules.GAS.Generated;
 using WS_Modules.GAS.GameplayAbilitySystem;
 using WS_Modules.GAS.GameplayEffect;
+using WS_Modules.GAS.TAG;
 using WS_Modules.LogModule;
 using WS_Modules.UIModule;
 
@@ -33,6 +35,12 @@ namespace RPG.Game.UI.Controllers
         // Inspector 显式绑定的 Prefab View，以及角色业务数据源。
         [SerializeField, Required] private HUDHealthView healthView;
         [SerializeField, Required] private HUDSkillSlotView[] skillSlotViews = new HUDSkillSlotView[4];
+        [SerializeField, Required, LabelText("GE 图标映射")]
+        private HUDGEIconConfig geIconConfig;
+        [SerializeField, Required, LabelText("Active 角色 GE 图标条")]
+        private HUDGEListView activeEffectListView;
+        [SerializeField, Required, LabelText("队伍角色 GE 图标条")]
+        private HUDGEListView[] partyEffectListViews = new HUDGEListView[CharacterParty.SlotCount];
         [SerializeField, Required] private HUDTaskController taskController;
         [SerializeField, Required] private HUDLockTargetController lockTargetController;
         private HUDWindowDataComponent windowData;
@@ -57,16 +65,19 @@ namespace RPG.Game.UI.Controllers
         // key：CharacterActor；value：订阅该角色 ASC AttributeChanged 的委托，用于 Dispose 时精确解绑。
         private readonly Dictionary<CharacterActor, Action<GameplayAttribute, float, float>>
             attributeChangedHandlerByActorMap = new();
+        // key：队伍 CharacterActor；value：该角色 GE Controller 及其应用、移除事件委托。
+        private readonly Dictionary<CharacterActor, GameEffectEventBinding> gameEffectBindingByActorMap = new();
         private readonly HashSet<CharacterActor> invalidHealthAttributeLoggedActors = new();
         private readonly CharacterActor[] characterBySlot = new CharacterActor[CharacterParty.SlotCount];
         private bool initialized;
         private bool disposed;
+        private bool effectViewsVisible = true;
 
         #endregion
 
         #region 生命周期
 
-        /// <summary>创建 HUD 视图并开始等待角色队伍 Ready。</summary>
+        /// <summary>绑定 HUD 静态视图、角色队伍依赖与 ASC 生命周期事件。</summary>
         public void Initialize()
         {
             if (initialized) return;
@@ -81,12 +92,14 @@ namespace RPG.Game.UI.Controllers
                 throw new InvalidOperationException("[HUDWindowController] HUDWindow Prefab 未绑定静态 HUDHealthView。");
             healthView.ValidateConfiguration();
             ValidateSkillSlotViews();
+            ValidateEffectViews();
             if (taskController == null)
                 throw new InvalidOperationException("[HUDWindowController] HUDWindow Prefab 未绑定 HUDTaskController。");
             if (lockTargetController == null)
                 throw new InvalidOperationException("[HUDWindowController] HUDWindow Prefab 未绑定 HUDLockTargetController。");
             healthView.Clear();
             ClearSkillSlots();
+            ClearEffectViews();
             taskController.Initialize();
             lockTargetController.Initialize();
             characterButton = windowData.DocumentUIPanelDocumentUIPanel.CharacterButton;
@@ -97,24 +110,29 @@ namespace RPG.Game.UI.Controllers
             WSLog.Log("[HUDWindowController] HUD 血量视图初始化完成。");
         }
 
-        /// <summary>窗口显示时重试场景依赖绑定并读取最新属性快照。</summary>
+        /// <summary>窗口显示时恢复 GE 事件、队伍快照及所有 HUD 数据。</summary>
         public void HandleWindowShown()
         {
             if (!initialized || disposed) return;
+            effectViewsVisible = true;
             taskController.OnWindowShown();
             lockTargetController.HandleWindowShown();
             TryBindRuntimeSources();
             if (characterManager != null && characterManager.IsReady)
             {
                 RefreshAllViews();
+                BindPartyEffectViews();
                 if (spriteAtlasLeaseService != null)
                     LoadConfiguredAtlasesAsync().Forget(HandleAtlasLoadException);
             }
         }
 
-        /// <summary>窗口隐藏时停止任务事实订阅并隐藏追踪摘要与世界标记。</summary>
+        /// <summary>窗口隐藏时解除 GE 事件并清除动态图标、任务摘要和世界标记。</summary>
         public void HandleWindowHidden()
         {
+            effectViewsVisible = false;
+            UnbindPartyEffectEvents();
+            ClearEffectViews();
             taskController?.OnWindowHidden();
             lockTargetController?.HandleWindowHidden();
         }
@@ -159,6 +177,8 @@ namespace RPG.Game.UI.Controllers
                 windowData.DocumentUIPanelDocumentUIPanel.TaskButton != null)
                 windowData.DocumentUIPanelDocumentUIPanel.TaskButton.onClick.RemoveListener(HandleTaskButtonClicked);
             UnbindCharacterAttributes();
+            UnbindPartyEffectEvents();
+            ClearEffectViews();
             UnbindActiveCharacterCooldowns();
             ClearSkillSlots();
             if (spriteAtlasLeaseService != null)
@@ -254,6 +274,8 @@ namespace RPG.Game.UI.Controllers
         private void RebuildPartyBindings()
         {
             UnbindCharacterAttributes();
+            UnbindPartyEffectEvents();
+            ClearEffectViews();
             if (spriteAtlasLeaseService != null)
                 spriteAtlasLeaseService.Released -= HandleAtlasesReleased;
             spriteAtlasLeaseService?.Dispose();
@@ -297,6 +319,7 @@ namespace RPG.Game.UI.Controllers
             }
 
             RefreshAllViews();
+            if (effectViewsVisible) BindPartyEffectViews();
             WSLog.Log($"[HUDWindowController] 已按队伍槽位绑定角色 ASC，actorCount={attributeChangedHandlerByActorMap.Count}。");
         }
 
@@ -321,7 +344,9 @@ namespace RPG.Game.UI.Controllers
         /// <param name="current">新的 Active 角色。</param>
         private void HandleActiveCharacterChanged(CharacterActor previous, CharacterActor current)
         {
-            if (!disposed) RefreshAllViews();
+            if (disposed) return;
+            RefreshAllViews();
+            RefreshActiveEffectViews(current);
         }
 
         /// <summary>只在角色 Health 或 MaxHealth 变化时刷新该角色对应的 UI。</summary>
@@ -374,12 +399,13 @@ namespace RPG.Game.UI.Controllers
         /// <summary>读取当前 ASC 快照并刷新 Active 主血条及全部队伍槽位。</summary>
         private void RefreshAllViews()
         {
-            // 清楚所有视图
+            // 角色队伍依赖尚未就绪时，隐藏所有依赖 ASC 的显示。
             if (healthView == null || characterManager == null || !characterManager.IsReady)
             {
                 healthView?.Clear();
                 ClearSkillSlots();
                 UnbindActiveCharacterCooldowns();
+                ClearEffectViews();
                 return;
             }
 
@@ -389,6 +415,7 @@ namespace RPG.Game.UI.Controllers
                 healthView.Clear();
                 ClearSkillSlots();
                 UnbindActiveCharacterCooldowns();
+                activeEffectListView.Clear();
             }
             else
             {
@@ -503,6 +530,26 @@ namespace RPG.Game.UI.Controllers
                 if (view.InputType != SkillSlotInputTypes[slotIndex])
                     throw new InvalidOperationException(
                         $"[HUDWindowController] 技能格 {slotIndex + 1} 应绑定 {SkillSlotInputTypes[slotIndex]}，实际为 {view.InputType}。");
+            }
+        }
+
+        /// <summary>验证 GE Tag 图标表、底部容器及四个队伍容器的 Inspector 绑定。</summary>
+        private void ValidateEffectViews()
+        {
+            if (geIconConfig == null)
+                throw new InvalidOperationException("[HUDWindowController] HUD 未绑定 HUDGEIconConfig 资产。");
+            geIconConfig.ValidateConfiguration();
+            if (activeEffectListView == null)
+                throw new InvalidOperationException("[HUDWindowController] HUD 未绑定 Active 角色 GE 图标条。");
+            activeEffectListView.ValidateConfiguration();
+            if (partyEffectListViews == null || partyEffectListViews.Length != CharacterParty.SlotCount)
+                throw new InvalidOperationException("[HUDWindowController] HUD 必须绑定与队伍槽位数量相同的 GE 图标条。");
+            for (int slotIndex = 0; slotIndex < partyEffectListViews.Length; slotIndex++)
+            {
+                if (partyEffectListViews[slotIndex] == null)
+                    throw new InvalidOperationException(
+                        $"[HUDWindowController] HUD 队伍槽位 {slotIndex + 1} 未绑定 GE 图标条。");
+                partyEffectListViews[slotIndex].ValidateConfiguration();
             }
         }
 
@@ -658,6 +705,167 @@ namespace RPG.Game.UI.Controllers
             if (skillSlotViews == null) return;
             for (int slotIndex = 0; slotIndex < skillSlotViews.Length; slotIndex++)
                 skillSlotViews[slotIndex]?.Clear();
+        }
+
+        /// <summary>为当前队伍每个角色绑定 GE 事件并恢复 Active Runtime 快照。</summary>
+        private void BindPartyEffectViews()
+        {
+            if (!effectViewsVisible || characterManager == null || !characterManager.IsReady) return;
+            ClearEffectViews();
+            var boundActors = new HashSet<CharacterActor>();
+            for (int slotIndex = 0; slotIndex < characterBySlot.Length; slotIndex++)
+            {
+                CharacterActor actor = characterBySlot[slotIndex];
+                if (actor == null || !boundActors.Add(actor)) continue;
+                BindGameEffectEvents(actor);
+                IReadOnlyList<GameEffectRuntime> activeEffects = actor.AbilitySystemComponent.ActiveEffects;
+                for (int effectIndex = 0; effectIndex < activeEffects.Count; effectIndex++)
+                    AddEffectToActorViews(actor, activeEffects[effectIndex]);
+            }
+        }
+
+        /// <summary>订阅指定队伍角色 ASC 的持续 GE 应用和移除生命周期事件。</summary>
+        /// <param name="actor">当前队伍中的角色。</param>
+        private void BindGameEffectEvents(CharacterActor actor)
+        {
+            if (gameEffectBindingByActorMap.ContainsKey(actor)) return;
+            IGameEffectCtrl effectController = actor.AbilitySystemComponent.GameEffectCtrl;
+            Action<GameplayEffectApplicationResult> appliedHandler =
+                result => HandleEffectApplied(actor, result);
+            Action<GameEffectRuntime> removedHandler = runtime => HandleEffectRemoved(actor, runtime);
+            var binding = new GameEffectEventBinding(effectController, appliedHandler, removedHandler);
+            effectController.EffectApplied += appliedHandler;
+            effectController.EffectRemoved += removedHandler;
+            gameEffectBindingByActorMap.Add(actor, binding);
+            WSLog.Log($"[HUDWindowController] 已订阅角色 GE 图标事件，character={actor.CharacterId}。");
+        }
+
+        /// <summary>解除所有队伍角色 GE 事件并记录解绑数量。</summary>
+        private void UnbindPartyEffectEvents()
+        {
+            foreach (KeyValuePair<CharacterActor, GameEffectEventBinding> pair in gameEffectBindingByActorMap)
+            {
+                GameEffectEventBinding binding = pair.Value;
+                binding.Controller.EffectApplied -= binding.AppliedHandler;
+                binding.Controller.EffectRemoved -= binding.RemovedHandler;
+            }
+
+            if (gameEffectBindingByActorMap.Count > 0)
+                WSLog.Log($"[HUDWindowController] 已解除队伍角色 GE 图标事件，actorCount={gameEffectBindingByActorMap.Count}。");
+            gameEffectBindingByActorMap.Clear();
+        }
+
+        /// <summary>把指定持续 GE Runtime 的所有已配置 GrantedTag 图标写入角色对应视图。</summary>
+        /// <param name="actor">GE Target 所属角色。</param>
+        /// <param name="runtime">新增、重应用或快照读取到的持续 Runtime。</param>
+        private int AddEffectToActorViews(CharacterActor actor, GameEffectRuntime runtime)
+        {
+            if (runtime == null || !runtime.IsActive ||
+                runtime.Data.DurationType == E_GameEffectDurationType.Instant)
+                return 0;
+
+            IReadOnlyList<GameplayTag> grantedTags = runtime.Data.GrantedTags;
+            var processedTags = new HashSet<GameplayTag>();
+            bool isInfinite = runtime.Data.DurationType == E_GameEffectDurationType.Infinite;
+            float progressDuration = Mathf.Max(runtime.Data.Duration, runtime.RemainingDuration);
+            int updatedViewCount = 0;
+            for (int tagIndex = 0; tagIndex < grantedTags.Count; tagIndex++)
+            {
+                GameplayTag tag = grantedTags[tagIndex];
+                if (!processedTags.Add(tag) || !geIconConfig.TryGetIcon(tag, out Sprite icon)) continue;
+                for (int slotIndex = 0; slotIndex < characterBySlot.Length; slotIndex++)
+                    if (ReferenceEquals(characterBySlot[slotIndex], actor))
+                    {
+                        partyEffectListViews[slotIndex].AddOrUpdate(
+                            tag, runtime, icon, progressDuration, isInfinite);
+                        updatedViewCount++;
+                    }
+                if (ReferenceEquals(characterManager.ActiveCharacter, actor))
+                {
+                    activeEffectListView.AddOrUpdate(tag, runtime, icon, progressDuration, isInfinite);
+                    updatedViewCount++;
+                }
+            }
+
+            return updatedViewCount;
+        }
+
+        /// <summary>重建底部 Active 角色图标条；队伍行仍各自展示其角色效果。</summary>
+        /// <param name="actor">切换后的 Active 角色；为空时清空底部图标。</param>
+        private void RefreshActiveEffectViews(CharacterActor actor)
+        {
+            activeEffectListView.Clear();
+            if (!effectViewsVisible || actor == null) return;
+            IReadOnlyList<GameEffectRuntime> activeEffects = actor.AbilitySystemComponent.ActiveEffects;
+            for (int effectIndex = 0; effectIndex < activeEffects.Count; effectIndex++)
+                AddEffectToActorViews(actor, activeEffects[effectIndex]);
+        }
+
+        /// <summary>清理底部和所有队伍槽位的动态效果图标。</summary>
+        private void ClearEffectViews()
+        {
+            activeEffectListView?.Clear();
+            if (partyEffectListViews == null) return;
+            for (int slotIndex = 0; slotIndex < partyEffectListViews.Length; slotIndex++)
+                partyEffectListViews[slotIndex]?.Clear();
+        }
+
+        /// <summary>在 HUD 窗口本地删除已结束 Runtime 的所有 Tag 图标。</summary>
+        /// <param name="actor">GE Target 所属角色。</param>
+        /// <param name="runtime">已移除的持续 Runtime。</param>
+        private void HandleEffectRemoved(CharacterActor actor, GameEffectRuntime runtime)
+        {
+            if (disposed || !effectViewsVisible) return;
+            int removedViewCount = 0;
+            for (int slotIndex = 0; slotIndex < characterBySlot.Length; slotIndex++)
+                if (ReferenceEquals(characterBySlot[slotIndex], actor))
+                    removedViewCount += partyEffectListViews[slotIndex].RemoveRuntime(runtime);
+            if (ReferenceEquals(characterManager.ActiveCharacter, actor))
+                removedViewCount += activeEffectListView.RemoveRuntime(runtime);
+            if (removedViewCount == 0) return;
+            WSLog.Log(
+                $"[HUDWindowController] 已从 HUD 清除 GE 图标，character={actor.CharacterId}, effect={runtime.Data.name}, viewCount={removedViewCount}。");
+        }
+
+        /// <summary>应用成功后立即创建图标，重应用时更新相同 Runtime 的进度快照。</summary>
+        /// <param name="actor">GE Target 所属角色。</param>
+        /// <param name="result">GE 应用结果，其中 ActiveEffect 是新增或更新后的 Runtime。</param>
+        private void HandleEffectApplied(CharacterActor actor, GameplayEffectApplicationResult result)
+        {
+            if (disposed || !effectViewsVisible || result?.ActiveEffect == null) return;
+            int updatedViewCount = AddEffectToActorViews(actor, result.ActiveEffect);
+            if (updatedViewCount == 0) return;
+            WSLog.Log(
+                $"[HUDWindowController] 已更新 GE HUD 图标，character={actor.CharacterId}, effect={result.ActiveEffect.Data.name}, viewCount={updatedViewCount}。");
+        }
+
+        #endregion
+
+        #region GE 事件绑定数据
+
+        /// <summary>保存单个角色 GE Controller 与需要精确解绑的事件委托。</summary>
+        private sealed class GameEffectEventBinding
+        {
+            /// <summary>创建可对称订阅与解绑的 GE 事件绑定快照。</summary>
+            /// <param name="controller">角色拥有的 GE Controller。</param>
+            /// <param name="appliedHandler">应用成功事件委托。</param>
+            /// <param name="removedHandler">移除完成事件委托。</param>
+            public GameEffectEventBinding(
+                IGameEffectCtrl controller,
+                Action<GameplayEffectApplicationResult> appliedHandler,
+                Action<GameEffectRuntime> removedHandler)
+            {
+                Controller = controller;
+                AppliedHandler = appliedHandler;
+                RemovedHandler = removedHandler;
+            }
+
+            /// <summary>获取事件所属 GE Controller。</summary>
+            public IGameEffectCtrl Controller { get; }
+            /// <summary>获取应用成功委托。</summary>
+            public Action<GameplayEffectApplicationResult> AppliedHandler { get; }
+            /// <summary>获取移除完成委托。</summary>
+            public Action<GameEffectRuntime> RemovedHandler { get; }
         }
 
         #endregion

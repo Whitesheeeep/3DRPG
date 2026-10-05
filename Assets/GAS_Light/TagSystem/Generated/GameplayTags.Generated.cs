@@ -46,6 +46,12 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_Data_Damage = new GameplayTag(179);
         /// <summary>Data.Damage.Multiplier</summary>
         public static readonly GameplayTag Tag_Data_Damage_Multiplier = new GameplayTag(180);
+        /// <summary>GE</summary>
+        public static readonly GameplayTag Tag_GE = new GameplayTag(189);
+        /// <summary>GE.Buff</summary>
+        public static readonly GameplayTag Tag_GE_Buff = new GameplayTag(190);
+        /// <summary>GE.Buff.AddArmor</summary>
+        public static readonly GameplayTag Tag_GE_Buff_AddArmor = new GameplayTag(191);
         /// <summary>Intent</summary>
         public static readonly GameplayTag Tag_Intent = new GameplayTag(138);
         /// <summary>Intent.Interaction</summary>

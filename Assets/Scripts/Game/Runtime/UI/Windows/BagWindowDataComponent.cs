@@ -15,7 +15,7 @@ namespace WS_Modules.UIModule
     /// 该组件只保存按钮、View 和动态图集配置，不在运行时扫描或修复层级。
     /// </summary>
     [DisallowMultipleComponent]
-    [InfoBox("依赖 BagWindow 根节点下已绑定的分类按钮、虚拟网格、详情 View 和动态图集地址配置。")]
+    [InfoBox("依赖 BagWindow 根节点下已绑定的分类按钮、虚拟网格、详情 View、食物使用按钮和动态图集地址配置。")]
     public sealed class BagWindowDataComponent : MonoBehaviour
     {
         #region 依赖字段
@@ -32,6 +32,7 @@ namespace WS_Modules.UIModule
         [SerializeField] private TMP_Dropdown sortDropdown;
         [SerializeField] private Button sortDirectionButton;
         [SerializeField] private Button detailsButton;
+        [SerializeField, Required] private Button foodUseButton;
         [SerializeField, Required] private BagGridView gridView;
         [SerializeField, Required] private BagDetailView detailView;
 
@@ -106,6 +107,9 @@ namespace WS_Modules.UIModule
         /// <summary>获取详情请求按钮。</summary>
         public Button DetailsButton => detailsButton;
 
+        /// <summary>获取食物使用请求按钮。</summary>
+        public Button FoodUseButton => foodUseButton;
+
         /// <summary>获取虚拟网格 View。</summary>
         public BagGridView GridView => gridView;
 
@@ -148,6 +152,7 @@ namespace WS_Modules.UIModule
             }
             if (gridView == null) throw new InvalidOperationException("[BagWindowDataComponent] 未绑定 BagGridView。");
             if (detailView == null) throw new InvalidOperationException("[BagWindowDataComponent] 未绑定 BagDetailView。");
+            if (foodUseButton == null) throw new InvalidOperationException("[BagWindowDataComponent] 未绑定食物使用按钮。");
             if (dynamicAtlasAddresses == null) throw new InvalidOperationException("[BagWindowDataComponent] 动态图集地址列表为空。");
         }
 
