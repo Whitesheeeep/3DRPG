@@ -1,0 +1,137 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-2306033396793257901
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e7d25faf1df4c8a8d184c88fdcb89d8, type: 3}
+  m_Name: "\u52A8\u753B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: eaffe36db8c74a8e82dbe2e0162a83b2
+  muted: 1
+  displayName: "\u52A8\u753B\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: f195011dae734ce182109c30ca8fe594
+    animationClip: {fileID: 7400000, guid: 5b7f9c19c5ccbfc4992806f54750e616, type: 2}
+    startFrame: 0
+    durationFrames: 151
+    sourceStartFrame: 0
+    playbackSpeed: 1
+    fadeDuration: 0.1
+--- !u!114 &-1207486947491243442
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e7d25faf1df4c8a8d184c88fdcb89d8, type: 3}
+  m_Name: "\u52A8\u753B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 10b1e2a22a29406fb1b395ca68648de1
+  muted: 1
+  displayName: "\u52A8\u753B\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: 2679dace0da548adbc117a5d4e350af1
+    animationClip: {fileID: 7400000, guid: 93d817f17f38b5a47b2fdaf1c136fd70, type: 2}
+    startFrame: 0
+    durationFrames: 143
+    sourceStartFrame: 0
+    playbackSpeed: 1
+    fadeDuration: 0.1
+--- !u!114 &-386082771689126958
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e7d25faf1df4c8a8d184c88fdcb89d8, type: 3}
+  m_Name: "\u52A8\u753B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: d458aed5990946f999fddec566f10e38
+  muted: 0
+  displayName: "\u52A8\u753B\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: be59dfc800b245e1973601843dd99a1c
+    animationClip: {fileID: 7400000, guid: 69f692d7bb1b4ca42b83babd2202137b, type: 2}
+    startFrame: 0
+    durationFrames: 128
+    sourceStartFrame: 0
+    playbackSpeed: 1
+    fadeDuration: 0.1
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf2d0fbc1a23bf1499d50e84ac66304b, type: 3}
+  m_Name: Scythe_NormalAttack_01
+  m_EditorClassIdentifier: 
+  id: 1512e245fc84485fbf0ef60b9d59798e
+  frameRate: 30
+  durationFrames: 260
+  isRootMotion: 1
+  tracks:
+  - {fileID: 9090366914657983836}
+  - {fileID: -386082771689126958}
+  - {fileID: 5304817224089542462}
+  - {fileID: -2306033396793257901}
+  - {fileID: -1207486947491243442}
+--- !u!114 &5304817224089542462
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e7d25faf1df4c8a8d184c88fdcb89d8, type: 3}
+  m_Name: "\u52A8\u753B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: d8914e4ab369487db762c96e9a521c3b
+  muted: 0
+  displayName: "\u52A8\u753B\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: cd35cba5683645aca19caea05fc1cc82
+    animationClip: {fileID: 7400000, guid: 5f1dd675884c59640a9c19c49215eeb0, type: 2}
+    startFrame: 0
+    durationFrames: 126
+    sourceStartFrame: 0
+    playbackSpeed: 1
+    fadeDuration: 0.1
+--- !u!114 &9090366914657983836
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b7edf08181143d342b9c4e9e3e3e114c, type: 3}
+  m_Name: "\u52A8\u4F5C\u9636\u6BB5\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 612302c714414b8bb8c3cac04be5c65e
+  muted: 0
+  displayName: "\u52A8\u4F5C\u9636\u6BB5\u8F68\u9053"
+  editorLocked: 0
+  clips: []
