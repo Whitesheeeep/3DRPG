@@ -45,9 +45,16 @@ namespace RPG.Game.UI.Views.Character
         [SerializeField] private CharacterWeaponPageView weaponPage;
         [SerializeField] private CharacterArtifactPageView artifactPage;
         [SerializeField] private CharacterDevelopmentPageView characterDevelopmentPage;
+
+        #endregion
+
+        #region 页面状态
+
         private bool selectionMode;
         private CharacterWindowPage boundPage;
         private CharacterDevelopmentMode characterDevelopmentMode;
+        private bool hasBoundCharacter;
+        private CharacterId boundCharacterId;
 
         #endregion
 
@@ -73,6 +80,8 @@ namespace RPG.Game.UI.Views.Character
         public event Action ArtifactReplaceRequested;
         /// <summary>属性页升级／突破入口意图。</summary>
         public event Action CharacterDevelopmentRequested;
+        /// <summary>请求把当前浏览角色放入目标队伍槽位；负一表示退出。</summary>
+        public event Action<int> PartyPositionRequested;
         /// <summary>角色培养页确认升级／突破意图。</summary>
         public event Action CharacterDevelopmentSubmitRequested;
         /// <summary>角色培养页自动填入经验材料意图。</summary>
@@ -110,6 +119,7 @@ namespace RPG.Game.UI.Views.Character
             artifactPage.DevelopmentRequested += HandleArtifactDevelopmentRequested;
             artifactPage.ReplaceRequested += HandleArtifactReplaceRequested;
             attributePage.DevelopmentRequested += HandleCharacterDevelopmentRequested;
+            attributePage.PartyPositionRequested += HandlePartyPositionRequested;
             characterDevelopmentPage.SubmitRequested += HandleCharacterDevelopmentSubmitRequested;
             characterDevelopmentPage.AutoFillRequested += HandleCharacterExperienceAutoFillRequested;
             characterDevelopmentPage.SelectMaterialsRequested += HandleCharacterDevelopmentMaterialsRequested;
@@ -138,6 +148,7 @@ namespace RPG.Game.UI.Views.Character
                 artifactPage.ReplaceRequested -= HandleArtifactReplaceRequested;
             }
             if (attributePage != null) attributePage.DevelopmentRequested -= HandleCharacterDevelopmentRequested;
+            if (attributePage != null) attributePage.PartyPositionRequested -= HandlePartyPositionRequested;
             if (characterDevelopmentPage != null)
             {
                 characterDevelopmentPage.SubmitRequested -= HandleCharacterDevelopmentSubmitRequested;
@@ -159,6 +170,9 @@ namespace RPG.Game.UI.Views.Character
                 Clear();
                 return;
             }
+            bool characterChanged = !hasBoundCharacter || boundCharacterId != data.SelectedCharacterId;
+            if (characterChanged || boundPage != data.Page)
+                attributePage.ClosePartyPositionDropdown();
             rosterStrip.Bind(data.Roster);
             fullBodyPortraitImage.sprite = data.FullBodyPortrait;
             // 未导入角色全身立绘时不回退成方形头像，透明保留中央角色展示区。
@@ -170,13 +184,15 @@ namespace RPG.Game.UI.Views.Character
             SetNavigationState(weaponSelectedIcon, weaponUnselectedIcon, data.Page == CharacterWindowPage.Weapon);
             SetNavigationState(artifactSelectedIcon, artifactUnselectedIcon, data.Page == CharacterWindowPage.Artifact);
             if (data.Page == CharacterWindowPage.Attribute)
-                attributePage.Bind(data.Header, data.Attributes);
+                attributePage.Bind(data.Header, data.Attributes, data.PartyPosition);
             else
                 attributePage.Clear();
             weaponPage.Bind(data.Weapon);
             centralWeaponImage.sprite = data.Weapon != null && data.Weapon.HasWeapon ? data.Weapon.Icon : null;
             artifactPage.Bind(data.Artifacts, data.ArtifactSummary, data.SelectedArtifact);
             boundPage = data.Page;
+            boundCharacterId = data.SelectedCharacterId;
+            hasBoundCharacter = true;
             ApplySelectionModeState();
         }
 
@@ -200,6 +216,8 @@ namespace RPG.Game.UI.Views.Character
             artifactPage.Clear();
             characterDevelopmentPage.Clear();
             characterDevelopmentMode = CharacterDevelopmentMode.None;
+            hasBoundCharacter = false;
+            boundCharacterId = default;
             ApplySelectionModeState();
         }
 
@@ -215,6 +233,8 @@ namespace RPG.Game.UI.Views.Character
         /// <param name="mode">要显示的角色培养模式；None 表示回到普通角色页。</param>
         public void SetCharacterDevelopmentMode(CharacterDevelopmentMode mode)
         {
+            if (mode != CharacterDevelopmentMode.None)
+                attributePage.ClosePartyPositionDropdown();
             characterDevelopmentMode = mode;
             if (mode == CharacterDevelopmentMode.None) characterDevelopmentPage.Clear();
             ApplySelectionModeState();
@@ -232,6 +252,20 @@ namespace RPG.Game.UI.Views.Character
         public void SetCharacterDevelopmentStatus(string message)
         {
             characterDevelopmentPage.SetStatusMessage(message);
+        }
+
+        /// <summary>同步队伍位置编辑请求的禁用状态。</summary>
+        /// <param name="editing">请求是否仍在执行。</param>
+        public void SetPartyPositionEditing(bool editing)
+        {
+            attributePage.SetPartyPositionEditing(editing);
+        }
+
+        /// <summary>显示队伍位置事务失败原因。</summary>
+        /// <param name="message">简短状态；空值清除提示。</param>
+        public void SetPartyPositionStatus(string message)
+        {
+            attributePage.SetPartyPositionStatus(message);
         }
 
         /// <summary>将被点击的背包候选详情绑定到当前装备页面的右侧详情区。</summary>
@@ -324,6 +358,9 @@ namespace RPG.Game.UI.Views.Character
         private void HandleArtifactReplaceRequested() => ArtifactReplaceRequested?.Invoke();
         /// <summary>转发角色属性页的成长入口请求。</summary>
         private void HandleCharacterDevelopmentRequested() => CharacterDevelopmentRequested?.Invoke();
+        /// <summary>转发队伍位置变化意图。</summary>
+        /// <param name="slotIndex">零基目标槽位；负一表示退出队伍。</param>
+        private void HandlePartyPositionRequested(int slotIndex) => PartyPositionRequested?.Invoke(slotIndex);
         /// <summary>转发角色培养确认请求。</summary>
         private void HandleCharacterDevelopmentSubmitRequested() => CharacterDevelopmentSubmitRequested?.Invoke();
         /// <summary>转发经验素材自动填充请求。</summary>

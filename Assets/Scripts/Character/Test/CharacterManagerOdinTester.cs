@@ -17,7 +17,7 @@ namespace RPG.Character
         private void LogRoster()
         {
             CharacterManager manager = playerController.CharacterManager;
-            Debug.Log($"[CharacterManagerTester] Count={manager.Characters.Count}, Active={manager.ActiveCharacter?.name}", this);
+            Debug.Log($"[CharacterManagerTester] Count={manager.CharacterActors.Count}, Active={manager.ActiveCharacter?.name}", this);
         }
 
         /// <summary>通过 PlayerController 玩家级入口请求切换测试角色。</summary>

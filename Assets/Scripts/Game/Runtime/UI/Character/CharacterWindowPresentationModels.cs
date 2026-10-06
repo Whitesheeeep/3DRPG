@@ -22,12 +22,15 @@ namespace RPG.Game.UI.Character
         /// <param name="artifacts">五个圣遗物槽位。</param>
         /// <param name="selectedArtifactIndex">当前选中的圣遗物槽位。</param>
         /// <param name="selectedArtifact">当前选中的圣遗物详情。</param>
+        /// <param name="selectedCharacterId">当前浏览角色的稳定标识。</param>
+        /// <param name="partyPosition">队伍位置下拉框的数据。</param>
         public CharacterWindowViewData(IReadOnlyList<CharacterRosterEntryViewData> roster, int selectedIndex,
             CharacterHeaderViewData header, Sprite fullBodyPortrait, CharacterArtifactSummaryViewData artifactSummary,
             CharacterWindowPage page,
             IReadOnlyList<CharacterAttributeViewData> attributes, CharacterWeaponViewData weapon,
             IReadOnlyList<CharacterArtifactSlotItemViewData> artifacts, int selectedArtifactIndex,
-            CharacterArtifactViewData selectedArtifact)
+            CharacterArtifactViewData selectedArtifact, CharacterId selectedCharacterId,
+            CharacterPartyPositionViewData partyPosition)
         {
             Roster = roster ?? Array.Empty<CharacterRosterEntryViewData>();
             SelectedIndex = selectedIndex;
@@ -40,6 +43,8 @@ namespace RPG.Game.UI.Character
             Artifacts = artifacts ?? Array.Empty<CharacterArtifactSlotItemViewData>();
             SelectedArtifactIndex = selectedArtifactIndex;
             SelectedArtifact = selectedArtifact;
+            SelectedCharacterId = selectedCharacterId;
+            PartyPosition = partyPosition;
         }
 
         /// <summary>获取角色条目。</summary>
@@ -64,6 +69,33 @@ namespace RPG.Game.UI.Character
         public int SelectedArtifactIndex { get; }
         /// <summary>获取当前选中的圣遗物详情。</summary>
         public CharacterArtifactViewData SelectedArtifact { get; }
+        /// <summary>获取当前浏览角色的稳定标识。</summary>
+        public CharacterId SelectedCharacterId { get; }
+        /// <summary>获取当前角色的队伍位置下拉框数据。</summary>
+        public CharacterPartyPositionViewData PartyPosition { get; }
+    }
+
+    /// <summary>角色属性页队伍位置 Dropdown 的只读选项与选中值。</summary>
+    public sealed class CharacterPartyPositionViewData
+    {
+        /// <summary>创建队伍位置下拉框的显示快照。</summary>
+        /// <param name="characterId">下拉框绑定的稳定角色标识。</param>
+        /// <param name="selectedOptionIndex">当前选项索引；零为未加入队伍，后续值对应槽位。</param>
+        /// <param name="options">未加入队伍与四个固定槽位的显示名称。</param>
+        public CharacterPartyPositionViewData(CharacterId characterId, int selectedOptionIndex,
+            IReadOnlyList<string> options)
+        {
+            CharacterId = characterId;
+            SelectedOptionIndex = selectedOptionIndex;
+            Options = options ?? Array.Empty<string>();
+        }
+
+        /// <summary>获取此下拉框所属角色标识。</summary>
+        public CharacterId CharacterId { get; }
+        /// <summary>获取 TMP_Dropdown 选项索引。</summary>
+        public int SelectedOptionIndex { get; }
+        /// <summary>获取“未加入队伍”及四个固定槽位选项。</summary>
+        public IReadOnlyList<string> Options { get; }
     }
 
     /// <summary>顶部角色头像条目的显示数据。</summary>
