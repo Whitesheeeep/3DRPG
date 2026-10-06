@@ -68,18 +68,19 @@ namespace RPG.Game.UI.Character
             CharacterInstance selectedInstance, CharacterWindowPage page, int selectedArtifactIndex)
         {
             List<CharacterInstance> sortedInstances = SortInstances(instances);
+            CharacterPartyManager partyManager = GameArchitecture.Interface.GetManager<CharacterPartyManager>();
             int selectedIndex = FindSelectedIndex(sortedInstances, selectedInstance);
             CharacterInstance selected = selectedIndex >= 0 ? sortedInstances[selectedIndex] : null;
             if (selected == null)
                 return new CharacterWindowViewData(Array.Empty<CharacterRosterEntryViewData>(), -1, null, null,
                     new CharacterArtifactSummaryViewData(0, Array.Empty<CharacterEquipmentAttributeLineViewData>()),
-                    page, Array.Empty<CharacterAttributeViewData>(), null, BuildEmptyArtifactSlots(), 0, null);
+                    page, Array.Empty<CharacterAttributeViewData>(), null, BuildEmptyArtifactSlots(), 0, null,
+                    default, null);
 
             var roster = new List<CharacterRosterEntryViewData>(sortedInstances.Count);
             for (int index = 0; index < sortedInstances.Count; index++)
             {
                 CharacterInstance instance = sortedInstances[index];
-                CharacterPartyManager partyManager = GameArchitecture.Interface.GetManager<CharacterPartyManager>();
                 int partySlotIndex = partyManager.FindSlot(instance.CharacterId);
                 Sprite partyMarkSprite = partySlotIndex >= 0 && partySlotIndex < partyMarkSprites.Count
                     ? partyMarkSprites[partySlotIndex] : null;
@@ -95,9 +96,48 @@ namespace RPG.Game.UI.Character
             int clampedArtifactIndex = Mathf.Clamp(selectedArtifactIndex, 0, 4);
             CharacterArtifactSummaryViewData artifactSummary = BuildArtifactSummary(selected);
             CharacterArtifactViewData selectedArtifact = BuildArtifactDetails(selected, (ArtifactSlot)clampedArtifactIndex);
+            CharacterPartyPositionViewData partyPosition = BuildPartyPosition(sortedInstances, selected, partyManager);
             return new CharacterWindowViewData(roster, selectedIndex, header,
                 ResolveSprite(selected.Config.FullBodyPortraitAddress, selected.Config.FullBodyPortraitSpriteName), artifactSummary, page,
-                attributes, weapon, artifactSlots, clampedArtifactIndex, selectedArtifact);
+                attributes, weapon, artifactSlots, clampedArtifactIndex, selectedArtifact,
+                selected.CharacterId, partyPosition);
+        }
+
+        /// <summary>为当前角色投影固定队伍槽位名称及实际选择项。</summary>
+        /// <param name="instances">按显示顺序排列的全部已拥有角色。</param>
+        /// <param name="selectedInstance">当前浏览角色。</param>
+        /// <param name="partyManager">当前队伍查询 Manager。</param>
+        /// <returns>包含未加入项和四个槽位的选择快照。</returns>
+        private static CharacterPartyPositionViewData BuildPartyPosition(
+            IReadOnlyList<CharacterInstance> instances, CharacterInstance selectedInstance,
+            CharacterPartyManager partyManager)
+        {
+            var options = new List<string>(CharacterParty.SlotCount + 1) { "未加入队伍" };
+            int currentSlot = partyManager.FindSlot(selectedInstance.CharacterId);
+            for (int slotIndex = 0; slotIndex < CharacterParty.SlotCount; slotIndex++)
+            {
+                CharacterId slotCharacterId = partyManager.GetCharacterIdAtSlot(slotIndex);
+                string memberName = slotCharacterId.IsValid
+                    ? ResolveCharacterName(instances, slotCharacterId)
+                    : "空位";
+                options.Add($"第 {slotIndex + 1} 位 · {memberName}");
+            }
+
+            return new CharacterPartyPositionViewData(selectedInstance.CharacterId, currentSlot + 1, options);
+        }
+
+        /// <summary>从当前已拥有实例中解析槽位角色名称。</summary>
+        /// <param name="instances">已拥有角色实例。</param>
+        /// <param name="characterId">队伍槽位角色标识。</param>
+        /// <returns>角色配置名称；队伍与名册不一致时返回明确占位文案。</returns>
+        private static string ResolveCharacterName(IReadOnlyList<CharacterInstance> instances, CharacterId characterId)
+        {
+            for (int index = 0; index < instances.Count; index++)
+            {
+                CharacterInstance instance = instances[index];
+                if (instance.CharacterId == characterId) return instance.Config.Name;
+            }
+            return "角色数据缺失";
         }
 
         /// <summary>按品质、获得顺序和角色标识稳定排序角色实例。</summary>

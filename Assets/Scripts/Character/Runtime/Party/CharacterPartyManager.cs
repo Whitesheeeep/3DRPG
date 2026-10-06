@@ -53,6 +53,72 @@ namespace RPG.Character
             Changed?.Invoke();
         }
 
+        /// <summary>按队伍规则构造槽位编辑候选，不修改当前队伍。</summary>
+        /// <param name="characterId">要编辑位置的已拥有角色。</param>
+        /// <param name="slotIndex">目标零基槽位；负一表示退出队伍。</param>
+        /// <param name="candidateParty">校验成功后的不可变候选队伍。</param>
+        /// <returns>候选状态；只有 Success 表示存在待提交候选。</returns>
+        internal E_CharacterPartyEditStatus TryCreateSlotEdit(
+            CharacterId characterId, int slotIndex, out CharacterParty candidateParty)
+        {
+            candidateParty = null;
+            if (party == null) return E_CharacterPartyEditStatus.NotReady;
+            if (slotIndex < -1 || slotIndex >= CharacterParty.SlotCount)
+                return E_CharacterPartyEditStatus.InvalidSlot;
+            if (!characterId.IsValid || !rosterManager.IsOwned(characterId))
+                return E_CharacterPartyEditStatus.CharacterNotOwned;
+
+            int previousSlot = party.FindSlot(characterId);
+            if (previousSlot == slotIndex) return E_CharacterPartyEditStatus.NoChange;
+
+            CharacterId[] candidateIds = new CharacterId[CharacterParty.SlotCount];
+            IReadOnlyList<CharacterId> currentIds = party.CreateSnapshot();
+            int memberCount = 0;
+            for (int index = 0; index < CharacterParty.SlotCount; index++)
+            {
+                candidateIds[index] = currentIds[index];
+                if (currentIds[index].IsValid) memberCount++;
+            }
+
+            if (slotIndex < 0)
+            {
+                if (previousSlot < 0) return E_CharacterPartyEditStatus.NoChange;
+                if (memberCount <= 1) return E_CharacterPartyEditStatus.LastMember;
+                candidateIds[previousSlot] = default;
+            }
+            else
+            {
+                CharacterId displacedCharacterId = candidateIds[slotIndex];
+                candidateIds[slotIndex] = characterId;
+                // 队内角色与目标槽位互换；队外角色进入占用位时，被替换者离队。
+                if (previousSlot >= 0) candidateIds[previousSlot] = displacedCharacterId;
+            }
+
+            candidateParty = new CharacterParty(candidateIds);
+            return E_CharacterPartyEditStatus.Success;
+        }
+
+        /// <summary>替换当前队伍快照；由运行时协调器在同一同步提交阶段调用。</summary>
+        /// <param name="candidateParty">由本 Manager 创建并经运行时同步的候选队伍。</param>
+        internal void CommitSlotEdit(CharacterParty candidateParty)
+        {
+            if (party == null) throw new InvalidOperationException("[CharacterPartyManager] 队伍尚未初始化，不能提交槽位编辑。");
+            if (candidateParty == null) throw new ArgumentNullException(nameof(candidateParty));
+            IReadOnlyList<CharacterId> candidateIds = candidateParty.CreateSnapshot();
+            for (int index = 0; index < candidateIds.Count; index++)
+                if (candidateIds[index].IsValid && !rosterManager.IsOwned(candidateIds[index]))
+                    throw new InvalidOperationException($"[CharacterPartyManager] 候选队伍包含未拥有角色：{candidateIds[index]}。");
+
+            party = candidateParty;
+        }
+
+        /// <summary>运行时 Actor 与操控对象同步完成后，向订阅者发送一次队伍变化通知。</summary>
+        internal void PublishSlotEditChanged()
+        {
+            Debug.Log("[CharacterPartyManager] 队伍槽位编辑已完成运行时同步，变化通知发送一次。", null);
+            Changed?.Invoke();
+        }
+
         /// <summary>完成业务架构 Manager 初始化。</summary>
         protected override void OnInit()
         {

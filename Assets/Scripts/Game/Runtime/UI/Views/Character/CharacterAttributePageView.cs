@@ -25,6 +25,8 @@ namespace RPG.Game.UI.Views.Character
         [SerializeField] private Image experienceProgressImage;
         [SerializeField] private Button developmentButton;
         [SerializeField] private TMP_Text developmentButtonText;
+        [SerializeField] private TMP_Dropdown partyPositionDropdown;
+        [SerializeField] private TMP_Text partyPositionStatusText;
         [SerializeField] private ScrollRect introductionScrollRect;
         [SerializeField] private TMP_Text introductionText;
         [SerializeField] private GameObject introductionRoot;
@@ -36,10 +38,18 @@ namespace RPG.Game.UI.Views.Character
 
         #endregion
 
+        #region 页面状态
+
+        private bool partyPositionEditing;
+
+        #endregion
+
         #region 事件
 
         /// <summary>角色属性页请求升级或突破培养。</summary>
         public event Action DevelopmentRequested;
+        /// <summary>角色请求加入、移动、交换或退出队伍位置；负一表示退出。</summary>
+        public event Action<int> PartyPositionRequested;
 
         #endregion
 
@@ -52,6 +62,7 @@ namespace RPG.Game.UI.Views.Character
                 currentLevelText == null || levelCapText == null || experienceText == null ||
                 experiencePercentText == null || capStateText == null || experienceProgressImage == null ||
                 developmentButton == null || developmentButtonText == null ||
+                partyPositionDropdown == null || partyPositionStatusText == null ||
                 introductionScrollRect == null || introductionScrollRect.viewport == null ||
                 introductionText == null || introductionRoot == null)
                 throw new InvalidOperationException("[CharacterAttributePageView] 角色标题、经验条或介绍区未绑定完整。");
@@ -70,13 +81,18 @@ namespace RPG.Game.UI.Views.Character
             experienceProgressImage.fillMethod = Image.FillMethod.Horizontal;
             experienceProgressImage.raycastTarget = false;
             developmentButton.onClick.AddListener(HandleDevelopmentClicked);
-            Debug.Log("[CharacterAttributePageView] 初始化完成，标题、介绍区与五条固定属性行已绑定。");
+            partyPositionDropdown.onValueChanged.AddListener(HandlePartyPositionChanged);
+            partyPositionDropdown.interactable = false;
+            partyPositionStatusText.gameObject.SetActive(false);
+            Debug.Log("[CharacterAttributePageView] 初始化完成，角色信息、队伍位置控件与五条固定属性行已绑定。");
         }
 
         /// <summary>销毁时移除角色升级入口按钮回调。</summary>
         private void OnDestroy()
         {
             if (developmentButton != null) developmentButton.onClick.RemoveListener(HandleDevelopmentClicked);
+            if (partyPositionDropdown != null)
+                partyPositionDropdown.onValueChanged.RemoveListener(HandlePartyPositionChanged);
         }
 
         #endregion
@@ -86,7 +102,9 @@ namespace RPG.Game.UI.Views.Character
         /// <summary>统一绑定角色标题、成长进度、介绍与固定 Stat 行。</summary>
         /// <param name="header">当前角色的标题与成长进度数据。</param>
         /// <param name="data">当前角色的基础属性列表。</param>
-        public void Bind(CharacterHeaderViewData header, IReadOnlyList<CharacterAttributeViewData> data)
+        /// <param name="partyPosition">当前角色的队伍槽位与选项名称。</param>
+        public void Bind(CharacterHeaderViewData header, IReadOnlyList<CharacterAttributeViewData> data,
+            CharacterPartyPositionViewData partyPosition)
         {
             Clear();
             if (header == null)
@@ -98,6 +116,7 @@ namespace RPG.Game.UI.Views.Character
                     BindFixedLine(data[index]);
             }
             BindHeader(header);
+            BindPartyPosition(partyPosition);
             Debug.Log($"[CharacterAttributePageView] 绑定角色属性页，角色={header.Name}，属性行={data?.Count ?? 0}。");
         }
 
@@ -109,7 +128,37 @@ namespace RPG.Game.UI.Views.Character
             armorLine.Clear();
             criticalChanceLine.Clear();
             criticalDamageLine.Clear();
+            ClosePartyPositionDropdown();
+            partyPositionDropdown.ClearOptions();
+            partyPositionDropdown.SetValueWithoutNotify(0);
+            partyPositionDropdown.interactable = false;
+            partyPositionStatusText.text = string.Empty;
+            partyPositionStatusText.gameObject.SetActive(false);
             ClearHeader();
+        }
+
+        /// <summary>在异步队伍提交期间禁用位置选择下拉框。</summary>
+        /// <param name="editing">当前是否存在未完成的编辑请求。</param>
+        public void SetPartyPositionEditing(bool editing)
+        {
+            partyPositionEditing = editing;
+            partyPositionDropdown.interactable = !editing && partyPositionDropdown.options.Count > 0;
+        }
+
+        /// <summary>显示或清除队伍位置编辑失败原因。</summary>
+        /// <param name="message">非空时显示的简短说明。</param>
+        public void SetPartyPositionStatus(string message)
+        {
+            partyPositionStatusText.text = message ?? string.Empty;
+            partyPositionStatusText.gameObject.SetActive(!string.IsNullOrWhiteSpace(message));
+        }
+
+        /// <summary>关闭展开中的队伍位置选项，以免它跨页或跨角色悬留。</summary>
+        public void ClosePartyPositionDropdown()
+        {
+            if (partyPositionDropdown == null || !partyPositionDropdown.IsExpanded) return;
+            partyPositionDropdown.Hide();
+            Debug.Log("[CharacterAttributePageView] 角色队伍位置菜单已关闭。");
         }
 
         #endregion
@@ -140,6 +189,27 @@ namespace RPG.Game.UI.Views.Character
             ascensionRankStars.gameObject.SetActive(header.AscensionRank > 0);
             ApplyStarCount(ascensionRankStars, header.AscensionRank);
             BindIntroduction(header.Introduction);
+        }
+
+        /// <summary>按队伍真实快照设置选项与选中值，不触发新的编辑请求。</summary>
+        /// <param name="partyPosition">当前角色的队伍位置数据。</param>
+        private void BindPartyPosition(CharacterPartyPositionViewData partyPosition)
+        {
+            if (partyPosition == null)
+            {
+                partyPositionDropdown.interactable = false;
+                return;
+            }
+
+            var optionData = new List<TMP_Dropdown.OptionData>(partyPosition.Options.Count);
+            for (int index = 0; index < partyPosition.Options.Count; index++)
+                optionData.Add(new TMP_Dropdown.OptionData(partyPosition.Options[index]));
+            partyPositionDropdown.ClearOptions();
+            partyPositionDropdown.AddOptions(optionData);
+            partyPositionDropdown.SetValueWithoutNotify(Mathf.Clamp(
+                partyPosition.SelectedOptionIndex, 0, optionData.Count - 1));
+            partyPositionDropdown.RefreshShownValue();
+            partyPositionDropdown.interactable = !partyPositionEditing;
         }
 
         /// <summary>清空属性页标题和介绍，防止切换角色或清空窗口后残留旧值。</summary>
@@ -206,6 +276,10 @@ namespace RPG.Game.UI.Views.Character
 
         /// <summary>转发属性页升级或突破按钮请求。</summary>
         private void HandleDevelopmentClicked() => DevelopmentRequested?.Invoke();
+
+        /// <summary>将 Dropdown 选项索引转换为零基队伍槽位请求。</summary>
+        /// <param name="optionIndex">TMP_Dropdown 的选项索引；零表示退出队伍。</param>
+        private void HandlePartyPositionChanged(int optionIndex) => PartyPositionRequested?.Invoke(optionIndex - 1);
 
         /// <summary>按 AttributeId 将数据绑定到固定行，避免列表顺序变化导致图标与数值错位。</summary>
         /// <param name="data">待显示属性。</param>

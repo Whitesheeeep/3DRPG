@@ -33,6 +33,7 @@ namespace RPG.Game.UI.Controllers
         private CharacterWindowView view;
         private CharacterRosterManager rosterManager;
         private CharacterPartyManager partyManager;
+        private CharacterManager characterManager;
         private CharacterEquipmentSystem equipmentSystem;
         private WeaponInventoryManager weaponInventoryManager;
         private ArtifactInventoryManager artifactInventoryManager;
@@ -75,6 +76,7 @@ namespace RPG.Game.UI.Controllers
         // key：角色经验素材 ItemId；value：当前选择消耗数量，每类材料一项。
         private readonly Dictionary<ItemId, int> selectedCharacterExperienceQuantityByItemIdMap = new();
         private bool submittingCharacterDevelopment;
+        private bool partyPositionChangePending;
         private string developmentStatusOverride;
         private bool initialized;
         private bool windowShown;
@@ -100,6 +102,10 @@ namespace RPG.Game.UI.Controllers
             view = data.View;
             rosterManager = GameArchitecture.Interface.GetManager<CharacterRosterManager>();
             partyManager = GameArchitecture.Interface.GetManager<CharacterPartyManager>();
+            PlayerController playerController = PlayerController.Instance;
+            if (playerController == null || playerController.CharacterManager == null)
+                throw new InvalidOperationException("[CharacterWindowController] 打开角色窗口前必须先初始化 PlayerController 与 CharacterManager。");
+            characterManager = playerController.CharacterManager;
             equipmentSystem = GameArchitecture.Interface.GetSystem<CharacterEquipmentSystem>();
             weaponInventoryManager = GameArchitecture.Interface.GetManager<WeaponInventoryManager>();
             artifactInventoryManager = GameArchitecture.Interface.GetManager<ArtifactInventoryManager>();
@@ -127,6 +133,7 @@ namespace RPG.Game.UI.Controllers
             view.WeaponReplaceRequested += HandleWeaponReplaceRequested;
             view.ArtifactReplaceRequested += HandleArtifactReplaceRequested;
             view.CharacterDevelopmentRequested += HandleCharacterDevelopmentRequested;
+            view.PartyPositionRequested += HandlePartyPositionRequested;
             view.CharacterDevelopmentSubmitRequested += HandleCharacterDevelopmentSubmitRequested;
             view.CharacterExperienceAutoFillRequested += HandleCharacterExperienceAutoFillRequested;
             view.CharacterDevelopmentMaterialsRequested += HandleCharacterDevelopmentMaterialsRequested;
@@ -206,6 +213,7 @@ namespace RPG.Game.UI.Controllers
             view.WeaponReplaceRequested -= HandleWeaponReplaceRequested;
             view.ArtifactReplaceRequested -= HandleArtifactReplaceRequested;
             view.CharacterDevelopmentRequested -= HandleCharacterDevelopmentRequested;
+            view.PartyPositionRequested -= HandlePartyPositionRequested;
             view.CharacterDevelopmentSubmitRequested -= HandleCharacterDevelopmentSubmitRequested;
             view.CharacterExperienceAutoFillRequested -= HandleCharacterExperienceAutoFillRequested;
             view.CharacterDevelopmentMaterialsRequested -= HandleCharacterDevelopmentMaterialsRequested;
@@ -253,6 +261,7 @@ namespace RPG.Game.UI.Controllers
             selectionPanel = null;
             view = null;
             partyManager = null;
+            characterManager = null;
             weaponInventoryManager = null;
             artifactInventoryManager = null;
             WSLog.Log("[CharacterWindowController] CharacterWindow 已释放。");
@@ -265,7 +274,7 @@ namespace RPG.Game.UI.Controllers
         /// <summary>启动角色、武器和圣遗物图集的异步加载，不阻塞窗口显示。</summary>
         public void PrepareOpen()
         {
-            PrepareOpenAsync().Forget(HandleAsyncException);
+            PrepareOpenAsync().Forget();
         }
 
         /// <summary>等待本轮动态图集加载尝试完成。</summary>
@@ -317,6 +326,7 @@ namespace RPG.Game.UI.Controllers
                 return;
             }
             view.Bind(viewData);
+            view.SetPartyPositionEditing(partyPositionChangePending);
             view.SetSelectionMode(selectionMode);
             view.SetCharacterDevelopmentMode(characterDevelopmentMode);
             if (characterDevelopmentMode != CharacterDevelopmentMode.None)
@@ -386,6 +396,72 @@ namespace RPG.Game.UI.Controllers
             Refresh();
         }
 
+        /// <summary>捕获当前角色并启动队伍位置事务；窗口隐藏不会取消已提交请求。</summary>
+        /// <param name="slotIndex">零基目标队伍槽位；负一表示退出队伍。</param>
+        private void HandlePartyPositionRequested(int slotIndex)
+        {
+            // 开始提交事务后，禁止再次提交，直到 CharacterManager 完成槽位同步并返回结果。
+            if (partyPositionChangePending || !windowShown || !hasSelectedCharacter) return;
+            CharacterId requestCharacterId = selectedCharacterId;
+            partyPositionChangePending = true;
+            view.SetPartyPositionStatus(string.Empty);
+            view.SetPartyPositionEditing(true);
+            WSLog.Log($"[CharacterWindowController] 提交队伍位置变更，character={requestCharacterId}, slot={slotIndex}。");
+            ChangePartyPositionAsync(requestCharacterId, slotIndex).Forget();
+        }
+
+        /// <summary>等待 CharacterManager 完成槽位与运行时 Actor 同步，并恢复 Dropdown 状态。</summary>
+        /// <param name="characterId">点击时捕获的角色标识。</param>
+        /// <param name="slotIndex">零基目标槽位；负一表示退出。</param>
+        private async UniTask ChangePartyPositionAsync(CharacterId characterId, int slotIndex)
+        {
+            E_CharacterPartyEditStatus status;
+            try
+            {
+                status = await characterManager.ChangePartySlotAsync(characterId, slotIndex);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception, this);
+                // 领域事件订阅者可能在提交后抛错；以 Party Manager 的权威槽位判定事务是否已经生效。
+                status = partyManager != null && partyManager.FindSlot(characterId) == slotIndex
+                    ? E_CharacterPartyEditStatus.Success
+                    : E_CharacterPartyEditStatus.LoadFailed;
+            }
+            finally
+            {
+                // 事务完成后恢复 Dropdown 状态，允许再次提交。
+                partyPositionChangePending = false;
+                if (!disposed && view != null) view.SetPartyPositionEditing(false);
+            }
+
+            if (disposed || !windowShown || !hasSelectedCharacter || selectedCharacterId != characterId)
+                return;
+            if (status != E_CharacterPartyEditStatus.Success)
+                Refresh();
+            // 事务结果说明只在失败或拒绝时显示，成功或无变化时清空。
+            view.SetPartyPositionStatus(GetPartyEditStatusMessage(status));
+        }
+
+        /// <summary>将队伍事务状态转换为属性页可读的简短原因。</summary>
+        /// <param name="status">队伍编辑结果。</param>
+        /// <returns>正常或无变化时为空；拒绝和失败时返回说明。</returns>
+        private static string GetPartyEditStatusMessage(E_CharacterPartyEditStatus status)
+        {
+            return status switch
+            {
+                E_CharacterPartyEditStatus.Success or E_CharacterPartyEditStatus.NoChange => string.Empty,
+                E_CharacterPartyEditStatus.InvalidSlot => "队伍位置无效",
+                E_CharacterPartyEditStatus.CharacterNotOwned => "尚未拥有该角色",
+                E_CharacterPartyEditStatus.LastMember => "队伍至少保留一名角色",
+                E_CharacterPartyEditStatus.CharacterBusy => "角色正在执行技能，暂不可移出队伍",
+                E_CharacterPartyEditStatus.EditInProgress => "另一项队伍调整仍在处理中",
+                E_CharacterPartyEditStatus.LoadFailed => "角色加载失败，队伍未改变",
+                E_CharacterPartyEditStatus.Cancelled => "队伍调整已取消",
+                _ => "队伍尚未准备完成"
+            };
+        }
+
         /// <summary>按方向循环切换角色，首尾不会越界。</summary>
         /// <param name="direction">-1 表示向左，1 表示向右。</param>
         private void HandleCharacterCycleRequested(int direction)
@@ -414,14 +490,14 @@ namespace RPG.Game.UI.Controllers
         /// <summary>请求关闭角色窗口。</summary>
         private void HandleCloseRequested()
         {
-            UIManager.Instance.HideWindowAsync<CharacterWindow>().Forget(HandleAsyncException);
+            UIManager.Instance.HideWindowAsync<CharacterWindow>().Forget();
         }
 
         /// <summary>打开当前武器的统一装备培养窗口。</summary>
         /// <param name="instanceId">武器实例。</param>
         private void HandleWeaponDevelopmentRequested(EquipmentInstanceId instanceId)
         {
-            OpenEquipmentDevelopmentAsync(EquipmentDevelopmentOpenContext.ForWeapon(instanceId)).Forget(HandleAsyncException);
+            OpenEquipmentDevelopmentAsync(EquipmentDevelopmentOpenContext.ForWeapon(instanceId)).Forget();
         }
 
         /// <summary>更新当前圣遗物选中槽位。</summary>
@@ -436,7 +512,7 @@ namespace RPG.Game.UI.Controllers
         /// <param name="instanceId">圣遗物实例。</param>
         private void HandleArtifactDevelopmentRequested(EquipmentInstanceId instanceId)
         {
-            OpenEquipmentDevelopmentAsync(EquipmentDevelopmentOpenContext.ForArtifact(instanceId)).Forget(HandleAsyncException);
+            OpenEquipmentDevelopmentAsync(EquipmentDevelopmentOpenContext.ForArtifact(instanceId)).Forget();
         }
 
         /// <summary>根据当前页面进入武器或圣遗物候选选择状态。</summary>
@@ -1159,15 +1235,5 @@ namespace RPG.Game.UI.Controllers
 
         #endregion
 
-        #region 异常
-
-        /// <summary>记录跨窗口异步流程的非取消异常。</summary>
-        /// <param name="exception">异步异常。</param>
-        private static void HandleAsyncException(Exception exception)
-        {
-            if (!(exception is OperationCanceledException)) Debug.LogException(exception);
-        }
-
-        #endregion
     }
 }
