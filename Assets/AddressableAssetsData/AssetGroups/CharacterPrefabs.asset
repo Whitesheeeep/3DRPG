@@ -17,6 +17,11 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: a2c2eafe6f1e4d4ba3a8dc14b3f0c2e1
   m_SerializeEntries:
+  - m_GUID: 1993c7c5b71e90442baf06be8cd14b5e
+    m_Address: Character/Arlecchino
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 80487ac97fa5b0643a608f804c1efed8
     m_Address: Character/OdetaA
     m_ReadOnly: 0
@@ -32,4 +37,3 @@ MonoBehaviour:
   m_SchemaSet:
     m_Schemas:
     - {fileID: 11400000, guid: a3d3fbf7602f4e5ca4b9ed25c6f3d2e2, type: 2}
-    - {fileID: 11400000, guid: a4e4fcf8713f4f6db5caf836d7e4e3f3, type: 2}

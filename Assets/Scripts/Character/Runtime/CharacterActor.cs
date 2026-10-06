@@ -1,31 +1,30 @@
 using System;
 using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
+using RPG.Character.Animation;
+using RPG.ItemSystem;
 using RPG.Character.State;
 using RPG.PlayerInputSystem;
-using WS_Modules.GAS.GameplayAbilitySystem;
-using RPG.Character.Animation;
-using RPG.Markers;
-using RPG.SkillSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
-using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.AttributeSystem;
 
 namespace RPG.Character
 {
     /// <summary>封装一个角色独立的战斗、能力、动画、挂点和 Locomotion 状态。</summary>
     [RequireComponent(typeof(Animator))]
-    [InfoBox("依赖 CharacterConfig、同节点 Humanoid Animator、AnimationController，以及同节点或子节点中的 ASC、MarkerProvider 与 SkillRuntimeHost；Config 提供初始属性、战斗配置和 Locomotion 参数；子树 Renderer 用于隐藏后台角色。")]
+    [InfoBox("依赖 CharacterConfig、同节点 Humanoid Animator、AnimationController 和 WeaponRigController，以及同节点或子节点中的 ASC、MarkerProvider、SkillRuntimeHost、CharacterWeaponPresentationController；武器表现由 CharacterManager 注入 Roster/WeaponInventory，武器姿态由技能 Task 通过 Owner.WeaponSwitch 驱动；Config 提供角色属性、战斗与 Locomotion 参数，子树 Renderer 用于隐藏后台角色。")]
     public sealed class CharacterActor : CharacterAbilityActor
     {
         #region 配置与运行时状态
 
         // 玩家角色配置与 Humanoid 足部缓存只服务于玩家战斗和队伍切换。
         [SerializeField, Required] private CharacterConfig config;
+        [SerializeField, Required] private CharacterWeaponPresentationController weaponPresentationController;
         [NonSerialized] private Transform leftFoot;
         [NonSerialized] private Transform rightFoot;
         [NonSerialized] private bool footBonesCached;
-        [SerializeField] private CharacterLocomotionStateMachine locomotion = new();
+        private CharacterLocomotionStateMachine locomotion = new();
 
         // 战斗、实例和成长运行时在 CharacterManager 绑定 CharacterInstance 后初始化。
         private readonly CharacterCombatSystem combatSystem = new();
@@ -44,6 +43,8 @@ namespace RPG.Character
         private bool suppressAnimatorMotion;
         // 角色表现 Renderer 缓存，SetActivePresentation 时用于隐藏后台角色。
         private Renderer[] presentationRenderers;
+        // 武器模型动态替换后重建 Renderer 缓存，并沿用当前角色的显隐状态。
+        private bool isPresentationActive;
         // PlayerController 在 Start 阶段统一初始化队伍；CharacterActor.Start 作为独立实例启用时的幂等兜底。
         private bool runtimeConfigurationInitialized;
 
@@ -98,7 +99,7 @@ namespace RPG.Character
                 InitializeFromInstance();
         }
 
-        /// <summary>销毁角色时释放 FullBody Action 注册并归还共享 Blackboard 占据。</summary>
+        /// <summary>销毁角色时释放武器表现、FullBody Action 注册并归还共享 Blackboard 占据。</summary>
         protected override void OnDestroy()
         {
             base.OnDestroy();
@@ -119,6 +120,10 @@ namespace RPG.Character
             }
             if (config == null)
                 throw new InvalidOperationException($"CharacterActor '{name}' 未配置 CharacterConfig。");
+            if (weaponRigController == null)
+                throw new InvalidOperationException($"CharacterActor '{name}' 未配置 WeaponRigController。");
+            if (weaponPresentationController == null)
+                throw new InvalidOperationException($"CharacterActor '{name}' 未配置 CharacterWeaponPresentationController。");
         }
 
         /// <summary>仅在配置了 AttributeSet 且 ASC 尚未初始化时执行一次初始化。</summary>
@@ -166,15 +171,18 @@ namespace RPG.Character
             runtimeConfigurationInitialized = true;
         }
 
-        /// <summary>停止当前 Actor 的实例绑定和战斗运行时，防止存档移除角色后继续持有孤立实例。</summary>
+        /// <summary>停止当前 Actor 的实例绑定和战斗运行时，并解除武器表现事件及资源占用。</summary>
         internal void StopRuntime()
         {
+            weaponPresentationController.PresentationModelChanged -= HandleWeaponPresentationModelChanged;
+            weaponPresentationController.StopRuntime();
             runtimeAttributeBinding?.Dispose();
             runtimeAttributeBinding = null;
             actionArbiter?.Dispose();
             actionArbiter = null;
             runtimeConfigurationInitialized = false;
             instance = null;
+            isPresentationActive = false;
             if (animator != null) animator.enabled = false;
             if (presentationRenderers == null) presentationRenderers = GetComponentsInChildren<Renderer>(true);
             for (int index = 0; index < presentationRenderers.Length; index++)
@@ -182,17 +190,22 @@ namespace RPG.Character
             Debug.Log($"[CharacterActor] 已停止角色运行时并解除实例绑定，actor={name}。");
         }
 
-        /// <summary>把稳定 CharacterRoot、输入黑板与 Player 持有的运动请求接口注入角色。</summary>
+        /// <summary>把稳定角色实例、Roster/武器库存及 Player 运动依赖注入角色。</summary>
         /// <param name="root">所有队伍角色共享的空间根节点。</param>
         /// <param name="driver">GAS 与 Locomotion 共用的请求接口。</param>
         /// <param name="controller">负责驱动当前角色 AnimatorMove 的稳定 PlayerController。</param>
         /// <param name="blackboard">所有队伍角色共享的 PlayerStateBlackboard。</param>
+        /// <param name="characterInstance">角色进度和装备关系的唯一权威实例。</param>
+        /// <param name="rosterManager">提供最新角色实例的 Roster Manager。</param>
+        /// <param name="weaponInventoryManager">按装备实例 ID 查询武器定义的库存 Manager。</param>
         internal void BindRuntime(
             Transform root,
             IMotionDriver driver,
             PlayerController controller,
             PlayerStateBlackboard blackboard,
-            CharacterInstance characterInstance)
+            CharacterInstance characterInstance,
+            CharacterRosterManager rosterManager,
+            WeaponInventoryManager weaponInventoryManager)
         {
             characterRoot = root;
             motionDriver = driver;
@@ -204,7 +217,15 @@ namespace RPG.Character
                 throw new InvalidOperationException($"CharacterActor '{name}' 的 Prefab Config 与 CharacterInstance 不一致。");
             locomotion.Configure(instance.Config.Gravity, instance.Config.LocomotionTransition);
             locomotion.Initialize(this, driver);
+            weaponPresentationController.PresentationModelChanged += HandleWeaponPresentationModelChanged;
+            weaponPresentationController.BindRuntime(instance, rosterManager, weaponInventoryManager);
+            Debug.Log($"[CharacterActor] 已绑定角色运行时依赖，character={instance.CharacterId}。");
         }
+
+        /// <summary>等待装备权威状态对应的武器模型和技能 Marker 完成首次同步。</summary>
+        /// <returns>武器表现初始化任务。</returns>
+        internal UniTask InitializeWeaponPresentationAsync() =>
+            weaponPresentationController.InitializeWeaponPresentationAsync();
 
         /// <summary>在当前表现状态不变的隐藏窗口内求值 Idle 初始姿态。</summary>
         internal void PrimeIdlePose()
@@ -249,9 +270,19 @@ namespace RPG.Character
             EnsureDependencies();
             // ASC 所在对象不能 SetActive(false)，否则后台能力与事件生命周期会被截断。
             if (!active) combatSystem.ResetCombo();
+            isPresentationActive = active;
             presentationRenderers ??= GetComponentsInChildren<Renderer>(true);
-            foreach (Renderer renderer in presentationRenderers) renderer.forceRenderingOff = !active;
+            foreach (Renderer renderer in presentationRenderers)
+                if (renderer != null) renderer.forceRenderingOff = !active;
             animator.enabled = active;
+        }
+
+        /// <summary>武器层级替换后重建渲染器缓存，避免后台角色的新模型闪现。</summary>
+        private void HandleWeaponPresentationModelChanged()
+        {
+            presentationRenderers = GetComponentsInChildren<Renderer>(true);
+            foreach (Renderer renderer in presentationRenderers)
+                if (renderer != null) renderer.forceRenderingOff = !isPresentationActive;
         }
 
         /// <summary>推进普通 ASC 阶段；后台角色也会执行。</summary>

@@ -15,6 +15,7 @@ MonoBehaviour:
   characters:
   - {fileID: 11400000, guid: c36cba51eac191947936b273c1792996, type: 2}
   - {fileID: 11400000, guid: b25abd678e4be2b489491d72056e6411, type: 2}
+  - {fileID: 11400000, guid: 50d3c8ef36ea2f04a809850981d859fa, type: 2}
   defaultData:
     defaultRarity: 5
     defaultSideIconAddress: CharacterSideIcons
@@ -26,4 +27,7 @@ MonoBehaviour:
     - weaponType: 0
       weaponDefinitionId:
         value: weapon_0003
-  nextCharacterIdNumber: 4
+    - weaponType: 2
+      weaponDefinitionId:
+        value: weapon_0004
+  nextCharacterIdNumber: 5

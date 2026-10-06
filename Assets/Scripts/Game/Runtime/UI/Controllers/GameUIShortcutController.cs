@@ -1,6 +1,7 @@
 using System;
 using RPG.Game;
 using RPG.Game.UI.Bag;
+using RPG.Game.UI.Character;
 using RPG.Game.UI.Escape;
 using RPG.Game.UI.Task;
 using RPG.PlayerInputSystem;
@@ -62,6 +63,9 @@ namespace RPG.Game.UI.Controllers
                 case E_PlayerInputType.BagWindow:
                     PublishBagOpenRequest();
                     break;
+                case E_PlayerInputType.CharacterWindow:
+                    PublishCharacterWindowOpenRequest();
+                    break;
                 case E_PlayerInputType.CancelWindow:
                     DispatchCancelCommand();
                     break;
@@ -78,6 +82,15 @@ namespace RPG.Game.UI.Controllers
             EventSystem.EventTrigger_Type(
                 typeof(BagWindowOpenRequestedEventArgs),
                 new BagWindowOpenRequestedEventArgs(BagWindowRequestSource.Shortcut));
+        }
+
+        /// <summary>发布来自键盘快捷键的角色窗口打开意图。</summary>
+        private static void PublishCharacterWindowOpenRequest()
+        {
+            Debug.Log("[GameUIShortcutController] 转发 CharacterWindow 快捷键。");
+            EventSystem.EventTrigger_Type(
+                typeof(CharacterWindowOpenRequestedEventArgs),
+                new CharacterWindowOpenRequestedEventArgs(E_CharacterWindowOpenSource.Shortcut));
         }
 
         /// <summary>将取消快捷键交给 BusinessArchitecture 的 Esc Command 栈。</summary>

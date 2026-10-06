@@ -219,7 +219,7 @@ namespace RPG.Game.UI.Controllers
             WSLog.Log("[HUDWindowController] 点击 HUD Character 按钮，发布角色窗口打开请求。");
             EventSystem.EventTrigger_Type(
                 typeof(CharacterWindowOpenRequestedEventArgs),
-                new CharacterWindowOpenRequestedEventArgs(CharacterWindowOpenSource.HudButton));
+                new CharacterWindowOpenRequestedEventArgs(E_CharacterWindowOpenSource.HudButton));
         }
 
         /// <summary>将 HUD 任务按钮点击转换为统一任务窗口打开意图。</summary>

@@ -6,6 +6,7 @@ using WS_Modules.GAS.GameplayAbilitySystem;
 using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.TAG;
 using RPG.Character;
+using RPG.Character.Animation;
 using WS_Modules.GAS.GameplayEffect;
 
 namespace RPG.SkillSystem
@@ -19,11 +20,15 @@ namespace RPG.SkillSystem
         private readonly SkillStartMode startMode;
         private IReadOnlyList<GameplayEffectSpec> effectSpecs;
         private bool suppressNextAnimatorMotion;
+        // 依赖字段：Owner 提供可选武器姿态能力，Skill 与动作仲裁服务由激活流程提供。
         private ISkillRuntimeHost host;
-        private bool subscribed;
+        private IWeaponSwitch weaponSwitch;
         private IMotionDriver motionDriver;
-        private MotionControlHandle motionHandle;
         private IFullBodyActionArbiter fullBodyActionArbiter;
+
+        private bool ownsWeaponSwitch;
+        private bool subscribed;
+        private MotionControlHandle motionHandle;
         private FullBodyActionHandle fullBodyActionHandle;
 
         #endregion
@@ -86,6 +91,9 @@ namespace RPG.SkillSystem
                 return;
             }
 
+            // 武器姿态是 Owner 组合的可选能力；空引用表示此宿主无需切换武器姿态。
+            weaponSwitch = skillOwner.WeaponSwitch;
+
             // ASC 已经缓存宿主，Task 只取得接口能力，不再依赖角色具体组件类型。
             host = skillOwner.SkillRuntimeHost;
             if (host == null)
@@ -120,6 +128,13 @@ namespace RPG.SkillSystem
                 SkillStartResult result = host.TryPlay(skillConfig, startMode);
                 if (result.Succeeded)
                 {
+                    // 只有时间轴实际占用 Host 且当前 Task 仍运行时才接管姿态，避免失败启动改变已有表现。
+                    if (State == GameplayAbilityTaskState.Running && host.IsPlaying && weaponSwitch != null)
+                    {
+                        weaponSwitch.HoldWeapon();
+                        ownsWeaponSwitch = true;
+                    }
+
                     suppressNextAnimatorMotion = startMode == SkillStartMode.FirstActivePhase &&
                                                   host.CurrentFrame > 0 && skillConfig.IsRootMotion;
                     // SkillRuntimeHost 已经成功取得表现层后再发布占据，避免播放失败留下虚假的 FullBody 状态。
@@ -151,6 +166,7 @@ namespace RPG.SkillSystem
                 Unsubscribe();
                 ReleaseFullBodyAction();
                 ReleaseMotion();
+                ReleaseWeaponSwitch();
                 host.Cancel();
                 Complete();
                 throw;
@@ -163,6 +179,7 @@ namespace RPG.SkillSystem
             Unsubscribe();
             ReleaseFullBodyAction();
             ReleaseMotion();
+            ReleaseWeaponSwitch();
             host?.Stop();
         }
 
@@ -172,15 +189,28 @@ namespace RPG.SkillSystem
             Unsubscribe();
             ReleaseFullBodyAction();
             ReleaseMotion();
+            ReleaseWeaponSwitch();
             host?.Cancel();
         }
 
         /// <summary>Task 正常完成时解除 Module 事件，防止后续播放回调旧 Task。</summary>
         protected override void OnComplete()
         {
+            ReleaseWeaponSwitch();
             Unsubscribe();
             ReleaseFullBodyAction();
             ReleaseMotion();
+        }
+
+        /// <summary>在 Task 发出完成通知或停止 Host 前释放本 Task 接管的武器姿态。</summary>
+        private void ReleaseWeaponSwitch()
+        {
+            if (!ownsWeaponSwitch)
+                return;
+
+            // 先清除所有权标记，防止重入清理对 Rig 重复下达收刀命令。
+            ownsWeaponSwitch = false;
+            weaponSwitch.CarryWeaponOnBack();
         }
 
         /// <summary>使用 ASC 普通阶段推进 Skill 时间轴整数帧。</summary>

@@ -154,7 +154,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 35a61d1bb9f34450872b7a77fef2cd4b, type: 2}
   - {fileID: 11400000, guid: 9dfd735643ea44e5bc175d67673e294f, type: 2}
   - {fileID: 11400000, guid: 69a0c641810c404eb48ef19608865174, type: 2}
-  - {fileID: 11400000, guid: 88f2decfe72c4832a56cacc3965c7504, type: 2}
   - {fileID: 11400000, guid: 6c8220bef35f4ed985298a32c9eab264, type: 2}
   - {fileID: 11400000, guid: d67cd9b2c6e7445c91166a8e11bd879b, type: 2}
   - {fileID: 11400000, guid: 56df657675a8426dbbbd04cc2e2b2ed9, type: 2}
@@ -165,6 +164,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: be30d7eb4361eda43b7783c405d06a31, type: 2}
   - {fileID: 11400000, guid: 60af83b1acf922e4781446bc7a1d1b53, type: 2}
   - {fileID: 11400000, guid: 4c8066cd14bab4d48afc00e70f177780, type: 2}
+  - {fileID: 11400000, guid: b9d49be6b63c97844b36d76ca438b37b, type: 2}
   moveAction: {fileID: -6439902812146969066, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
   moveDeadzone: 0.1
 --- !u!114 &6089726963410338055

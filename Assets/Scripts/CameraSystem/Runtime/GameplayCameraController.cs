@@ -13,7 +13,7 @@ namespace RPG.CameraSystem
 {
     /// <summary>协调自由与锁定两台 Virtual Camera 的输入、模式衔接和光标生命周期。</summary>
     [DefaultExecutionOrder(50), DisallowMultipleComponent]
-    [InfoBox("依赖 Prefab 内绑定的 Main Camera、Brain、自由与锁定 Virtual Camera、CameraPivot、Target Group、构图代理和 CinemachineManager；自由 VCam 必须配置 Third Person Follow Body，镜头高度由 Shoulder Offset Y 决定；目标构图范围读取锁定对象子层级 Renderer，排除粒子和拖尾。")]
+    [InfoBox("依赖 Prefab 内绑定的 Main Camera、Brain、自由与锁定 Virtual Camera、CameraPivot、Target Group、构图代理和 CinemachineManager；自由 VCam 必须配置 Third Person Follow Body，镜头高度由 CameraPivot 的局部位置配置并作为世界轴偏移跟随玩家；目标构图范围读取锁定对象子层级 Renderer，排除粒子和拖尾。")]
     public sealed class GameplayCameraController : MonoBehaviour
     {
         #region 镜头依赖与输入配置
@@ -69,7 +69,10 @@ namespace RPG.CameraSystem
         private Renderer[] lockedTargetRenderers = System.Array.Empty<Renderer>();
         private CancellationTokenSource playerBindingCancellationSource;
 
-        // 构图节点偏移由 Prefab 配置；支点位置直接跟随 CharacterRoot。
+        // 镜头跟随：从 Prefab 的 CameraPivot 局部位置缓存固定世界轴偏移，不随角色朝向旋转。
+        private Vector3 cameraPivotWorldOffset;
+
+        // 构图节点偏移由 Prefab 配置，并以 CharacterRoot 世界坐标为基准应用。
         private Vector3 playerFramingWorldOffset;
         private Vector3 targetFallbackWorldOffset;
         private float desiredFreeCameraDistance;
@@ -101,7 +104,7 @@ namespace RPG.CameraSystem
 
         #region Unity 生命周期
 
-        /// <summary>校验 Prefab 依赖，从自由 VCam 管线获取 Third Person Follow，并初始化距离与观察方向。</summary>
+        /// <summary>校验 Prefab 依赖，缓存支点世界轴偏移，从自由 VCam 获取 Third Person Follow 并初始化镜头状态。</summary>
         /// <exception cref="System.InvalidOperationException">Prefab 缺少输出镜头、构图目标或自由 VCam 的 Third Person Follow 时抛出。</exception>
         private void Awake()
         {
@@ -139,6 +142,8 @@ namespace RPG.CameraSystem
                 throw new System.InvalidOperationException(error);
             }
 
+            // 局部位置是 Prefab 配置入口；后续把该偏移加到角色世界位置，避免随角色转向绕轴偏移。
+            cameraPivotWorldOffset = cameraPivot.localPosition;
             playerFramingWorldOffset = playerFramingTarget.localPosition;
             targetFallbackWorldOffset = lockedTargetFramingTarget.localPosition;
             desiredFreeCameraDistance = Mathf.Clamp(
@@ -181,8 +186,8 @@ namespace RPG.CameraSystem
             bool inputAvailable = input != null && input.isActiveAndEnabled && !input.IsGameplayInputBlocked;
             UpdateCursorOwnership(applicationHasFocus && inputAvailable);
 
-            // 自由 Follow 的高度由 Third Person Follow Offset 配置；支点只跟随玩家根位置。
-            cameraPivot.position = boundPlayerRoot.position;
+            // 先按固定世界轴偏移抬高 Follow 起点，使第三人称避障从身体上方开始检测。
+            cameraPivot.position = boundPlayerRoot.position + cameraPivotWorldOffset;
             playerFramingTarget.position = boundPlayerRoot.position + playerFramingWorldOffset;
 
             bool hasUsableLockedTarget = currentMode == E_GameplayCameraMode.Locked &&
@@ -334,7 +339,7 @@ namespace RPG.CameraSystem
 
             boundPlayer = player;
             boundPlayerRoot = player.CharacterRoot;
-            cameraPivot.position = boundPlayerRoot.position;
+            cameraPivot.position = boundPlayerRoot.position + cameraPivotWorldOffset;
             playerFramingTarget.position = boundPlayerRoot.position + playerFramingWorldOffset;
             SynchronizeInputController(PlayerInputController.Instance);
             ApplyLockSystemTarget(lockTargetSystem.CurrentTarget);

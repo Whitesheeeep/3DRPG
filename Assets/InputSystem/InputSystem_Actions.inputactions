@@ -88,15 +88,6 @@
           "initialStateCheck": false
         },
         {
-          "name": "Crouch",
-          "type": "Button",
-          "id": "27c5f898-bc57-4ee1-8800-db469aca5fe3",
-          "expectedControlType": "",
-          "processors": "",
-          "interactions": "",
-          "initialStateCheck": false
-        },
-        {
           "name": "Jump",
           "type": "Button",
           "id": "f1ba0d36-48eb-4cd5-b651-1c94a6531f70",
@@ -478,28 +469,6 @@
         },
         {
           "name": "",
-          "id": "4f4649ac-64a8-4a73-af11-b3faef356a4d",
-          "path": "<Gamepad>/buttonEast",
-          "interactions": "",
-          "processors": "",
-          "groups": "Gamepad",
-          "action": "Crouch",
-          "isComposite": false,
-          "isPartOfComposite": false
-        },
-        {
-          "name": "",
-          "id": "36e52cba-0905-478e-a818-f4bfcb9f3b9a",
-          "path": "<Keyboard>/c",
-          "interactions": "",
-          "processors": "",
-          "groups": "Keyboard&Mouse",
-          "action": "Crouch",
-          "isComposite": false,
-          "isPartOfComposite": false
-        },
-        {
-          "name": "",
           "id": "2a71a6b8-f28d-4b0f-9e2d-7dcd85c3c201",
           "path": "<Keyboard>/1",
           "interactions": "",
@@ -786,6 +755,15 @@
           "name": "TaskWindow",
           "type": "Button",
           "id": "9102b92c-be7c-4df7-b18e-aa7dcc2aa079",
+          "expectedControlType": "Button",
+          "processors": "",
+          "interactions": "",
+          "initialStateCheck": false
+        },
+        {
+          "name": "CharacterWindow",
+          "type": "Button",
+          "id": "190d41e5-8b11-48ef-8d0a-aec690586fcf",
           "expectedControlType": "Button",
           "processors": "",
           "interactions": "",
@@ -1406,6 +1384,17 @@
           "processors": "",
           "groups": "Keyboard&Mouse",
           "action": "TaskWindow",
+          "isComposite": false,
+          "isPartOfComposite": false
+        },
+        {
+          "name": "",
+          "id": "c8ab912f-9648-4697-90b5-d38af718e271",
+          "path": "<Keyboard>/c",
+          "interactions": "",
+          "processors": "",
+          "groups": "Keyboard&Mouse",
+          "action": "CharacterWindow",
           "isComposite": false,
           "isPartOfComposite": false
         }

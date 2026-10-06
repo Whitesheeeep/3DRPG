@@ -4,6 +4,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using RPG.Character.State;
 using RPG.Game;
+using RPG.ItemSystem;
 using RPG.PlayerInputSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
@@ -134,6 +135,7 @@ namespace RPG.Character
                 }
 
                 CharacterRosterManager rosterManager = GameArchitecture.Interface.GetManager<CharacterRosterManager>();
+                WeaponInventoryManager weaponInventoryManager = GameArchitecture.Interface.GetManager<WeaponInventoryManager>();
                 if (rosterManager.GetInstances().Count == 0)
                 {
                     // 当前尚无独立 Party 存档时，初始队伍同时承担空新档的角色获得入口。
@@ -194,13 +196,23 @@ namespace RPG.Character
                     if (!ReferenceEquals(actor.Config, configs[index]))
                         throw new InvalidOperationException($"[CharacterManager] Actor '{actor.name}' 的 Config 与 CharacterId '{configs[index].CharacterId}' 不一致。");
 
-                    // 绑定和初始化在提交到 characters 之前完成，失败时可整批销毁。
+                    // 提前记录新实例，武器地址解析或 Marker 校验失败时也能由初始化回滚销毁。
+                    spawnedCharacters.Add(actor);
+
+                    // 先绑定角色状态并完成武器首轮异步同步，成功后才允许将整队推进到 Ready。
                     CharacterInstance characterInstance = rosterManager.GetRequiredInstance(configs[index].CharacterId);
-                    actor.BindRuntime(root, driver, controller, blackboard, characterInstance);
+                    actor.BindRuntime(
+                        root,
+                        driver,
+                        controller,
+                        blackboard,
+                        characterInstance,
+                        rosterManager,
+                        weaponInventoryManager);
                     actor.InitializeFromInstance();
+                    await actor.InitializeWeaponPresentationAsync();
                     actor.PrimeIdlePose();
                     actor.SetActivePresentation(false);
-                    spawnedCharacters.Add(actor);
                     characters.Add(actor);
                 }
 
@@ -238,7 +250,11 @@ namespace RPG.Character
             rosterRestoredUnregister = null;
             CancelInitialization();
             for (int index = 0; index < spawnedCharacters.Count; index++)
-                if (spawnedCharacters[index] != null) Destroy(spawnedCharacters[index].gameObject);
+            {
+                if (spawnedCharacters[index] == null) continue;
+                spawnedCharacters[index].StopRuntime();
+                Destroy(spawnedCharacters[index].gameObject);
+            }
             spawnedCharacters.Clear();
             ReleaseLoadedPrefabReferences();
             characters.Clear();
@@ -250,7 +266,11 @@ namespace RPG.Character
         private void RollbackFailedInitialization()
         {
             for (int index = 0; index < spawnedCharacters.Count; index++)
-                if (spawnedCharacters[index] != null) Destroy(spawnedCharacters[index].gameObject);
+            {
+                if (spawnedCharacters[index] == null) continue;
+                spawnedCharacters[index].StopRuntime();
+                Destroy(spawnedCharacters[index].gameObject);
+            }
             spawnedCharacters.Clear();
             characters.Clear();
             ActiveCharacter = null;

@@ -26,6 +26,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         /// <summary>获取宿主用于播放动画的接口。</summary>
         IAnimationPlayer AnimationPlayer { get; }
 
+        /// <summary>获取宿主可选的武器姿态切换能力；不需要武器表现的宿主返回 null。</summary>
+        IWeaponSwitch WeaponSwitch { get; }
+
         /// <summary>获取宿主用于登记 FullBody Ability 生命周期和转换窗口的动作仲裁接口。</summary>
         IFullBodyActionArbiter FullBodyActionArbiter { get; }
 

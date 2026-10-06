@@ -40,6 +40,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         public IAnimationPlayer AnimationPlayer { get; }
 
         /// <inheritdoc />
+        public IWeaponSwitch WeaponSwitch => null;
+
+        /// <inheritdoc />
         public IFullBodyActionArbiter FullBodyActionArbiter => null;
 
         /// <inheritdoc />

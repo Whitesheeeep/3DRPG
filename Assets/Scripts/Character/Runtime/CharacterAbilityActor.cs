@@ -22,6 +22,7 @@ namespace RPG.Character
         [SerializeField] protected MarkerProvider markerProvider;
         [SerializeField] protected SkillRuntimeHost skillRuntimeHost;
         [SerializeField] protected AnimationController animationController;
+        [SerializeField] protected WeaponRigController weaponRigController;
         private CharacterHitStopState hitStopState;
 
         #endregion
@@ -77,6 +78,9 @@ namespace RPG.Character
                 return animationController;
             }
         }
+
+        /// <inheritdoc />
+        public IWeaponSwitch WeaponSwitch => weaponRigController == null ? null : weaponRigController;
 
         /// <inheritdoc />
         public bool IsActionPaused => hitStopState?.IsActive ?? false;

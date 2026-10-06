@@ -1,0 +1,126 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 49fe0e8189e47034da72a8e17cfc04cc, type: 3}
+  m_Name: character_0004
+  m_EditorClassIdentifier: 
+  characterId:
+    value: character_0004
+  identity:
+    characterName: "\u963F\u857E\u5947\u8BFA"
+    introduction: "\u963F\u857E\u5947\u8BFA"
+    rarity: 5
+  presentation:
+    prefabAddress: Character/Arlecchino
+    sideIconAddress: CharacterSideIcons
+    sideIconSpriteName: UI_AvatarIcon_Side_Arlecchino
+    avatarAddress: Characters
+    avatarSpriteName: "\u963F\u857E\u5947\u8BFA_5149"
+    fullBodyPortraitAddress: CharacterFullBody
+    fullBodyPortraitSpriteName: "\u963F\u857E\u5947\u8BFA_5149"
+  equipmentRules:
+    allowedWeaponTypes: 4
+    defaultWeaponType: 2
+  progression:
+    maxLevel: 90
+    maxAscensionRank: 6
+    growthProfile: {fileID: 11400000, guid: 4f4b35abaef039a41b2cc5b51f9cda46, type: 2}
+    ascensionStages:
+    - requiredLevel: 20
+      maxLevelAfter: 40
+      cost:
+        itemCosts:
+        - itemId:
+            value: material_0014
+          quantity: 1
+        currencyCosts:
+        - currencyId: 1
+          amount: 100
+    - requiredLevel: 40
+      maxLevelAfter: 50
+      cost:
+        itemCosts:
+        - itemId:
+            value: material_0014
+          quantity: 2
+        currencyCosts:
+        - currencyId: 1
+          amount: 200
+    - requiredLevel: 50
+      maxLevelAfter: 60
+      cost:
+        itemCosts:
+        - itemId:
+            value: material_0015
+          quantity: 1
+        currencyCosts:
+        - currencyId: 1
+          amount: 300
+    - requiredLevel: 60
+      maxLevelAfter: 70
+      cost:
+        itemCosts:
+        - itemId:
+            value: material_0015
+          quantity: 2
+        currencyCosts:
+        - currencyId: 1
+          amount: 400
+    - requiredLevel: 70
+      maxLevelAfter: 80
+      cost:
+        itemCosts:
+        - itemId:
+            value: material_0016
+          quantity: 1
+        currencyCosts:
+        - currencyId: 1
+          amount: 500
+    - requiredLevel: 80
+      maxLevelAfter: 90
+      cost:
+        itemCosts:
+        - itemId:
+            value: material_0016
+          quantity: 2
+        currencyCosts:
+        - currencyId: 1
+          amount: 600
+    initialAttributeSets:
+    - {fileID: 11400000, guid: fa050d1171257b24bbba13162066da88, type: 2}
+    resourceRules:
+    - resourceAttribute:
+        id: 0
+        name: Health
+        displayName: "\u5F53\u524D\u751F\u547D\u503C"
+      capacityAttribute:
+        id: 1
+        name: MaxHealth
+        displayName: "\u751F\u547D\u503C\u4E0A\u9650"
+      initialValueMode: 1
+    - resourceAttribute:
+        id: 3
+        name: MP
+        displayName: "\u80FD\u91CF"
+      capacityAttribute:
+        id: -1
+        name: 
+        displayName: 
+      initialValueMode: 0
+  combatConfig:
+    normalAttackAbilities: []
+    skillInputBindings: []
+  locomotion:
+    gravity: 9.81
+    locomotionTransition: {fileID: 11400000, guid: 8b2e9e80cfd84d94b68a1f7f15d89b21, type: 2}
+  editorSideIcon: {fileID: 21300000, guid: 1ec13dea4dc8eee4084974c7e1d4050a, type: 3}
+  editorAvatar: {fileID: 21300000, guid: 504163204ceca174dbafb5d140be34de, type: 3}
+  editorFullBodyPortrait: {fileID: 21300000, guid: a20c2a6d4432d384aa1168c3741e3236, type: 3}
