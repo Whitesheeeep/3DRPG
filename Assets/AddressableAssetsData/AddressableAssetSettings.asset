@@ -49,6 +49,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 04eafe8102c2f1b4aa3d2f6147a75f68, type: 2}
   - {fileID: 11400000, guid: e2d241e543d64884fba90c1e7b1f8b4d, type: 2}
   - {fileID: 11400000, guid: 3a6cd814a901d444e87877da841bd5d7, type: 2}
+  - {fileID: 11400000, guid: dbc71474640e5924285386b5c0edc216, type: 2}
   - {fileID: 11400000, guid: a2c2eafe6f1e4d4ba3a8dc14b3f0c2e1, type: 2}
   - {fileID: 11400000, guid: 643449bbe3e8d024fa9ef31477922e00, type: 2}
   - {fileID: 11400000, guid: 8fa985d47908e074f811b1f7a9f3adde, type: 2}
@@ -95,6 +96,7 @@ MonoBehaviour:
     - default
     - Bag
     - UI
+    - SFX
   m_SchemaTemplates: []
   m_GroupTemplateObjects:
   - {fileID: 11400000, guid: 9b9ee6adbb5205b428f76c4054b12604, type: 2}

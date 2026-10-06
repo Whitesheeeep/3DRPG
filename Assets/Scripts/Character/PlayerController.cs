@@ -20,7 +20,7 @@ namespace RPG.Character
     /// <summary>稳定编排玩家输入、当前角色能力、Locomotion 与最终运动结算。</summary>
     [DefaultExecutionOrder(-800), DisallowMultipleComponent]
     [InfoBox(
-        "依赖 Player 上的 PlayerInputController、DialogueParticipant，以及 CharacterRoot 上的 CharacterManager 和唯一 CharacterController；cameraTransform 可在 Inspector 指定，未绑定时低频查找 MainCamera；MainCamera 需要包含 Camera 组件。")]
+        "必需：同一 Player 对象上的 PlayerInputController，以及 Player 子层级（包含非激活对象）中的 CharacterManager 和唯一 CharacterController；缺少任一项时 Awake 会中止初始化。DialogueParticipant 为可选，缺失时跳过对话动画衔接。CharacterRoot 可指定，未指定时使用 CharacterManager 所在 Transform。cameraTransform 可指定为带 Camera 组件的 Transform；未指定时低频查找启用的 MainCamera，暂缺时移动输入暂停并继续重试。")]
     public sealed class PlayerController : SingletonMonoBase<PlayerController>, ILooseGameplayTagEventTarget
     {
         #region 配置与运行时状态
@@ -35,6 +35,9 @@ namespace RPG.Character
         private CharacterManager characterManager;
         [SerializeField]
         private CharacterController characterController;
+        // 独立启动场景可保留自动初始化；被统一流程管理的玩家应关闭此项，由场景任务启动。
+        [SerializeField, Tooltip("关闭后由统一场景流程的玩家初始化任务启动当前角色队伍。")]
+        private bool initializeOnStart = true;
         [SerializeField]
         private MotionDriver motionDriver = new();
         [SerializeField]
@@ -50,6 +53,9 @@ namespace RPG.Character
         private Coroutine cameraResolveCoroutine;
         private bool dialogueSwitchLocked;
         private bool runtimeStarted;
+        // 统一场景流程控制状态：多个入口共享一次玩家初始化任务和完成信号。
+        private bool initializationStarted;
+        private UniTaskCompletionSource initializationCompletionSource;
         private bool hasLoggedMissingMainCamera;
         private int lastAnimatorMoveFrame = -1;
         private CancellationTokenSource initializationCancellationSource;
@@ -139,8 +145,33 @@ namespace RPG.Character
             Debug.Log($"[PlayerController] 已注册并常驻 Player 单例，player={gameObject.name}。", this);
         }
 
-        /// <summary>启动角色配置的异步加载；输入和 Blackboard 不等待该任务。</summary>
-        private void Start() => InitializePlayerAsync().Forget(HandleInitializationException);
+        /// <summary>按 Inspector 策略自动初始化，供独立启动场景保持兼容。</summary>
+        private void Start()
+        {
+            if (initializeOnStart)
+                BeginInitializationIfNeeded();
+        }
+
+        /// <summary>开始或等待共享 Player 初始化，并将取消局限于当前调用方的等待。</summary>
+        /// <param name="cancellationToken">当前场景任务的协作式取消令牌。</param>
+        /// <returns>角色队伍和 PlayerController 收尾全部完成的共享结果。</returns>
+        public UniTask InitializeForSceneAsync(CancellationToken cancellationToken)
+        {
+            BeginInitializationIfNeeded();
+            return initializationCompletionSource.Task.AttachExternalCancellation(cancellationToken);
+        }
+
+        /// <summary>为直接启动或统一加载入口只创建一次共享初始化任务。</summary>
+        private void BeginInitializationIfNeeded()
+        {
+            if (!initializationStarted)
+            {
+                initializationStarted = true;
+                initializationCompletionSource = new UniTaskCompletionSource();
+                InitializePlayerAsync().Forget(HandleInitializationException);
+                WSLog.Log($"[PlayerController] 玩家初始化任务已启动，player={gameObject.name}。");
+            }
+        }
 
         /// <summary>异步等待角色队伍完成原子提交，并在 Ready 后恢复 MotionDriver。</summary>
         private async UniTask InitializePlayerAsync()
@@ -154,7 +185,8 @@ namespace RPG.Character
                     this,
                     StateBlackboard,
                     initializationCancellationSource.Token);
-                if (!characterManager.IsReady) return;
+                if (!characterManager.IsReady)
+                    throw new InvalidOperationException("[PlayerController] CharacterManager 初始化任务结束，但角色队伍未进入 Ready 状态。");
                 characterManager.ActiveCharacterChanged += OnActiveCharacterChanged;
                 CharacterActor active = characterManager.ActiveCharacter ??
                                         throw new InvalidOperationException("CharacterManager Ready 后没有 ActiveCharacter。");
@@ -164,10 +196,13 @@ namespace RPG.Character
                 active.Locomotion.Activate();
                 dialogueParticipant?.SetAnimationPlayer(active.AnimationPlayer);
                 Initialized?.Invoke();
+                initializationCompletionSource.TrySetResult();
+                WSLog.Log($"[PlayerController] 玩家初始化及控制器收尾已完成，player={gameObject.name}，character={active.name}。");
             }
             catch (Exception exception)
             {
                 InitializationFailed?.Invoke(exception);
+                initializationCompletionSource?.TrySetException(exception);
                 throw;
             }
         }
@@ -253,6 +288,7 @@ namespace RPG.Character
             base.OnDestroy();
         }
 
+        /// <summary>选中玩家对象时绘制角色环境检测器的调试范围。</summary>
         private void OnDrawGizmosSelected()
         {
             Transform drawTrans = GetComponentInChildren<CharacterManager>().transform;

@@ -1,0 +1,65 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:Style src="project://database/Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/SceneSystemView/SceneSystemPanel.uss" />
+    <ui:VisualElement class="scene-system-root">
+        <ui:VisualElement class="scene-toolbar">
+            <ui:VisualElement class="scene-toolbar-row">
+                <uie:ObjectField name="DatabaseField" label="配置库" class="scene-database-field" />
+                <ui:Button name="CreateDatabaseButton" text="新建库" class="scene-button scene-button-accent" />
+                <uie:ObjectField name="ExistingConfigField" label="已有配置" class="scene-existing-field" />
+                <ui:Button name="AddConfigButton" text="加入" class="scene-button" />
+                <ui:Button name="CreateConfigButton" text="新建配置" class="scene-button scene-button-accent" />
+                <ui:Button name="RefreshButton" text="刷新" class="scene-button" />
+            </ui:VisualElement>
+            <ui:VisualElement class="scene-toolbar-row scene-folder-row">
+                <ui:VisualElement name="AssetFolderFieldHost" class="scene-folder-field-host" />
+                <ui:HelpBox name="PlayModeHelpBox" text="Play Mode 中配置树为只读；任务仍可运行。" message-type="Info" class="scene-playmode-help" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView fixed-pane-index="0" fixed-pane-initial-dimension="360" orientation="Horizontal" class="scene-content-split">
+            <ui:VisualElement class="scene-tree-panel">
+                <ui:VisualElement class="scene-panel-heading">
+                    <ui:VisualElement>
+                        <ui:Label text="场景编排" class="scene-panel-title" />
+                        <ui:Label text="场景配置 → 组合节点 → 加载任务" class="scene-panel-subtitle" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="scene-heading-actions">
+                        <ui:Button name="ExpandAllButton" text="展开" class="scene-icon-button" />
+                        <ui:Button name="CollapseAllButton" text="折叠" class="scene-icon-button" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement class="scene-search-row">
+                    <uie:ToolbarSearchField name="SearchField" class="scene-search-field" />
+                    <ui:Button name="ValidateAllButton" text="校验全部" class="scene-button" />
+                </ui:VisualElement>
+                <ui:VisualElement class="scene-tree-container">
+                    <ui:TreeView name="SceneTreeView" class="scene-tree" />
+                    <ui:Label name="EmptyTreeLabel" text="请选择或创建场景配置库。" class="scene-tree-empty" />
+                </ui:VisualElement>
+                <ui:VisualElement class="scene-tree-legend">
+                    <ui:Label text="SCENE" class="scene-type-chip scene-chip-scene" />
+                    <ui:Label text="SEQUENCE" class="scene-type-chip scene-chip-sequence" />
+                    <ui:Label text="PARALLEL" class="scene-type-chip scene-chip-parallel" />
+                    <ui:Label text="TASK" class="scene-type-chip scene-chip-task" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="scene-detail-panel">
+                <ui:VisualElement class="scene-detail-header">
+                    <ui:VisualElement>
+                        <ui:Label name="DetailTitle" text="场景详情" class="scene-panel-title" />
+                        <ui:Label name="DetailSubtitle" text="选择配置或任务节点以查看详情" class="scene-panel-subtitle" />
+                    </ui:VisualElement>
+                    <ui:Label name="SelectionBadge" text="未选择" class="scene-selection-badge" />
+                </ui:VisualElement>
+                <ui:ScrollView name="DetailScrollView" class="scene-detail-scroll" horizontal-scroller-visibility="Hidden">
+                    <ui:VisualElement name="DetailContent" class="scene-detail-content" />
+                </ui:ScrollView>
+                <ui:VisualElement class="scene-status-strip">
+                    <ui:VisualElement name="StatusIndicator" class="scene-status-indicator" />
+                    <ui:Label name="StatusLabel" text="选择场景配置开始编排。" class="scene-status-text" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7658818da7dad3c4a943b77a4f20c10d, type: 3}
+  m_Name: SceneLoadConfig
+  m_EditorClassIdentifier: 
+  sceneId: scene.7f32e78d
+  sceneName: UnityReadyMarketCourtyard
+  displayName: "\u65B0\u573A\u666F\u914D\u7F6E"
+  sceneReference:
+    m_AssetGUID: f079fae3fd9dc2f429c56f4b22e648b0
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_EditorAssetChanged: 0
+  loadMode: 0
+  rootTask: {fileID: 11400000, guid: 938b3cfd0a4072947be3e208a0c59a3c, type: 2}

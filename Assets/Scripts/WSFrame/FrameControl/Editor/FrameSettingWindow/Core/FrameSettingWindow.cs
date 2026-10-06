@@ -7,14 +7,16 @@ using Object = UnityEngine.Object;
 
 namespace WS_Modules
 {
+    /// <summary>集中呈现 WSFrame 各业务模块设置的全局双栏编辑窗口。</summary>
     public partial class FrameSettingWindow : EditorWindow
     {
+        /// <summary>打开 WSFrame 全局设置窗口，并为双栏模块编辑预留可读工作区域。</summary>
         [MenuItem("WSFrame/Global Setting %#W")]
         private static void ShowWindow()
         {
             var window = GetWindow<FrameSettingWindow>();
             window.titleContent = new GUIContent("Frame Setting");
-            window.minSize = new Vector2(560, 400);
+            window.minSize = new Vector2(760, 520);
             window.Show();
         }
 
@@ -43,6 +45,8 @@ namespace WS_Modules
         private readonly EventSystemView _eventSystemView = new EventSystemView();
         private readonly UISystemView _uiSystemView = new UISystemView();
         private PoolSystemView _poolSystemView;
+        // 模块内容切换时释放 SceneSystem 的序列化绑定、Undo 和树回调。
+        private SceneSystemView sceneSystemView;
 
         private void CreateGUI()
         {
@@ -155,7 +159,7 @@ namespace WS_Modules
             _listView.selectedIndex = 0;
         }
 
-        #region UI 入口与模块分发
+        #region UI 模块分发
         private void DrawModuleSettings(string moduleName, VisualElement container)
         {
             if (_moduleRegistry != null && _moduleRegistry.TryGet(moduleName, out var module) && module.Enabled)
@@ -269,9 +273,13 @@ namespace WS_Modules
             DrawOdinProperty(wsFrameRoot.FrameSetting, "resLoadType", container);
         }
 
+        /// <summary>绘制带配置树和详情面板的场景加载时序编排器。</summary>
+        /// <param name="container">FrameSettingWindow 当前模块内容容器。</param>
         private void DrawSceneSystemSettings(VisualElement container)
         {
-            container.Add(new Label("Scene System Settings (Not Implemented)"));
+            sceneSystemView?.Dispose();
+            sceneSystemView = new SceneSystemView(container);
+            sceneSystemView.Bind();
         }
 
         private void DrawUISystemSettings(VisualElement container)
