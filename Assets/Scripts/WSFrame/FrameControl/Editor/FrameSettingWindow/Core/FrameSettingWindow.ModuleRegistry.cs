@@ -2,6 +2,8 @@
 {
     public partial class FrameSettingWindow
     {
+        /// <summary>按稳定顺序注册 WSFrame 全局设置模块，包括场景编排入口。</summary>
+        /// <returns>供左侧模块列表显示的注册表。</returns>
         private FrameModuleRegistry BuildDefaultModuleRegistry()
         {
             var registry = new FrameModuleRegistry();
@@ -14,6 +16,7 @@
             registry.Register(new FrameModuleDescriptor("ResSystem", "ResSystem", 5, DrawResSystemSettings));
             registry.Register(new FrameModuleDescriptor("UISystem", "UISystem", 6, DrawUISystemSettings));
             registry.Register(new FrameModuleDescriptor("ConfigInstaller", "ConfigInstaller", 7, DrawConfigInstallerSettings));
+            registry.Register(new FrameModuleDescriptor("SceneSystem", "SceneSystem", 8, DrawSceneSystemSettings));
 
             return registry;
         }

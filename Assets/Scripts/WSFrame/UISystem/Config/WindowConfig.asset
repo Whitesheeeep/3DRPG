@@ -27,3 +27,5 @@ MonoBehaviour:
     windowPrefabPath: CharacterWindow
   - windowName: TaskWindow
     windowPrefabPath: TaskWindow
+  - windowName: LoadingWindow
+    windowPrefabPath: LoadingWindow
