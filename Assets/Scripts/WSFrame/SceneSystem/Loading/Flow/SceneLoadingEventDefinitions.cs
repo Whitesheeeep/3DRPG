@@ -1,6 +1,4 @@
-using WS_Modules.SceneModule;
-
-namespace RPG.Game.Loading
+namespace WS_Modules.SceneModule
 {
     /// <summary>声明场景加载流程对外发布的状态事件。</summary>
     public enum E_SceneLoadingEventType

@@ -1,10 +1,14 @@
 # RPG 场景加载流程
 
-RPG 统一入口由 `GameSceneLoadingSystem` 提供。它先校验配置，再执行场景配置资产里的嵌套任务树；运行状态与 Addressables 句柄保存在本次运行时对象内，不写入任务资产。
+WSFrame 组合加载按职责分为 `Loading/Flow`（流程控制与展示契约）、`Loading/Execution`（Context、Tracker、场景模块、校验器和任务）及 `Loading/Data`（配置、数据库和快照）。框架入口和接入细节见下方文档链接。
+
+通用任务执行由 WSFrame 的 [`SceneLoadingSystem`](../../../WSFrame/SceneSystem/Loading/SceneLoading_README.md) 提供。RPG 的 ConfigInstaller 调用 `SceneLoadingSystem.RegisterDatabase`，由系统在注册时验证数据库并建立 SceneId 索引；`GameArchitecture` 注册系统实例并注入 `GameSceneLoadingPresentation`。玩家初始化、窗口预加载和场景入口仍由 RPG 实现。系统查询配置后执行其嵌套任务树；运行状态与 Addressables 句柄保存在本次运行时对象内，不写入任务资产。
+
+本项目使用 `Assets/SceneLoadAssets/SceneLoadDatabaseConfigProvider.asset` 引用 `SceneLoadDatabase.asset`，并已将 Provider 加入 `FrameworkConfigRootNode`。ConfigInstaller 会在 `GameArchitecture` 初始化前完成注册。
 
 ```mermaid
 flowchart TD
-    Caller[调用方] --> System[GameSceneLoadingSystem]
+    Caller[调用方] --> System[SceneLoadingSystem]
     System --> Validate[SceneLoadValidator 校验任务树]
     Validate --> Window[Addressables 打开 LoadingWindow]
     Window --> Draw[等待一帧显示全屏遮罩]
@@ -25,7 +29,7 @@ flowchart TD
 
 1. 在 Unity Addressables Groups 窗口把目标场景加入 Addressables，并将对应 Scene 资产放进 Addressables 场景组。新流程通过 Addressables 读取场景，不从 Build Settings 额外复制一份场景资源。
 2. 在 Project 窗口创建 `WSFrame/Scene Loading/Database` 和 `RPG/Config/Scene Load Database` 资产；把数据库赋给 Provider。
-3. 打开 `WSFrame/Global Setting → ConfigInstaller`，将 `SceneLoadDatabaseConfigProvider` 加入现有配置注册树，保证 `GameArchitectureStartup` 初始化后可以读取场景配置。
+3. 打开 `WSFrame/Global Setting → ConfigInstaller`，确认 `SceneLoadDatabaseConfigProvider` 已加入配置注册树。Provider 注册时调用 `SceneLoadingSystem.RegisterDatabase`，校验空配置、空 SceneId 和重复 ID，并建立运行时查询索引。
 4. 打开 `WSFrame/Global Setting → SceneSystem`，选择数据库，创建或加入 SceneLoadConfig。填写稳定且唯一的 `SceneId`、显示名称、Addressables 场景引用和 Single/Additive 模式。Reference 是场景加载依据；Unity 场景名称从其引用自动生成，只用于加载结果校验和直接打开场景时匹配。
 5. 在配置树中创建根 Sequence。以下结构让目标场景加载和窗口预加载同时开始，等待两个分支结束后再初始化玩家：
 
@@ -41,17 +45,17 @@ flowchart TD
 
 ## 加载界面、百分比与事件
 
-RPG 架构将 `GameSceneLoadingPresentation` 注入 `GameSceneLoadingSystem`。它通过 WindowConfig 和 Addressables 中的 `LoadingWindow` 显示全屏遮罩。界面按 `Assets/Scripts/WSFrame/UISystem/Template/TemplateWindow.prefab` 构建，CanvasScaler 参考分辨率为 640×360；完整 UGUI 布局和控件引用保存在 `Assets/Prefabs/UI/Window/LoadingWindow.prefab`。蒙德徽记和七元素图标来自 `Assets/Res/SourceRes/UI/Loading/`，进度使用快照真实百分比扩展元素彩色层的 RectMask2D 裁剪宽度，灰色底图与彩色图始终重合。若项目改动了 Addressables 配置，需确认 `UIPrefab` 组仍包含 `LoadingWindow` 地址。
+RPG 架构将 `GameSceneLoadingPresentation` 注入 `SceneLoadingSystem`。它通过 WindowConfig 和 Addressables 中的 `LoadingWindow` 显示全屏遮罩。界面按 `Assets/Scripts/WSFrame/UISystem/Template/TemplateWindow.prefab` 构建，CanvasScaler 参考分辨率为 640×360；完整 UGUI 布局和控件引用保存在 `Assets/Prefabs/UI/Window/LoadingWindow.prefab`。蒙德徽记和七元素图标来自 `Assets/Res/SourceRes/UI/Loading/`，进度使用快照真实百分比扩展元素彩色层的 RectMask2D 裁剪宽度，灰色底图与彩色图始终重合。若项目改动了 Addressables 配置，需确认 `UIPrefab` 组仍包含 `LoadingWindow` 地址。
 
 总体百分比根据任务树中所有叶子任务的 `ProgressWeight` 加权计算；默认每个叶子权重为 1，场景任务通过 Addressables 操作进度更新。组合任务只提供状态，不重复计入权重。流程运行中最高显示 99%，只有根任务成功后才变为 100%。失败不会显示成功百分比，加载窗口保留异常摘要；取消则显示取消状态，两者都需由用户关闭提示。
 
 ```csharp
 using RPG.Game;
-using RPG.Game.Loading;
+using WS_Modules.SceneModule;
 using UnityEngine;
 using WS_Modules.CustomEventSystem;
 
-GameSceneLoadingSystem loading = GameArchitecture.Interface.GetSystem<GameSceneLoadingSystem>();
+SceneLoadingSystem loading = GameArchitecture.Interface.GetSystem<SceneLoadingSystem>();
 IUnRegister progressRegistration = loading.RegisterSnapshotChanged(args =>
 {
     float percent = args.Snapshot.Progress * 100f;
@@ -73,10 +77,10 @@ taskRegistration.UnRegister();
 
 ```csharp
 using RPG.Game;
-using RPG.Game.Loading;
+using WS_Modules.SceneModule;
 using UnityEngine.SceneManagement;
 
-GameSceneLoadingSystem loading = GameArchitecture.Interface.GetSystem<GameSceneLoadingSystem>();
+SceneLoadingSystem loading = GameArchitecture.Interface.GetSystem<SceneLoadingSystem>();
 Scene targetScene = await loading.LoadAsync("scene.market");
 
 // 仅卸载本次统一流程通过 Addressables Additive 加载并持有的场景。

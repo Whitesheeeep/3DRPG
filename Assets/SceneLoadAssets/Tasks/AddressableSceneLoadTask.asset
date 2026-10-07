@@ -10,5 +10,6 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9a10595724287114c84711ee021a567c, type: 3}
-  m_Name: "\u573A\u666F\u52A0\u8F7D"
+  m_Name: AddressableSceneLoadTask
   m_EditorClassIdentifier: 
+  progressWeight: 1

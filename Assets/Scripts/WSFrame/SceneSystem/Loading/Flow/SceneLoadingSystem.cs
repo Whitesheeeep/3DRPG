@@ -1,26 +1,30 @@
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using UnityEngine;
 using UnityEngine.SceneManagement;
 using WS_Modules.BusinessArchitecture;
 using WS_Modules.CustomEventSystem;
 using WS_Modules.LogModule;
-using WS_Modules.SceneModule;
 
-namespace RPG.Game.Loading
+namespace WS_Modules.SceneModule
 {
     /// <summary>执行唯一组合式场景流程，串起验证、Addressables 加载、准备任务和最终状态。</summary>
-    public sealed class GameSceneLoadingSystem : AbstractSystem
+    public sealed class SceneLoadingSystem : AbstractSystem
     {
+        #region 依赖字段
+
+        // ConfigInstaller 在 Architecture 初始化前注入唯一场景库；System 实例只读取该配置。
+        private static SceneLoadDatabase database;
+        // 场景模块拥有本 System 加载的 Addressables 场景句柄，并负责卸载时配对释放。
+        private readonly AddressableSceneLoadModule addressableSceneLoadModule = new();
+        // 展示由可选适配器接收状态，保持通用流程与界面对象解耦。
+        private readonly ISceneLoadingPresentation sceneLoadingPresentation;
+        private readonly EventCenterModule<int> sceneLoadingEventCenter = new();
+
+        #endregion
+
         #region 当前流程状态
 
-        // 依赖字段：同一模块持有 Additive 加载句柄，提供成对卸载。
-        private readonly AddressableSceneLoadModule addressableSceneLoadModule = new();
-        // 依赖字段：加载 UI 通过接口展示状态，不让运行系统持有具体窗口对象。
-        private readonly ISceneLoadingPresentation sceneLoadingPresentation;
-        // 事件字段：同一流程类型的对外通知使用具名枚举键和可配对注销句柄。
-        private readonly EventCenterModule<int> sceneLoadingEventCenter = new();
         // 请求状态覆盖场景加载叶子和全部后置准备任务的生命周期。
         private bool isLoading;
         private string currentSceneId;
@@ -49,15 +53,64 @@ namespace RPG.Game.Loading
         #region 构造
 
         /// <summary>创建适用于未注入界面场景的加载执行器。</summary>
-        public GameSceneLoadingSystem()
+        public SceneLoadingSystem()
         {
         }
 
-        /// <summary>创建由 RPG 层加载窗口适配器驱动显示的场景系统。</summary>
+        /// <summary>创建由可选展示实现驱动界面反馈的场景加载系统。</summary>
         /// <param name="sceneLoadingPresentation">负责窗口展示生命周期的适配器。</param>
-        public GameSceneLoadingSystem(ISceneLoadingPresentation sceneLoadingPresentation)
+        public SceneLoadingSystem(ISceneLoadingPresentation sceneLoadingPresentation)
         {
             this.sceneLoadingPresentation = sceneLoadingPresentation;
+        }
+
+        #endregion
+
+        #region 静态配置注册
+
+        /// <summary>校验并注册唯一场景数据库，不创建场景加载系统实例。</summary>
+        /// <param name="sceneLoadDatabase">由项目 ConfigInstaller 注入的场景数据库。</param>
+        /// <exception cref="ArgumentNullException">数据库为空时抛出。</exception>
+        /// <exception cref="InvalidOperationException">数据库配置无效或尝试替换已注册数据库时抛出。</exception>
+        public static void RegisterDatabase(SceneLoadDatabase sceneLoadDatabase)
+        {
+            if (sceneLoadDatabase == null)
+            {
+                var exception = new ArgumentNullException(nameof(sceneLoadDatabase), "[SceneLoadingSystem] 场景数据库不能为空。");
+                WSLog.LogError(exception.Message);
+                throw exception;
+            }
+
+            if (database != null)
+            {
+                if (ReferenceEquals(database, sceneLoadDatabase)) return;
+
+                var exception = new InvalidOperationException("[SceneLoadingSystem] 不允许替换已经注册的场景数据库。");
+                WSLog.LogError(exception.Message);
+                throw exception;
+            }
+
+            try
+            {
+                sceneLoadDatabase.ValidateAndBuildIndex();
+            }
+            catch (Exception exception)
+            {
+                WSLog.LogError($"[SceneLoadingSystem] 场景数据库注册校验失败，database={sceneLoadDatabase.name}，exception={exception}");
+                throw;
+            }
+
+            // 发布顺序：先验证并构建完整索引，再允许加载入口读取数据库。
+            database = sceneLoadDatabase;
+            WSLog.Log($"[SceneLoadingSystem] 场景数据库注册完成，database={sceneLoadDatabase.name}，sceneCount={sceneLoadDatabase.SceneConfigs.Count}。");
+        }
+
+        /// <summary>每次进入运行时子系统时清除上轮静态注册状态，兼容关闭 Domain Reload 的编辑器配置。</summary>
+        [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetRegisteredDatabase()
+        {
+            database = null;
+            WSLog.Log("[SceneLoadingSystem] 已清除上一轮运行时的场景数据库注册。");
         }
 
         #endregion
@@ -104,7 +157,7 @@ namespace RPG.Game.Loading
             isLoading = false;
             currentSceneId = null;
             CurrentSnapshot = null;
-            WSLog.Log("[GameSceneLoadingSystem] 场景加载系统已初始化。");
+            WSLog.Log("[SceneLoadingSystem] 场景加载系统已初始化。");
         }
 
         #endregion
@@ -134,7 +187,7 @@ namespace RPG.Game.Loading
             if (!scene.IsValid() || !string.Equals(scene.name, config.SceneName, StringComparison.Ordinal))
             {
                 var exception = new InvalidOperationException(
-                    $"[GameSceneLoadingSystem] 当前场景与配置不匹配，sceneId={sceneId}，configured={config.SceneName}，current={scene.name}。");
+                    $"[SceneLoadingSystem] 当前场景与配置不匹配，sceneId={sceneId}，configured={config.SceneName}，current={scene.name}。");
                 WSLog.LogError(exception.Message);
                 throw exception;
             }
@@ -167,29 +220,29 @@ namespace RPG.Game.Loading
         {
             if (isLoading)
             {
-                string message = $"[GameSceneLoadingSystem] 正在加载 '{currentSceneId}'，拒绝同时开始 '{config.SceneId}'。";
+                string message = $"[SceneLoadingSystem] 正在加载 '{currentSceneId}'，拒绝同时开始 '{config.SceneId}'。";
                 WSLog.LogWarning(message);
                 throw new InvalidOperationException(message);
             }
 
-            SceneLoadValidationResult validation = SceneLoadValidator.Validate(
-                config, initializesCurrentScene, GetDatabase());
+            SceneLoadValidationResult validation = SceneLoadValidator.Validate(config, initializesCurrentScene);
             if (!validation.IsValid)
             {
                 string validationMessage = string.Join("；", validation.Issues);
-                WSLog.LogError($"[GameSceneLoadingSystem] 场景配置校验失败，sceneId={config.SceneId}，issues={validationMessage}。");
+                WSLog.LogError($"[SceneLoadingSystem] 场景配置校验失败，sceneId={config.SceneId}，issues={validationMessage}。");
                 throw new InvalidOperationException(
-                    $"[GameSceneLoadingSystem] 场景配置无效，sceneId={config.SceneId}：{validationMessage}");
+                    $"[SceneLoadingSystem] 场景配置无效，sceneId={config.SceneId}：{validationMessage}");
             }
 
             isLoading = true;
             currentSceneId = config.SceneId;
+            // 进度追踪器在流程开始时创建，确保快照在任务树执行前就可用。
             var progressTracker = new SceneLoadProgressTracker(config);
             progressTracker.SnapshotChanged += HandleSnapshotChanged;
             progressTracker.TaskChanged += HandleTaskChanged;
             var context = new SceneLoadContext(config, addressableSceneLoadModule,
                 initializesCurrentScene, progressTracker);
-            WSLog.Log($"[GameSceneLoadingSystem] 开始场景流程，sceneId={config.SceneId}，currentScene={initializesCurrentScene}。");
+            WSLog.Log($"[SceneLoadingSystem] 开始场景流程，sceneId={config.SceneId}，currentScene={initializesCurrentScene}。");
             try
             {
                 // 当前场景初始化也在受管异常范围内发布就绪事件，避免外部订阅异常遗留互斥状态。
@@ -200,16 +253,16 @@ namespace RPG.Game.Loading
                     await sceneLoadingPresentation.PrepareAsync(progressTracker.Snapshot, cancellationToken);
                 }
 
-                WSLog.Log($"[GameSceneLoadingSystem] 开始根任务，sceneId={config.SceneId}，taskPath={config.RootTask.name}。");
+                WSLog.Log($"[SceneLoadingSystem] 开始根任务，sceneId={config.SceneId}，taskPath={config.RootTask.name}。");
                 await context.ExecuteRootTaskAsync(config.RootTask, cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
                 if (!context.TargetSceneReady)
                     throw new InvalidOperationException(
-                        $"[GameSceneLoadingSystem] 任务结束但场景未就绪，sceneId={config.SceneId}。");
+                        $"[SceneLoadingSystem] 任务结束但场景未就绪，sceneId={config.SceneId}。");
 
                 progressTracker.Succeed();
-                WSLog.Log($"[GameSceneLoadingSystem] 根任务完成，sceneId={config.SceneId}。");
-                WSLog.Log($"[GameSceneLoadingSystem] 完整场景流程成功，sceneId={config.SceneId}，scene={context.ActiveScene.name}。");
+                WSLog.Log($"[SceneLoadingSystem] 根任务完成，sceneId={config.SceneId}。");
+                WSLog.Log($"[SceneLoadingSystem] 完整场景流程成功，sceneId={config.SceneId}，scene={context.ActiveScene.name}。");
                 if (sceneLoadingPresentation != null)
                 {
                     try
@@ -219,7 +272,7 @@ namespace RPG.Game.Loading
                     catch (Exception presentationException)
                     {
                         // 场景与准备任务已成功；窗口动画错误不能把已成功的加载伪报为失败。
-                        WSLog.LogError($"[GameSceneLoadingSystem] 场景已成功但加载窗口收尾失败，sceneId={config.SceneId}，exception={presentationException}");
+                        WSLog.LogError($"[SceneLoadingSystem] 场景已成功但展示层收尾失败，sceneId={config.SceneId}，exception={presentationException}");
                     }
                 }
                 return context.ActiveScene;
@@ -228,14 +281,14 @@ namespace RPG.Game.Loading
             {
                 progressTracker.Cancel();
                 PresentTerminalState(progressTracker.Snapshot, isCancellation: true);
-                WSLog.LogWarning($"[GameSceneLoadingSystem] 场景流程已取消，sceneId={config.SceneId}。");
+                WSLog.LogWarning($"[SceneLoadingSystem] 场景流程已取消，sceneId={config.SceneId}。");
                 throw;
             }
             catch (Exception exception)
             {
                 progressTracker.Fail(exception);
                 PresentTerminalState(progressTracker.Snapshot, isCancellation: false);
-                WSLog.LogError($"[GameSceneLoadingSystem] 场景流程失败，sceneId={config.SceneId}，exception={exception}");
+                WSLog.LogError($"[SceneLoadingSystem] 场景流程失败，sceneId={config.SceneId}，exception={exception}");
                 throw;
             }
             finally
@@ -259,15 +312,15 @@ namespace RPG.Game.Loading
             }
             catch (Exception exception)
             {
-                WSLog.LogError($"[GameSceneLoadingSystem] 查询场景配置失败，sceneId={sceneId}，exception={exception}");
+                WSLog.LogError($"[SceneLoadingSystem] 查询场景配置失败，sceneId={sceneId}，exception={exception}");
                 throw;
             }
         }
 
-        /// <summary>读取 ConfigInstaller 已注册的场景数据库。</summary>
+        /// <summary>读取 ConfigInstaller 已注册且完成索引构建的场景数据库。</summary>
         /// <returns>唯一已注册的场景数据库。</returns>
-        private static SceneLoadDatabase GetDatabase() => SceneLoadDatabaseRegistry.Database ??
-            throw new InvalidOperationException("[GameSceneLoadingSystem] SceneLoadDatabaseConfigProvider 尚未注册 SceneLoadDatabase。");
+        private static SceneLoadDatabase GetDatabase() => database ??
+            throw new InvalidOperationException("[SceneLoadingSystem] 尚未注册 SceneLoadDatabase，请检查项目的配置注册流程。");
 
         /// <summary>保留并广播最新快照，再将其应用于已打开的展示层。</summary>
         /// <param name="snapshot">当前流程快照。</param>
@@ -293,7 +346,7 @@ namespace RPG.Game.Loading
             catch (Exception presentationException)
             {
                 // 显示刷新由 UI 适配层隔离；渲染问题不能中止已经启动的资源流程。
-                WSLog.LogError($"[GameSceneLoadingSystem] 进度快照无法更新加载窗口，sceneId={snapshot.SceneId}，exception={presentationException}");
+                WSLog.LogError($"[SceneLoadingSystem] 展示实现无法接收进度快照，sceneId={snapshot.SceneId}，exception={presentationException}");
             }
         }
 
@@ -309,7 +362,7 @@ namespace RPG.Game.Loading
             }
             catch (Exception listenerException)
             {
-                WSLog.LogError($"[GameSceneLoadingSystem] 任务进度订阅者发生异常，taskPath={task.ReferencePath}，exception={listenerException}");
+                WSLog.LogError($"[SceneLoadingSystem] 任务进度订阅者发生异常，taskPath={task.ReferencePath}，exception={listenerException}");
             }
         }
 
@@ -324,7 +377,7 @@ namespace RPG.Game.Loading
             }
             catch (Exception listenerException)
             {
-                WSLog.LogError($"[GameSceneLoadingSystem] 场景状态订阅者发生异常，sceneId={eventArgs.Snapshot.SceneId}，event={eventType}，exception={listenerException}");
+                WSLog.LogError($"[SceneLoadingSystem] 场景状态订阅者发生异常，sceneId={eventArgs.Snapshot.SceneId}，event={eventType}，exception={listenerException}");
             }
         }
 
@@ -340,7 +393,7 @@ namespace RPG.Game.Loading
             }
             catch (Exception presentationException)
             {
-                WSLog.LogError($"[GameSceneLoadingSystem] 终态加载界面更新失败，sceneId={snapshot.SceneId}，state={snapshot.State}，exception={presentationException}");
+                WSLog.LogError($"[SceneLoadingSystem] 展示实现无法接收终态快照，sceneId={snapshot.SceneId}，state={snapshot.State}，exception={presentationException}");
             }
         }
 

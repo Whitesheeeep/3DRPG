@@ -1,7 +1,6 @@
 using System;
 using UnityEngine;
 using WS_Modules.ConfigInstaller;
-using WS_Modules.LogModule;
 using WS_Modules.SceneModule;
 
 namespace RPG.Game.Config
@@ -12,7 +11,7 @@ namespace RPG.Game.Config
     {
         #region 数据库配置
 
-        // ConfigInstaller 将场景库注入到统一流程的运行期查询入口。
+        // ConfigInstaller 在 Architecture 创建加载系统实例前注入场景库并建立查询索引。
         [SerializeField]
         private SceneLoadDatabase database;
 
@@ -25,8 +24,7 @@ namespace RPG.Game.Config
         {
             if (database == null)
                 throw new InvalidOperationException("[SceneLoadDatabaseConfigProvider] 没有配置 SceneLoadDatabase。");
-            SceneLoadDatabaseRegistry.Register(database);
-            WSLog.Log($"[SceneLoadDatabaseConfigProvider] 已注册场景数据库，name={database.name}，sceneCount={database.SceneConfigs.Count}。");
+            SceneLoadingSystem.RegisterDatabase(database);
         }
 
         #endregion

@@ -67,7 +67,7 @@ namespace WS_Modules.SceneModule
         }
     }
 
-    /// <summary>承载加载窗口、进度订阅者和调试界面共用的一致流程快照。</summary>
+    /// <summary>承载展示实现、进度订阅者和调试界面共用的一致流程快照。</summary>
     public sealed class SceneLoadExecutionSnapshot
     {
         /// <summary>获取流程唯一标识，用于忽略上一轮流程的迟到回调。</summary>

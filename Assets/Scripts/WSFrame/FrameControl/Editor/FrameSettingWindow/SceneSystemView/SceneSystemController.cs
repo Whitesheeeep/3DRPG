@@ -392,16 +392,13 @@ namespace WS_Modules
             return clone;
         }
 
-        /// <summary>更改任务资产名称；名称更新作用于所有共享引用位置。</summary>
+        /// <summary>通过资产服务重命名任务文件和对象；共享引用继续指向原资产 GUID。</summary>
         /// <param name="task">目标任务资产。</param>
-        /// <param name="newName">新的 Unity 对象显示名称。</param>
+        /// <param name="newName">新的任务名称，同时作为 .asset 文件名。</param>
         public void RenameTask(SceneLoadTask task, string newName)
         {
-            if (task == null || string.IsNullOrWhiteSpace(newName)) return;
-            Undo.RecordObject(task, "重命名场景任务");
-            task.name = newName.Trim();
-            EditorUtility.SetDirty(task);
-            AssetDatabase.SaveAssets();
+            // 文件名由 AssetDatabase 管理，不把只修改 ScriptableObject 名称的状态记录为 Undo。
+            assetService.RenameTaskAsset(task, newName);
         }
 
         /// <summary>将任务引用拖到目标节点前、后或组合内部，并保持原有资产身份。</summary>
@@ -572,8 +569,24 @@ namespace WS_Modules
         /// <param name="item">树行。</param>
         public static void PingAsset(SceneLoadTreeItem item)
         {
-            UnityEngine.Object asset = item?.Config != null ? item.Config : item?.Task;
-            if (asset != null) EditorGUIUtility.PingObject(asset);
+            if (item == null)
+            {
+                WSLog.LogWarning("[SceneSystemController] 定位场景资产失败，TreeView 行数据为空。");
+                return;
+            }
+
+            // 行类型决定定位对象，Task 行即使携带所属 Config 也必须定位任务资产本身。
+            UnityEngine.Object asset = item.IsConfiguration ? item.Config : item.Task;
+            if (asset == null)
+            {
+                WSLog.LogWarning($"[SceneSystemController] 定位场景资产失败，assetType={(item.IsConfiguration ? "SceneLoadConfig" : "SceneLoadTask")}，referencePath={item.ReferencePath}。");
+                return;
+            }
+
+            EditorUtility.FocusProjectWindow();
+            Selection.activeObject = asset;
+            EditorGUIUtility.PingObject(asset);
+            WSLog.Log($"[SceneSystemController] 已在 Project 窗口定位场景资产，assetPath={AssetDatabase.GetAssetPath(asset)}。");
         }
 
         #endregion

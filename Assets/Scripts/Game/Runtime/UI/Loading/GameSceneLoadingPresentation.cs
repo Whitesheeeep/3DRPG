@@ -1,7 +1,6 @@
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using RPG.Game.Loading;
 using RPG.Game.UI;
 using WS_Modules.LogModule;
 using WS_Modules.SceneModule;

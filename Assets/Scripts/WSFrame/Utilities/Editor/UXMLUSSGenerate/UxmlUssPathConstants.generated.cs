@@ -86,6 +86,12 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowTemplatesTimelineRowSkillTimelineLaneBackgroundRow = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/TimelineRow/SkillTimelineLaneBackgroundRow.uxml";
             /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/TimelineRow/SkillTimelineTrackHeaderRow.uxml</summary>
             public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowTemplatesTimelineRowSkillTimelineTrackHeaderRow = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Templates/TimelineRow/SkillTimelineTrackHeaderRow.uxml";
+            /// <summary>资源路径：Assets/Scripts/TaskSystem/Editor/Style/TaskConfigEditorRow.uxml</summary>
+            public const string AssetsScriptsTaskSystemEditorStyleTaskConfigEditorRow = "Assets/Scripts/TaskSystem/Editor/Style/TaskConfigEditorRow.uxml";
+            /// <summary>资源路径：Assets/Scripts/TaskSystem/Editor/Style/TaskConfigEditorWindow.uxml</summary>
+            public const string AssetsScriptsTaskSystemEditorStyleTaskConfigEditorWindow = "Assets/Scripts/TaskSystem/Editor/Style/TaskConfigEditorWindow.uxml";
+            /// <summary>资源路径：Assets/Scripts/TaskSystem/Editor/Style/TaskStageEditorCard.uxml</summary>
+            public const string AssetsScriptsTaskSystemEditorStyleTaskStageEditorCard = "Assets/Scripts/TaskSystem/Editor/Style/TaskStageEditorCard.uxml";
             /// <summary>资源路径：Assets/Scripts/WSFrame/Core/EditorExtensions/Editor/TestCenter/TestCenterWindow.uxml</summary>
             public const string AssetsScriptsWSFrameCoreEditorExtensionsEditorTestCenterTestCenterWindow = "Assets/Scripts/WSFrame/Core/EditorExtensions/Editor/TestCenter/TestCenterWindow.uxml";
             /// <summary>资源路径：Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/ConfigInstallerView/ConfigInstallerPanel.uxml</summary>
@@ -98,6 +104,8 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsScriptsWSFrameFrameControlEditorFrameSettingWindowEventSystemViewEventSystemPanel = "Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/EventSystemView/EventSystemPanel.uxml";
             /// <summary>资源路径：Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/PoolSystemView/PoolSystemView.uxml</summary>
             public const string AssetsScriptsWSFrameFrameControlEditorFrameSettingWindowPoolSystemViewPoolSystemView = "Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/PoolSystemView/PoolSystemView.uxml";
+            /// <summary>资源路径：Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/SceneSystemView/SceneSystemPanel.uxml</summary>
+            public const string AssetsScriptsWSFrameFrameControlEditorFrameSettingWindowSceneSystemViewSceneSystemPanel = "Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/SceneSystemView/SceneSystemPanel.uxml";
             /// <summary>资源路径：Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/UISystemView/UISystemView.uxml</summary>
             public const string AssetsScriptsWSFrameFrameControlEditorFrameSettingWindowUISystemViewUISystemView = "Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/UISystemView/UISystemView.uxml";
             /// <summary>资源路径：Assets/Scripts/WSFrame/Utilities/Editor/Baking/Style/BakedResultViewerWindow.uxml</summary>
@@ -172,6 +180,8 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowStylesSkillTimelineItemCommon = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineItemCommon.uss";
             /// <summary>资源路径：Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineVfxClipItem.uss</summary>
             public const string AssetsScriptsSkillSystemEditorSkillTimelineEditorWindowStylesSkillTimelineVfxClipItem = "Assets/Scripts/SkillSystem/Editor/SkillTimelineEditorWindow/Styles/SkillTimelineVfxClipItem.uss";
+            /// <summary>资源路径：Assets/Scripts/TaskSystem/Editor/Style/TaskConfigEditorWindow.uss</summary>
+            public const string AssetsScriptsTaskSystemEditorStyleTaskConfigEditorWindow = "Assets/Scripts/TaskSystem/Editor/Style/TaskConfigEditorWindow.uss";
             /// <summary>资源路径：Assets/Scripts/WSFrame/Core/EditorExtensions/Editor/TestCenter/TestCenterWindow.uss</summary>
             public const string AssetsScriptsWSFrameCoreEditorExtensionsEditorTestCenterTestCenterWindow = "Assets/Scripts/WSFrame/Core/EditorExtensions/Editor/TestCenter/TestCenterWindow.uss";
             /// <summary>资源路径：Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/ConfigInstallerView/ConfigInstallerPanel.uss</summary>
@@ -182,6 +192,8 @@ namespace WS_Modules.UIModule.Editor
             public const string AssetsScriptsWSFrameFrameControlEditorFrameSettingWindowEventSystemViewEventSystemView = "Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/EventSystemView/EventSystemView.uss";
             /// <summary>资源路径：Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/PoolSystemView/PoolSystemView.uss</summary>
             public const string AssetsScriptsWSFrameFrameControlEditorFrameSettingWindowPoolSystemViewPoolSystemView = "Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/PoolSystemView/PoolSystemView.uss";
+            /// <summary>资源路径：Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/SceneSystemView/SceneSystemPanel.uss</summary>
+            public const string AssetsScriptsWSFrameFrameControlEditorFrameSettingWindowSceneSystemViewSceneSystemPanel = "Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/SceneSystemView/SceneSystemPanel.uss";
             /// <summary>资源路径：Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/UISystemView/UISystemView.uss</summary>
             public const string AssetsScriptsWSFrameFrameControlEditorFrameSettingWindowUISystemViewUISystemView = "Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/UISystemView/UISystemView.uss";
             /// <summary>资源路径：Assets/Scripts/WSFrame/UIToolkitExtensions/Editor/GeneralLabel.uss</summary>

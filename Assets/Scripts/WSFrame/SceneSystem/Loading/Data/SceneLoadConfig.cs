@@ -22,11 +22,7 @@ namespace WS_Modules.SceneModule
         [SerializeField, Tooltip("Editor 中显示的友好名称。")]
         private string displayName;
         [SerializeField, Tooltip("实际加载依据。场景名称从此引用自动生成。")]
-#if UNITY_EDITOR
-        private AssetReferenceT<SceneAsset> sceneReference;
-#else
-        private AssetReference sceneReference;
-#endif
+        private SceneAssetReference sceneReference;
         [SerializeField, Tooltip("Single 替换当前场景；Additive 在当前场景上追加。")]
         private LoadSceneMode loadMode = LoadSceneMode.Single;
         [SerializeField, Tooltip("包含场景加载节点及加载前后任务的根组合节点。")]
@@ -60,7 +56,7 @@ namespace WS_Modules.SceneModule
             SynchronizeSceneNameFromReference();
         }
 
-        /// <summary>按当前 Addressable SceneAsset 引用更新序列化场景名。</summary>
+        /// <summary>按当前 Addressables 场景引用更新序列化场景名。</summary>
         /// <returns>名称实际变化时返回 true。</returns>
         public bool SynchronizeSceneNameFromReference()
         {

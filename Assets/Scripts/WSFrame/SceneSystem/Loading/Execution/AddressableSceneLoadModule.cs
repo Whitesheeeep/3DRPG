@@ -98,7 +98,8 @@ namespace WS_Modules.SceneModule
                     $"[AddressableSceneLoadModule] 场景名称校验失败，sceneId={config.SceneId}，expected={config.SceneName}，actual={scene.name}。");
             }
 
-            if (makeActive && !SceneManager.SetActiveScene(scene))
+            // Single 加载通常已把目标场景设为活动场景；Unity 对重复设置返回 false，因此仅在目标不同时时切换。
+            if (makeActive && SceneManager.GetActiveScene() != scene && !SceneManager.SetActiveScene(scene))
             {
                 await UnloadOperationAsync(handle);
                 throw new InvalidOperationException(

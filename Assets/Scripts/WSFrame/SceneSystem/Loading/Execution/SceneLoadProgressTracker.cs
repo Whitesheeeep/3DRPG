@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace WS_Modules.SceneModule
 {
-    /// <summary>为本次任务树执行分配引用位置并汇总叶子任务的加权完成进度。</summary>
+    /// <summary>为本次任务树执行分配引用位置并汇总叶子任务的加权完成进度。负责汇总所有任务的执行状态和进度信息。</summary>
     public sealed class SceneLoadProgressTracker
     {
         #region 运行状态
@@ -146,7 +146,7 @@ namespace WS_Modules.SceneModule
             if (!ancestorSet.Add(task))
                 throw new InvalidOperationException($"[SceneLoadProgressTracker] 进度树检测到循环引用，path={referencePath}。");
 
-            float weight = task is SequenceSceneLoadTask || task is ParallelSceneLoadTask
+            float weight = task is SequenceSceneLoadTask or ParallelSceneLoadTask
                 ? 0f
                 : task.ProgressWeight;
             var progress = new MutableSceneLoadTaskProgress(referencePath, task.name, weight);
@@ -154,9 +154,14 @@ namespace WS_Modules.SceneModule
             taskReferencePathOrder.Add(referencePath);
             totalLeafWeight += weight;
 
-            IReadOnlyList<SceneLoadTask> children = task is SequenceSceneLoadTask sequence
-                ? sequence.Children
-                : task is ParallelSceneLoadTask parallel ? parallel.Children : null;
+            // Sequence 和 Parallel 任务的子任务引用位置按顺序编号，形成唯一路径。
+            // Sequence 和 Parallel 任务的进度权重为 0，只有叶子任务才贡献总体进度。
+            IReadOnlyList<SceneLoadTask> children = task switch
+            {
+                SequenceSceneLoadTask sequence => sequence.Children,
+                ParallelSceneLoadTask parallel => parallel.Children,
+                _ => null
+            };
             if (children != null)
             {
                 for (int index = 0; index < children.Count; index++)
@@ -171,6 +176,7 @@ namespace WS_Modules.SceneModule
         {
             var taskSnapshots = new List<SceneLoadTaskSnapshot>(taskReferencePathOrder.Count);
             float weightedProgress = 0f;
+            // Sequence 和 Parallel 任务的进度权重为 0，对于总体进度无影响， 只有叶子任务才贡献总体进度。
             for (int index = 0; index < taskReferencePathOrder.Count; index++)
             {
                 MutableSceneLoadTaskProgress item = taskProgressByReferencePathMap[taskReferencePathOrder[index]];

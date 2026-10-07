@@ -6,6 +6,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using WS_Modules.SceneModule;
+using WS_Modules.UIModule.Editor;
 using Object = UnityEngine.Object;
 
 namespace WS_Modules
@@ -14,10 +15,6 @@ namespace WS_Modules
     internal sealed class SceneSystemView
     {
         #region 视图状态
-
-        // 模板定位常量。
-        private const string PanelUxmlPath =
-            "Assets/Scripts/WSFrame/FrameControl/Editor/FrameSettingWindow/SceneSystemView/SceneSystemPanel.uxml";
 
         // 依赖与控件：Controller 管理资产结构，本视图持有 UI 元素和当前交互状态。
         private readonly VisualElement host;
@@ -33,6 +30,7 @@ namespace WS_Modules
         private Label emptyTreeLabel;
         private VisualElement detailContent;
         private VisualElement validationContent;
+        private ContextualMenuManipulator treeContextMenuManipulator;
         private TextField executionPreviewField;
         private Label detailTitle;
         private Label detailSubtitle;
@@ -49,6 +47,7 @@ namespace WS_Modules
         // 缓存当前筛选结果的完整树数据，查询不依赖 TreeView 虚拟化后的可见行数量。
         private readonly List<SceneLoadTreeItem> renderedTreeItems = new();
         private SceneLoadTreeItem selectedItem;
+        private SceneLoadTreeItem contextMenuItem;
         private SceneLoadTreeItem draggingItem;
         private VisualElement dragSourceRow;
         private VisualElement dropTargetRow;
@@ -70,10 +69,13 @@ namespace WS_Modules
         /// <summary>载入 UXML、恢复面板状态并注册树、菜单、拖拽和撤销事件。</summary>
         public void Bind()
         {
-            VisualTreeAsset visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(PanelUxmlPath);
+            VisualTreeAsset visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
+                UxmlUssPathConstants.Uxml.AssetsScriptsWSFrameFrameControlEditorFrameSettingWindowSceneSystemViewSceneSystemPanel);
             if (visualTree == null)
             {
-                host.Add(new HelpBox($"找不到场景编排面板 UXML：{PanelUxmlPath}", HelpBoxMessageType.Error));
+                host.Add(new HelpBox(
+                    $"找不到场景编排面板 UXML：{UxmlUssPathConstants.Uxml.AssetsScriptsWSFrameFrameControlEditorFrameSettingWindowSceneSystemViewSceneSystemPanel}",
+                    HelpBoxMessageType.Error));
                 return;
             }
 
@@ -106,7 +108,12 @@ namespace WS_Modules
             if (treeView != null)
             {
                 treeView.selectionChanged -= OnTreeSelectionChanged;
-                treeView.UnregisterCallback<ContextualMenuPopulateEvent>(OnEmptyTreeContextMenu);
+                treeView.UnregisterCallback<PointerDownEvent>(OnTreePointerDown, TrickleDown.TrickleDown);
+                if (treeContextMenuManipulator != null)
+                {
+                    treeView.RemoveManipulator(treeContextMenuManipulator);
+                    treeContextMenuManipulator = null;
+                }
                 treeView.UnregisterCallback<PointerMoveEvent>(OnTreePointerMove);
                 treeView.UnregisterCallback<PointerUpEvent>(OnTreePointerUp);
                 treeView.UnregisterCallback<PointerCancelEvent>(OnTreePointerCancel);
@@ -205,7 +212,10 @@ namespace WS_Modules
             collapseAllButton.clicked += treeView.CollapseAll;
             validateAllButton.clicked += ValidateAll;
             treeView.selectionChanged += OnTreeSelectionChanged;
-            treeView.RegisterCallback<ContextualMenuPopulateEvent>(OnEmptyTreeContextMenu);
+            // 右键菜单覆盖整个 TreeView，包含 TreeView 自带的缩进与折叠控件区域。
+            treeView.RegisterCallback<PointerDownEvent>(OnTreePointerDown, TrickleDown.TrickleDown);
+            treeContextMenuManipulator = new ContextualMenuManipulator(OnTreeContextMenu);
+            treeView.AddManipulator(treeContextMenuManipulator);
             treeView.RegisterCallback<PointerMoveEvent>(OnTreePointerMove);
             treeView.RegisterCallback<PointerUpEvent>(OnTreePointerUp);
             treeView.RegisterCallback<PointerCancelEvent>(OnTreePointerCancel);
@@ -293,7 +303,6 @@ namespace WS_Modules
             row.Add(new Label { name = "SceneTreeType" });
             row.Add(new Label { name = "SceneTreeOrder" });
             row.RegisterCallback<PointerDownEvent>(OnTreeRowPointerDown);
-            row.AddManipulator(new ContextualMenuManipulator(menuEvent => OnRowContextMenu(menuEvent, row)));
             return row;
         }
 
@@ -330,19 +339,21 @@ namespace WS_Modules
             executionPreviewField = null;
             selectedItem = item;
             bool canEdit = !EditorApplication.isPlaying;
-            detailContent.SetEnabled(canEdit);
+            detailContent.SetEnabled(true);
             if (item == null)
             {
                 detailTitle.text = "场景详情";
                 detailSubtitle.text = "选择配置或任务节点以查看详情";
                 selectionBadge.text = "未选择";
                 detailContent.Add(new HelpBox("选中场景配置或某一个任务引用位置，右侧即可查看配置、任务参数和共享范围。", HelpBoxMessageType.Info));
+                SetDetailControlsEnabled(detailContent, canEdit);
                 return;
             }
 
             selectionBadge.text = item.IsConfiguration ? "SCENE" : item.TypeLabel;
             if (item.IsConfiguration) BindConfigDetails(item);
             else BindTaskDetails(item);
+            SetDetailControlsEnabled(detailContent, canEdit);
         }
 
         /// <summary>绘制场景配置属性、执行顺序、节点操作和校验结果。</summary>
@@ -379,7 +390,7 @@ namespace WS_Modules
             }) { text = "设置已有任务为根节点" };
             operations.Add(setRootButton);
             operations.Add(CreateActionRow(
-                ("定位资产", () => SceneSystemController.PingAsset(item), false),
+                ("定位配置资产", () => SceneSystemController.PingAsset(item), false),
                 ("移除配置引用", () => RemoveConfigReference(item), false),
                 ("删除配置资产…", () => DeleteConfigAsset(item), true)));
 
@@ -399,9 +410,23 @@ namespace WS_Modules
             var taskNameField = new TextField("节点名称") { value = task.name, isDelayed = true };
             taskNameField.RegisterValueChangedCallback(evt =>
             {
-                controller.RenameTask(task, evt.newValue);
-                RefreshAfterMutation("任务资产名称已更新；共享引用位置同步显示。",
-                    task, item.ParentTask, item.Config, item.SiblingIndex);
+                try
+                {
+                    controller.RenameTask(task, evt.newValue);
+                    RefreshAfterMutation("任务资产文件名和对象名称已同步；共享引用位置已更新。",
+                        task, item.ParentTask, item.Config, item.SiblingIndex);
+                }
+                catch (ArgumentException exception)
+                {
+                    // 失败时回显资产当前名称，避免输入框与未修改的资产状态分离。
+                    taskNameField.SetValueWithoutNotify(task.name);
+                    SetStatus(exception.Message, true);
+                }
+                catch (InvalidOperationException exception)
+                {
+                    taskNameField.SetValueWithoutNotify(task.name);
+                    SetStatus(exception.Message, true);
+                }
             });
             basics.Add(taskNameField);
             basics.Add(CreateCaption($"类型标识：{task.GetType().Name}\n引用路径：{item.ReferencePath}"));
@@ -432,7 +457,7 @@ namespace WS_Modules
             }
 
             operations.Add(CreateActionRow(
-                ("定位资产", () => SceneSystemController.PingAsset(item), false),
+                ("定位任务资产", () => SceneSystemController.PingAsset(item), false),
                 ("上移", () => MoveSelected(-1), false),
                 ("下移", () => MoveSelected(1), false)));
             operations.Add(CreateActionRow(
@@ -485,7 +510,7 @@ namespace WS_Modules
             bool hasProperty = iterator.NextVisible(true);
             while (hasProperty)
             {
-                if (iterator.depth == 1 && iterator.name != "m_Script" && iterator.name != "m_Name" && iterator.name != "children")
+                if (iterator.depth == 0 && iterator.name != "m_Script" && iterator.name != "m_Name" && iterator.name != "children")
                 {
                     SerializedProperty property = iterator.Copy();
                     var propertyField = new PropertyField(property);
@@ -591,12 +616,12 @@ namespace WS_Modules
 
         /// <summary>右键行时先同步选择，再根据配置、组合或叶子上下文填充菜单。</summary>
         /// <param name="eventData">当前行菜单事件。</param>
-        /// <param name="row">触发菜单的虚拟化行。</param>
-        private void OnRowContextMenu(ContextualMenuPopulateEvent eventData, VisualElement row)
+        /// <param name="item">触发菜单的配置或任务引用行。</param>
+        private void OnRowContextMenu(ContextualMenuPopulateEvent eventData, SceneLoadTreeItem item)
         {
-            if (row.userData is not SceneLoadTreeItem item) return;
             SelectItem(item);
             bool editable = !EditorApplication.isPlaying;
+            // 配置行菜单提供编辑、引用、复制、定位、移除和删除操作。
             if (item.IsConfiguration)
             {
                 AddMenuAction(eventData, "编辑配置详情", _ => BindDetails(item), true);
@@ -612,9 +637,11 @@ namespace WS_Modules
             AddMenuAction(eventData, "编辑任务参数", _ => BindDetails(item), true);
             AddMenuAction(eventData, "在详情中引用已有子任务…", _ => FocusExistingTaskField(item), editable && IsComposite(item.Task));
             AddTaskCreationMenuItems(eventData, item, editable && IsComposite(item.Task));
+            eventData.menu.AppendSeparator();
             AddMenuAction(eventData, "复制子树", _ => CopyTask(item), editable && item.ParentTask != null);
             AddMenuAction(eventData, "上移", _ => MoveSelected(-1), editable && controller.CanMoveTaskByOffset(item, -1));
             AddMenuAction(eventData, "下移", _ => MoveSelected(1), editable && controller.CanMoveTaskByOffset(item, 1));
+            eventData.menu.AppendSeparator();
             AddMenuAction(eventData, "定位任务资产", _ => SceneSystemController.PingAsset(item), true);
             AddMenuAction(eventData, "移除当前引用", _ => RemoveTaskReference(item), editable);
             AddMenuAction(eventData, "删除任务资产…", _ => DeleteTaskAsset(item), editable, true);
@@ -622,13 +649,21 @@ namespace WS_Modules
         }
 
         // 空白区域与节点菜单使用统一的上下文使能规则。
-        /// <summary>为配置空白区提供新建、加入、刷新、校验和展开操作。</summary>
+        /// <summary>按右键命中的节点生成行菜单；右键树空白时提供数据库操作。</summary>
         /// <param name="eventData">TreeView 菜单事件。</param>
-        private void OnEmptyTreeContextMenu(ContextualMenuPopulateEvent eventData)
+        private void OnTreeContextMenu(ContextualMenuPopulateEvent eventData)
         {
-            if (FindTreeRow(eventData.target as VisualElement) != null) return;
+            SceneLoadTreeItem item = contextMenuItem ?? FindTreeItemFromTarget(eventData.target as VisualElement);
+            contextMenuItem = null;
+            if (item != null)
+            {
+                OnRowContextMenu(eventData, item);
+                return;
+            }
+
             bool hasDatabase = controller.Database != null;
             bool editable = !EditorApplication.isPlaying;
+            eventData.menu.AppendSeparator();
             AddMenuAction(eventData, "新建场景配置", _ => CreateConfig(), editable && hasDatabase);
             AddMenuAction(eventData, "加入已有场景配置…", _ => FocusExistingConfigField(), editable && hasDatabase);
             AddMenuAction(eventData, "刷新数据库", _ => RefreshFromProject(), true);
@@ -741,6 +776,18 @@ namespace WS_Modules
         #endregion
 
         #region 拖拽交互
+
+        /// <summary>在右键菜单打开前识别 TreeView 行，包括行缩进和折叠控件区域。</summary>
+        /// <param name="eventData">TreeView 范围内的指针按下事件。</param>
+        private void OnTreePointerDown(PointerDownEvent eventData)
+        {
+            contextMenuItem = null;
+            if (eventData.button != (int)MouseButton.RightMouse || eventData.clickCount != 1) return;
+
+            contextMenuItem = FindTreeItemFromTarget(eventData.target as VisualElement) ??
+                              FindTreeItemAt(eventData.position);
+            if (contextMenuItem != null) SelectItem(contextMenuItem);
+        }
 
         /// <summary>开始记录可编辑的任务引用行及其指针起点；配置根节点不可作为移动源。</summary>
         /// <param name="eventData">行指针按下事件。</param>
@@ -909,6 +956,44 @@ namespace WS_Modules
                     found = element;
             });
             return found;
+        }
+
+        /// <summary>按屏幕坐标查找覆盖缩进区的 TreeView 项及其绑定数据。</summary>
+        /// <param name="worldPosition">指针世界坐标。</param>
+        /// <returns>对应配置或任务引用行；没有命中时返回 null。</returns>
+        private SceneLoadTreeItem FindTreeItemAt(Vector2 worldPosition)
+        {
+            SceneLoadTreeItem found = null;
+            treeView.Query<VisualElement>().ForEach(element =>
+            {
+                if (found != null || !string.Equals(element.name, "unity-tree-view__item", StringComparison.Ordinal) ||
+                    !element.worldBound.Contains(worldPosition)) return;
+
+                VisualElement row = element.Q<VisualElement>(className: "scene-tree-row");
+                if (row?.userData is SceneLoadTreeItem item) found = item;
+            });
+            return found ?? FindTreeRowAt(worldPosition)?.userData as SceneLoadTreeItem;
+        }
+
+        /// <summary>从事件目标及 TreeView 生成的行容器中解析配置或任务引用数据。</summary>
+        /// <param name="element">当前指针事件目标。</param>
+        /// <returns>对应配置或任务引用行；不在有效行内时返回 null。</returns>
+        private SceneLoadTreeItem FindTreeItemFromTarget(VisualElement element)
+        {
+            VisualElement row = FindTreeRow(element);
+            if (row?.userData is SceneLoadTreeItem rowItem) return rowItem;
+
+            // TreeView 的外层 item 横跨缩进区域，内部自定义行保存实际业务数据。
+            while (element != null && !ReferenceEquals(element, treeView))
+            {
+                if (string.Equals(element.name, "unity-tree-view__item", StringComparison.Ordinal))
+                {
+                    VisualElement itemRow = element.Q<VisualElement>(className: "scene-tree-row");
+                    if (itemRow?.userData is SceneLoadTreeItem item) return item;
+                }
+                element = element.parent;
+            }
+            return null;
         }
 
         /// <summary>从事件目标向上查找包含任务引用数据的树行。</summary>
@@ -1245,7 +1330,7 @@ namespace WS_Modules
         /// <param name="eventData">宿主分离事件。</param>
         private void OnPanelDetached(DetachFromPanelEvent eventData) => Dispose();
 
-        /// <summary>将新建、删除、排序和资产引用编辑按钮统一切换为可编辑状态。</summary>
+        /// <summary>切换结构编辑权限，同时保留运行期间定位配置和任务资产的能力。</summary>
         /// <param name="enabled">是否允许结构编辑。</param>
         private void SetEditingEnabled(bool enabled)
         {
@@ -1255,7 +1340,35 @@ namespace WS_Modules
             assetFolderFieldHost?.SetEnabled(enabled);
             validateAllButton?.SetEnabled(true);
             if (panelRoot != null) panelRoot.Q<HelpBox>("PlayModeHelpBox")?.SetEnabled(!enabled);
-            if (detailContent != null) detailContent.SetEnabled(enabled);
+            if (detailContent != null)
+            {
+                detailContent.SetEnabled(true);
+                SetDetailControlsEnabled(detailContent, enabled);
+            }
+        }
+
+        /// <summary>逐个禁用详情内的可编辑控件，并始终保留资产定位按钮可用。</summary>
+        /// <param name="container">详情控件容器。</param>
+        /// <param name="enabled">是否允许修改序列化资产和任务结构。</param>
+        private static void SetDetailControlsEnabled(VisualElement container, bool enabled)
+        {
+            foreach (VisualElement child in container.Children())
+            {
+                if (child is Button button)
+                {
+                    bool isAssetLocator = button.text == "定位配置资产" || button.text == "定位任务资产";
+                    button.SetEnabled(enabled || isAssetLocator);
+                    continue;
+                }
+
+                if (child is PropertyField || child is TextField || child is ObjectField)
+                {
+                    child.SetEnabled(enabled);
+                    continue;
+                }
+
+                SetDetailControlsEnabled(child, enabled);
+            }
         }
 
         /// <summary>根据状态结果更新面板底部文字和颜色提示。</summary>

@@ -3,6 +3,7 @@ using Cysharp.Threading.Tasks;
 using RPG.Game;
 using UnityEngine;
 using WS_Modules.LogModule;
+using WS_Modules.SceneModule;
 
 namespace RPG.Game.Loading
 {
@@ -25,7 +26,7 @@ namespace RPG.Game.Loading
             if (string.IsNullOrWhiteSpace(sceneId))
                 throw new InvalidOperationException($"[SceneLoadingEntry] '{name}' 未配置 SceneId。");
 
-            GameSceneLoadingSystem loadingSystem = GameArchitecture.Interface.GetSystem<GameSceneLoadingSystem>();
+            SceneLoadingSystem loadingSystem = GameArchitecture.Interface.GetSystem<SceneLoadingSystem>();
             if (loadingSystem.IsSceneJoiningCurrentFlow(sceneId, gameObject.scene))
             {
                 WSLog.Log($"[SceneLoadingEntry] 场景入口识别统一流程加载实例，sceneId={sceneId}，scene={gameObject.scene.name}，gameObject={name}。");

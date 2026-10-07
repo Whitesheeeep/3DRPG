@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using UnityEngine;
 using UnityEngine.SceneManagement;
 using WS_Modules.LogModule;
 
@@ -18,6 +17,7 @@ namespace WS_Modules.SceneModule
         // 目标场景与就绪状态在所有分支之间共享。
         private readonly SharedSceneLoadState sharedState;
         private readonly SceneLoadProgressTracker progressTracker;
+        // 当前任务引用在本次树执行中的独立位置标识，便于在失败时追踪。
         private readonly string referencePath;
         private readonly SceneLoadTask currentTask;
 
