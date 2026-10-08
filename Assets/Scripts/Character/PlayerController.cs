@@ -53,6 +53,8 @@ namespace RPG.Character
         private Coroutine cameraResolveCoroutine;
         private bool dialogueSwitchLocked;
         private bool runtimeStarted;
+        // 统一加载流程在完整成功前暂停玩家控制，但允许异步队伍初始化和出生点定位。
+        private bool scenePreparationActive;
         // 统一场景流程控制状态：多个入口共享一次玩家初始化任务和完成信号。
         private bool initializationStarted;
         private UniTaskCompletionSource initializationCompletionSource;
@@ -82,6 +84,8 @@ namespace RPG.Character
         public Camera GameplayCamera => gameplayCamera;
         /// <summary>向 GAS 与 Locomotion 暴露同一个运动请求接口。</summary>
         public IMotionDriver MotionDriver => motionDriver;
+        /// <summary>获取角色队伍与活动角色是否已经可以进行出生点定位。</summary>
+        public bool IsReady => characterManager.IsReady && runtimeStarted;
         /// <inheritdoc />
         GameplayAbilitySystemComponent ILooseGameplayTagEventTarget.AbilitySystemComponent =>
             characterManager.ActiveCharacter?.AbilitySystemComponent;
@@ -188,16 +192,25 @@ namespace RPG.Character
                 if (!characterManager.IsReady)
                     throw new InvalidOperationException("[PlayerController] CharacterManager 初始化任务结束，但角色队伍未进入 Ready 状态。");
                 characterManager.ActiveCharacterChanged += OnActiveCharacterChanged;
-                CharacterActor active = characterManager.ActiveCharacter ??
+                CharacterActor activeActor = characterManager.ActiveCharacter ??
                                         throw new InvalidOperationException("CharacterManager Ready 后没有 ActiveCharacter。");
-                motionDriver.SetActiveOwner(active, active.AbilitySystemComponent);
-                motionDriver.Resume();
+                motionDriver.SetActiveOwner(activeActor, activeActor.AbilitySystemComponent);
                 runtimeStarted = true;
-                active.Locomotion.Activate();
-                dialogueParticipant?.SetAnimationPlayer(active.AnimationPlayer);
+                if (scenePreparationActive)
+                {
+                    // 场景加载期间允许完成数据初始化，但运动请求保持暂停直到展示层宣布流程成功。
+                    activeActor.Locomotion.Deactivate();
+                    motionDriver.Suspend();
+                }
+                else
+                {
+                    motionDriver.Resume();
+                    activeActor.Locomotion.Activate();
+                }
+                dialogueParticipant?.SetAnimationPlayer(activeActor.AnimationPlayer);
                 Initialized?.Invoke();
                 initializationCompletionSource.TrySetResult();
-                WSLog.Log($"[PlayerController] 玩家初始化及控制器收尾已完成，player={gameObject.name}，character={active.name}。");
+                WSLog.Log($"[PlayerController] 玩家初始化及控制器收尾已完成，player={gameObject.name}，character={activeActor.name}。");
             }
             catch (Exception exception)
             {
@@ -243,9 +256,9 @@ namespace RPG.Character
                 BeginMainCameraResolution();
             if (StateBlackboard == null) return;
             lastAnimatorMoveFrame = -1;
-            if (characterManager.IsReady)
+            if (characterManager.IsReady && !scenePreparationActive)
                 motionDriver.Resume();
-            if (runtimeStarted && characterManager.IsReady)
+            if (runtimeStarted && characterManager.IsReady && !scenePreparationActive)
                 characterManager.ActiveCharacter?.Locomotion.Activate();
             StateBlackboard.IntentSourceConsumed += OnIntentSourceConsumed;
             frameIntentCleanupCoroutine = StartCoroutine(ClearFrameIntentsAtFrameEnd());
@@ -304,6 +317,14 @@ namespace RPG.Character
                 environmentDetector.TickUpdate(Time.deltaTime, StateBlackboard);
                 // CharacterManager 负责遍历角色，但只由此处显式推进；后台角色的冷却和持续 GE 不因切人停止。
                 characterManager.AdvanceAbilityFrame(Time.deltaTime);
+                if (scenePreparationActive)
+                {
+                    inputController.ClearMoveInput();
+                    StateBlackboard.ClearMoveInput();
+                    StateBlackboard.ClearFrameIntents();
+                    motionDriver.ClearTransientRequests();
+                    return;
+                }
                 // 输入控制器已完成本帧采样；Manager 当前默认只调度需要镜头转换的 Move Arbiter。
                 if (cameraTransform == null)
                 {
@@ -344,6 +365,11 @@ namespace RPG.Character
         /// <summary>请求 CharacterManager 收集当前角色物理运动，然后由 MotionDriver 统一移动一次。</summary>
         private void FixedUpdate()
         {
+            if (scenePreparationActive)
+            {
+                motionDriver.ClearTransientRequests();
+                return;
+            }
             try
             {
                 // Manager 只收集当前角色 GAS 与 Locomotion 请求，不执行最终 CharacterController.Move。
@@ -362,9 +388,86 @@ namespace RPG.Character
         /// <summary>请求 CharacterManager 推进全队能力与当前 Locomotion 延迟阶段。</summary>
         private void LateUpdate()
         {
+            if (scenePreparationActive) return;
             // Late 阶段只处理能力和 FSM 的延迟逻辑，避免同一帧出现第二次 CharacterController.Move。
             characterManager.AdvanceLateFrame(Time.deltaTime);
         }
+
+        #region 场景准备
+
+        /// <summary>暂停场景切换期间的输入与角色运动，防止初始化完成后提前进入游戏。</summary>
+        public void BeginScenePreparation()
+        {
+            if (scenePreparationActive) return;
+            scenePreparationActive = true;
+            inputController.ClearMoveInput();
+            StateBlackboard?.ClearMoveInput();
+            StateBlackboard?.ClearFrameIntents();
+            characterManager.ActiveCharacter?.Locomotion.Deactivate();
+            motionDriver.Suspend();
+            Debug.Log($"[PlayerController] 已进入场景准备状态，player={name}。", this);
+        }
+
+        /// <summary>将共享角色根节点定位到出生点，并重建运动、环境与 Locomotion 状态。</summary>
+        /// <param name="worldPosition">出生点的世界位置，表示 CharacterRoot 原点。</param>
+        /// <param name="horizontalForward">出生点世界 +Z 投影到水平面的朝向。</param>
+        /// <exception cref="InvalidOperationException">角色队伍尚未就绪或出生点朝向无效时抛出。</exception>
+        public void ApplySpawnPose(Vector3 worldPosition, Vector3 horizontalForward)
+        {
+            if (!IsReady)
+            {
+                Debug.LogError("[PlayerController] 角色队伍尚未就绪，不能应用出生点。", this);
+                throw new InvalidOperationException("[PlayerController] 角色队伍尚未就绪，不能应用出生点。");
+            }
+            if (horizontalForward.sqrMagnitude <= 0.0001f)
+            {
+                Debug.LogError("[PlayerController] 出生点的水平前方向无效。", this);
+                throw new InvalidOperationException("[PlayerController] 出生点的水平前方向无效。");
+            }
+
+            motionDriver.Suspend();
+            motionDriver.ClearTransientRequests();
+            bool controllerWasEnabled = characterController.enabled;
+            try
+            {
+                // CharacterController 不参与根节点瞬移碰撞解算；恢复其原有启用状态后重新采样新位置。
+                characterController.enabled = false;
+                characterRoot.SetPositionAndRotation(
+                    worldPosition,
+                    Quaternion.LookRotation(horizontalForward.normalized, Vector3.up));
+            }
+            finally
+            {
+                characterController.enabled = controllerWasEnabled;
+            }
+
+            environmentDetector.ResetAfterTeleport(StateBlackboard);
+            CharacterActor active = characterManager.ActiveCharacter;
+            active.Locomotion.Deactivate();
+            if (!scenePreparationActive)
+                motionDriver.Resume();
+            active.Locomotion.Activate();
+            motionDriver.ClearTransientRequests();
+            Debug.Log($"[PlayerController] 已应用场景出生点，player={name}，position={worldPosition}，forward={horizontalForward.normalized}。", this);
+        }
+
+        /// <summary>完整场景流程成功后恢复活动角色运动和游戏输入。</summary>
+        public void CompleteScenePreparation()
+        {
+            if (!scenePreparationActive) return;
+            scenePreparationActive = false;
+            if (runtimeStarted && characterManager.IsReady)
+            {
+                motionDriver.Resume();
+                characterManager.ActiveCharacter?.Locomotion.Activate();
+            }
+            inputController.ClearMoveInput();
+            StateBlackboard?.ClearMoveInput();
+            StateBlackboard?.ClearFrameIntents();
+            Debug.Log($"[PlayerController] 场景准备完成，已恢复角色操作，player={name}。", this);
+        }
+
+        #endregion
 
         /// <summary>接收当前 Character Animator 的增量并在业务阶段之后统一结算。</summary>
         /// <param name="source">产生回调的角色。</param>
@@ -376,7 +479,7 @@ namespace RPG.Character
         /// </remarks>
         internal void ProcessAnimatorMotion(CharacterActor source, Vector3 deltaPosition, Quaternion deltaRotation)
         {
-            if (!isActiveAndEnabled) return;
+            if (!isActiveAndEnabled || scenePreparationActive) return;
             // 同一渲染帧只允许当前角色结算一次，避免重复 Animator 求值导致根运动被重复消费。
             if (lastAnimatorMoveFrame == Time.frameCount) return;
             // CharacterManager 验证来源并推进当前角色动画阶段；MotionDriver 仍由 PlayerController 最后结算。

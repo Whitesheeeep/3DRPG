@@ -17,6 +17,11 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: 7a623662a8d5fe340abcc20c27e23c13
   m_SerializeEntries:
+  - m_GUID: c9147d8da7abf1943928670b866b1246
+    m_Address: Scene/BossScene
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: f079fae3fd9dc2f429c56f4b22e648b0
     m_Address: Scene/UnityReadyMarketCourtyard
     m_ReadOnly: 0

@@ -184,6 +184,7 @@ MonoBehaviour:
   characterRoot: {fileID: 3957154600284617816}
   characterManager: {fileID: 6495212430660579562}
   characterController: {fileID: 1810864442526910155}
+  initializeOnStart: 0
   motionDriver:
     horizontalMovementBlockedTags: []
     allMovementBlockedTags: []
@@ -328,6 +329,7 @@ MonoBehaviour:
   initialCharacterIds:
   - value: character_0001
   - value: character_0002
+  - value: character_0004
   initialCharacterId:
     value: 
 --- !u!114 &8419130012551366636

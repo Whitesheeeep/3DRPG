@@ -9,9 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 41b155341571785498d24473eec91efa, type: 3}
-  m_Name: SceneLoadDatabase
+  m_Script: {fileID: 11500000, guid: 34387adccd7deb441b3ead27dcb386c5, type: 3}
+  m_Name: PlayerSpawnSceneLoadTask
   m_EditorClassIdentifier: 
-  sceneConfigs:
-  - {fileID: 11400000, guid: 7f32e78d2a1a2db4d8794a42e68eb634, type: 2}
-  - {fileID: 11400000, guid: 9605552e9c31d434bba98c2181c34d06, type: 2}
+  progressWeight: 1

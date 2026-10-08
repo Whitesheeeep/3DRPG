@@ -51,9 +51,9 @@ namespace RPG.Game.UI.Loading
             loadingWindow.Present(snapshot);
         }
 
-        /// <summary>展示成功终态后关闭加载遮罩，并确保常驻 HUD 已显示。</summary>
+        /// <summary>展示成功终态并关闭加载遮罩。</summary>
         /// <param name="snapshot">所有加载任务均已完成的终态快照。</param>
-        /// <returns>成功面板展示及 HUD 恢复完成后的异步任务。</returns>
+        /// <returns>成功状态可见且加载窗口关闭后的异步任务。</returns>
         public async UniTask CompleteAsync(SceneLoadExecutionSnapshot snapshot)
         {
             if (loadingWindow != null)
@@ -64,14 +64,7 @@ namespace RPG.Game.UI.Loading
                 await UIManager.Instance.HideWindowAsync<LoadingWindow>();
                 loadingWindow = null;
             }
-
-            GameWindowPreloadService preloadService = GameWindowPreloadService.Instance;
-            if (preloadService != null)
-                await preloadService.ShowHudAsync();
-            else
-                await UIManager.Instance.PopUpWindowAsync<HUDWindow>();
-
-            WSLog.Log($"[GameSceneLoadingPresentation] 场景加载遮罩已关闭并显示 HUD，sceneId={snapshot.SceneId}。");
+            WSLog.Log($"[GameSceneLoadingPresentation] 加载成功展示已结束，sceneId={snapshot.SceneId}。");
         }
 
         /// <summary>显示失败原因并保留全屏遮罩，等待用户明确关闭错误提示。</summary>

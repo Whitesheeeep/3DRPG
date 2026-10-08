@@ -126,7 +126,7 @@ ChoiceWindow 不再依赖 PlayerInteractor 自动消费 Blackboard Intent。上�
 
 ### 4.2 窗口行为
 
-`GameWindowPreloadService` 会在跨场景保留的 WSFrameRoot 上依次预加载 HUD、Choice 和 Dialogue 窗口，并等待 ChoiceWindow 首次创建三个 `OptionChoice` 行。全部依赖准备完成后，HUD 显式显示；Choice 和 Dialogue 保持隐藏，直到各自业务流程打开。
+`WindowPreloadSceneLoadTask` 会通过 UIManager 预加载 HUD、Choice 和 Dialogue 窗口，并等待 ChoiceWindow 首次创建三个 `OptionChoice` 行。全部依赖准备完成后，HUD 由场景加载完成适配器显式显示；Choice 和 Dialogue 保持隐藏，直到各自业务流程打开。
 
 ```mermaid
 stateDiagram-v2
@@ -177,7 +177,7 @@ Detector 的 `StartDetect()` 与 `PlayerInteractor.StartDetect()` 都会立即�
 | 上下键无法切换 | EventSystem 是否存在并有当前选中 Button；`ChoiceWindowView` 是否已初始化行；OptionChoice Button 的 Navigation 是否为 Explicit；不可用项是否被正确置灰；Console 是否有 UI 初始化错误 |
 | Option 顺序异常 | 检查 `Priority`；同优先级由运行时 `InteractionOptionId` 排序，不要依赖场景组件顺序 |
 | 物品无法拾取 | `Item Definition` 是否配置；玩家根节点是否有 `IItemPickupReceiver`；`CanReceive` 是否允许；容量不足时 `TryReceive` 是否返回 `false` |
-| 窗口没有显示 | 是否已创建并初始化 UIManager；GameWindowPreloadService 是否运行；是否仍有有效 Option；零 Option 时窗口会被 Hide 而不是销毁 |
+| 窗口没有显示 | 是否已创建并初始化 UIManager；目标场景配置是否运行 WindowPreloadSceneLoadTask；是否仍有有效 Option；零 Option 时窗口会被 Hide 而不是销毁 |
 | 停止运行时报 UI 错误 | 确认使用当前 WSFrameRoot 的统一 `UIManager.Shutdown()` 流程；不要在外部提前销毁 ChoiceWindow 或 OptionChoice 行 |
 
 ## 8. 场景交付检查清单

@@ -66,6 +66,20 @@ namespace RPG.Character
             SampleEnvironment(Mathf.Max(0f, deltaTime), blackboard, false);
         }
 
+        /// <summary>传送 CharacterRoot 后重建环境历史，避免把跨场景位移解释成运动或落差。</summary>
+        /// <param name="blackboard">需要同步更新的玩家环境状态。</param>
+        internal void ResetAfterTeleport(PlayerStateBlackboard blackboard)
+        {
+            EnsureInitialized();
+            if (blackboard == null)
+                throw new ArgumentNullException(nameof(blackboard));
+
+            // 初始采样把上一位置和接地历史重置为当前世界状态，不派生传送速度或旧落差。
+            previousGrounded = false;
+            previousRootPosition = characterRoot.position;
+            SampleEnvironment(0f, blackboard, true);
+        }
+
         /// <summary>在局部采样完成后将所有环境事实一次性写入黑板。</summary>
         /// <param name="deltaTime">本次 Update 时间步长。</param>
         /// <param name="blackboard">环境事实写入目标。</param>

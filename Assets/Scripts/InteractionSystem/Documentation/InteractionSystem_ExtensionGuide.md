@@ -215,7 +215,7 @@ UI Navigate / Submit
 
 ChoiceWindow 当前由 Window 组装 `ChoiceWindowView` 和 `InteractionUIController`。若替换窗口，应保持 Controller 的领域绑定和生命周期对称。
 
-场景级预热服务应实现 `IScenePreloadTask`；窗口统一实现 `IWindowPreloadService`。新增对象池或资源预热任务时，向未来场景加载编排器提供同一个 `PreloadAsync()` 契约，不要让业务交互组件直接管理全局窗口加载。
+需要进入场景准备流程的窗口或对象池工作应实现一个 RPG `SceneLoadTask`，并由配置中的任务树决定执行顺序、依赖和进度权重。窗口预热由 `WindowPreloadSceneLoadTask` 通过 UIManager 负责，交互业务组件不直接管理全局窗口生命周期。
 
 相关框架文档：[WSFrame UI](../../WSFrame/UISystem/Core/UISystem_Documentation.md)、[ConfigInstaller](../../WSFrame/ConfigInstaller/ConfigInstaller_Usage.md)。
 

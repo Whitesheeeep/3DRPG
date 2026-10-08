@@ -189,7 +189,7 @@ sequenceDiagram
 
 当前 ChoiceWindow 不读取 `InteractionOption.Icon`。领域层保留图标字段供未来 View 使用，ChoiceWindow 只投影 Option 名称和选中索引；`OptionChoice` prefab 中的 ChatIcon 是固定装饰。
 
-`GameWindowPreloadService` 通过 `IWindowPreloadService : IScenePreloadTask` 依次预加载 HUD、Choice 和 Dialogue，并等待 ChoiceWindow 的三行 View 初始化完成；全部依赖就绪后显式显示 HUD，Choice 和 Dialogue 保持隐藏。
+`WindowPreloadSceneLoadTask` 通过 UIManager 预加载 HUD、Choice、Dialogue、Bag、Character 和 EquipmentDevelopment 窗口，并等待 ChoiceWindow 与 DialogueWindow 的内部 View 初始化完成。任务本身在场景加载树中报告窗口准备进度；流程全部成功后由场景展示适配器显示 HUD，Choice 和 Dialogue 保持隐藏。
 
 停止运行时，`WSFrameRoot` 先调用 `UIManager.Shutdown()`，窗口统一释放 Controller、View、行实例和资源，避免玩家销毁事件刷新已经被 Unity 销毁的 UI 行。
 
@@ -205,7 +205,7 @@ flowchart TD
     Root[WSFrameRoot] --> Config[ConfigInstaller]
     Config --> Tags[GameplayTagManager]
     Root --> UI[UIManager]
-    UI --> Preload[GameWindowPreloadService]
+    UI --> Preload[WindowPreloadSceneLoadTask]
     Player --> Interactor[PlayerInteractor]
     Interactor --> Controller[InteractionUIController]
 ```

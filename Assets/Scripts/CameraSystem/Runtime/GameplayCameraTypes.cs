@@ -6,6 +6,8 @@ namespace RPG.CameraSystem
         /// <summary>玩家可通过 Look 输入自由旋转镜头。</summary>
         FreeLook,
         /// <summary>镜头自动跟踪玩家与锁定目标并调整战斗构图。</summary>
-        Locked
+        Locked,
+        /// <summary>开始界面或场景准备期间保持输出但暂停玩家镜头与输入。</summary>
+        Presentation
     }
 }

@@ -7,6 +7,7 @@ using RPG.RedDotSystemNS;
 using RPG.RewardSystemNS;
 using RPG.SaveSystem;
 using RPG.TaskSystemNS;
+using RPG.Game.Loading;
 using RPG.Game.UI.Escape;
 using RPG.Game.UI.Loading;
 using UnityEngine;
@@ -114,6 +115,7 @@ namespace RPG.Game
             RegisterSystem(new DialogueSystem());
             RegisterSystem(new CharacterEquipmentSystem());
             RegisterSystem(new SceneLoadingSystem(new GameSceneLoadingPresentation()));
+            RegisterSystem(new GameSceneFlowSystem());
             RegisterManager(new EscCommandManager());
 
             // 角色、背包等跨业务模块在这里继续注册；各 Manager 在自身 OnInit 中注册 SaveModule。

@@ -58,6 +58,14 @@ namespace RPG.Character
             locomotionDetector.TickUpdate(deltaTime, blackboard);
         }
 
+        /// <summary>转发传送后的定位采样，重建共享 CharacterRoot 的环境历史。</summary>
+        /// <param name="blackboard">接收新位置环境事实的玩家黑板。</param>
+        public void ResetAfterTeleport(PlayerStateBlackboard blackboard)
+        {
+            EnsureInitialized();
+            locomotionDetector.ResetAfterTeleport(blackboard);
+        }
+
         /// <summary>转发当前环境子检测器的 Gizmo 绘制。</summary>
         public void OnGizmosDraw(Transform characterRootForEditor)
         {

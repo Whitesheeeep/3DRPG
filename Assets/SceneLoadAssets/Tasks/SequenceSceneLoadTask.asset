@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   progressWeight: 1
   children:
-  - {fileID: 11400000, guid: 985299bc42f04a14e8cc4137dfc1ef6e, type: 2}
   - {fileID: 11400000, guid: 26f82df7ce6c65f41a983a8617c1f1db, type: 2}
   - {fileID: 11400000, guid: 1877e6a7cea00b445940240055d8d817, type: 2}
+  - {fileID: 11400000, guid: 985299bc42f04a14e8cc4137dfc1ef6e, type: 2}
+  - {fileID: 11400000, guid: 32e45a65c16183e43bf3e5016ec11b27, type: 2}

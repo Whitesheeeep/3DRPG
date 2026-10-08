@@ -18,9 +18,11 @@ flowchart TD
     K --> M[完整流程终态]
     L --> M
     M --> N{成功/失败/取消}
-    N -->|成功| O[展示接口 CompleteAsync]
-    N -->|失败| P[展示接口 PresentFailure]
-    N -->|取消| Q[展示接口 PresentCancellation]
+    N -->|成功| O[发布成功快照：100%]
+    O --> P[展示接口 CompleteAsync]
+    P --> R[发布 Completed 完成事件]
+    N -->|失败| S[展示接口 PresentFailure]
+    N -->|取消| T[展示接口 PresentCancellation]
 ```
 
 ## 源码职责分层
@@ -72,7 +74,7 @@ flowchart LR
 
 ## 进度与事件
 
-进度由 `SceneLoadProgressTracker` 根据叶子任务的 `ProgressWeight` 加权汇总。`CurrentSnapshot` 提供最近一次只读快照；`RegisterSnapshotChanged`、`RegisterTaskChanged` 及成功、失败、取消事件用于订阅流程状态。事件回调异常会被记录，不会截断任务树执行。
+进度由 `SceneLoadProgressTracker` 根据叶子任务的 `ProgressWeight` 加权汇总。`CurrentSnapshot` 提供最近一次只读快照；`RegisterSnapshotChanged`、`RegisterTaskChanged` 及成功、失败、取消事件用于订阅流程状态。成功快照先发布，展示实现完成成功收尾尝试后再发送 `Completed`；失败和取消事件随终态快照发送。事件回调异常会被记录，不会截断任务树执行。
 
 可选展示实现通过 `ISceneLoadingPresentation` 接收准备、进度、成功、失败和取消状态。系统不依赖任何窗口或 HUD 类型；没有提供展示实现时仍可执行同一任务树。
 

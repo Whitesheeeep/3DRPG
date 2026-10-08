@@ -33,6 +33,7 @@ namespace RPG.Game.Loading.Tasks
                 throw new MissingReferenceException("[PlayerInitializationSceneLoadTask] PlayerController 单例不存在。");
 
             WSLog.Log($"[PlayerInitializationSceneLoadTask] 开始等待玩家初始化，sceneId={context.Config.SceneId}。");
+            playerController.BeginScenePreparation();
             await playerController.InitializeForSceneAsync(cancellationToken);
             WSLog.Log($"[PlayerInitializationSceneLoadTask] 玩家初始化完成，sceneId={context.Config.SceneId}，player={playerController.name}。");
         }

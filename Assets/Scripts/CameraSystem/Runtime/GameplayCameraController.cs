@@ -29,6 +29,8 @@ namespace RPG.CameraSystem
         [SerializeField, Required, LabelText("玩家构图节点")] private Transform playerFramingTarget;
         [SerializeField, Required, LabelText("目标构图节点")] private Transform lockedTargetFramingTarget;
         [SerializeField, Required, LabelText("Cinemachine 管理器")] private CinemachineManager cameraManager;
+        [SerializeField, LabelText("启动时进入界面镜头模式"), Tooltip("开始界面或直接场景准备期间关闭玩家镜头输入，仍由同一 Main Camera 输出 UI。")]
+        private bool startInPresentationMode;
 
         // 自由观察输入：只配置输入到角度的换算和俯仰范围。
         [Title("自由观察输入", "鼠标按像素、摇杆按时间控制视角")]
@@ -153,6 +155,8 @@ namespace RPG.CameraSystem
             freeLookFollow.CameraDistance = desiredFreeCameraDistance;
             ReadOrientation(freeLookVirtualCamera.transform.rotation, out yaw, out pitch);
             SetCameraPriorities(false);
+            if (startInPresentationMode)
+                EnterPresentationMode();
         }
 
         /// <summary>确认唯一镜头实例后订阅目标与输入实例变化，并绑定或异步等待 Player。</summary>
@@ -166,9 +170,10 @@ namespace RPG.CameraSystem
             }
 
             lockTargetSystem = LockTargetSystem.Instance;
-            lockTargetSystem.LockTargetChanged += HandleLockTargetChanged;
+            if (lockTargetSystem != null)
+                lockTargetSystem.LockTargetChanged += HandleLockTargetChanged;
             PlayerInputController.InstanceChanged += HandleInputControllerInstanceChanged;
-            if (!TryBindPlayer())
+            if (currentMode != E_GameplayCameraMode.Presentation && !TryBindPlayer())
                 StartPlayerBindingWait();
             Debug.Log($"[GameplayCameraController] 已订阅锁定与输入实例变化，playerBound={boundPlayer != null}。", this);
         }
@@ -176,6 +181,11 @@ namespace RPG.CameraSystem
         /// <summary>在 Brain 更新前同步代理、目标组、输入视角和锁定观察方向。</summary>
         private void LateUpdate()
         {
+            if (currentMode == E_GameplayCameraMode.Presentation)
+            {
+                UpdateCursorOwnership(false);
+                return;
+            }
             if (!TryEnsurePlayerBinding())
             {
                 UpdateCursorOwnership(false);
@@ -219,7 +229,8 @@ namespace RPG.CameraSystem
         {
             if (applicationHasFocus == hasFocus) return;
             applicationHasFocus = hasFocus;
-            UpdateCursorOwnership(hasFocus && boundPlayer != null && boundInputController != null &&
+            UpdateCursorOwnership(currentMode != E_GameplayCameraMode.Presentation && hasFocus &&
+                                  boundPlayer != null && boundInputController != null &&
                                   !boundInputController.IsGameplayInputBlocked);
             Debug.Log($"[GameplayCameraController] 应用焦点变化，hasFocus={hasFocus}。", this);
         }
@@ -550,6 +561,7 @@ namespace RPG.CameraSystem
             GameplayAbilitySystemComponent currentTarget,
             E_LockTargetChangeReason reason)
         {
+            if (currentMode == E_GameplayCameraMode.Presentation) return;
             if (boundPlayer == null || !boundPlayer.isActiveAndEnabled || boundPlayerRoot == null)
             {
                 Debug.Log($"[GameplayCameraController] 收到锁定变化但 Player 尚未绑定，稍后同步当前目标，reason={reason}。", this);
@@ -643,6 +655,7 @@ namespace RPG.CameraSystem
         /// <param name="synchronizeOrientation">离开锁定镜头时是否接续 Brain 当前的原始朝向。</param>
         private void ClearCameraTargetState(bool synchronizeOrientation)
         {
+            bool wasPresentation = currentMode == E_GameplayCameraMode.Presentation;
             bool wasLocked = currentMode == E_GameplayCameraMode.Locked;
             bool hadTargetState = !ReferenceEquals(lockedTarget, null) ||
                                   !ReferenceEquals(lockedTargetRoot, null) ||
@@ -654,7 +667,16 @@ namespace RPG.CameraSystem
             lockedTargetRoot = null;
             lockedTargetRenderers = Array.Empty<Renderer>();
             targetGroup.m_Targets[1].weight = 0f;
-            SetCameraPriorities(false);
+            if (wasPresentation)
+            {
+                currentMode = E_GameplayCameraMode.Presentation;
+                freeLookVirtualCamera.Priority = 0;
+                lockedVirtualCamera.Priority = 0;
+            }
+            else
+            {
+                SetCameraPriorities(false);
+            }
 
             if (hadTargetState || wasLocked)
             {
@@ -713,6 +735,39 @@ namespace RPG.CameraSystem
             freeLookVirtualCamera.Priority = locked ? 10 : 20;
             lockedVirtualCamera.Priority = locked ? 20 : 10;
         }
+
+        #region 场景镜头模式
+
+        /// <summary>进入开始界面或场景准备状态，保留输出摄像机并暂停 Virtual Camera 驱动。</summary>
+        public void EnterPresentationMode()
+        {
+            if (currentMode == E_GameplayCameraMode.Presentation) return;
+            ClearCameraTargetState(false);
+            currentMode = E_GameplayCameraMode.Presentation;
+            freeLookVirtualCamera.Priority = 0;
+            lockedVirtualCamera.Priority = 0;
+            // 仅降低 VCam 优先级不能冻结 Brain；关闭 Brain 更新期间仍由 Main Camera 与 UICamera 输出画面。
+            brain.enabled = false;
+            CancelPlayerBindingWait();
+            UnbindInputController();
+            boundPlayer = null;
+            boundPlayerRoot = null;
+            UpdateCursorOwnership(false);
+            Debug.Log($"[GameplayCameraController] 已进入界面镜头模式并暂停 Brain，camera={name}。", this);
+        }
+
+        /// <summary>在角色初始化和出生点定位完成后启用自由观察并绑定 Player。</summary>
+        public void EnterGameplayMode()
+        {
+            SetCameraPriorities(false);
+            // 恢复单一 Brain 后再绑定玩家，使正式游戏沿用同一 Main Camera 输出链。
+            brain.enabled = true;
+            if (!TryBindPlayer())
+                StartPlayerBindingWait();
+            Debug.Log($"[GameplayCameraController] 已恢复 Brain 并切换到正式游戏镜头，playerBound={boundPlayer != null}。", this);
+        }
+
+        #endregion
 
         /// <summary>生成锁定事件诊断使用的稳定目标名称。</summary>
         /// <param name="target">目标 ASC，可能为空或已销毁。</param>

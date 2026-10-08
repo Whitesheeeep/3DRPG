@@ -7,7 +7,7 @@ namespace WS_Modules.SceneModule
         SnapshotChanged,
         /// <summary>一个任务引用位置的状态或局部进度发生变化。</summary>
         TaskChanged,
-        /// <summary>场景加载与全部后续任务成功结束。</summary>
+        /// <summary>任务树成功且展示收尾尝试结束后发送的流程完成通知。</summary>
         Completed,
         /// <summary>流程因校验后执行错误而失败。</summary>
         Failed,

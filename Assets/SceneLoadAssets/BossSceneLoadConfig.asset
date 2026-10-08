@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7658818da7dad3c4a943b77a4f20c10d, type: 3}
-  m_Name: SceneLoadConfig
+  m_Name: BossSceneLoadConfig
   m_EditorClassIdentifier: 
-  sceneId: scene.7f32e78d
-  sceneName: UnityReadyMarketCourtyard
-  displayName: "Market\u573A\u666F"
+  sceneId: scene.boss
+  sceneName: BossScene
+  displayName: "\u9996\u9886\u573A\u666F"
   sceneReference:
-    m_AssetGUID: f079fae3fd9dc2f429c56f4b22e648b0
+    m_AssetGUID: c9147d8da7abf1943928670b866b1246
     m_SubObjectName: 
     m_SubObjectType: 
     m_EditorAssetChanged: 0

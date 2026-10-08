@@ -29,3 +29,5 @@ MonoBehaviour:
     windowPrefabPath: TaskWindow
   - windowName: LoadingWindow
     windowPrefabPath: LoadingWindow
+  - windowName: GameStartWindow
+    windowPrefabPath: GameStartWindow

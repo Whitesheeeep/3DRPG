@@ -275,6 +275,12 @@ namespace WS_Modules.SceneModule
                         WSLog.LogError($"[SceneLoadingSystem] 场景已成功但展示层收尾失败，sceneId={config.SceneId}，exception={presentationException}");
                     }
                 }
+
+                // Completed 表示加载展示已经执行收尾尝试；业务订阅方此时可安全恢复正式游戏。
+                PublishEventSafely(
+                    E_SceneLoadingEventType.Completed,
+                    new SceneLoadingEventArgs(progressTracker.Snapshot));
+                WSLog.Log($"[SceneLoadingSystem] 已发布场景流程完成事件，sceneId={config.SceneId}。");
                 return context.ActiveScene;
             }
             catch (OperationCanceledException)
@@ -329,14 +335,12 @@ namespace WS_Modules.SceneModule
             CurrentSnapshot = snapshot;
             var eventArgs = new SceneLoadingEventArgs(snapshot);
             PublishEventSafely(E_SceneLoadingEventType.SnapshotChanged, eventArgs);
-            if (snapshot.State != E_SceneLoadExecutionState.Loading)
+            if (snapshot.State == E_SceneLoadExecutionState.Failed ||
+                snapshot.State == E_SceneLoadExecutionState.Cancelled)
             {
-                E_SceneLoadingEventType terminalEvent = snapshot.State switch
-                {
-                    E_SceneLoadExecutionState.Succeeded => E_SceneLoadingEventType.Completed,
-                    E_SceneLoadExecutionState.Failed => E_SceneLoadingEventType.Failed,
-                    _ => E_SceneLoadingEventType.Cancelled
-                };
+                E_SceneLoadingEventType terminalEvent = snapshot.State == E_SceneLoadExecutionState.Failed
+                    ? E_SceneLoadingEventType.Failed
+                    : E_SceneLoadingEventType.Cancelled;
                 PublishEventSafely(terminalEvent, eventArgs);
             }
             try
