@@ -388,7 +388,8 @@ Interactor 只在当前候选集合中进行视野、遮挡和评分处理：
 `DialogueInteractable` 在场景组件中保存有序对话条目，每条绑定交互名称、DialogueAsset、
 稳定 OptionId 与重复策略；旧版单 `DialogueAsset` 场景仍兼容为 Repeatable 对话。NPC 的
 `DialogueParticipant` 可由 ParticipantRoot 查找，Initiator Context 从交互发起者父级的
-`DialogueParticipant` 构建。Toggle 还需要场景 NPC 的稳定 `NPCIdentity.NPCId`。
+`DialogueParticipant` 构建。Toggle 还需要场景 NPC 的 `NPCIdentity` 引用有效
+`NPCIdentityDefinition` SO；该身份资产与任务目标共用，但不取代 `DialogueSpeaker`。
 
 它实现通用 `IInteractable`，在 `Interact` 选项被执行时构建 `DialogueRequest` 并调用 `DialogueSystem.TryStartDialogue`。
 
@@ -935,7 +936,7 @@ flowchart LR
     Start -->|启动失败| Retry["保持可用"]
     Start -->|Toggle 启动成功| Track["DialogueInteractionManager 跟踪 Session"]
     Track --> End{"Session 结束状态"}
-    End -->|Completed| Save["记 NPCId + OptionId"]
+    End -->|Completed| Save["记稳定 NPC 身份 + OptionId"]
     End -->|Failed| Retry
     Save --> Snapshot["下次正常存档写入 SaveModule"]
 ```
@@ -943,15 +944,16 @@ flowchart LR
 `Repeatable` 每次都可再次启动。`Toggle` 只有在对话正常到达 EndNode 后才完成；启动失败
 或以 `Failed` 结束时仍可重试。完成后该条目从交互选项中消失，组件上的其他选项不受影响。
 
-Toggle 使用场景 `NPCIdentity.NPCId` 与条目的 `OptionId` 组成存档身份，因此同一
+Toggle 使用场景 `NPCIdentityDefinition` 解析出的稳定 NPCId 与条目的 `OptionId` 组成存档身份，因此同一
 `DialogueAsset` 被多个 NPC 使用时会分别记忆。含 Toggle 的 `DialogueInteractable` 必须
-引用或能从 `ParticipantRoot` / 组件父级找到有效 `NPCIdentity`；玩家和 NPC 的
+引用或能从 `ParticipantRoot` / 组件父级找到有效 `NPCIdentity`；NPC 身份由 SO 配置，旧 NPCId 字符串
+已直接保存在唯一 `identityId` 字段中以免已有 Toggle 存档失效。玩家和 NPC 的
 `DialogueParticipant` 仍按各自层级向父级查找。每个 NPCIdentity 层级只配置一个
 `DialogueInteractable`；组件启动时检查该身份根节点下是否重复挂载。
 
 `DialogueInteractionManager` 属于 `GameArchitecture`，跟踪会话结束并持有完成状态；
 `DialogueInteractionSaveModule` 使用稳定模块 ID `dialogue-interaction` 和版本 `1`。
-保存快照只包含排序后的 NPCId 与 OptionId，不包含场景对象。读档整体替换完成集合，旧
+保存快照只包含排序后的 NPCId 与 OptionId，不包含 SO、Transform 或场景对象；NPCId 来源于 `NPCIdentityDefinition.identityId`。已有身份的旧 NPCId 字符串直接迁入该唯一字段，保证已有 Toggle 存档仍可匹配。读档整体替换完成集合，旧
 存档缺少此模块时恢复为空集合；场景暂未加载或配置后来移除都不会清掉旧记录。对话完成
 后只更新内存，状态在下一次正常存档时落盘。
 
