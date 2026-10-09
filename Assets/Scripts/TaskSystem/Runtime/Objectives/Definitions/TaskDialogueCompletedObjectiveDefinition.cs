@@ -17,6 +17,8 @@ namespace RPG.TaskSystemNS
         [SerializeField] private DialogueAsset dialogueAsset;
         [SerializeField, AssetsOnly, LabelText("导航 NPC")]
         private NPCIdentityDefinition npcIdentity;
+        [SerializeField, AssetsOnly, LabelText("指定对白节点")]
+        private DialogueSpeechNode speechNode;
 
         #endregion
 
@@ -36,17 +38,20 @@ namespace RPG.TaskSystemNS
         /// <param name="dialogueAsset">需要正常完成的对话资源。</param>
         /// <param name="required">需要完成对话的次数，默认一次。</param>
         /// <param name="npcIdentity">可选的场景 NPC 导航身份。</param>
+        /// <param name="speechNode">可选的指定对白节点；配置后进入节点即计数。</param>
         /// <exception cref="ArgumentException">目标标识非法时抛出。</exception>
         /// <exception cref="ArgumentOutOfRangeException">需求数量不是正数时抛出。</exception>
         public TaskDialogueCompletedObjectiveDefinition(
             string objectiveId,
             DialogueAsset dialogueAsset,
             int required = 1,
-            NPCIdentityDefinition npcIdentity = null)
+            NPCIdentityDefinition npcIdentity = null,
+            DialogueSpeechNode speechNode = null)
             : base(objectiveId, required)
         {
             this.dialogueAsset = dialogueAsset;
             this.npcIdentity = npcIdentity;
+            this.speechNode = speechNode;
         }
 
         #endregion
@@ -57,6 +62,9 @@ namespace RPG.TaskSystemNS
         /// 获取目标要求完成的 DialogueAsset。
         /// </summary>
         public DialogueAsset DialogueAsset => dialogueAsset;
+
+        /// <summary>获取可选的对话节点目标；为空时仍按正常结束事件计数。</summary>
+        public DialogueSpeechNode SpeechNode => speechNode;
 
         /// <summary>获取该目标可选导航身份解析出的 NPCId；未配置时返回无效 ID。</summary>
         public NPCId NPCId => npcIdentity != null ? npcIdentity.Id : default;
@@ -73,6 +81,7 @@ namespace RPG.TaskSystemNS
             return new TaskDialogueCompletedObjectiveRuntime(
                 dialogueAsset,
                 NPCId,
+                speechNode,
                 context);
         }
 
@@ -84,14 +93,28 @@ namespace RPG.TaskSystemNS
         {
             base.Validate();
             npcIdentity?.Validate();
-            if (dialogueAsset != null)
+            if (dialogueAsset == null)
             {
-                return;
+                const string message = "对话完成目标必须配置 DialogueAsset。";
+                Debug.LogError($"[TaskDialogueCompletedObjectiveDefinition] {message}");
+                throw new ArgumentException(message, nameof(dialogueAsset));
             }
 
-            const string message = "对话完成目标必须配置 DialogueAsset。";
-            Debug.LogError($"[TaskDialogueCompletedObjectiveDefinition] {message}");
-            throw new ArgumentException(message, nameof(dialogueAsset));
+            if (speechNode == null)
+                return;
+
+            for (int index = 0; index < dialogueAsset.Nodes.Count; index++)
+            {
+                if (ReferenceEquals(dialogueAsset.Nodes[index], speechNode))
+                    return;
+            }
+
+            string nodeName = string.IsNullOrWhiteSpace(speechNode.NodeName)
+                ? speechNode.NodeId
+                : speechNode.NodeName;
+            string nodeMessage = $"指定对白节点不属于目标 DialogueAsset；dialogueId={dialogueAsset.DialogueId}, node={nodeName}。";
+            Debug.LogError($"[TaskDialogueCompletedObjectiveDefinition] {nodeMessage}");
+            throw new ArgumentException(nodeMessage, nameof(speechNode));
         }
 
         #endregion

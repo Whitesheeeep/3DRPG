@@ -153,7 +153,10 @@ namespace WS_Modules.UIModule
                 }
 
                 DialogueChoiceSnapShot choice = pendingChoices[index];
-                row.SetOption(index, choice.Text, choice.IsAvailable);
+                string optionText = choice.Text;
+                if (!choice.IsAvailable && !string.IsNullOrWhiteSpace(choice.UnavailableReason))
+                    optionText = $"{optionText}（{choice.UnavailableReason}）";
+                row.SetOption(index, optionText, choice.IsAvailable);
                 if (choice.IsAvailable)
                 {
                     if (firstAvailableIndex < 0) firstAvailableIndex = index;

@@ -15,7 +15,7 @@ MonoBehaviour:
   taskId: side_defeat_boss_odetta
   categoryId: side
   title: "\u51FB\u8D25 Odetta"
-  description: "\u51FB\u8D25 Boss Odetta\u3002"
+  description: "\u51FB\u8D25 Boss Odetta\uFF0C\u5E76\u8FD4\u56DE\u963F\u857E\u5947\u8BFA\u5904\u6C47\u62A5\u3002"
   unlockConditions: []
   stages:
   - stageId: stage_001
@@ -23,6 +23,11 @@ MonoBehaviour:
     description: "\u51FB\u8D25 Odetta"
     objectives:
     - rid: 1466742124891078656
+  - stageId: stage_report
+    title: "\u5411\u963F\u857E\u5947\u8BFA\u6C47\u62A5"
+    description: "\u8FD4\u56DE\u963F\u857E\u5947\u8BFA\u5904\u6C47\u62A5 Odetta \u7684\u8BA8\u4F10\u7ED3\u679C"
+    objectives:
+    - rid: 1466742124891078659
   rewards:
   - rid: 1466742124891078657
   - rid: 1466742124891078658
@@ -55,3 +60,12 @@ MonoBehaviour:
         - itemId:
             value: material_0019
           quantity: 10
+    - rid: 1466742124891078659
+      type: {class: TaskDialogueCompletedObjectiveDefinition, ns: RPG.TaskSystemNS, asm: Assembly-CSharp}
+      data:
+        objectiveId: Report.Odetta
+        displayDescription: "\u5411\u963F\u857E\u5947\u8BFA\u6C47\u62A5\u8BA8\u4F10\u7ED3\u679C"
+        required: 1
+        dialogueAsset: {fileID: 11400000, guid: f9d2608339344de9ba3f25e42b28c9bf, type: 2}
+        npcIdentity: {fileID: 11400000, guid: f2a38000000000000000000000000002, type: 2}
+        speechNode: {fileID: 3936336167613342720, guid: f9d2608339344de9ba3f25e42b28c9bf, type: 2}

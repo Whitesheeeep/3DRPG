@@ -39,9 +39,9 @@ MonoBehaviour:
   editorPosition: {x: -12.226208, y: -21.029408}
   nodeName: Speech 002
   speaker: {fileID: 11400000, guid: 032bd966221ad854ab394fca1df0980c, type: 2}
-  dialogueName: "\u535A\u58EB"
-  text: "\u6211\u662F\u4F60\u7239"
-  animationClip: {fileID: 8993902097722301239, guid: 7efcb696b98b838468b814de0e3de013, type: 3}
+  dialogueName: 
+  text: "\u6211\u662F\u73A9\u5BB6"
+  animationClip: {fileID: 7400000, guid: a493989422253ab4e91b3c2997622ac7, type: 2}
   voiceClip: {fileID: 8300000, guid: dfeaf9743d41cc3438117d38b90c0372, type: 3}
   animationFadeDuration: 1
   nextNode: {fileID: 5565974568186260539}
@@ -85,7 +85,7 @@ MonoBehaviour:
   nodeId: 4bd13c38-0c0c-46fe-8a13-1ec46209860d
   editorPosition: {x: -275.99985, y: -388.8}
   nodeName: Choice 001
-  text: "\u65C5\u884C\u8005"
+  text: "\u4E0D\u544A\u8BC9\u4F60\uFF08\u5FAA\u73AF\u7ED3\u679C\uFF09"
   conditions: []
   actions: []
   targetNode: {fileID: 3705990609346577972}
@@ -105,9 +105,9 @@ MonoBehaviour:
   m_Name: Choice 004
   m_EditorClassIdentifier: 
   nodeId: 6db2cc6e-db00-4b8b-bc04-6572c1c42dce
-  editorPosition: {x: -259.89185, y: 175.68791}
+  editorPosition: {x: -275.89185, y: 175.68793}
   nodeName: Choice 004
-  text: "\u4E0D\u53EF\u5230\u8FBE"
+  text: "\u6D4B\u8BD5\u6761\u4EF6\uFF08\u970010\u6469\u62C9\uFF09"
   conditions:
   - rid: 2645454714865713152
   actions: []
@@ -136,7 +136,7 @@ MonoBehaviour:
   nodeName: Speech 001
   speaker: {fileID: 11400000, guid: 4663cf08600c8fb4682d10fa508a0b57, type: 2}
   dialogueName: "\u65AF\u5361\u54C8"
-  text: "\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F\u4F60\u662F\u8C01\uFF1F"
+  text: "\u4F60\u662F\u8C01\uFF1F"
   animationClip: {fileID: 0}
   voiceClip: {fileID: 0}
   animationFadeDuration: 0
@@ -161,7 +161,7 @@ MonoBehaviour:
   nodeId: 002cde49-3efd-4cc3-99bb-9f9e90f30c26
   editorPosition: {x: -275.97427, y: -197.14194}
   nodeName: Choice 002
-  text: "\u6F02\u6CCA\u8005"
+  text: "\u6C89\u9ED8\uFF08\u7ED3\u675F\uFF09"
   conditions:
   - rid: 3428734170830209024
   actions:
@@ -205,9 +205,9 @@ MonoBehaviour:
   m_Name: Choice 003
   m_EditorClassIdentifier: 
   nodeId: 7fed2602-6345-49b4-82b3-430fa000cf24
-  editorPosition: {x: -276.31787, y: -22.478031}
+  editorPosition: {x: -276.31784, y: -21.678024}
   nodeName: Choice 003
-  text: "\u535A\u58EB"
+  text: "\u56DE\u7B54"
   conditions: []
   actions: []
   targetNode: {fileID: -1300391279405334389}
