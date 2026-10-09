@@ -319,11 +319,21 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         public bool TryCancel(GameplayAbilityRuntime runtime) =>
             OwnsActiveRuntime(runtime) && runtime.IsCancelable && runtime.Cancel();
 
+        /// <summary>强制结束全部活动 Runtime 并保留授予列表和激活规则。</summary>
+        /// <returns>进入强制取消流程的 Runtime 数量。</returns>
+        public int ForceCancelAll()
+        {
+            int cancelledCount = activeRuntimes.Count;
+            // 终态回调会从列表中移除 Runtime，因此始终取消尾项直到列表清空。
+            while (activeRuntimes.Count > 0)
+                activeRuntimes[^1].ForceCancel();
+            return cancelledCount;
+        }
+
         /// <inheritdoc />
         public void Clear()
         {
-            while (activeRuntimes.Count > 0)
-                activeRuntimes[^1].ForceCancel();
+            ForceCancelAll();
             runtimeSnapshot.Clear();
             grantedAbilities.Clear();
             activationBlockedOwnerTags.Clear();

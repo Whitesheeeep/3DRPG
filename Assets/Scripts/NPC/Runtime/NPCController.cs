@@ -4,16 +4,18 @@ using RPG.Character;
 using RPG.Character.Animation;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using WS_Modules.CustomEventSystem;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.AttributeSystem;
+using WS_Modules.GAS.Generated;
 using WS_Modules.GAS.GameplayAbilitySystem;
 
 namespace RPG.NPC
 {
-    /// <summary>独立驱动 NPC 的 ASC、Boss 移动状态与 CharacterController 位移结算。</summary>
+    /// <summary>独立驱动 NPC 的 ASC、Alive/Dead 状态与 CharacterController 位移结算。</summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CharacterController), typeof(NPCActor))]
-    [InfoBox("依赖同节点 CharacterController 与 NPCActor；NPCActor 提供 ASC、Animator、SkillRuntimeHost 和挂点，NPCConfig 提供等级成长、属性集、资源规则、技能和 Idle/Move 动画。生成等级必须位于 GrowthProfile 的烘焙范围。")]
+    [InfoBox("依赖同节点 CharacterController、NPCActor 与可选 NPCIdentity，以及子级碰撞体；NPCConfig 提供等级成长、属性集、资源规则、技能、技能激活规则和 Idle/Move/Death 动画。身份缺失时不会发布可供任务匹配的击败事件。")]
     public sealed class NPCController : MonoBehaviour
     {
         #region 配置与依赖字段
@@ -23,6 +25,7 @@ namespace RPG.NPC
         [SerializeField, MinValue(1), LabelText("生成等级")] private int generationLevel = 1;
         [SerializeField] private CharacterController characterController;
         [SerializeField] private NPCActor actor;
+        [SerializeField] private NPCIdentity npcIdentity;
         [SerializeField] private MotionDriver motionDriver = new();
         [SerializeField] private BossLocomotionStateMachine locomotion = new();
 
@@ -35,6 +38,7 @@ namespace RPG.NPC
         private NPCActionArbiter actionArbiter;
         private bool initialized;
         private int lastAnimatorMoveFrame = -1;
+        private bool deathEventPublished;
 
         #endregion
 
@@ -59,7 +63,7 @@ namespace RPG.NPC
         public IFullBodyActionArbiter FullBodyActionArbiter => actionArbiter ??
             throw new InvalidOperationException($"NPCController '{name}' 尚未创建 Action Arbiter。");
 
-        /// <summary>获取 Boss Idle/Move 状态机。</summary>
+        /// <summary>获取 NPC Alive/Dead 与 Idle/Move 分层状态机。</summary>
         public BossLocomotionStateMachine Locomotion => locomotion;
 
         /// <summary>获取该 NPC 是否被 FullBody Ability 占据。</summary>
@@ -67,6 +71,11 @@ namespace RPG.NPC
 
         /// <summary>获取 NPC 运行时是否已完成属性、技能和状态机初始化。</summary>
         public bool IsInitialized => initialized;
+
+        /// <summary>通过 ASC 精确查询该 NPC 是否持有不可逆死亡 Tag。</summary>
+        public bool IsDead =>
+            abilitySystemComponent != null &&
+            abilitySystemComponent.HasTagExact(GameplayTags.Tag_State_Dead);
 
         #endregion
 
@@ -80,6 +89,8 @@ namespace RPG.NPC
                 characterController = GetComponent<CharacterController>();
             if (actor == null)
                 actor = GetComponent<NPCActor>();
+            if (npcIdentity == null)
+                npcIdentity = GetComponent<NPCIdentity>();
             if (characterController == null || actor == null)
             {
                 Debug.LogError(
@@ -107,16 +118,14 @@ namespace RPG.NPC
 
             try
             {
-                abilitySystemComponent.Tick(Time.deltaTime);
-                if (actor.IsActionPaused)
-                {
-                    // HitStop 冻结动作位移结算，避免暂停前提交的瞬时请求跨帧应用。
-                    motionDriver.ClearTransientRequests();
-                    return;
-                }
-
+                if (!IsDead)
+                    abilitySystemComponent.Tick(Time.deltaTime);
+                // 根状态机每帧检查死亡 Transition；死亡 Tag 会立即停止活体 Ability 更新。
                 locomotion.Tick();
-                motionDriver.ResolveUpdateMotion();
+                if (IsDead || actor.IsActionPaused)
+                    motionDriver.ClearTransientRequests();
+                else
+                    motionDriver.ResolveUpdateMotion();
             }
             catch
             {
@@ -130,7 +139,7 @@ namespace RPG.NPC
         {
             if (!initialized)
                 return;
-            if (actor.IsActionPaused) return;
+            if (IsDead || actor.IsActionPaused) return;
 
             try
             {
@@ -150,14 +159,18 @@ namespace RPG.NPC
         {
             if (!initialized)
                 return;
-            abilitySystemComponent.LateTick(Time.deltaTime);
-            if (!actor.IsActionPaused) locomotion.LateTick();
+            if (!IsDead)
+                abilitySystemComponent.LateTick(Time.deltaTime);
+            if (!IsDead && !actor.IsActionPaused)
+                locomotion.LateTick();
         }
 
         /// <summary>释放动作占据与仍属于 NPC 的运动控制权。</summary>
         private void OnDestroy()
         {
             locomotion?.Deactivate();
+            if (abilitySystemComponent != null)
+                abilitySystemComponent.AttributeChanged -= OnAttributeChanged;
             actionArbiter?.Dispose();
             if (actor != null)
                 motionDriver.ReleaseAll(actor);
@@ -195,7 +208,7 @@ namespace RPG.NPC
             IReadOnlyList<GameplayAttributeValue> initialBaseValues = config.ResolveBaseValues(generationLevel);
             if (!abilitySystemComponent.IsInitialized)
             {
-                abilitySystemComponent.Initialize(config.InitialAttributeSets);
+                abilitySystemComponent.Initialize(config.InitialAttributeSets, config.ActivationRules);
                 if (!abilitySystemComponent.IsInitialized)
                     throw CreateInitializationFailure(
                         $"无法导入 NPCConfig '{config.name}' 的 AttributeSet。");
@@ -205,9 +218,10 @@ namespace RPG.NPC
                     $"无法将 level={generationLevel} 的全部烘焙 BaseValue 应用到 ASC。");
 
             InitializeResourceCurrentValues();
+            abilitySystemComponent.AttributeChanged += OnAttributeChanged;
 
             GrantConfiguredAbilities();
-            locomotion.Initialize(this, config.IdleTransition, config.MoveTransition);
+            locomotion.Initialize(this, config.IdleTransition, config.MoveTransition, new NPCDeadState());
             initialized = true;
             Debug.Log(
                 $"[NPCController] NPC '{name}' 初始化完成，AttributeSets={config.InitialAttributeSets.Count}，" +
@@ -325,10 +339,15 @@ namespace RPG.NPC
         /// <summary>请求进入 Idle 或 Move 状态；被 FullBody 技能占据时拒绝切换。</summary>
         /// <param name="stateId">测试或后续 AI 选择的目标状态。</param>
         /// <returns>状态成功切换时返回 true。</returns>
-        public bool TrySetLocomotionState(BossLocomotionStateId stateId)
+        public bool TrySetLocomotionState(E_NPCStateId stateId)
         {
             if (!initialized)
                 throw new InvalidOperationException($"NPCController '{name}' 尚未初始化。");
+            if (IsDead)
+            {
+                Debug.Log($"[NPCController] NPC '{name}' 已死亡，拒绝切换到 {stateId}。", this);
+                return false;
+            }
             if (IsFullBodyActionOccupied)
             {
                 Debug.Log(
@@ -338,7 +357,7 @@ namespace RPG.NPC
             }
 
             // Move Mixer 的采样位置要在进入 Transition 前写入，避免首帧先播放 Idle 混合点。
-            if (stateId == BossLocomotionStateId.Move)
+            if (stateId == E_NPCStateId.Move)
                 actor.AnimationPlayer.SetFloatParameter(config.MoveParameterX, 1f);
 
             bool changed = locomotion.TryChangeState(stateId);
@@ -358,6 +377,12 @@ namespace RPG.NPC
                 throw new InvalidOperationException($"NPCController '{name}' 尚未初始化。");
             if (ability == null)
                 throw new ArgumentNullException(nameof(ability));
+            if (IsDead)
+            {
+                runtime = null;
+                Debug.Log($"[NPCController] NPC '{name}' 已死亡，拒绝激活 Ability '{ability.Name}'。", this);
+                return false;
+            }
             if (IsFullBodyActionOccupied)
             {
                 runtime = null;
@@ -403,13 +428,96 @@ namespace RPG.NPC
                 this);
         }
 
-        // Animator 运动结算
+        #endregion
+
+        #region 死亡事实与清理
+
+        /// <summary>只在 Health 从正数降至非正数时为 ASC 添加死亡 Tag。</summary>
+        /// <param name="attribute">变化的属性。</param>
+        /// <param name="oldValue">变化前的当前值。</param>
+        /// <param name="newValue">变化后的当前值。</param>
+        private void OnAttributeChanged(GameplayAttribute attribute, float oldValue, float newValue)
+        {
+            if (attribute != GameplayAttributes.Attribute_Health || oldValue <= 0f || newValue > 0f || IsDead)
+                return;
+
+            if (abilitySystemComponent.AddLooseGameplayTag(GameplayTags.Tag_State_Dead))
+                Debug.Log($"[NPCController] NPC '{name}' Health 归零，已添加 State.Dead，等待根状态机进入 Dead。", this);
+        }
+
+        /// <summary>执行死亡入口战斗清理、击败事件发布和碰撞关闭。</summary>
+        internal void BeginDeath()
+        {
+            if (!IsDead)
+                throw new InvalidOperationException($"NPCController '{name}' 在持有 State.Dead 前进入 Dead。");
+
+            abilitySystemComponent.AddLooseGameplayTag(GameplayTags.Tag_State_Block_AbilityActivation);
+            int cancelledAbilityCount = abilitySystemComponent.ForceCancelAllAbilities();
+            motionDriver.ClearTransientRequests();
+            motionDriver.ReleaseAll(actor);
+            motionDriver.Suspend();
+            DisableDeathColliders();
+            actor.AnimationPlayer.StopLayer(AnimationLayerType.Action);
+            actor.AnimationPlayer.StopLayer(AnimationLayerType.UpperBody);
+            actor.AnimationPlayer.StopLayer(AnimationLayerType.Additive);
+
+            NPCId defeatedNpcId = default;
+            if (npcIdentity != null)
+            {
+                defeatedNpcId = npcIdentity.Id;
+                npcIdentity.UnregisterForDeath();
+                if (!deathEventPublished)
+                {
+                    deathEventPublished = true;
+                    try
+                    {
+                        EventSystem.EventTrigger_Type(
+                            typeof(NPCDefeatedEventArgs),
+                            new NPCDefeatedEventArgs(defeatedNpcId));
+                    }
+                    catch (Exception exception)
+                    {
+                        // 外部任务订阅者异常不能阻断死亡动画与 NPC 清理；击败事实只尝试发布一次。
+                        Debug.LogError(
+                            $"[NPCController] NPC '{name}' 已死亡，但 NPCDefeatedEventArgs 发布失败，npcId={defeatedNpcId}。",
+                            this);
+                        Debug.LogException(exception, this);
+                    }
+                }
+            }
+
+            Debug.Log(
+                $"[NPCController] NPC '{name}' 进入 Dead，npcId={(npcIdentity != null ? defeatedNpcId.ToString() : "<none>")}，" +
+                $"cancelledAbilities={cancelledAbilityCount}。",
+                this);
+        }
+
+        /// <summary>关闭 NPC 根层级下所有碰撞体，阻止死亡期间继续参与交互与物理碰撞。</summary>
+        private void DisableDeathColliders()
+        {
+            Collider[] colliders = GetComponentsInChildren<Collider>(true);
+            int disabledCount = 0;
+            for (int index = 0; index < colliders.Length; index++)
+            {
+                if (!colliders[index].enabled)
+                    continue;
+                colliders[index].enabled = false;
+                disabledCount++;
+            }
+            Debug.Log($"[NPCController] NPC '{name}' 死亡碰撞体已关闭，count={disabledCount}。", this);
+        }
+
+        #endregion
+
+        #region Animator 运动结算
+
         /// <summary>接收 Animator 阶段增量并按 GAS 提交结果执行一次运动结算。</summary>
         /// <param name="deltaPosition">Animator 本次根位移。</param>
         /// <param name="deltaRotation">Animator 本次根旋转。</param>
         internal void ProcessAnimatorMotion(Vector3 deltaPosition, Quaternion deltaRotation)
         {
             if (!initialized || !isActiveAndEnabled || actor.IsActionPaused ||
+                IsDead ||
                 lastAnimatorMoveFrame == Time.frameCount)
                 return;
 
@@ -428,5 +536,6 @@ namespace RPG.NPC
         }
 
         #endregion
+
     }
 }

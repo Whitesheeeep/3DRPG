@@ -43,8 +43,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 482af93b30da7a048816a8ecabda762d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   model: {fileID: 6434072954920210158}
   boneID: 573
   ikEnabled: 0
@@ -93,8 +93,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 482af93b30da7a048816a8ecabda762d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name: ""
+  m_EditorClassIdentifier: ""
   model: {fileID: 6434072954920210158}
   boneID: 112
   ikEnabled: 0
@@ -22849,6 +22849,7 @@ GameObject:
   - component: {fileID: 2720963218489226058}
   - component: {fileID: 1156644827643649595}
   - component: {fileID: 135778691529142037}
+  - component: {fileID: 7139285610234567812}
   m_Layer: 0
   m_Name: Boss_Odetta
   m_TagString: Untagged
@@ -22856,6 +22857,21 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!114 &7139285610234567812
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5422017710913169865}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2febcd3dab796ab44a2b499c0a3e1176, type: 3}
+  m_Name: ""
+  m_EditorClassIdentifier: ""
+  definition: {fileID: 11400000, guid: a2808000000000000000000000000004, type: 2}
+  navigationAnchor: {fileID: 1048841919865504374}
+  navigationOffset: {x: 0, y: 2.15, z: 0}
 --- !u!4 &1048841919865504374
 Transform:
   m_ObjectHideFlags: 0

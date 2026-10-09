@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea401299909b4bb199d79ae4b9da5407, type: 3}
+  m_Name: GE_Food_LoseHealth100
+  m_EditorClassIdentifier: 
+  description: "\u6D4B\u8BD5\u7528\u8D1F\u9762\u6548\u679C\uFF1A\u7ACB\u5373\u635F\u5931
+    100 \u70B9\u751F\u547D\u503C\uFF0C\u53EF\u80FD\u4F7F\u89D2\u8272\u751F\u547D\u503C\u5F52\u96F6\u3002"
+  durationType: 0
+  duration: 0
+  period: 0
+  executePeriodicOnApplication: 1
+  targetTagQuery:
+    allTags: []
+    anyTags: []
+    banedTags: []
+  grantedTags: []
+  cueTags: []
+  modifiers:
+  - rid: 1466742122240278529
+  executions: []
+  validationSets:
+  - {fileID: 11400000, guid: 17420cb7ad28dcc42924daee744719b8, type: 2}
+  curveBakeXAxisLabel: Level / X
+  curveBakeStartX: 1
+  curveBakeEndX: 90
+  curveBakeStep: 1
+  bakedCurveXAxisLabel: Level / X
+  bakedCurveHeaders: []
+  bakedCurveRows: []
+  stackingType: 0
+  maxStackCount: 1
+  denyOverflowApplication: 0
+  stackingDurationPolicy: 0
+  stackingPeriodPolicy: 0
+  stackingExpirationPolicy: 0
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742122240278529
+      type: {class: FixedGameplayEffectModifier, ns: WS_Modules.GAS.GameplayEffect, asm: Assembly-CSharp}
+      data:
+        attribute:
+          id: 0
+          name: Health
+          displayName: "\u5F53\u524D\u751F\u547D\u503C"
+        type: 0
+        priority: 0
+        magnitude: -100

@@ -50,7 +50,7 @@ flowchart TD
 
 - Move 状态播放 BossMove，参数来自实际期望移动方向的局部水平投影；追击时转向目标，朝向稳定后主要使用前走采样。停止移动时参数归零并进入 Idle。
 - Inplace 动画只提供表现，Locomotion 不提交 Animator 根位移，避免与程序位移叠加。
-- 本次实际修改移动状态枚举时，将其改为 `E_BossLocomotionStateId`，保留原序列化数值，并同步直接引用和测试组件。
+- 当前分层状态机使用 `E_NPCStateId`：保留 Idle/Move 的原数值，并增加 Alive/Dead 根状态供 NPC 统一生命周期控制。
 
 ### 行为树与黑板
 

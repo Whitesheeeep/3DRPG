@@ -29,6 +29,22 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2235cf0de35f09c40af1378cb1d5ea1b, type: 2}
   - {fileID: 11400000, guid: 3cfc2f0b7ab11f242b595352009c826c, type: 2}
   - {fileID: 11400000, guid: bfb4828db9d356646a645924c88065b6, type: 2}
+  - {fileID: 11400000, guid: 6083b0374aed4364ba79e22fba52a56f, type: 2}
+  - {fileID: 11400000, guid: ef42d23a85e83474cac543ebca126230, type: 2}
+  - {fileID: 11400000, guid: 2d38685ab65b1ce4e9b8a965066e37cb, type: 2}
+  - {fileID: 11400000, guid: 21899599094466a45b91b9c3f687a99a, type: 2}
+  - {fileID: 11400000, guid: ad31b044924dd3f4fa725c9b5d22e624, type: 2}
+  - {fileID: 11400000, guid: 02cd9b04e1c067c4e960fb3dd741d325, type: 2}
+  - {fileID: 11400000, guid: d6f5f8894015604449eb41f0fa404ed6, type: 2}
+  - {fileID: 11400000, guid: 6d080258ef7fb4e478de22703f27fcb6, type: 2}
+  - {fileID: 11400000, guid: 420340ce3e7d3774aa8e6e0da5440055, type: 2}
+  - {fileID: 11400000, guid: 184848b76ce2c0248a6faaaf7026328c, type: 2}
+  - {fileID: 11400000, guid: 348d4f81491cd564697d16c8093134e7, type: 2}
+  - {fileID: 11400000, guid: daf528280d659dd4eb1563351481365f, type: 2}
+  - {fileID: 11400000, guid: 7faf35d20cab7dc49864923e633e24d7, type: 2}
+  - {fileID: 11400000, guid: e795237fea34f8148bf64774acc49ea8, type: 2}
+  - {fileID: 11400000, guid: 93ddbef07add3214fb17a09d32f256b2, type: 2}
+  - {fileID: 11400000, guid: 5d47b1c67031fae4ca87e5493f811131, type: 2}
   categoryDefaults:
   - rid: 100000000000000005
   - rid: 100000000000000006
@@ -37,7 +53,7 @@ MonoBehaviour:
   - rid: 100000000000000001
   nextMaterialIdNumber: 21
   nextExperienceMaterialIdNumber: 9
-  nextFoodIdNumber: 4
+  nextFoodIdNumber: 20
   nextWeaponIdNumber: 5
   nextArtifactIdNumber: 4
   references:

@@ -1,6 +1,7 @@
 using System;
 using RPG.DialogueSystemModule;
 using RPG.NPC;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace RPG.TaskSystemNS
@@ -14,7 +15,8 @@ namespace RPG.TaskSystemNS
         #region 配置字段
 
         [SerializeField] private DialogueAsset dialogueAsset;
-        [SerializeField] private string npcId = string.Empty;
+        [SerializeField, AssetsOnly, LabelText("导航 NPC")]
+        private NPCIdentityDefinition npcIdentity;
 
         #endregion
 
@@ -33,18 +35,18 @@ namespace RPG.TaskSystemNS
         /// <param name="objectiveId">所属阶段内唯一的目标标识。</param>
         /// <param name="dialogueAsset">需要正常完成的对话资源。</param>
         /// <param name="required">需要完成对话的次数，默认一次。</param>
-        /// <param name="npcId">可选的场景 NPC 导航标识。</param>
+        /// <param name="npcIdentity">可选的场景 NPC 导航身份。</param>
         /// <exception cref="ArgumentException">目标标识非法时抛出。</exception>
         /// <exception cref="ArgumentOutOfRangeException">需求数量不是正数时抛出。</exception>
         public TaskDialogueCompletedObjectiveDefinition(
             string objectiveId,
             DialogueAsset dialogueAsset,
             int required = 1,
-            string npcId = null)
+            NPCIdentityDefinition npcIdentity = null)
             : base(objectiveId, required)
         {
             this.dialogueAsset = dialogueAsset;
-            this.npcId = npcId ?? string.Empty;
+            this.npcIdentity = npcIdentity;
         }
 
         #endregion
@@ -56,10 +58,8 @@ namespace RPG.TaskSystemNS
         /// </summary>
         public DialogueAsset DialogueAsset => dialogueAsset;
 
-        /// <summary>获取该目标配置的 NPC 身份；未配置时返回无效 ID。</summary>
-        public NPCId NPCId => NPCId.TryCreate(npcId, out NPCId parsedNpcId)
-            ? parsedNpcId
-            : default;
+        /// <summary>获取该目标可选导航身份解析出的 NPCId；未配置时返回无效 ID。</summary>
+        public NPCId NPCId => npcIdentity != null ? npcIdentity.Id : default;
 
         /// <summary>由对话目标配置创建独立事件监听和导航查询 Runtime。</summary>
         /// <param name="context">当前任务实例受限的进度上下文。</param>
@@ -79,15 +79,11 @@ namespace RPG.TaskSystemNS
         /// <summary>
         /// 校验目标基础字段和对话资源引用。
         /// </summary>
-        /// <exception cref="ArgumentException">目标基础字段、NPC ID 格式非法或对话资源未配置时抛出。</exception>
+        /// <exception cref="ArgumentException">目标基础字段或对话资源未配置时抛出。</exception>
         public override void Validate()
         {
             base.Validate();
-            if (!string.IsNullOrEmpty(npcId) && !RPG.NPC.NPCId.TryCreate(npcId, out _))
-            {
-                Debug.LogError("[TaskDialogueCompletedObjectiveDefinition] 对话目标配置的 NPC ID 格式无效。");
-                throw new ArgumentException("对话目标的 NPC ID 格式无效。", nameof(npcId));
-            }
+            npcIdentity?.Validate();
             if (dialogueAsset != null)
             {
                 return;

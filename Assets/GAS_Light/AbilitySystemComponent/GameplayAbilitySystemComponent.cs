@@ -473,6 +473,15 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         /// <returns>Runtime 属于当前 ASC 且成功取消时返回 true。</returns>
         public bool TryCancelAbility(GameplayAbilityRuntime runtime) =>
             abilityController.TryCancel(runtime);
+
+        /// <summary>强制取消全部 Active Ability Runtime，同时保留 ASC 的属性、规则和已授予技能。</summary>
+        /// <returns>本次进入强制取消流程的技能 Runtime 数量。</returns>
+        public int ForceCancelAllAbilities()
+        {
+            int cancelledCount = abilityController.ForceCancelAll();
+            Debug.Log($"[GameplayAbilitySystemComponent] '{name}' 强制取消活动技能，count={cancelledCount}。");
+            return cancelledCount;
+        }
         #endregion
 
         #region Ability 内部入口

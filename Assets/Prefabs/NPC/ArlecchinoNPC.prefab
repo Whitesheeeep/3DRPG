@@ -233,7 +233,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2febcd3dab796ab44a2b499c0a3e1176, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  npcId: ArlecchinoNPC
+  definition: {fileID: 11400000, guid: f2a38000000000000000000000000002, type: 2}
   navigationAnchor: {fileID: 2303857892566770059}
   navigationOffset: {x: 0, y: 1.98, z: 0}
 --- !u!136 &1203234803911738231

@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea401299909b4bb199d79ae4b9da5407, type: 3}
+  m_Name: GE_Food_Regeneration
+  m_EditorClassIdentifier: 
+  description: "\u5728 10 \u79D2\u5185\u6BCF\u79D2\u6062\u590D 20 \u70B9\u751F\u547D\u503C\u3002"
+  durationType: 1
+  duration: 10
+  period: 1
+  executePeriodicOnApplication: 1
+  targetTagQuery:
+    allTags: []
+    anyTags: []
+    banedTags: []
+  grantedTags:
+  - id: 192
+  cueTags: []
+  modifiers:
+  - rid: 1466742122240278530
+  executions: []
+  validationSets:
+  - {fileID: 11400000, guid: 17420cb7ad28dcc42924daee744719b8, type: 2}
+  curveBakeXAxisLabel: Level / X
+  curveBakeStartX: 1
+  curveBakeEndX: 90
+  curveBakeStep: 1
+  bakedCurveXAxisLabel: Level / X
+  bakedCurveHeaders: []
+  bakedCurveRows: []
+  stackingType: 2
+  maxStackCount: 1
+  denyOverflowApplication: 0
+  stackingDurationPolicy: 0
+  stackingPeriodPolicy: 0
+  stackingExpirationPolicy: 0
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742122240278530
+      type: {class: FixedGameplayEffectModifier, ns: WS_Modules.GAS.GameplayEffect, asm: Assembly-CSharp}
+      data:
+        attribute:
+          id: 0
+          name: Health
+          displayName: "\u5F53\u524D\u751F\u547D\u503C"
+        type: 0
+        priority: 0
+        magnitude: 20

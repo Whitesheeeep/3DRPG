@@ -233,7 +233,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2febcd3dab796ab44a2b499c0a3e1176, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  npcId: Rusk
+  definition: {fileID: 11400000, guid: c7da8000000000000000000000000001, type: 2}
   navigationAnchor: {fileID: 7915432210473216246}
   navigationOffset: {x: 0, y: 1.34, z: 0}
 --- !u!136 &883214769965016037

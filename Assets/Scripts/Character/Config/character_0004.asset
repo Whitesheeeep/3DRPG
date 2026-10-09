@@ -95,7 +95,7 @@ MonoBehaviour:
         - currencyId: 1
           amount: 600
     initialAttributeSets:
-    - {fileID: 11400000, guid: fa050d1171257b24bbba13162066da88, type: 2}
+    - {fileID: 11400000, guid: 17420cb7ad28dcc42924daee744719b8, type: 2}
     resourceRules:
     - resourceAttribute:
         id: 0

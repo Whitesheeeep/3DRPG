@@ -13,4 +13,7 @@ MonoBehaviour:
   m_Name: DefaultGameplayAbilityActivationRules
   m_EditorClassIdentifier: 
   activationBlockedOwnerTags:
-  - id: 45
+    allTags: []
+    anyTags:
+    - id: 146
+    banedTags: []

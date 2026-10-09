@@ -14,7 +14,7 @@ using WS_Modules.Baking;
 
 namespace RPG.NPC
 {
-    /// <summary>保存 NPC 的初始 GAS 属性、等级成长、资源初始化、可授予技能与 Idle/Move 动画。</summary>
+    /// <summary>保存 NPC 的初始 GAS 属性、等级成长、可授予技能与 Alive/Dead 动画表现。</summary>
     [CreateAssetMenu(menuName = "RPG/NPC/NPC Config", fileName = "NPCConfig")]
 #if UNITY_EDITOR
     public sealed class NPCConfig : ScriptableObject, IBakedResultDataSource
@@ -36,6 +36,10 @@ namespace RPG.NPC
         private TransitionAsset idleTransition;
         [SerializeField, Required, AssetsOnly, LabelText("Move 动画")]
         private TransitionAsset moveTransition;
+        [SerializeField, Required, AssetsOnly, LabelText("死亡动画")]
+        private TransitionAsset deathTransition;
+        [SerializeField, Required, AssetsOnly, LabelText("技能激活阻断规则")]
+        private GameplayAbilityActivationRules activationRules;
         [SerializeField, Required, AssetsOnly, LabelText("Move 混合参数")]
         private StringAsset moveParameterX;
 
@@ -63,6 +67,12 @@ namespace RPG.NPC
 
         /// <summary>获取 NPC Move 状态进入时播放的 Animancer Transition。</summary>
         public TransitionAsset MoveTransition => moveTransition;
+
+        /// <summary>获取 NPC 进入 Dead 时播放的非循环死亡动画。</summary>
+        public TransitionAsset DeathTransition => deathTransition;
+
+        /// <summary>获取 ASC 初始化使用的全局技能激活阻断规则。</summary>
+        public GameplayAbilityActivationRules ActivationRules => activationRules;
 
         /// <summary>获取 Move Mixer 中用于选择步行采样的参数。</summary>
         public StringAsset MoveParameterX => moveParameterX;
@@ -105,6 +115,10 @@ namespace RPG.NPC
                 throw new InvalidOperationException($"NPCConfig '{name}' 未配置有效 Idle Transition。");
             if (moveTransition == null || moveTransition.Transition == null)
                 throw new InvalidOperationException($"NPCConfig '{name}' 未配置有效 Move Transition。");
+            if (deathTransition == null || deathTransition.Transition == null)
+                throw new InvalidOperationException($"NPCConfig '{name}' 未配置有效 Death Transition。");
+            if (activationRules == null)
+                throw new InvalidOperationException($"NPCConfig '{name}' 未配置 GameplayAbilityActivationRules。");
             if (moveParameterX == null)
                 throw new InvalidOperationException($"NPCConfig '{name}' 未配置 Move Mixer 参数。");
 

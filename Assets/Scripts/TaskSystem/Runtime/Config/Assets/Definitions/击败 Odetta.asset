@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c207a3c4376e36418e7c35d34013a6b, type: 3}
+  m_Name: "\u51FB\u8D25 Odetta"
+  m_EditorClassIdentifier: 
+  taskId: side_defeat_boss_odetta
+  categoryId: side
+  title: "\u51FB\u8D25 Odetta"
+  description: "\u51FB\u8D25 Boss Odetta\u3002"
+  unlockConditions: []
+  stages:
+  - stageId: stage_001
+    title: "\u51FB\u8D25 Odetta"
+    description: "\u51FB\u8D25 Odetta"
+    objectives:
+    - rid: 1466742124891078656
+  rewards:
+  - rid: 1466742124891078657
+  - rid: 1466742124891078658
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742124891078656
+      type: {class: TaskNPCDefeatedObjectiveDefinition, ns: RPG.TaskSystemNS, asm: Assembly-CSharp}
+      data:
+        objectiveId: Defeat.Odetta
+        displayDescription: "\u51FB\u8D25\u5965\u9EDB\u5854"
+        required: 1
+        npcIdentity: {fileID: 11400000, guid: a2808000000000000000000000000004, type: 2}
+    - rid: 1466742124891078657
+      type: {class: CurrencyRewardDefinition, ns: RPG.RewardSystemNS, asm: Assembly-CSharp}
+      data:
+        amounts:
+        - currencyId: 1
+          amount: 100000
+    - rid: 1466742124891078658
+      type: {class: ItemRewardDefinition, ns: RPG.RewardSystemNS, asm: Assembly-CSharp}
+      data:
+        items:
+        - itemId:
+            value: food_0016
+          quantity: 1
+        - itemId:
+            value: material_0018
+          quantity: 10
+        - itemId:
+            value: material_0019
+          quantity: 10
