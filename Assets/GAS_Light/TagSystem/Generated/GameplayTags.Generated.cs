@@ -6,6 +6,22 @@ namespace WS_Modules.GAS.Generated
     /// <summary>由 Gameplay Tag 烘焙器生成的稳定标签常量。</summary>
     public static class GameplayTags
     {
+        /// <summary>Buff</summary>
+        public static readonly GameplayTag Tag_Buff = new GameplayTag(193);
+        /// <summary>Buff.ArmorUp</summary>
+        public static readonly GameplayTag Tag_Buff_ArmorUp = new GameplayTag(202);
+        /// <summary>Buff.AttackUp</summary>
+        public static readonly GameplayTag Tag_Buff_AttackUp = new GameplayTag(200);
+        /// <summary>Buff.CriticalChanceUp</summary>
+        public static readonly GameplayTag Tag_Buff_CriticalChanceUp = new GameplayTag(206);
+        /// <summary>Buff.CriticalDamageUp</summary>
+        public static readonly GameplayTag Tag_Buff_CriticalDamageUp = new GameplayTag(208);
+        /// <summary>Buff.HealthRegeneration</summary>
+        public static readonly GameplayTag Tag_Buff_HealthRegeneration = new GameplayTag(192);
+        /// <summary>Buff.MaxHealthUp</summary>
+        public static readonly GameplayTag Tag_Buff_MaxHealthUp = new GameplayTag(198);
+        /// <summary>Buff.SpeedUp</summary>
+        public static readonly GameplayTag Tag_Buff_SpeedUp = new GameplayTag(204);
         /// <summary>CueTest</summary>
         public static readonly GameplayTag Tag_CueTest = new GameplayTag(112);
         /// <summary>CueTest.Combat</summary>
@@ -46,6 +62,22 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_Data_Damage = new GameplayTag(179);
         /// <summary>Data.Damage.Multiplier</summary>
         public static readonly GameplayTag Tag_Data_Damage_Multiplier = new GameplayTag(180);
+        /// <summary>Debuff</summary>
+        public static readonly GameplayTag Tag_Debuff = new GameplayTag(196);
+        /// <summary>Debuff.ArmorDown</summary>
+        public static readonly GameplayTag Tag_Debuff_ArmorDown = new GameplayTag(203);
+        /// <summary>Debuff.AttackDown</summary>
+        public static readonly GameplayTag Tag_Debuff_AttackDown = new GameplayTag(201);
+        /// <summary>Debuff.CriticalChanceDown</summary>
+        public static readonly GameplayTag Tag_Debuff_CriticalChanceDown = new GameplayTag(207);
+        /// <summary>Debuff.CriticalDamageDown</summary>
+        public static readonly GameplayTag Tag_Debuff_CriticalDamageDown = new GameplayTag(209);
+        /// <summary>Debuff.HealthDrain</summary>
+        public static readonly GameplayTag Tag_Debuff_HealthDrain = new GameplayTag(195);
+        /// <summary>Debuff.MaxHealthDown</summary>
+        public static readonly GameplayTag Tag_Debuff_MaxHealthDown = new GameplayTag(199);
+        /// <summary>Debuff.SpeedDown</summary>
+        public static readonly GameplayTag Tag_Debuff_SpeedDown = new GameplayTag(205);
         /// <summary>GE</summary>
         public static readonly GameplayTag Tag_GE = new GameplayTag(189);
         /// <summary>GE.Buff</summary>
@@ -106,6 +138,8 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_State_Block_AbilityActivation = new GameplayTag(146);
         /// <summary>State.Block.Movement</summary>
         public static readonly GameplayTag Tag_State_Block_Movement = new GameplayTag(145);
+        /// <summary>State.Dead</summary>
+        public static readonly GameplayTag Tag_State_Dead = new GameplayTag(210);
         /// <summary>State.Locomotion</summary>
         public static readonly GameplayTag Tag_State_Locomotion = new GameplayTag(147);
         /// <summary>State.Locomotion.ExternalLaunch</summary>

@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using RPG.Character;
@@ -24,6 +25,7 @@ namespace RPG.Game.Tests
         [SerializeField, Required, LabelText("测试武器定义")] private WeaponDefinition testWeapon;
         [SerializeField, LabelText("测试圣遗物定义")] private ArtifactDefinition testArtifact;
         [SerializeField, LabelText("测试食物定义")] private FoodItemDefinition testFood;
+        [SerializeField, LabelText("GE 食物批量测试定义")] private List<FoodItemDefinition> effectFoodDefinitions = new();
         [SerializeField, LabelText("测试武器经验素材")] private DevelopmentExperienceItemDefinition[] testEnhancementMaterials = new DevelopmentExperienceItemDefinition[0];
         [SerializeField, LabelText("测试圣遗物经验素材")] private DevelopmentExperienceItemDefinition testArtifactExperienceMaterial;
         [SerializeField, LabelText("测试武器突破素材")] private DevelopmentItemDefinition testAscensionMaterial;
@@ -127,6 +129,32 @@ namespace RPG.Game.Tests
             StackableItemOperationResult result = StackableManager.AddItem(
                 definition.ItemId, foodQuantity);
             Debug.Log($"[BagWindowTest] add food status={result.Status}, item={definition.ItemId}, quantity={foodQuantity}。", this);
+        }
+
+        /// <summary>通过正式可堆叠库存 API 批量领取配置好的 GE 测试食物。</summary>
+        [Button("领取全部 GE 测试食物")]
+        public void AddAllEffectFoods()
+        {
+            if (!EnsureInventoryReady("领取 GE 测试食物")) return;
+            if (effectFoodDefinitions == null || effectFoodDefinitions.Count == 0)
+            {
+                Debug.LogError("[BagWindowTest] 请在 Inspector 为 GE 食物批量测试定义绑定待领取食物。", this);
+                return;
+            }
+
+            int addedCount = 0;
+            for (int index = 0; index < effectFoodDefinitions.Count; index++)
+            {
+                FoodItemDefinition definition = effectFoodDefinitions[index];
+                if (definition == null)
+                    throw new InvalidOperationException($"[BagWindowTest] GE 测试食物列表第 {index + 1} 项为空。");
+                StackableItemOperationResult result = StackableManager.AddItem(definition.ItemId, foodQuantity);
+                Debug.Log(
+                    $"[BagWindowTest] GE 食物领取 status={result.Status}, item={definition.ItemId}, quantity={foodQuantity}。", this);
+                if (result.Succeeded) addedCount++;
+            }
+
+            Debug.Log($"[BagWindowTest] GE 测试食物领取完成，requested={effectFoodDefinitions.Count}, succeeded={addedCount}。", this);
         }
 
         /// <summary>一次添加全部非武器分类的测试数据，便于验证分类切换和通用详情。</summary>

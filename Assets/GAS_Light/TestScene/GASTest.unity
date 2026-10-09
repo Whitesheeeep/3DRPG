@@ -1428,6 +1428,7 @@ MonoBehaviour:
   modifierPriority: 0
   selectedModifierIndex: 0
   fourAttributeTestSet: {fileID: 11400000, guid: 671be9d0f6cd49ca99a55cd39ba7469d, type: 2}
+  basicCombatAttributeSet: {fileID: 11400000, guid: 17420cb7ad28dcc42924daee744719b8, type: 2}
   container:
     attributes:
     - attribute:

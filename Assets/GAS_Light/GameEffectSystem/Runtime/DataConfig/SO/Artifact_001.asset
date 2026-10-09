@@ -25,8 +25,9 @@ MonoBehaviour:
   cueTags: []
   modifiers:
   - rid: 2645455014859374592
+  executions: []
   validationSets:
-  - {fileID: 11400000, guid: fa050d1171257b24bbba13162066da88, type: 2}
+  - {fileID: 11400000, guid: 17420cb7ad28dcc42924daee744719b8, type: 2}
   curveBakeXAxisLabel: Level / X
   curveBakeStartX: 1
   curveBakeEndX: 20

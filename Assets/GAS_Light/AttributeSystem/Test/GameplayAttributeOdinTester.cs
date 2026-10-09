@@ -36,6 +36,9 @@ namespace WS_Modules.GAS.AttributeSystem
         [Title("四属性场景")]
         [SerializeField, Required] private GameplayAttributeTestSet fourAttributeTestSet;
 
+        [Title("正式战斗属性场景")]
+        [SerializeField, Required] private BasicCombatAttributeSet basicCombatAttributeSet;
+
         [Title("运行时状态")]
         [SerializeField, ReadOnly] private GameplayAttributeContainer container = new();
         [NonSerialized, ShowInInspector, ReadOnly]
@@ -83,6 +86,47 @@ namespace WS_Modules.GAS.AttributeSystem
         #endregion
 
         #region 通用 Modifier 测试
+
+        /// <summary>验证正式战斗 Set 的动态上限、Health 百分比联动和暴击率范围。</summary>
+        [Button("验证基础战斗 AttributeSet")]
+        public void VerifyBasicCombatAttributeSet()
+        {
+            var validationContainer = new GameplayAttributeContainer();
+            if (!validationContainer.TryInitialize(new GameplayAttributeSet[] { basicCombatAttributeSet }, out string error))
+            {
+                Debug.LogError($"[AttributeTest] 正式战斗 Set 初始化失败：{error}");
+                return;
+            }
+
+            validationContainer.ApplyInstantModifier(new AttributeModifier(
+                this, GameplayAttributes.Attribute_Health, AttributeModifierType.Add, 10000f));
+            validationContainer.ApplyInstantModifier(new AttributeModifier(
+                this, GameplayAttributes.Attribute_MaxHealth, AttributeModifierType.Multiply, 1.2f));
+            float healthAfterIncrease = ReadCurrentValue(validationContainer, GameplayAttributes.Attribute_Health);
+            float maximumAfterIncrease = ReadCurrentValue(validationContainer, GameplayAttributes.Attribute_MaxHealth);
+            validationContainer.ApplyInstantModifier(new AttributeModifier(
+                this, GameplayAttributes.Attribute_MaxHealth, AttributeModifierType.Override, 300f, 1));
+            validationContainer.ApplyInstantModifier(new AttributeModifier(
+                this, GameplayAttributes.Attribute_CriticalChance, AttributeModifierType.Override, 2f, 1));
+
+            float healthAfterDecrease = ReadCurrentValue(validationContainer, GameplayAttributes.Attribute_Health);
+            float maximumAfterDecrease = ReadCurrentValue(validationContainer, GameplayAttributes.Attribute_MaxHealth);
+            float criticalChance = ReadCurrentValue(validationContainer, GameplayAttributes.Attribute_CriticalChance);
+            Debug.Log(
+                $"[AttributeTest] BasicCombatAttributeSet: afterIncrease Health={healthAfterIncrease}/{maximumAfterIncrease}, " +
+                $"afterDecrease Health={healthAfterDecrease}/{maximumAfterDecrease}, CriticalChance={criticalChance}。");
+        }
+
+        /// <summary>读取验证 Container 中存在的当前属性值。</summary>
+        /// <param name="sourceContainer">验证用运行时 Container。</param>
+        /// <param name="targetAttribute">待读取属性。</param>
+        /// <returns>当前结算值。</returns>
+        private static float ReadCurrentValue(GameplayAttributeContainer sourceContainer, GameplayAttribute targetAttribute)
+        {
+            if (!sourceContainer.TryGetCurrentValue(targetAttribute, out float value))
+                throw new InvalidOperationException($"[AttributeTest] 测试 Container 缺少 Attribute {targetAttribute}。");
+            return value;
+        }
 
         /// <summary>对选中 Attribute 执行一次不绑定 Container Owner 的即时结算。</summary>
         [Button("执行 Instant Modifier")]
