@@ -38,7 +38,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: d9eb96f74c3f4c35b2a3126adab42bae, type: 2}
   - {fileID: 11400000, guid: 09fc43cb8fccaed95deec9430c2f1c57, type: 2}
   - {fileID: 11400000, guid: 51137891711a8b44664e498261dc07f2, type: 2}
-  - {fileID: 11400000, guid: 15a1848130fb1934334e6b1ea514569b, type: 2}
   idleTransition: {fileID: 11400000, guid: fba2de96f2c9c704d9b02f1f20b43088, type: 2}
   moveTransition: {fileID: 11400000, guid: ee0cb3205a1d90547980dbc7aee1615f, type: 2}
   deathTransition: {fileID: 11400000, guid: b8e18000000000000000000000000005, type: 2}

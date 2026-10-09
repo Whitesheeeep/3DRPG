@@ -89,10 +89,16 @@ namespace RPG.SkillSystem.Editor
             if (!IsSelected(track, item)) return;
             document.MarkTrackDirty(track);
             playback.InvalidatePreviewContent();
+            string tagSummary = item switch
+            {
+                ActionPhaseSkillClipConfig phase =>
+                    $"runtimeTags={phase.RuntimeTags.Count}, blockTags={phase.BlockAbilityTags.Count}",
+                AttackDetectionSkillClipConfig attack => $"cueTags={attack.CueTags.Count}",
+                _ => "tagCount=unavailable"
+            };
             Debug.Log(
-                $"[SkillTimeline] 原生 Phase Tag 数组已更新，track={track.DisplayName}，itemId={item.Id}，" +
-                $"runtimeTags={(item is ActionPhaseSkillClipConfig phase ? phase.RuntimeTags.Count : 0)}，" +
-                $"blockTags={(item is ActionPhaseSkillClipConfig phaseItem ? phaseItem.BlockAbilityTags.Count : 0)}。");
+                $"[SkillTimeline] 原生 Tag 数组已更新，itemType={item.GetType().Name}，" +
+                $"track={track.DisplayName}，itemId={item.Id}，{tagSummary}。");
             TimelineChanged?.Invoke();
         }
 

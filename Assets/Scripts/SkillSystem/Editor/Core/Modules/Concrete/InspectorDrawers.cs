@@ -434,7 +434,6 @@ namespace RPG.SkillSystem.Editor
                 new IntegerField("检测 ID") { value = clip.DetectionId });
             EnumField type = AddField(container,
                 new EnumField("检测类型", clip.DetectionType));
-            List<GameplayTag> cueTags = new(clip.CueTags);
 
             ObjectField marker = null;
             EnumField follow = null;
@@ -460,10 +459,10 @@ namespace RPG.SkillSystem.Editor
                         Mathf.Max(0, detectionId.value),
                         marker != null ? marker.value as MarkerKey : clip.MarkerKey,
                         follow != null ? (AttackDetectionFollowMode)follow.value : clip.FollowMode,
-                        detectionData, cueTags));
+                        detectionData, clip.CueTags));
             }
 
-            DrawCueTags(container, cueTags, Submit, clip.DetectionData);
+            DrawNativeCueTags(container, viewModel, clip);
 
             // 连续输入仅替换 Scene View 草稿，不写入 Config。
             void Preview(AttackDetectionDataBase detectionData) =>
@@ -495,127 +494,56 @@ namespace RPG.SkillSystem.Editor
             AddItemActions(container, viewModel);
         }
 
-        /// <summary>绘制可复制到事务请求中的命中 CueTag 列表。</summary>
+        /// <summary>
+        /// 将命中 CueTags 绑定到真实攻击检测片段的原生序列化数组。
+        /// </summary>
         /// <param name="container">当前 Inspector 内容。</param>
-        /// <param name="cueTags">本次编辑使用的临时标签快照。</param>
-        /// <param name="submit">提交包含完整字段快照的回调。</param>
-        /// <param name="detectionData">当前多态检测配置。</param>
-        private static void DrawCueTags(VisualElement container, List<GameplayTag> cueTags,
-            Action<AttackDetectionDataBase> submit, AttackDetectionDataBase detectionData)
+        /// <param name="viewModel">提供 GUID 属性定位和编辑后通知的窗口 ViewModel。</param>
+        /// <param name="clip">当前选中的攻击检测片段。</param>
+        private static void DrawNativeCueTags(VisualElement container,
+            EditorViewModel viewModel, AttackDetectionSkillClipConfig clip)
         {
-            var foldout = new Foldout { text = "命中 Cue Tags", value = cueTags.Count > 0 };
-            container.Add(foldout);
-            var rowsContainer = new VisualElement { name = "CueTagRows" };
-            foldout.Add(rowsContainer);
-            GameplayTagDatabase database = GameplayTagPropertyDrawer.ResolveDatabase(out string error);
-            if (database == null)
+            TrackConfigBase track = viewModel.SelectedTrack;
+            if (!viewModel.TryGetSerializedItemProperty(track, clip,
+                    out SerializedObject trackObject, out SerializedProperty itemProperty))
             {
-                foldout.Add(new HelpBox(error, HelpBoxMessageType.Warning));
+                container.Add(new HelpBox("无法按 Item GUID 绑定攻击检测 CueTags 数组。",
+                    HelpBoxMessageType.Warning));
                 return;
             }
 
-            List<TagOption> options = BuildCueTagOptions(database);
-            RebuildCueTagRows(rowsContainer, cueTags, options, submit, detectionData);
-
-            foldout.Add(new Button(() =>
+            SerializedProperty cueTagsProperty = itemProperty.FindPropertyRelative(
+                DocumentFieldNames.CueTags);
+            if (cueTagsProperty == null)
             {
-                cueTags.Add(GameplayTag.Empty);
-                AddCueTagRow(rowsContainer, cueTags, cueTags.Count - 1, options, submit, detectionData);
-                submit(detectionData);
-            }) { text = "添加 Cue Tag" });
-        }
-
-        /// <summary>读取已烘焙 Tag 数据库并生成下拉框选项。</summary>
-        /// <param name="database">当前 Skill 编辑器使用的 Tag Database。</param>
-        /// <returns>按作者路径显示的可选 CueTag。</returns>
-        private static List<TagOption> BuildCueTagOptions(GameplayTagDatabase database)
-        {
-            var options = new List<TagOption>();
-            foreach (GameplayTagEditorNode node in database.EditorNodes)
-            {
-                if (node == null || !database.TryGetBakedTag(node.Guid, out GameplayTag tag) ||
-                    !database.TryGetBakedPath(tag, out string path))
-                    continue;
-                options.Add(new TagOption(path, tag));
+                container.Add(new HelpBox("攻击检测 CueTags 数组字段不存在。",
+                    HelpBoxMessageType.Error));
+                return;
             }
-            options.Sort((left, right) => string.Compare(left.DisplayName, right.DisplayName,
-                StringComparison.Ordinal));
-            return options;
-        }
 
-        /// <summary>创建单个 CueTag 下拉框和删除按钮。</summary>
-        /// <param name="container">承载标签行的容器。</param>
-        /// <param name="cueTags">当前编辑的标签列表。</param>
-        /// <param name="index">目标列表项索引。</param>
-        /// <param name="options">数据库中的可选标签。</param>
-        /// <param name="submit">写回完整编辑事务的回调。</param>
-        /// <param name="detectionData">当前多态检测配置。</param>
-        private static void AddCueTagRow(VisualElement container, List<GameplayTag> cueTags, int index,
-            IReadOnlyList<TagOption> options, Action<AttackDetectionDataBase> submit,
-            AttackDetectionDataBase detectionData)
-        {
-            var row = new VisualElement { name = $"CueTagRow{index}" };
-            row.style.flexDirection = FlexDirection.Row;
-            GameplayTag currentTag = cueTags[index];
-            var choices = new List<string> { "None" };
-            for (int optionIndex = 0; optionIndex < options.Count; optionIndex++)
-                choices.Add(options[optionIndex].DisplayName);
-            string selectedName = "None";
-            for (int optionIndex = 0; optionIndex < options.Count; optionIndex++)
-                if (options[optionIndex].Tag == currentTag)
+            PropertyField cueTagsField = AddField(container,
+                new PropertyField(cueTagsProperty, "命中 Cue Tags"));
+            cueTagsField.tooltip = "使用 Unity 原生数组编辑和现有 GameplayTag 层级选择器。";
+
+            bool bindingReady = false;
+            bool refreshQueued = false;
+            void NotifyCueTagsChanged(SerializedProperty _)
+            {
+                if (!bindingReady || refreshQueued) return;
+                refreshQueued = true;
+                // 让原生数组先完成 Apply，再刷新时间轴，同时使用创建绑定时捕获的片段身份。
+                container.schedule.Execute(() =>
                 {
-                    selectedName = options[optionIndex].DisplayName;
-                    break;
-                }
-            var field = new PopupField<string>($"Cue Tag {index + 1}", choices, selectedName);
-            field.style.flexGrow = 1;
-            field.RegisterValueChangedCallback(evt =>
-            {
-                int optionIndex = choices.IndexOf(evt.newValue) - 1;
-                cueTags[index] = optionIndex >= 0 ? options[optionIndex].Tag : GameplayTag.Empty;
-                submit(detectionData);
-            });
-            row.Add(field);
-            row.Add(new Button(() =>
-            {
-                cueTags.RemoveAt(index);
-                submit(detectionData);
-                RebuildCueTagRows(container, cueTags, options, submit, detectionData);
-            }) { text = "删除" });
-            container.Add(row);
-        }
-
-        /// <summary>重建标签行，使控件回调都使用删除后当前的列表索引。</summary>
-        /// <param name="container">标签行容器。</param>
-        /// <param name="cueTags">当前标签列表。</param>
-        /// <param name="options">数据库中的可选标签。</param>
-        /// <param name="submit">写回完整编辑事务的回调。</param>
-        /// <param name="detectionData">当前多态检测配置。</param>
-        private static void RebuildCueTagRows(VisualElement container, List<GameplayTag> cueTags,
-            IReadOnlyList<TagOption> options, Action<AttackDetectionDataBase> submit,
-            AttackDetectionDataBase detectionData)
-        {
-            container.Clear();
-            for (int index = 0; index < cueTags.Count; index++)
-                AddCueTagRow(container, cueTags, index, options, submit, detectionData);
-        }
-
-        /// <summary>保存下拉框显示名称与稳定 GameplayTag 的映射项。</summary>
-        private readonly struct TagOption
-        {
-            /// <summary>创建下拉框选项。</summary>
-            /// <param name="displayName">作者使用的层级 Tag 路径。</param>
-            /// <param name="tag">运行时稳定 TagId。</param>
-            public TagOption(string displayName, GameplayTag tag)
-            {
-                DisplayName = displayName;
-                Tag = tag;
+                    refreshQueued = false;
+                    if (container.panel == null) return;
+                    viewModel.NotifyNativeItemPropertyChanged(track, clip);
+                });
             }
 
-            /// <summary>获取展示给作者的 Tag 路径。</summary>
-            public string DisplayName { get; }
-            /// <summary>获取当前选项的稳定 GameplayTag。</summary>
-            public GameplayTag Tag { get; }
+            cueTagsField.Bind(trackObject);
+            cueTagsField.TrackPropertyValue(cueTagsProperty, NotifyCueTagsChanged);
+            // 绑定首轮同步不是用户编辑，只有后续 SerializedProperty 变化才通知 ViewModel。
+            container.schedule.Execute(() => bindingReady = true);
         }
 
         #endregion

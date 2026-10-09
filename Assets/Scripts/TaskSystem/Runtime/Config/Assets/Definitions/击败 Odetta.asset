@@ -23,7 +23,9 @@ MonoBehaviour:
     description: "\u51FB\u8D25 Odetta"
     objectives:
     - rid: 1466742124891078656
-  rewards: []
+  rewards:
+  - rid: 1466742124891078657
+  - rid: 1466742124891078658
   references:
     version: 2
     RefIds:
@@ -34,3 +36,22 @@ MonoBehaviour:
         displayDescription: "\u51FB\u8D25\u5965\u9EDB\u5854"
         required: 1
         npcIdentity: {fileID: 11400000, guid: a2808000000000000000000000000004, type: 2}
+    - rid: 1466742124891078657
+      type: {class: CurrencyRewardDefinition, ns: RPG.RewardSystemNS, asm: Assembly-CSharp}
+      data:
+        amounts:
+        - currencyId: 1
+          amount: 100000
+    - rid: 1466742124891078658
+      type: {class: ItemRewardDefinition, ns: RPG.RewardSystemNS, asm: Assembly-CSharp}
+      data:
+        items:
+        - itemId:
+            value: food_0016
+          quantity: 1
+        - itemId:
+            value: material_0018
+          quantity: 10
+        - itemId:
+            value: material_0019
+          quantity: 10
