@@ -55,7 +55,8 @@
 | 按顺序执行任务阶段；当前阶段目标全部完成后推进 | 已实现 |
 | 统一资格查询和接取 API；前置任务已完成条件 | 已实现 |
 | Objective Definition 创建 Runtime、阶段监听与切换、追踪、未读和任务事实事件 | 已实现 |
-| 引用指定 `DialogueAsset` 并在其正常结束时累计目标进度 | 已实现；首个正式玩法目标 |
+| 引用指定 `DialogueAsset`，可选择在指定 SpeechNode 展示时或正常结束时累计目标进度 | 已实现；Odetta 汇报使用指定节点 |
+| 监听成功武器升级事件，可选限定 WeaponDefinition | 已实现；通用 Objective，尚未加入正式任务 |
 | 当前任务阶段监听并累计击败指定 `NPCIdentityDefinition` 的事件目标 | 已实现；Odetta 击败任务已配置 |
 | 手动提交通用奖励；摩拉、原石、可堆叠物品、武器和圣遗物统一预检与发放 | 已实现 |
 | 保存当前阶段进度、活动状态、追踪、未读和完成 ID；任务模块 v2 | 已实现 |
@@ -213,8 +214,9 @@ TryAcceptTask(TaskId taskId, TaskAcceptSource source) -> TaskAcceptResult
 
 每个目标归属一个阶段；Objective Definition 负责创建独立的目标 Runtime，配置对象不保存运行状态：
 
-- 当前正式目标 `TaskDialogueCompletedObjectiveDefinition` 引用一个 `DialogueAsset`，并可选引用 `NPCIdentityDefinition` 作为导航来源；目标 Runtime 在当前阶段监听 `DialogueEndedEvent`。只有该资源以 `DialogueEndStatus.Completed` 结束时增加 1，`Required` 默认 1。开始会话、失败结束、其他资源和监听启动前的历史会话均不补计。
+- `TaskDialogueCompletedObjectiveDefinition` 引用一个 `DialogueAsset`，并可选引用 `NPCIdentityDefinition` 作为导航来源；未配置节点时，Runtime 仍只在当前阶段监听该资源的正常 `DialogueEndedEvent`。配置 `DialogueSpeechNode` 后，改为直接监听 `DialogueSystem.SpeechPresented`，匹配同一 DialogueAsset 和节点引用，同一 Session 最多计数一次，进入节点即推进而不等待整场对话结束。两种模式都不补计监听开始前的历史事实。
 - `TaskNPCDefeatedObjectiveDefinition` 引用 `NPCIdentityDefinition` 并在所属阶段监听 `NPCDefeatedEventArgs`；只累计监听期间且 NPCId 匹配的击败事件，阶段停止后注销，不补记历史。导航由 NPCManager 查询当前实例，不将 Transform 写入任务进度或存档。
+- `TaskWeaponUpgradeObjectiveDefinition` 在阶段监听 `WeaponUpgradedEventArgs`；只累计强化提交成功且武器等级实际提高的事件，可限定 WeaponDefinition。增加经验但未升级、突破、精炼和读档均不计数；每次 Enhance 调用最多计一次，即使跨越多个等级。
 - 其他玩法目标通过自己的 Definition 工厂创建相应 Runtime；新的目标类型无需加入 Objective Handler 注册表。
 - 阶段完成只由当前阶段目标决定，后续阶段目标不能提前计入。
 - 阶段切换时停止旧阶段目标监听，再创建并启动新阶段目标监听。
@@ -487,7 +489,7 @@ sequenceDiagram
 - 当前追踪任务处于 `InProgress` 且阶段首个未完成导航目标可解析时显示中间世界标记与左侧距离；NPC 暂未加载或没有目标时隐藏。
 - 屏幕内目标显示标记和整数米数；屏幕外及相机背后目标被限制到视口安全边缘，方向箭头指向目标方向。
 - 任务测试按钮只负责接取或追踪，不传入 HUD 导航目标；NPC 导航由 Objective 配置、NPCIdentity 注册和 TaskSystem 查询驱动。
-- 正式任务 `side_defeat_boss_odetta` 要求在当前任务阶段监听期间击败 Odetta 一次；不自动接取、不配置前置条件或奖励。目标完成后仍经过 Claimable 和领取流程，空奖励批次成功提交后关闭任务。
+- 正式任务 `side_defeat_boss_odetta` 包含两个阶段：先在监听期间击败 Odetta 一次，再通过 Arlecchino 对话进入指定汇报 SpeechNode；任务随后进入 `Claimable` 并通过任务窗口领取既有奖励。任务由对话 Choice Action 接取，不会自动接取。
 
 ## 13. 后续实现顺序
 

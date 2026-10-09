@@ -20624,7 +20624,7 @@ MonoBehaviour:
   dialogueEntries:
   - optionId: 1f4a5d7f04e74f19b3457e43937e5b73
     displayName: "NPC \u7684\u6D4B\u8BD5\u5BF9\u8BDD"
-    dialogueAsset: {fileID: 11400000, guid: 9e8374d0b9c554c43ba346806592a12c, type: 2}
+    dialogueAsset: {fileID: 11400000, guid: 072c16729a3ddef409a6f41f71f8a09a, type: 2}
     interactionType: 0
   - optionId: b7a8ad3b1a0f4986b81a940200681cf4
     displayName: "\u5BF9\u8BDD\u4EFB\u52A1"
@@ -20718,7 +20718,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2febcd3dab796ab44a2b499c0a3e1176, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  definition: {fileID: 11400000, guid: de2280000000000000000000000000003, type: 2}
+  definition: {fileID: 11400000, guid: ae8da4ba2e0840adbbc01259421b9ea2, type: 2}
   navigationAnchor: {fileID: 1451605701}
   navigationOffset: {x: 0, y: 1.03, z: 0}
 --- !u!1001 &1460662839
@@ -28441,6 +28441,26 @@ PrefabInstance:
     - target: {fileID: 6590890057109014874, guid: dfbe87c8501dde749a4d2dab8be69ca5, type: 3}
       propertyPath: m_Name
       value: ArlecchinoNPC
+      objectReference: {fileID: 0}
+    - target: {fileID: 7165159751675038286, guid: dfbe87c8501dde749a4d2dab8be69ca5, type: 3}
+      propertyPath: dialogueEntries.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7165159751675038286, guid: dfbe87c8501dde749a4d2dab8be69ca5, type: 3}
+      propertyPath: dialogueEntries.Array.data[1].optionId
+      value: 06317dce5f744e9c81ab96cca214e495
+      objectReference: {fileID: 0}
+    - target: {fileID: 7165159751675038286, guid: dfbe87c8501dde749a4d2dab8be69ca5, type: 3}
+      propertyPath: dialogueEntries.Array.data[1].displayName
+      value: "\u5173\u4E8E Odetta \u7684\u59D4\u6258"
+      objectReference: {fileID: 0}
+    - target: {fileID: 7165159751675038286, guid: dfbe87c8501dde749a4d2dab8be69ca5, type: 3}
+      propertyPath: dialogueEntries.Array.data[1].dialogueAsset
+      value:
+      objectReference: {fileID: 11400000, guid: f9d2608339344de9ba3f25e42b28c9bf, type: 2}
+    - target: {fileID: 7165159751675038286, guid: dfbe87c8501dde749a4d2dab8be69ca5, type: 3}
+      propertyPath: dialogueEntries.Array.data[1].interactionType
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

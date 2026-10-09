@@ -5,6 +5,7 @@ using RPG.Character;
 using RPG.Game.Runtime.EquipmentDevelopment;
 using RPG.ItemSystem;
 using UnityEngine;
+using WSEventSystem = WS_Modules.CustomEventSystem.EventSystem;
 
 namespace RPG.Game.Runtime.WeaponDevelopment
 {
@@ -16,16 +17,13 @@ namespace RPG.Game.Runtime.WeaponDevelopment
         private const int MaxSelectedExperienceMaterialCount = 99;
 
         #region 依赖字段
-
         private readonly WeaponInventoryManager weaponInventoryManager;
         private readonly StackableInventoryManager stackableInventoryManager;
         private readonly CurrencyManager currencyManager;
         private readonly CharacterRosterManager characterRosterManager;
-
         #endregion
 
         #region 构造与公开操作
-
         /// <summary>创建一个绑定当前窗口库存上下文的武器培养服务。</summary>
         /// <param name="weaponInventoryManager">武器实例库存。</param>
         /// <param name="stackableInventoryManager">堆叠材料库存。</param>
@@ -41,7 +39,8 @@ namespace RPG.Game.Runtime.WeaponDevelopment
             this.stackableInventoryManager = stackableInventoryManager ??
                                              throw new ArgumentNullException(nameof(stackableInventoryManager));
             this.currencyManager = currencyManager ?? throw new ArgumentNullException(nameof(currencyManager));
-            this.characterRosterManager = characterRosterManager ?? throw new ArgumentNullException(nameof(characterRosterManager));
+            this.characterRosterManager = characterRosterManager ??
+                                          throw new ArgumentNullException(nameof(characterRosterManager));
         }
 
         /// <summary>提交当前窗口选择的经验素材，更新武器等级和等级内经验。</summary>
@@ -119,12 +118,25 @@ namespace RPG.Game.Runtime.WeaponDevelopment
                 return WeaponDevelopmentOperationResult.Failure(
                     WeaponDevelopmentOperationStatus.ManagerRejected, "消耗升级货币失败。");
 
+            int previousLevel = instance.Level;
             EquipmentOperationResult updateResult = weaponInventoryManager.UpdateWeaponProgress(instanceId,
                 new WeaponProgressUpdate(projectedLevel, projectedExperience, instance.AscensionRank,
                     instance.RefinementRank));
             if (!updateResult.Succeeded)
                 return WeaponDevelopmentOperationResult.Failure(
                     WeaponDevelopmentOperationStatus.ManagerRejected, $"更新武器进度失败：{updateResult.Status}。");
+
+            if (projectedLevel > previousLevel)
+            {
+                // 升级事实只在库存提交成功后发布；通知故障不能回滚已经完成的培养操作。
+                WSEventSystem.EventTrigger_Type(
+                    typeof(WeaponUpgradedEventArgs),
+                    new WeaponUpgradedEventArgs(instanceId, definition.ItemId, previousLevel, projectedLevel));
+                Debug.Log(
+                    $"[WeaponDevelopmentService] 已发布武器升级事实，instanceId={instanceId}, " +
+                    $"itemId={definition.ItemId}, level={previousLevel}->{projectedLevel}。");
+            }
+
             Debug.Log(
                 $"[WeaponDevelopmentService] 完成强化：Instance={instanceId}，" +
                 $"Selected={selectedQuantityByItemIdMap.Count}种，Consumed={consumptionPlan.ConsumedQuantityByItemIdMap.Count}种，" +
@@ -221,11 +233,9 @@ namespace RPG.Game.Runtime.WeaponDevelopment
                     WeaponDevelopmentOperationStatus.ManagerRejected, $"更新精炼阶数失败：{updateResult.Status}。");
             return WeaponDevelopmentOperationResult.Success();
         }
-
         #endregion
 
         #region 成本与成长计算
-
         /// <summary>验证当前阶段的成本并合并相同 ItemId 与 CurrencyId。</summary>
         /// <param name="cost">阶段成本。</param>
         /// <param name="requestedType">普通养成道具用途。</param>
@@ -246,6 +256,7 @@ namespace RPG.Game.Runtime.WeaponDevelopment
                     WeaponDevelopmentOperationStatus.InvalidConfiguration, "阶段成本未配置。");
                 return false;
             }
+
             if (!TryBuildItemCosts(cost, requestedType, out itemCosts, out failure)) return false;
             if (!TryBuildCurrencyCosts(cost, out currencyCosts, out failure)) return false;
             return true;
@@ -388,7 +399,8 @@ namespace RPG.Game.Runtime.WeaponDevelopment
         /// <param name="amount">消耗金额。</param>
         /// <returns>提交成功或无需消耗时返回 true。</returns>
         private bool ConsumeCurrency(CurrencyId currencyId, long amount) =>
-            amount <= 0L || currencyManager.ConsumeCurrencies(new[] { new CurrencyAmount(currencyId, (int)amount) }).Succeeded;
+            amount <= 0L || currencyManager.ConsumeCurrencies(new[] { new CurrencyAmount(currencyId, (int)amount) })
+                .Succeeded;
 
         /// <summary>提交合并后的货币成本。</summary>
         /// <param name="costs">货币成本。</param>
@@ -462,7 +474,8 @@ namespace RPG.Game.Runtime.WeaponDevelopment
             BakedWeaponLevelProgression current = GetProgression(definition.GrowthProfile, instance.Level);
             BakedWeaponLevelProgression cap = GetProgression(definition.GrowthProfile, currentCap);
             if (current == null || cap == null) return 0L;
-            return Math.Max(0L, (long)cap.CumulativeExperience - current.CumulativeExperience - instance.CurrentExperience);
+            return Math.Max(0L,
+                (long)cap.CumulativeExperience - current.CumulativeExperience - instance.CurrentExperience);
         }
 
         /// <summary>解析当前突破阶段的等级上限和下一阶段。</summary>
@@ -528,7 +541,6 @@ namespace RPG.Game.Runtime.WeaponDevelopment
                 level > profile.BakedProgressions.Count) return null;
             return profile.BakedProgressions[level - 1];
         }
-
         #endregion
     }
 }

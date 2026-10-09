@@ -563,6 +563,8 @@ namespace RPG.ItemSystem.Editor
         private void OnPropertiesChanged(ItemDefinition definition)
         {
             if (definition != selectedDefinition) return;
+            // Definition 的显示名称会参与 ItemId 下拉标签，修改后只失效缓存，不在字段绘制时重新扫描。
+            ItemIdEditorCatalog.Invalidate();
             if (undoRedoWriteSuppressed)
             {
                 // Undo/Redo 已经恢复数据，变化 Tracker 只能等待统一刷新，不能把恢复结果再次写回。

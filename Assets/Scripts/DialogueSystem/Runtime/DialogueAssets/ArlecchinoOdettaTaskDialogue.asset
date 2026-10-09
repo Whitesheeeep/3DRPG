@@ -1,0 +1,209 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &4221489411110131712
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43893bc859cd4e6086ef32b05a8d47f9, type: 3}
+  m_Name: EntryNode
+  m_EditorClassIdentifier: 
+  nodeId: 28d63190-ceb7-46ea-a9c9-c4cb315ceece
+  editorPosition: {x: -950, y: 0}
+  firstSpeechNode: {fileID: 3081103893736073216}
+--- !u!114 &3081103893736073216
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afa82bc2ce69471a8fbb64b182a292ad, type: 3}
+  m_Name: Speech 001
+  m_EditorClassIdentifier: 
+  nodeId: 07b94e6a-0da9-47f5-9216-ff139f7faa87
+  editorPosition: {x: -610, y: 0}
+  nodeName: Odetta 委托开场
+  speaker: {fileID: 11400000, guid: 70e23c899cfca02459036f9b573689b6, type: 2}
+  dialogueName: 
+  text: 关于 Odetta 的委托，你有什么要说的？
+  animationClip: {fileID: 0}
+  voiceClip: {fileID: 0}
+  animationFadeDuration: 0
+  nextNode: {fileID: 0}
+  choices:
+  - {fileID: 3948593207724010496}
+  - {fileID: 5848227327343404032}
+  - {fileID: 1823326418187798016}
+--- !u!114 &3948593207724010496
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17fb169762ea4f91bd4b4851eb8c50e2, type: 3}
+  m_Name: Choice 001
+  m_EditorClassIdentifier: 
+  nodeId: e9479b19-a3bd-4725-86f4-e6218980d143
+  editorPosition: {x: -240, y: -170}
+  nodeName: 接受 Odetta 委托
+  text: 接受讨伐委托
+  conditions:
+  - rid: 1466742200000000001
+  actions:
+  - rid: 1466742200000000002
+  targetNode: {fileID: 1369509558577933824}
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742200000000001
+      type: {class: DialogueTaskAcceptableCondition, ns: RPG.DialogueSystemModule, asm: Assembly-CSharp}
+      data:
+        taskId: side_defeat_boss_odetta
+    - rid: 1466742200000000002
+      type: {class: DialogueGiveTaskExecution, ns: RPG.DialogueSystemModule, asm: Assembly-CSharp}
+      data:
+        taskId: side_defeat_boss_odetta
+--- !u!114 &5848227327343404032
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17fb169762ea4f91bd4b4851eb8c50e2, type: 3}
+  m_Name: Choice 002
+  m_EditorClassIdentifier: 
+  nodeId: 99cf7004-0800-4a40-a4c4-e5fd58ea9ea3
+  editorPosition: {x: -240, y: 0}
+  nodeName: 汇报 Odetta 讨伐
+  text: 我已经击败 Odetta
+  conditions:
+  - rid: 1466742200000000003
+  actions: []
+  targetNode: {fileID: 3936336167613342720}
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742200000000003
+      type: {class: DialogueTaskStageCondition, ns: RPG.DialogueSystemModule, asm: Assembly-CSharp}
+      data:
+        taskId: side_defeat_boss_odetta
+        stageId: stage_report
+        unavailableReason: 需要击败 Odetta
+--- !u!114 &1823326418187798016
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17fb169762ea4f91bd4b4851eb8c50e2, type: 3}
+  m_Name: Choice 003
+  m_EditorClassIdentifier: 
+  nodeId: 8bb15a24-efdd-4cf2-a1da-c86d633bd236
+  editorPosition: {x: -240, y: 170}
+  nodeName: 离开
+  text: 先告辞了
+  conditions: []
+  actions: []
+  targetNode: {fileID: 6393234577755576320}
+  references:
+    version: 2
+    RefIds: []
+--- !u!114 &1369509558577933824
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afa82bc2ce69471a8fbb64b182a292ad, type: 3}
+  m_Name: Speech 002
+  m_EditorClassIdentifier: 
+  nodeId: 78ca3fdb-dc9f-42b3-8027-50b75a050f00
+  editorPosition: {x: 180, y: -170}
+  nodeName: 委托鼓励
+  speaker: {fileID: 11400000, guid: 70e23c899cfca02459036f9b573689b6, type: 2}
+  dialogueName: 
+  text: 加油！
+  animationClip: {fileID: 0}
+  voiceClip: {fileID: 0}
+  animationFadeDuration: 0
+  nextNode: {fileID: 6393234577755576320}
+  choices: []
+--- !u!114 &3936336167613342720
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afa82bc2ce69471a8fbb64b182a292ad, type: 3}
+  m_Name: Speech 003
+  m_EditorClassIdentifier: 
+  nodeId: 0eacd908-49a7-4a48-8f03-0e7991773abf
+  editorPosition: {x: 180, y: 0}
+  nodeName: 讨伐汇报完成
+  speaker: {fileID: 11400000, guid: 70e23c899cfca02459036f9b573689b6, type: 2}
+  dialogueName: 
+  text: 辛苦了，委托已经完成。
+  animationClip: {fileID: 0}
+  voiceClip: {fileID: 0}
+  animationFadeDuration: 0
+  nextNode: {fileID: 6393234577755576320}
+  choices: []
+--- !u!114 &6393234577755576320
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8553e8b9ae924407be47d6c9292d2d05, type: 3}
+  m_Name: EndNode
+  m_EditorClassIdentifier: 
+  nodeId: 42c6542e-7496-4afc-abeb-703e350a484c
+  editorPosition: {x: 520, y: 0}
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8fc6020cc6de497bb9a10045174cd476, type: 3}
+  m_Name: ArlecchinoOdettaTaskDialogue
+  m_EditorClassIdentifier: 
+  dialogueId: ArlecchinoOdettaTaskDialogue
+  entryNode: {fileID: 4221489411110131712}
+  nodes:
+  - {fileID: 4221489411110131712}
+  - {fileID: 3081103893736073216}
+  - {fileID: 3948593207724010496}
+  - {fileID: 5848227327343404032}
+  - {fileID: 1823326418187798016}
+  - {fileID: 1369509558577933824}
+  - {fileID: 3936336167613342720}
+  - {fileID: 6393234577755576320}

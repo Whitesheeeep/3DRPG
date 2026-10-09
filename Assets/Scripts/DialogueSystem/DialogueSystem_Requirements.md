@@ -142,6 +142,19 @@ flowchart LR
     TaskSystem -->|"任务不存在 / 条件未满足"| Failed["抛出异常并结束对话为 Failed"]
 ```
 
+内置 Condition 还包括 `DialogueMolaCondition`、`DialogueTaskAcceptableCondition` 和 `DialogueTaskStageCondition`。摩拉条件只读取 `CurrencyManager` 余额，不扣款；任务条件通过当前命令上下文所属的 Architecture 查询 TaskSystem。未满足的 Choice 保留原文，并由 Choice View 追加第一个失败原因，例如 `我已经击败 Odetta（需要击败 Odetta）`。Condition 仍按 AND 短路执行，原因只用于界面解释，不替代 Action 执行时的业务校验。
+
+Arlecchino 的 Odetta 委托使用单张 Repeatable 对话资产：可接取时显示“接受讨伐委托”，只有任务进入 `stage_report` 后“我已经击败 Odetta”才可选。报告 SpeechNode 本身是任务第二阶段的目标，进入该节点即完成汇报阶段并让任务进入 `Claimable`；奖励仍由任务窗口领取，不由对话重复发放。
+
+```mermaid
+flowchart LR
+    Accept[接受讨伐委托] -->|DialogueGiveTaskExecution| Task[TaskSystem 接取 side_defeat_boss_odetta]
+    Defeat[击败 Odetta] -->|NPCDefeatedEventArgs| Stage[stage_report]
+    Stage -->|DialogueTaskStageCondition| Report[Arlecchino 汇报选项可用]
+    Report -->|SpeechPresented 指定节点| Claimable[任务进入 Claimable]
+    Claimable -->|任务窗口| Reward[手动领取奖励]
+```
+
 ## 3. 同步运行时 API
 
 ```csharp
