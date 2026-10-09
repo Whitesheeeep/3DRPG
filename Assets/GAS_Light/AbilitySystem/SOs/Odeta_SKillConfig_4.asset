@@ -66,7 +66,8 @@ MonoBehaviour:
     phase: 2
     isCancelable: 0
     runtimeTags: []
-    blockAbilityTags: []
+    blockAbilityTags:
+    - id: 126
   - id: 63603befc461484da97f2b6bfefb605f
     startFrame: 33
     durationFrames: 12

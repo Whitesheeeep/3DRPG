@@ -40,7 +40,95 @@ MonoBehaviour:
   muted: 0
   displayName: "\u52A8\u4F5C\u9636\u6BB5\u8F68\u9053"
   editorLocked: 0
-  clips: []
+  clips:
+  - id: 4fe352a2b7a74f4aaa9f1b02fdbcec07
+    startFrame: 0
+    durationFrames: 23
+    phase: 2
+    isCancelable: 0
+    runtimeTags: []
+    blockAbilityTags:
+    - id: 126
+    - id: 164
+    - id: 129
+  - id: 527279e8f84242088f83570747b7f67e
+    startFrame: 23
+    durationFrames: 52
+    phase: 3
+    isCancelable: 1
+    runtimeTags:
+    - id: 169
+    - id: 170
+    - id: 172
+    - id: 171
+    blockAbilityTags: []
+--- !u!114 &-2239551702636794128
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 166f8d5d2c664f2799bda1e1c4d8a430, type: 3}
+  m_Name: "\u7279\u6548\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: e3ce0c96401b489dbddcce470619c469
+  muted: 0
+  displayName: "\u7279\u6548\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: aa3d18780b8c4b70a87aed22c8f010ae
+    prefab: {fileID: 7296899671359703948, guid: 1860d62fa9cf0d34ba7b6b1ef61f0df8, type: 3}
+    markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
+    startFrame: 6
+    durationFrames: 30
+    localPosition: {x: 0, y: 1.44, z: 0}
+    localEulerAngles: {x: 323.10864, y: 314.02374, z: 329.8784}
+    localScale: {x: 1, y: 1, z: 1}
+    playbackSpeed: 1
+    followMode: 0
+    stopMode: 0
+--- !u!114 &-483737128685502943
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977a117e6397476dafe68fee63f8f607, type: 3}
+  m_Name: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: ef8c776801ce481ebd56a302b3611608
+  muted: 0
+  displayName: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: 4da2060525804b7a86cfbcca24db37f4
+    startFrame: 6
+    durationFrames: 17
+    sampleIntervalFrames: 1
+    detectionId: 0
+    markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
+    followMode: 0
+    cueTags: []
+    detectionData:
+      rid: 1466742129534435350
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742129534435350
+      type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        localPosition: {x: -0.000000014901161, y: 0.13046074, z: 0.13846993}
+        localEulerAngles: {x: -90, y: 90, z: 0}
+        innerRadius: 0
+        outerRadius: 3.725947
+        angle: 180
+        height: 1
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -55,8 +143,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: 34d6e149c4a94e2483a584e81991a83d
   frameRate: 30
-  durationFrames: 80
+  durationFrames: 75
   isRootMotion: 1
   tracks:
   - {fileID: -4712652568259328875}
   - {fileID: -7510474321806873236}
+  - {fileID: -483737128685502943}
+  - {fileID: -2239551702636794128}

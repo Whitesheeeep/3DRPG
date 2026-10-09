@@ -1,5 +1,106 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-6660636623682137849
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 166f8d5d2c664f2799bda1e1c4d8a430, type: 3}
+  m_Name: "\u7279\u6548\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 78841e075800427b96378342b96009a6
+  muted: 0
+  displayName: "\u7279\u6548\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: 3ca19bbe53184b9fb89f69dde544399f
+    prefab: {fileID: 7296899671359703948, guid: 1860d62fa9cf0d34ba7b6b1ef61f0df8, type: 3}
+    markerKey: {fileID: 0}
+    startFrame: 11
+    durationFrames: 30
+    localPosition: {x: 0.21644767, y: 0.84, z: 0.0238415}
+    localEulerAngles: {x: 349.1949, y: 332.35037, z: 173.27728}
+    localScale: {x: 1.0000001, y: 1.0000001, z: 1.0000001}
+    playbackSpeed: 1
+    followMode: 0
+    stopMode: 0
+--- !u!114 &-4643024058910902468
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977a117e6397476dafe68fee63f8f607, type: 3}
+  m_Name: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 222144bf363247cfa61a55ddba82036d
+  muted: 0
+  displayName: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: fdaba01ec21f485ebccad5f7b66e9505
+    startFrame: 11
+    durationFrames: 15
+    sampleIntervalFrames: 1
+    detectionId: 0
+    markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
+    followMode: 0
+    cueTags: []
+    detectionData:
+      rid: 1466742129534435338
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742129534435338
+      type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        localPosition: {x: 0, y: 0.91246307, z: 0}
+        localEulerAngles: {x: 0, y: 0, z: 0}
+        innerRadius: 0
+        outerRadius: 3.1712918
+        angle: 120
+        height: 1.6422291
+--- !u!114 &-2582442917103081266
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977a117e6397476dafe68fee63f8f607, type: 3}
+  m_Name: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: c51bf51c5b564aac99aedcdc063ee856
+  muted: 0
+  displayName: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: 45c8db67e5c64f5c9d358e18105712a9
+    startFrame: 0
+    durationFrames: 16
+    sampleIntervalFrames: 1
+    detectionId: 0
+    markerKey: {fileID: 0}
+    followMode: 0
+    cueTags: []
+    detectionData:
+      rid: 1466742129534435329
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742129534435329
+      type: {class: WeaponTraceAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        samplePointCount: 4
 --- !u!114 &-576078111578003187
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -16,7 +117,29 @@ MonoBehaviour:
   muted: 0
   displayName: "\u52A8\u4F5C\u9636\u6BB5\u8F68\u9053"
   editorLocked: 0
-  clips: []
+  clips:
+  - id: 7c17a96047a448e6921f4edaa1884676
+    startFrame: 0
+    durationFrames: 26
+    phase: 2
+    isCancelable: 0
+    runtimeTags: []
+    blockAbilityTags:
+    - id: 164
+    - id: 167
+    - id: 181
+    - id: 147
+  - id: d6bc41430b424a9588aec66734a32fdc
+    startFrame: 26
+    durationFrames: 37
+    phase: 3
+    isCancelable: 1
+    runtimeTags:
+    - id: 169
+    - id: 170
+    - id: 171
+    - id: 172
+    blockAbilityTags: []
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -31,11 +154,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: 0138a94dbba642a08be3ecb15fdefbf1
   frameRate: 30
-  durationFrames: 66
+  durationFrames: 63
   isRootMotion: 1
   tracks:
   - {fileID: -576078111578003187}
   - {fileID: 7551312098964813157}
+  - {fileID: -2582442917103081266}
+  - {fileID: -4643024058910902468}
+  - {fileID: -6660636623682137849}
 --- !u!114 &7551312098964813157
 MonoBehaviour:
   m_ObjectHideFlags: 1
