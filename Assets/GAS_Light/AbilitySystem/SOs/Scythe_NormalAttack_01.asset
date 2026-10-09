@@ -1,5 +1,68 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-6172320092360565827
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 166f8d5d2c664f2799bda1e1c4d8a430, type: 3}
+  m_Name: "\u7279\u6548\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 16d86482e53341cb87f6dfc8e5e96da5
+  muted: 0
+  displayName: "\u7279\u6548\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: 3047652257924fd9bed8d6f8cfdaf03a
+    prefab: {fileID: 7296899671359703948, guid: 1860d62fa9cf0d34ba7b6b1ef61f0df8, type: 3}
+    markerKey: {fileID: 0}
+    startFrame: 5
+    durationFrames: 30
+    localPosition: {x: 0, y: 0.65, z: 0}
+    localEulerAngles: {x: -0, y: 0, z: 10.580816}
+    localScale: {x: 1, y: 1, z: 1}
+    playbackSpeed: 1
+    followMode: 0
+    stopMode: 0
+--- !u!114 &-3889212057403980132
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977a117e6397476dafe68fee63f8f607, type: 3}
+  m_Name: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: c9ad7743050348a38f3b53a2670a813e
+  muted: 0
+  displayName: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: cc941a4880e3407591d0d318e7501865
+    startFrame: 5
+    durationFrames: 6
+    sampleIntervalFrames: 1
+    detectionId: 0
+    markerKey: {fileID: 0}
+    followMode: 0
+    cueTags:
+    - id: 187
+    detectionData:
+      rid: 1466742125148766227
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742125148766227
+      type: {class: WeaponTraceAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        samplePointCount: 4
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14,11 +77,54 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: 1512e245fc84485fbf0ef60b9d59798e
   frameRate: 30
-  durationFrames: 260
+  durationFrames: 63
   isRootMotion: 1
   tracks:
   - {fileID: 9090366914657983836}
   - {fileID: 5304817224089542462}
+  - {fileID: -3889212057403980132}
+  - {fileID: 3901410611143909678}
+  - {fileID: -6172320092360565827}
+--- !u!114 &3901410611143909678
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977a117e6397476dafe68fee63f8f607, type: 3}
+  m_Name: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: ac9a8db5f3d340079349c454281d3e0f
+  muted: 0
+  displayName: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: bc157a7fa7e94028ab2e9f8299ae460f
+    startFrame: 5
+    durationFrames: 17
+    sampleIntervalFrames: 1
+    detectionId: 0
+    markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
+    followMode: 0
+    cueTags:
+    - id: -1
+    detectionData:
+      rid: 1466742125148766223
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742125148766223
+      type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        localPosition: {x: 0, y: 1.0711677, z: 0}
+        localEulerAngles: {x: 0, y: 0, z: 0}
+        innerRadius: 0
+        outerRadius: 3.1719458
+        angle: 120
+        height: 1.9136605
 --- !u!114 &5304817224089542462
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -59,4 +165,33 @@ MonoBehaviour:
   muted: 0
   displayName: "\u52A8\u4F5C\u9636\u6BB5\u8F68\u9053"
   editorLocked: 0
-  clips: []
+  clips:
+  - id: c6486263675c4668b407a4ddf73f0ce0
+    startFrame: 0
+    durationFrames: 5
+    phase: 1
+    isCancelable: 0
+    runtimeTags: []
+    blockAbilityTags: []
+  - id: 14dae29f3fba476381f6345299254a59
+    startFrame: 5
+    durationFrames: 17
+    phase: 2
+    isCancelable: 0
+    runtimeTags: []
+    blockAbilityTags:
+    - id: 164
+    - id: 167
+    - id: 181
+    - id: 147
+  - id: 6da8a9dbc97641f599f1a2d107cc8065
+    startFrame: 22
+    durationFrames: 41
+    phase: 3
+    isCancelable: 1
+    runtimeTags:
+    - id: 169
+    - id: 170
+    - id: 171
+    - id: 172
+    blockAbilityTags: []
