@@ -211,6 +211,7 @@ namespace RPG.ItemSystem.Editor
                 AssetDatabase.SaveAssets();
                 Undo.FlushUndoRecordObjects();
                 Undo.CollapseUndoOperations(undoGroup);
+                ItemIdEditorCatalog.Invalidate();
                 return undoGroup;
             }
             catch
@@ -435,6 +436,7 @@ namespace RPG.ItemSystem.Editor
                 AddDefinition(database, definition);
                 AssetDatabase.SaveAssets();
                 Undo.CollapseUndoOperations(undoGroup);
+                ItemIdEditorCatalog.Invalidate();
                 Debug.Log($"[ItemConfigEditorService] 创建定义完成：type={definitionType.Name}, category={category}, itemId={itemId}, asset={definition.name}");
                 EditorUtility.FocusProjectWindow();
                 Selection.activeObject = definition;
@@ -513,6 +515,7 @@ namespace RPG.ItemSystem.Editor
                 AddDefinition(database, copy);
                 AssetDatabase.SaveAssets();
                 Undo.CollapseUndoOperations(undoGroup);
+                ItemIdEditorCatalog.Invalidate();
                 return copy;
             }
             catch
@@ -545,6 +548,7 @@ namespace RPG.ItemSystem.Editor
             serialized.ApplyModifiedProperties();
             EditorUtility.SetDirty(database);
             AssetDatabase.SaveAssets();
+            ItemIdEditorCatalog.Invalidate();
         }
 
         /// <summary>将定义资产移入 Unity 回收站并从数据库移除。</summary>

@@ -50,11 +50,11 @@ MonoBehaviour:
   m_Name: Speech 003
   m_EditorClassIdentifier: 
   nodeId: bfe9d78c-39b5-4d6d-bf8e-f5019945d9b7
-  editorPosition: {x: -410.42258, y: 184.49112}
+  editorPosition: {x: -410.42258, y: 183.6911}
   nodeName: Speech 003
   speaker: {fileID: 11400000, guid: 4663cf08600c8fb4682d10fa508a0b57, type: 2}
   dialogueName: 
-  text: 
+  text: "\u90A3\u7B97\u4E86"
   animationClip: {fileID: 0}
   voiceClip: {fileID: 0}
   animationFadeDuration: 0
@@ -124,7 +124,7 @@ MonoBehaviour:
   nodeName: Speech 002
   speaker: {fileID: 11400000, guid: 4663cf08600c8fb4682d10fa508a0b57, type: 2}
   dialogueName: 
-  text: "\u90A3\u7B97\u4E86"
+  text: "\u53EF\u4EE5"
   animationClip: {fileID: 0}
   voiceClip: {fileID: 0}
   animationFadeDuration: 0

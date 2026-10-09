@@ -107,18 +107,18 @@ MonoBehaviour:
   nodeId: 6db2cc6e-db00-4b8b-bc04-6572c1c42dce
   editorPosition: {x: -275.89185, y: 175.68793}
   nodeName: Choice 004
-  text: "\u6D4B\u8BD5\u6761\u4EF6\uFF08\u970010\u6469\u62C9\uFF09"
+  text: "\u6D4B\u8BD5\u6761\u4EF6\uFF08\u97001000\u6469\u62C9\uFF09"
   conditions:
-  - rid: 2645454714865713152
+  - rid: 1466742128583376896
   actions: []
   targetNode: {fileID: -5234060681194231328}
   references:
     version: 2
     RefIds:
-    - rid: 2645454714865713152
-      type: {class: SampleDialogueCondition, ns: RPG.DialogueSystemModule.Test, asm: Assembly-CSharp}
+    - rid: 1466742128583376896
+      type: {class: DialogueMolaCondition, ns: RPG.DialogueSystemModule, asm: Assembly-CSharp}
       data:
-        money: 10
+        requiredMola: 1000
 --- !u!114 &3705990609346577972
 MonoBehaviour:
   m_ObjectHideFlags: 0

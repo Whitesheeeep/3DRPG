@@ -9,7 +9,10 @@ using RPG.Game.UI.Escape;
 using RPG.Game.UI.WeaponDevelopment;
 using RPG.ItemSystem;
 using Sirenix.OdinInspector;
+using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using WS_Modules.GAS.GameplayEffect;
 using WS_Modules.CustomEventSystem;
 using WS_Modules.UIModule;
 
@@ -20,6 +23,13 @@ namespace RPG.Game.Tests
     /// </summary>
     public sealed class BagWindowOdinTester : MonoBehaviour
     {
+        #region GE 食物识别常量
+
+        private const string EffectFoodNamePrefix = "GE_Food_";
+        private const int ExpectedEffectFoodCount = 16;
+
+        #endregion
+
         #region 依赖字段
 
         [SerializeField, Required, LabelText("测试武器定义")] private WeaponDefinition testWeapon;
@@ -135,12 +145,12 @@ namespace RPG.Game.Tests
         [Button("领取全部 GE 测试食物")]
         public void AddAllEffectFoods()
         {
-            if (!EnsureInventoryReady("领取 GE 测试食物")) return;
             if (effectFoodDefinitions == null || effectFoodDefinitions.Count == 0)
             {
-                Debug.LogError("[BagWindowTest] 请在 Inspector 为 GE 食物批量测试定义绑定待领取食物。", this);
+                Debug.LogError("[BagWindowTest] GE 食物列表为空；请先点击“从 ItemDatabase 加载全部 GE 测试食物”。", this);
                 return;
             }
+            if (!EnsureInventoryReady("领取 GE 测试食物")) return;
 
             int addedCount = 0;
             for (int index = 0; index < effectFoodDefinitions.Count; index++)
@@ -155,6 +165,39 @@ namespace RPG.Game.Tests
             }
 
             Debug.Log($"[BagWindowTest] GE 测试食物领取完成，requested={effectFoodDefinitions.Count}, succeeded={addedCount}。", this);
+        }
+
+        /// <summary>从正式物品数据库收集 GE 测试食物；Play Mode 加载只影响本次运行内存。</summary>
+        [Button("从 ItemDatabase 加载全部 GE 测试食物")]
+        public void ConfigureAllEffectFoods()
+        {
+            if (!TryGetEffectFoodDatabase(out ItemDatabase database) ||
+                !TryCollectEffectFoodDefinitions(database, out List<FoodItemDefinition> configuredFoods)) return;
+            if (HasSameEffectFoodConfiguration(configuredFoods))
+            {
+                string sameListMode = Application.isPlaying ? "Play Mode 内存" : "编辑器序列化";
+                Debug.Log($"[BagWindowTest] GE 食物列表已与数据库一致，count={configuredFoods.Count}, mode={sameListMode}，无需写入。", this);
+                return;
+            }
+
+            // Play Mode 使用注入数据库的运行时快照；不登记 Undo 或写入场景，停止运行后由 Unity 还原。
+            if (Application.isPlaying)
+            {
+                effectFoodDefinitions = configuredFoods;
+                Debug.Log($"[BagWindowTest] 已从运行时 ItemDatabase 加载 GE 测试食物，count={configuredFoods.Count}；退出 Play Mode 后不保留。", this);
+                return;
+            }
+
+            // 先登记 Undo，再整体替换专用列表，避免部分扫描结果污染场景配置。
+            Undo.RecordObject(this, "配置 GE 测试食物列表");
+            effectFoodDefinitions = configuredFoods;
+            EditorUtility.SetDirty(this);
+            if (PrefabUtility.IsPartOfPrefabInstance(this))
+                PrefabUtility.RecordPrefabInstancePropertyModifications(this);
+            if (gameObject.scene.IsValid())
+                EditorSceneManager.MarkSceneDirty(gameObject.scene);
+
+            Debug.Log($"[BagWindowTest] 已从 ItemDatabase 持久配置 GE 测试食物列表，count={configuredFoods.Count}。", this);
         }
 
         /// <summary>一次添加全部非武器分类的测试数据，便于验证分类切换和通用详情。</summary>
@@ -520,6 +563,133 @@ namespace RPG.Game.Tests
         #endregion
 
         #region 前置条件与记录辅助
+
+        /// <summary>按当前 Editor 阶段从正式 ItemManager 或唯一数据库资产取得数据源。</summary>
+        /// <param name="database">当前阶段可读取的物品数据库。</param>
+        /// <returns>数据库已成功取得时返回 true。</returns>
+        private bool TryGetEffectFoodDatabase(out ItemDatabase database)
+        {
+            database = null;
+            if (Application.isPlaying)
+            {
+                ItemManager itemManager = ItemManager.Instance;
+                if (!itemManager.IsConfigured)
+                {
+                    Debug.LogWarning("[BagWindowTest] Play Mode 下 ItemManager 尚未配置，无法从运行时数据库加载 GE 食物。", this);
+                    return false;
+                }
+
+                database = itemManager.Database;
+                return true;
+            }
+
+            string[] databaseGuids = AssetDatabase.FindAssets("t:ItemDatabase");
+            if (databaseGuids.Length != 1)
+            {
+                Debug.LogError(
+                    $"[BagWindowTest] 编辑模式加载 GE 食物失败：项目中应恰有一个 ItemDatabase，实际找到 {databaseGuids.Length} 个。", this);
+                return false;
+            }
+
+            string databasePath = AssetDatabase.GUIDToAssetPath(databaseGuids[0]);
+            database = AssetDatabase.LoadAssetAtPath<ItemDatabase>(databasePath);
+            if (database != null) return true;
+
+            Debug.LogError("[BagWindowTest] 编辑模式加载 GE 食物失败：唯一的 ItemDatabase 资产无法加载。", this);
+            return false;
+        }
+
+        /// <summary>从物品数据库收集使用 GE_Food_ 效果的食物定义。</summary>
+        /// <param name="database">当前 Editor 阶段取得的物品数据库。</param>
+        /// <param name="configuredFoods">按数据库顺序收集的候选食物。</param>
+        /// <returns>数据库和全部候选符合预期数量及唯一性时返回 true。</returns>
+        private bool TryCollectEffectFoodDefinitions(ItemDatabase database,
+            out List<FoodItemDefinition> configuredFoods)
+        {
+            configuredFoods = new List<FoodItemDefinition>(ExpectedEffectFoodCount);
+            if (database == null || database.Definitions == null)
+            {
+                Debug.LogError("[BagWindowTest] 从 ItemDatabase 收集 GE 食物失败：数据库或定义列表为空。", this);
+                return false;
+            }
+
+            var uniqueFoodItemIdValues = new HashSet<string>();
+            for (int index = 0; index < database.Definitions.Count; index++)
+            {
+                ItemDefinition itemDefinition = database.Definitions[index];
+                if (itemDefinition == null)
+                {
+                    Debug.LogError($"[BagWindowTest] 自动配置 GE 食物失败：ItemDatabase 第 {index + 1} 项为空。", this);
+                    return false;
+                }
+
+                if (itemDefinition is not FoodItemDefinition foodDefinition ||
+                    !ReferencesGeFoodEffect(foodDefinition))
+                    continue;
+
+                if (foodDefinition.Category != ItemCategory.Food || !foodDefinition.ItemId.IsValid ||
+                    foodDefinition.UseEffects == null || foodDefinition.UseEffects.Count == 0)
+                {
+                    Debug.LogError(
+                        $"[BagWindowTest] 加载 GE 食物失败：候选食物 '{foodDefinition.name}' 的分类、ItemId 或 UseEffects 无效。", this);
+                    return false;
+                }
+
+                for (int effectIndex = 0; effectIndex < foodDefinition.UseEffects.Count; effectIndex++)
+                {
+                    if (foodDefinition.UseEffects[effectIndex] != null) continue;
+                    Debug.LogError(
+                        $"[BagWindowTest] 加载 GE 食物失败：候选食物 '{foodDefinition.name}' 的第 {effectIndex + 1} 个 GE 为空。", this);
+                    return false;
+                }
+
+                if (!uniqueFoodItemIdValues.Add(foodDefinition.ItemId.Value))
+                {
+                    Debug.LogError(
+                        $"[BagWindowTest] 加载 GE 食物失败：ItemId '{foodDefinition.ItemId}' 重复。", this);
+                    return false;
+                }
+
+                configuredFoods.Add(foodDefinition);
+            }
+
+            if (configuredFoods.Count == ExpectedEffectFoodCount) return true;
+
+            Debug.LogError(
+                $"[BagWindowTest] 加载 GE 食物失败：预期 {ExpectedEffectFoodCount} 种，实际找到 {configuredFoods.Count} 种；原列表未修改。", this);
+            configuredFoods.Clear();
+            return false;
+        }
+
+        /// <summary>判断食物是否引用名称具有约定前缀的 Gameplay Effect。</summary>
+        /// <param name="foodDefinition">待判断的食物定义。</param>
+        /// <returns>至少包含一个 GE_Food_ 效果时返回 true。</returns>
+        private static bool ReferencesGeFoodEffect(FoodItemDefinition foodDefinition)
+        {
+            IReadOnlyList<GameplayEffectData> useEffects = foodDefinition.UseEffects;
+            if (useEffects == null) return false;
+
+            for (int index = 0; index < useEffects.Count; index++)
+            {
+                GameplayEffectData effect = useEffects[index];
+                if (effect == null) continue;
+
+                if (effect.name.StartsWith(EffectFoodNamePrefix, StringComparison.Ordinal)) return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>比较当前专用列表与数据库收集结果，避免重复点击造成无意义场景修改。</summary>
+        /// <param name="configuredFoods">本次数据库收集结果。</param>
+        /// <returns>数量和顺序均一致时返回 true。</returns>
+        private bool HasSameEffectFoodConfiguration(IReadOnlyList<FoodItemDefinition> configuredFoods)
+        {
+            if (effectFoodDefinitions == null || effectFoodDefinitions.Count != configuredFoods.Count) return false;
+            for (int index = 0; index < configuredFoods.Count; index++)
+                if (effectFoodDefinitions[index] != configuredFoods[index]) return false;
+            return true;
+        }
 
         /// <summary>检查测试圣遗物引用和圣遗物分类契约。</summary>
         /// <param name="definition">通过检查的圣遗物定义。</param>

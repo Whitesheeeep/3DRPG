@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: "\u51FB\u8D25 Odetta"
   m_EditorClassIdentifier: 
   taskId: side_defeat_boss_odetta
-  categoryId: side
+  categoryId: main
   title: "\u51FB\u8D25 Odetta"
   description: "\u51FB\u8D25 Boss Odetta\uFF0C\u5E76\u8FD4\u56DE\u963F\u857E\u5947\u8BFA\u5904\u6C47\u62A5\u3002"
   unlockConditions: []

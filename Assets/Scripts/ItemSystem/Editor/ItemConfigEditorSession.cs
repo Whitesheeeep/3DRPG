@@ -18,7 +18,15 @@ namespace RPG.ItemSystem.Editor
 
         /// <summary>保存数据库资产路径。</summary>
         /// <param name="path">资产路径。</param>
-        internal static void SetDatabasePath(string path) => SessionState.SetString(DatabaseKey, path ?? string.Empty);
+        internal static void SetDatabasePath(string path)
+        {
+            string normalizedPath = path ?? string.Empty;
+            if (string.Equals(DatabasePath, normalizedPath, System.StringComparison.Ordinal)) return;
+
+            SessionState.SetString(DatabaseKey, normalizedPath);
+            // 字段候选来源改变后通知 Catalog，下一次读取时才重新解析数据库。
+            ItemIdEditorCatalog.Invalidate();
+        }
 
         /// <summary>获取上次选择的物品资产路径。</summary>
         internal static string DefinitionPath => SessionState.GetString(DefinitionKey, string.Empty);
