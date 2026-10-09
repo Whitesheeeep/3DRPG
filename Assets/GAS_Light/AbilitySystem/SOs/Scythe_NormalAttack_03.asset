@@ -1,25 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &11400000
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bf2d0fbc1a23bf1499d50e84ac66304b, type: 3}
-  m_Name: Scythe_NormalAttack_01
-  m_EditorClassIdentifier: 
-  id: 1512e245fc84485fbf0ef60b9d59798e
-  frameRate: 30
-  durationFrames: 260
-  isRootMotion: 1
-  tracks:
-  - {fileID: 9090366914657983836}
-  - {fileID: 5304817224089542462}
---- !u!114 &5304817224089542462
+--- !u!114 &-7510474321806873236
 MonoBehaviour:
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
@@ -31,19 +12,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e7d25faf1df4c8a8d184c88fdcb89d8, type: 3}
   m_Name: "\u52A8\u753B\u8F68\u9053"
   m_EditorClassIdentifier: 
-  id: d8914e4ab369487db762c96e9a521c3b
+  id: b63126308a2e4ff18aa3ba92da5d806b
   muted: 0
   displayName: "\u52A8\u753B\u8F68\u9053"
   editorLocked: 0
   clips:
-  - id: c4ac0157bdfb47cd83635494dcee9eba
-    animationClip: {fileID: 7400000, guid: dc3c5576cefb3c04d851fd3aa963a5eb, type: 2}
+  - id: 794ce9c014824d51b45dbf7cc0c72eb9
+    animationClip: {fileID: 7400000, guid: 542ace7f2bdcc804aaa773ca5d1b49af, type: 2}
     startFrame: 0
-    durationFrames: 63
+    durationFrames: 75
     sourceStartFrame: 0
     playbackSpeed: 1
     fadeDuration: 0.1
---- !u!114 &9090366914657983836
+--- !u!114 &-4712652568259328875
 MonoBehaviour:
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
@@ -55,8 +36,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b7edf08181143d342b9c4e9e3e3e114c, type: 3}
   m_Name: "\u52A8\u4F5C\u9636\u6BB5\u8F68\u9053"
   m_EditorClassIdentifier: 
-  id: 612302c714414b8bb8c3cac04be5c65e
+  id: 25388527b7a54ccca9bf4fef1bd0f80d
   muted: 0
   displayName: "\u52A8\u4F5C\u9636\u6BB5\u8F68\u9053"
   editorLocked: 0
   clips: []
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf2d0fbc1a23bf1499d50e84ac66304b, type: 3}
+  m_Name: Scythe_NormalAttack_03
+  m_EditorClassIdentifier: 
+  id: 34d6e149c4a94e2483a584e81991a83d
+  frameRate: 30
+  durationFrames: 80
+  isRootMotion: 1
+  tracks:
+  - {fileID: -4712652568259328875}
+  - {fileID: -7510474321806873236}

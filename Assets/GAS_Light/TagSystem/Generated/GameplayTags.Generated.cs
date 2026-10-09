@@ -6,40 +6,40 @@ namespace WS_Modules.GAS.Generated
     /// <summary>由 Gameplay Tag 烘焙器生成的稳定标签常量。</summary>
     public static class GameplayTags
     {
-        /// <summary>CueTest</summary>
-        public static readonly GameplayTag Tag_CueTest = new GameplayTag(112);
-        /// <summary>CueTest.Combat</summary>
-        public static readonly GameplayTag Tag_CueTest_Combat = new GameplayTag(186);
-        /// <summary>CueTest.Combat.HitSound</summary>
-        public static readonly GameplayTag Tag_CueTest_Combat_HitSound = new GameplayTag(188);
-        /// <summary>CueTest.Combat.HitStop</summary>
-        public static readonly GameplayTag Tag_CueTest_Combat_HitStop = new GameplayTag(187);
-        /// <summary>CueTest.Cue_Follow</summary>
-        public static readonly GameplayTag Tag_CueTest_Cue_Follow = new GameplayTag(116);
-        /// <summary>CueTest.Cue_Source</summary>
-        public static readonly GameplayTag Tag_CueTest_Cue_Source = new GameplayTag(114);
-        /// <summary>CueTest.Cue_Target</summary>
-        public static readonly GameplayTag Tag_CueTest_Cue_Target = new GameplayTag(115);
-        /// <summary>CueTest.Cue_world</summary>
-        public static readonly GameplayTag Tag_CueTest_Cue_world = new GameplayTag(113);
-        /// <summary>CueTest.GA</summary>
-        public static readonly GameplayTag Tag_CueTest_GA = new GameplayTag(122);
-        /// <summary>CueTest.GA.Instant</summary>
-        public static readonly GameplayTag Tag_CueTest_GA_Instant = new GameplayTag(123);
-        /// <summary>CueTest.GA.Passive</summary>
-        public static readonly GameplayTag Tag_CueTest_GA_Passive = new GameplayTag(124);
-        /// <summary>CueTest.GA.Projectile</summary>
-        public static readonly GameplayTag Tag_CueTest_GA_Projectile = new GameplayTag(125);
-        /// <summary>CueTest.GE</summary>
-        public static readonly GameplayTag Tag_CueTest_GE = new GameplayTag(117);
-        /// <summary>CueTest.GE.Duration</summary>
-        public static readonly GameplayTag Tag_CueTest_GE_Duration = new GameplayTag(119);
-        /// <summary>CueTest.GE.Infinite</summary>
-        public static readonly GameplayTag Tag_CueTest_GE_Infinite = new GameplayTag(120);
-        /// <summary>CueTest.GE.Instant</summary>
-        public static readonly GameplayTag Tag_CueTest_GE_Instant = new GameplayTag(118);
-        /// <summary>CueTest.GE.Periodic</summary>
-        public static readonly GameplayTag Tag_CueTest_GE_Periodic = new GameplayTag(121);
+        /// <summary>Cue</summary>
+        public static readonly GameplayTag Tag_Cue = new GameplayTag(112);
+        /// <summary>Cue.Combat</summary>
+        public static readonly GameplayTag Tag_Cue_Combat = new GameplayTag(186);
+        /// <summary>Cue.Combat.HitSound</summary>
+        public static readonly GameplayTag Tag_Cue_Combat_HitSound = new GameplayTag(188);
+        /// <summary>Cue.Combat.HitStop</summary>
+        public static readonly GameplayTag Tag_Cue_Combat_HitStop = new GameplayTag(187);
+        /// <summary>Cue.Cue_Follow</summary>
+        public static readonly GameplayTag Tag_Cue_Cue_Follow = new GameplayTag(116);
+        /// <summary>Cue.Cue_Source</summary>
+        public static readonly GameplayTag Tag_Cue_Cue_Source = new GameplayTag(114);
+        /// <summary>Cue.Cue_Target</summary>
+        public static readonly GameplayTag Tag_Cue_Cue_Target = new GameplayTag(115);
+        /// <summary>Cue.Cue_world</summary>
+        public static readonly GameplayTag Tag_Cue_Cue_world = new GameplayTag(113);
+        /// <summary>Cue.GA</summary>
+        public static readonly GameplayTag Tag_Cue_GA = new GameplayTag(122);
+        /// <summary>Cue.GA.Instant</summary>
+        public static readonly GameplayTag Tag_Cue_GA_Instant = new GameplayTag(123);
+        /// <summary>Cue.GA.Passive</summary>
+        public static readonly GameplayTag Tag_Cue_GA_Passive = new GameplayTag(124);
+        /// <summary>Cue.GA.Projectile</summary>
+        public static readonly GameplayTag Tag_Cue_GA_Projectile = new GameplayTag(125);
+        /// <summary>Cue.GE</summary>
+        public static readonly GameplayTag Tag_Cue_GE = new GameplayTag(117);
+        /// <summary>Cue.GE.Duration</summary>
+        public static readonly GameplayTag Tag_Cue_GE_Duration = new GameplayTag(119);
+        /// <summary>Cue.GE.Infinite</summary>
+        public static readonly GameplayTag Tag_Cue_GE_Infinite = new GameplayTag(120);
+        /// <summary>Cue.GE.Instant</summary>
+        public static readonly GameplayTag Tag_Cue_GE_Instant = new GameplayTag(118);
+        /// <summary>Cue.GE.Periodic</summary>
+        public static readonly GameplayTag Tag_Cue_GE_Periodic = new GameplayTag(121);
         /// <summary>Data</summary>
         public static readonly GameplayTag Tag_Data = new GameplayTag(178);
         /// <summary>Data.Damage</summary>
@@ -52,18 +52,6 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_GE_Buff = new GameplayTag(190);
         /// <summary>GE.Buff.AddArmor</summary>
         public static readonly GameplayTag Tag_GE_Buff_AddArmor = new GameplayTag(191);
-        /// <summary>Intent</summary>
-        public static readonly GameplayTag Tag_Intent = new GameplayTag(138);
-        /// <summary>Intent.Interaction</summary>
-        public static readonly GameplayTag Tag_Intent_Interaction = new GameplayTag(140);
-        /// <summary>Intent.Interaction.Execute</summary>
-        public static readonly GameplayTag Tag_Intent_Interaction_Execute = new GameplayTag(141);
-        /// <summary>Intent.Interaction.Next</summary>
-        public static readonly GameplayTag Tag_Intent_Interaction_Next = new GameplayTag(142);
-        /// <summary>Intent.Interaction.Previous</summary>
-        public static readonly GameplayTag Tag_Intent_Interaction_Previous = new GameplayTag(143);
-        /// <summary>Intent.WantInteract</summary>
-        public static readonly GameplayTag Tag_Intent_WantInteract = new GameplayTag(139);
         /// <summary>Skill</summary>
         public static readonly GameplayTag Tag_Skill = new GameplayTag(126);
         /// <summary>Skill.ActiveAbility</summary>
