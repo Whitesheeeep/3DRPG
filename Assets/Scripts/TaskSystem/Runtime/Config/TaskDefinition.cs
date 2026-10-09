@@ -114,11 +114,6 @@ namespace RPG.TaskSystemNS
                 throw new ArgumentException($"任务 {taskId} 至少需要一个阶段。", nameof(stages));
             }
 
-            if (rewards.Count == 0)
-            {
-                throw new ArgumentException($"任务 {taskId} 至少需要一个奖励。", nameof(rewards));
-            }
-
             var stageIds = new HashSet<TaskStageId>();
             for (int index = 0; index < stages.Count; index++)
             {

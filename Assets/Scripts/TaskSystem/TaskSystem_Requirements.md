@@ -56,6 +56,7 @@
 | 统一资格查询和接取 API；前置任务已完成条件 | 已实现 |
 | Objective Definition 创建 Runtime、阶段监听与切换、追踪、未读和任务事实事件 | 已实现 |
 | 引用指定 `DialogueAsset` 并在其正常结束时累计目标进度 | 已实现；首个正式玩法目标 |
+| 当前任务阶段监听并累计击败指定 `NPCIdentityDefinition` 的事件目标 | 已实现；Odetta 击败任务已配置 |
 | 手动提交通用奖励；摩拉、原石、可堆叠物品、武器和圣遗物统一预检与发放 | 已实现 |
 | 保存当前阶段进度、活动状态、追踪、未读和完成 ID；任务模块 v2 | 已实现 |
 | 任务链/章节、更多接取条件和新的奖励类型 | 后续扩展 |
@@ -212,7 +213,8 @@ TryAcceptTask(TaskId taskId, TaskAcceptSource source) -> TaskAcceptResult
 
 每个目标归属一个阶段；Objective Definition 负责创建独立的目标 Runtime，配置对象不保存运行状态：
 
-- 当前正式目标 `TaskDialogueCompletedObjectiveDefinition` 引用一个 `DialogueAsset`，并可选填 NPCId 作为导航来源；目标 Runtime 在当前阶段监听 `DialogueEndedEvent`。只有该资源以 `DialogueEndStatus.Completed` 结束时增加 1，`Required` 默认 1。开始会话、失败结束、其他资源和监听启动前的历史会话均不补计。
+- 当前正式目标 `TaskDialogueCompletedObjectiveDefinition` 引用一个 `DialogueAsset`，并可选引用 `NPCIdentityDefinition` 作为导航来源；目标 Runtime 在当前阶段监听 `DialogueEndedEvent`。只有该资源以 `DialogueEndStatus.Completed` 结束时增加 1，`Required` 默认 1。开始会话、失败结束、其他资源和监听启动前的历史会话均不补计。
+- `TaskNPCDefeatedObjectiveDefinition` 引用 `NPCIdentityDefinition` 并在所属阶段监听 `NPCDefeatedEventArgs`；只累计监听期间且 NPCId 匹配的击败事件，阶段停止后注销，不补记历史。导航由 NPCManager 查询当前实例，不将 Transform 写入任务进度或存档。
 - 其他玩法目标通过自己的 Definition 工厂创建相应 Runtime；新的目标类型无需加入 Objective Handler 注册表。
 - 阶段完成只由当前阶段目标决定，后续阶段目标不能提前计入。
 - 阶段切换时停止旧阶段目标监听，再创建并启动新阶段目标监听。
@@ -228,7 +230,7 @@ TryAcceptTask(TaskId taskId, TaskAcceptSource source) -> TaskAcceptResult
 
 ## 6. NPC 导航契约
 
-对话 Objective 可以配置稳定 NPCId。配置了 NPCId 时，其 Runtime 在启动监听时从 GameArchitecture 获取并缓存 NPCManager，再按 ID 查询当前场景 NPC 锚点。TaskStageRuntime 按配置顺序选择首个未完成且声明导航能力的 Runtime，TaskSystem 将最终 Transform 暴露给 HUD 查询。NPC 未加载时查询失败并隐藏指示标，不跳到后续目标。该查询不改变 Objective 完成条件、不写入任务记录，也不进入存档。
+对话 Objective 可以引用 `NPCIdentityDefinition` 作为可选导航来源；击败目标使用该 SO 作为唯一 NPC 身份配置。SO 的 `identityId` 是唯一持久化身份，新资产由 Editor 自动生成 GUID 字符串；Rusk、Arlecchino、ANPC 和 Boss Odetta 的旧 NPCId 字符串已直接迁入该字段，因此现有 JSON/Toggle 记录保持兼容。隐藏的 Editor 所属 `.meta` GUID 只用于确认资产复制来源，不作为运行时身份；可确认的复制品会获得新 `identityId`，来源不明的重复 ID 只报错、不自动覆盖。配置了导航目标时，Runtime 在启动监听时从 GameArchitecture 获取并缓存 NPCManager，再按身份解析当前场景锚点。TaskStageRuntime 按配置顺序选择首个未完成且声明导航能力的 Runtime，TaskSystem 将最终 Transform 暴露给 HUD 查询。NPC 未加载时查询失败并隐藏指示标，不跳到后续目标。该查询不改变 Objective 完成条件、不写入任务记录，也不进入存档。
 
 任务层只提供目标 Transform，不依赖 HUD，也不保存 Transform 到任务记录或存档：
 
@@ -236,7 +238,7 @@ TryAcceptTask(TaskId taskId, TaskAcceptSource source) -> TaskAcceptResult
 TaskSystem.TryGetTrackedNavigationTarget(out Transform target)
 ```
 
-- NPC 使用区分大小写的稳定 ID，由 NPCManager 解析当前已加载实例及显式导航锚点。
+- NPC 使用 `NPCIdentityDefinition` SO 配置身份，由 NPCManager 通过稳定 NPCId 解析当前已加载实例及显式导航锚点。
 - 当前阶段没有导航配置，或首个选定 NPC 暂不可解析时，任务仍可追踪，查询返回 `false`。
 - SceneEntity、WorldPosition 和 Area 导航类型留待对应目标类型接入时定义。
 - 任务系统不自动打开地图、不移动玩家、不选择传送点，也不负责寻路。
@@ -327,7 +329,7 @@ Query 只读，不修改任务状态；ViewModel 通过 Command 调用接取、�
 
 HUD 左侧摘要只显示当前追踪的活动任务，包含任务标题和当前阶段的全部目标进度；完成目标保留在列表并显示绿色图像标记，完成文字较小且显示为低对比度灰色。任务待领奖时摘要仍显示绿色“可领取奖励”，取消追踪或领奖完成后隐藏。该 HUD 只展示任务事实，不接收点击，也不确认任务未读。目标说明按“目标说明、阶段标题、完成目标”顺序回退；存在匹配的导航位置时显示三维距离，没有位置来源时隐藏距离行。摘要和目标行使用 UGUI LayoutGroup 管理排布。
 
-中间世界标记由追踪任务的当前阶段目标驱动。对话目标可选配置 NPCId；任务层选择首个未完成且具备导航能力的目标，对话 Runtime 在启动监听时获取并缓存 NPCManager，再查询已加载 NPC 的显式锚点 Transform。HUD 仅在任务为 `InProgress` 且目标 Transform 可用时投影标记；NPC 暂未加载时隐藏标记和距离，场景注册后自动显示。屏幕外或相机背后的目标显示在安全边缘并旋转方向箭头。
+中间世界标记由追踪任务的当前阶段目标驱动。对话目标可选配置 `NPCIdentityDefinition`；任务层选择首个未完成且具备导航能力的目标，对话 Runtime 在启动监听时获取并缓存 NPCManager，再查询已加载 NPC 的显式锚点 Transform。HUD 仅在任务为 `InProgress` 且目标 Transform 可用时投影标记；NPC 暂未加载时隐藏标记和距离，场景注册后自动显示。屏幕外或相机背后的目标显示在安全边缘并旋转方向箭头。
 
 ~~~mermaid
 flowchart LR
@@ -485,6 +487,7 @@ sequenceDiagram
 - 当前追踪任务处于 `InProgress` 且阶段首个未完成导航目标可解析时显示中间世界标记与左侧距离；NPC 暂未加载或没有目标时隐藏。
 - 屏幕内目标显示标记和整数米数；屏幕外及相机背后目标被限制到视口安全边缘，方向箭头指向目标方向。
 - 任务测试按钮只负责接取或追踪，不传入 HUD 导航目标；NPC 导航由 Objective 配置、NPCIdentity 注册和 TaskSystem 查询驱动。
+- 正式任务 `side_defeat_boss_odetta` 要求在当前任务阶段监听期间击败 Odetta 一次；不自动接取、不配置前置条件或奖励。目标完成后仍经过 Claimable 和领取流程，空奖励批次成功提交后关闭任务。
 
 ## 13. 后续实现顺序
 

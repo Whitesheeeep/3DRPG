@@ -218,7 +218,8 @@ Objective Definition 直接创建各任务实例独有的 Runtime；新增目标
 | 扩展内容 | 继承或实现 | 放置和登记方式 |
 | --- | --- | --- |
 | 新任务目标配置 | 继承 [TaskObjectiveDefinition](Runtime/Objectives/Definitions/TaskObjectiveDefinition.cs)，实现 `CreateRuntime()` 并在校验时先调用 `base.Validate()` | 放入 `Runtime/Objectives/Definitions/`；在任务资产对应阶段的目标列表中配置 |
-| 完成指定对话资源 | 使用 [`TaskDialogueCompletedObjectiveDefinition`](Runtime/Objectives/Definitions/TaskDialogueCompletedObjectiveDefinition.cs)，引用 `DialogueAsset`、设置 `Required`，可选配置导航 NPCId | 在阶段目标列表配置；Definition 直接创建对话 Runtime |
+| 完成指定对话资源 | 使用 [`TaskDialogueCompletedObjectiveDefinition`](Runtime/Objectives/Definitions/TaskDialogueCompletedObjectiveDefinition.cs)，引用 `DialogueAsset`、设置 `Required`，可选引用 `NPCIdentityDefinition` 作为导航来源 | 在阶段目标列表配置；Definition 直接创建对话 Runtime |
+| 击败指定 NPC | 使用 [`TaskNPCDefeatedObjectiveDefinition`](Runtime/Objectives/Definitions/TaskNPCDefeatedObjectiveDefinition.cs)，引用 `NPCIdentityDefinition` 并设置击败次数 | 阶段激活时监听 `NPCDefeatedEventArgs`；按 NPC 稳定身份匹配并可通过 NPCManager 导航 |
 | 目标运行时 | 实现 [ITaskObjectiveRuntime](Runtime/Objectives/Interfaces/ITaskObjectiveRuntime.cs)，需要导航时实现 `ITaskObjectiveNavigationProvider` | 由对应 Definition 创建；阶段 Runtime 管理监听生命周期 |
 | 新接取条件配置 | 继承 [TaskConditionDefinition](Runtime/Conditions/Definitions/TaskConditionDefinition.cs) 并实现自己的 `Validate()` | 放入 `Runtime/Conditions/Definitions/`；在任务资产的接取条件列表中配置 |
 | 条件 Handler | 实现 [ITaskConditionHandler](Runtime/Conditions/Interfaces/ITaskConditionHandler.cs) | 放入 `Runtime/Conditions/Handlers/`；在 [TaskConditionHandlerRegistry](Runtime/Conditions/Registries/TaskConditionHandlerRegistry.cs) 的 `RegisterDefault()` 中调用 `Register<TDefinition>()` |
@@ -234,7 +235,30 @@ flowchart LR
     Context --> Record[TaskRuntime 持有的 TaskRecord]
 ~~~
 
-当前正式目标是完成指定的 `DialogueAsset`。Definition 直接创建 [`TaskDialogueCompletedObjectiveRuntime`](Runtime/Objectives/Handlers/TaskDialogueCompletedObjectiveRuntime.cs)；Runtime 只在当前阶段订阅 `DialogueEndedEvent`，并同时要求 `Status == Completed` 与 `Session.Request.Asset` 引用相同。开始对话、Failed 结束、其他资源及接取前的历史对话都不计数。`Required` 默认为 1；任务 v2 快照仍只保存当前阶段的目标进度，恢复监听不会重放结束事件。可选 NPCId 只用于导航定位，不改变完成判定。对话结束事件由 [`DialogueSystem`](../DialogueSystem/Runtime/DialogueSystem.cs) 在会话资源清理后通过 WSFrame `EventSystem` 发布。
+当前正式目标是完成指定的 `DialogueAsset`。Definition 直接创建 [`TaskDialogueCompletedObjectiveRuntime`](Runtime/Objectives/Handlers/TaskDialogueCompletedObjectiveRuntime.cs)；Runtime 只在当前阶段订阅 `DialogueEndedEvent`，并同时要求 `Status == Completed` 与 `Session.Request.Asset` 引用相同。开始对话、Failed 结束、其他资源及接取前的历史对话都不计数。`Required` 默认为 1；任务 v2 快照仍只保存当前阶段的目标进度，恢复监听不会重放结束事件。可选 `NPCIdentityDefinition` 只用于导航定位，不改变完成判定。对话结束事件由 [`DialogueSystem`](../DialogueSystem/Runtime/DialogueSystem.cs) 在会话资源清理后通过 WSFrame `EventSystem` 发布。
+
+击败目标通过 `TaskNPCDefeatedObjectiveDefinition` 引用 `NPCIdentityDefinition`，由 [`TaskNPCDefeatedObjectiveRuntime`](Runtime/Objectives/Handlers/TaskNPCDefeatedObjectiveRuntime.cs) 在所属阶段启动时订阅 `NPCDefeatedEventArgs`。仅匹配同一身份且发生在监听期间的死亡会累计进度；阶段完成、停止或任务清理时注销监听，不补记接取之前的历史。导航仍只在运行时通过 NPCManager 查询当前场景锚点，快照仅保存既有目标进度，不保存 Transform 或 NPC 场景引用。
+
+NPC 身份的作者配置来自 `NPCIdentityDefinition` SO，不手填 NPCId；其 `identityId` 是唯一持久化字段。新身份由 Editor 自动生成 GUID 字符串；Rusk、Arlecchino、ANPC 与 Boss Odetta 的原 NPCId 字符串已直接迁入此字段，兼容已有 JSON 和对话 Toggle 存档。资产重命名、移动或 meta GUID 变化不改变运行时身份；隐藏的 Editor 所属 GUID 仅用于确认复制来源，可确认的复制品获得新的 `identityId`，来源不明的重复身份会报错且不自动改写。击败任务 `side_defeat_boss_odetta` 已加入 TaskDatabase，要求击败一次 Odetta，无自动接取、前置条件和奖励；无奖励任务仍沿现有 Claimable/领取流程完成，空奖励批次不改变玩家物品与货币。
+
+```mermaid
+sequenceDiagram
+    participant ASC as NPC 的 ASC
+    participant Controller as NPCController
+    participant Root as Alive/Dead 根状态机
+    participant Center as WSFrame EventSystem
+    participant Objective as TaskNPCDefeatedObjectiveRuntime
+    ASC->>Controller: AttributeChanged(Health, old > 0, new <= 0)
+    Controller->>ASC: 添加 Loose Tag State.Dead
+    Root->>Root: Update 检查 Alive → Dead
+    Root->>Controller: BeginDeath()
+    Controller->>ASC: ForceCancelAllAbilities()
+    Controller->>Center: 发布 NPCDefeatedEventArgs(NPCId)
+    Center->>Objective: 匹配目标身份
+    Objective->>Objective: AddProgress(1)
+    Controller->>Controller: Base 播放 DeathTransition
+    Controller->>Controller: 动画结束后销毁 NPC 实例
+```
 
 ~~~mermaid
 sequenceDiagram

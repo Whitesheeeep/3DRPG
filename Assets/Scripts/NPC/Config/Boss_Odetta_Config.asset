@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Boss_Odetta_Config
   m_EditorClassIdentifier: 
   initialAttributeSets:
-  - {fileID: 11400000, guid: fa050d1171257b24bbba13162066da88, type: 2}
+  - {fileID: 11400000, guid: 17420cb7ad28dcc42924daee744719b8, type: 2}
   growthProfile: {fileID: 11400000, guid: 97d67dd087a07f32084b09982729c1b7, type: 2}
   resourceRules:
   - resourceAttribute:
@@ -41,4 +41,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 15a1848130fb1934334e6b1ea514569b, type: 2}
   idleTransition: {fileID: 11400000, guid: fba2de96f2c9c704d9b02f1f20b43088, type: 2}
   moveTransition: {fileID: 11400000, guid: ee0cb3205a1d90547980dbc7aee1615f, type: 2}
+  deathTransition: {fileID: 11400000, guid: b8e18000000000000000000000000005, type: 2}
+  activationRules: {fileID: 11400000, guid: 6aef4de02d8d4b9aa6f1e0c4e305f1d2, type: 2}
   moveParameterX: {fileID: 11400000, guid: bf95c5c8b0cc5d441b7abe5dc3e7977e, type: 2}

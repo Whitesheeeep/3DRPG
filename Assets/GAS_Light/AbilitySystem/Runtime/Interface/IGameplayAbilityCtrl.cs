@@ -91,6 +91,10 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <returns>Runtime 属于当前 Controller 且成功取消时返回 true。</returns>
         bool TryCancel(GameplayAbilityRuntime runtime);
 
+        /// <summary>强制取消全部 Active Runtime，但保留已授予的 Ability Spec。</summary>
+        /// <returns>本次取消的 Runtime 数量。</returns>
+        int ForceCancelAll();
+
         /// <summary>逐个取消 Active Runtime 并清除所有 Spec。</summary>
         void Clear();
     }

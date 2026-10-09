@@ -31,7 +31,7 @@ namespace RPG.NPC
         [Button("切换到 Idle"), GUIColor(0.75f, 0.9f, 1f)]
         public void SetIdle()
         {
-            bool changed = npcController.TrySetLocomotionState(BossLocomotionStateId.Idle);
+            bool changed = npcController.TrySetLocomotionState(E_NPCStateId.Idle);
             Debug.Log(
                 $"[BossOdinTester] 请求 Boss Idle，changed={changed}，state={npcController.Locomotion.CurrentState}。",
                 npcController);
@@ -41,7 +41,7 @@ namespace RPG.NPC
         [Button("切换到 Move"), GUIColor(0.75f, 1f, 0.75f)]
         public void SetMove()
         {
-            bool changed = npcController.TrySetLocomotionState(BossLocomotionStateId.Move);
+            bool changed = npcController.TrySetLocomotionState(E_NPCStateId.Move);
             Debug.Log(
                 $"[BossOdinTester] 请求 Boss Move，changed={changed}，state={npcController.Locomotion.CurrentState}。",
                 npcController);
