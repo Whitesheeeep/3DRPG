@@ -1,0 +1,96 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-8154284774511393782
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afa82bc2ce69471a8fbb64b182a292ad, type: 3}
+  m_Name: Speech 002
+  m_EditorClassIdentifier: 
+  nodeId: 96e3d962-7598-49a7-8137-2641f436af24
+  editorPosition: {x: 259.83005, y: -74.11601}
+  nodeName: Speech 002
+  speaker: {fileID: 11400000, guid: baf9b9423f2857544a391a4249831cdb, type: 2}
+  dialogueName: Rusk
+  text: "\u6211\u662F Rusk"
+  animationClip: {fileID: 7400000, guid: a493989422253ab4e91b3c2997622ac7, type: 2}
+  voiceClip: {fileID: 0}
+  animationFadeDuration: 0
+  nextNode: {fileID: 6141032006984670764}
+  choices: []
+--- !u!114 &-8029123600260079736
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43893bc859cd4e6086ef32b05a8d47f9, type: 3}
+  m_Name: EntryNode
+  m_EditorClassIdentifier: 
+  nodeId: c82afd45-b4c1-400a-953d-384721c5b3c6
+  editorPosition: {x: -336.80002, y: -73.60002}
+  firstSpeechNode: {fileID: 227286499581035340}
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8fc6020cc6de497bb9a10045174cd476, type: 3}
+  m_Name: TaskForRuskName
+  m_EditorClassIdentifier: 
+  dialogueId: TaskForRuskName
+  entryNode: {fileID: -8029123600260079736}
+  nodes:
+  - {fileID: -8029123600260079736}
+  - {fileID: 227286499581035340}
+  - {fileID: 6141032006984670764}
+  - {fileID: -8154284774511393782}
+--- !u!114 &227286499581035340
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afa82bc2ce69471a8fbb64b182a292ad, type: 3}
+  m_Name: Speech 001
+  m_EditorClassIdentifier: 
+  nodeId: 68c2adb7-bcc1-422f-900e-3cb322fbca57
+  editorPosition: {x: -24.800003, y: -73.6}
+  nodeName: Speech 001
+  speaker: {fileID: 11400000, guid: 032bd966221ad854ab394fca1df0980c, type: 2}
+  dialogueName: "\u73A9\u5BB6"
+  text: "\u4F60\u662F\u8C01"
+  animationClip: {fileID: 0}
+  voiceClip: {fileID: 0}
+  animationFadeDuration: 0
+  nextNode: {fileID: -8154284774511393782}
+  choices: []
+--- !u!114 &6141032006984670764
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8553e8b9ae924407be47d6c9292d2d05, type: 3}
+  m_Name: EndNode
+  m_EditorClassIdentifier: 
+  nodeId: c598d67c-6734-47db-aa3f-f8d5b1f5f264
+  editorPosition: {x: 591.3893, y: -70.16011}

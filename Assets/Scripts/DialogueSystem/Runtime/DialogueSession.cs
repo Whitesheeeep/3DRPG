@@ -145,7 +145,7 @@ namespace RPG.DialogueSystemModule
             }
 
             if (activeAnimationPlayer == null) return;
-            activeAnimationPlayer.StopLayer(AnimationLayerType.Action);
+            activeAnimationPlayer.FadeLayer(AnimationLayerType.Action, 0f, 0.5f);
             activeAnimationPlayer = null;
         }
         #endregion

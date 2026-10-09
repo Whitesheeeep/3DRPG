@@ -405,31 +405,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 3042043195680452998, guid: 5ab5a885ba65a144f8dc9347a9b719bd, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -1.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 3768085745794218671, guid: 5ab5a885ba65a144f8dc9347a9b719bd, type: 3}
-      propertyPath: startInPresentationMode
-      value: 1
+      value: -4.499998
       objectReference: {fileID: 0}
     - target: {fileID: 4276619470680923270, guid: 5ab5a885ba65a144f8dc9347a9b719bd, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -1.5
+      value: -4.499998
       objectReference: {fileID: 0}
     - target: {fileID: 5630561057410344582, guid: 5ab5a885ba65a144f8dc9347a9b719bd, type: 3}
       propertyPath: m_Name
       value: GameplayCamera
-      objectReference: {fileID: 0}
-    - target: {fileID: 5979164091502630231, guid: 5ab5a885ba65a144f8dc9347a9b719bd, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.9
-      objectReference: {fileID: 0}
-    - target: {fileID: 7862601805684671082, guid: 5ab5a885ba65a144f8dc9347a9b719bd, type: 3}
-      propertyPath: m_ClearFlags
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 7862601805684671082, guid: 5ab5a885ba65a144f8dc9347a9b719bd, type: 3}
-      propertyPath: field of view
-      value: 60
       objectReference: {fileID: 0}
     - target: {fileID: 8145855545693021056, guid: 5ab5a885ba65a144f8dc9347a9b719bd, type: 3}
       propertyPath: m_LocalPosition.x
@@ -473,7 +457,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8488537453789091087, guid: 5ab5a885ba65a144f8dc9347a9b719bd, type: 3}
       propertyPath: CameraDistance
-      value: 1.5
+      value: 4.499998
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

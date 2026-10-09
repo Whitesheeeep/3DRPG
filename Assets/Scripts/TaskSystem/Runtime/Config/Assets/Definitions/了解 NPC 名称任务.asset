@@ -1,0 +1,65 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c207a3c4376e36418e7c35d34013a6b, type: 3}
+  m_Name: "\u4E86\u89E3 NPC \u540D\u79F0\u4EFB\u52A1"
+  m_EditorClassIdentifier: 
+  taskId: side_001_dialogue
+  categoryId: side
+  title: "\u4E86\u89E3 NPC \u540D\u79F0\u4EFB\u52A1"
+  description: "\u53BB\u4E86\u89E3\u5404\u4E2A NPC \u5427\uFF01\u81F3\u5C11\u77E5\u9053\u4ED6\u4EEC\u7684\u540D\u5B57\u5427\uFF01"
+  unlockConditions: []
+  stages:
+  - stageId: stage_001
+    title: "\u8BA4\u4E3A Rusk"
+    description: "\u53BB\u4E86\u89E3 Rusk \u5427\uFF01"
+    objectives:
+    - rid: 1466742107628896260
+  - stageId: stage_002
+    title: "\u8BA4\u8BC6\u963F\u857E\u5947\u8BFA"
+    description: "\u53BB\u548C\u963F\u857E\u5947\u8BFA\u5BF9\u8BDD\u5427\uFF0C\u4E86\u89E3\u5176\u540D\u5B57"
+    objectives:
+    - rid: 1466742107628896264
+  rewards:
+  - rid: 1466742107628896259
+  - rid: 1466742107628896262
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742107628896259
+      type: {class: CurrencyRewardDefinition, ns: RPG.RewardSystemNS, asm: Assembly-CSharp}
+      data:
+        amounts:
+        - currencyId: 1
+          amount: 10000
+    - rid: 1466742107628896260
+      type: {class: TaskDialogueCompletedObjectiveDefinition, ns: RPG.TaskSystemNS, asm: Assembly-CSharp}
+      data:
+        objectiveId: dialogue.rusk
+        displayDescription: "\u53BB\u548C Rusk \u5BF9\u8BDD\u5427\uFF0C\u4E86\u89E3\u5176\u540D\u5B57"
+        required: 1
+        dialogueAsset: {fileID: 11400000, guid: c9d0e00cfeb6fab45badae0c4d39d646, type: 2}
+        npcId: Rusk
+    - rid: 1466742107628896262
+      type: {class: ItemRewardDefinition, ns: RPG.RewardSystemNS, asm: Assembly-CSharp}
+      data:
+        items:
+        - itemId:
+            value: weapon_0004
+          quantity: 1
+    - rid: 1466742107628896264
+      type: {class: TaskDialogueCompletedObjectiveDefinition, ns: RPG.TaskSystemNS, asm: Assembly-CSharp}
+      data:
+        objectiveId: dialogue.ArlecchinoNPC
+        displayDescription: "\u53BB\u548C\u963F\u857E\u5947\u8BFA\u5BF9\u8BDD\uFF0C\u4E86\u89E3\u5176\u540D\u5B57"
+        required: 1
+        dialogueAsset: {fileID: 11400000, guid: e89169adb2259904f8b60c37d576e71e, type: 2}
+        npcId: ArlecchinoNPC

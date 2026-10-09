@@ -7,7 +7,6 @@
 // 6. 当 UI 删除、重命名或修改组件类型时，旧事件方法不会自动删除，请手动清理。
 using DG.Tweening;
 using RPG.Game.UI.Controllers;
-using RPG.TaskSystemNS;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
@@ -98,21 +97,6 @@ namespace WS_Modules.UIModule
 		{
 			// 生成代码仍绑定 HUDWindow 方法；业务意图由同根 Controller 发布，保持 Window 与 MVC 边界清晰。
 			controller.HandleBagButtonClicked();
-		}
-
-		/// <summary>将外部提供的测试或玩法目标转交给 HUD 任务控制器。</summary>
-		/// <param name="taskId">目标所属任务标识。</param>
-		/// <param name="target">目标世界 Transform。</param>
-		/// <param name="offset">相对目标原点的世界坐标偏移。</param>
-		public void SetTaskNavigationTarget(TaskId taskId, Transform target, Vector3 offset)
-		{
-			controller.SetTaskNavigationTarget(taskId, target, offset);
-		}
-
-		/// <summary>清除 HUD 当前显示的外部导航目标。</summary>
-		public void ClearTaskNavigationTarget()
-		{
-			controller.ClearTaskNavigationTarget();
 		}
 
 		#endregion

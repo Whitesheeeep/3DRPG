@@ -16,8 +16,7 @@ namespace RPG.TaskSystemNS
     public sealed class TaskSystem : AbstractSystem
     {
         #region 依赖字段
-        // 依赖字段：注册表解释多态定义；RewardSystem 原子准备并提交跨领域奖励；SaveManager 管理任务快照。
-        private readonly TaskObjectiveHandlerRegistry objectiveHandlerRegistry;
+        // 依赖字段：条件注册表、奖励、红点与存档系统协作完成玩家任务业务。
         private readonly TaskConditionHandlerRegistry conditionHandlerRegistry;
         private readonly RewardSystem rewardSystem;
         private readonly RedDotSystem redDotSystem;
@@ -40,31 +39,24 @@ namespace RPG.TaskSystemNS
         #endregion
 
         #region 构造与生命周期
-        /// <summary>创建任务业务系统及其显式 Handler 注册表和奖励入口。</summary>
-        /// <param name="objectiveHandlerRegistry">目标定义到目标 Handler 的注册表。</param>
+        /// <summary>创建任务业务系统及其接取条件、奖励和红点入口。</summary>
         /// <param name="conditionHandlerRegistry">接取条件定义到条件 Handler 的注册表。</param>
         /// <param name="rewardSystem">负责准备并提交通用奖励的系统。</param>
         /// <param name="redDotSystem">负责任务未读红点的统一运行时系统。</param>
         /// <param name="taskRedDotConfig">主线与支线未读红点节点配置。</param>
         /// <exception cref="ArgumentNullException">任一依赖为空时抛出。</exception>
         public TaskSystem(
-            TaskObjectiveHandlerRegistry objectiveHandlerRegistry,
             TaskConditionHandlerRegistry conditionHandlerRegistry,
             RewardSystem rewardSystem,
             RedDotSystem redDotSystem,
             TaskRedDotConfig taskRedDotConfig)
         {
-            this.objectiveHandlerRegistry =
-                objectiveHandlerRegistry ?? throw new ArgumentNullException(nameof(objectiveHandlerRegistry));
             this.conditionHandlerRegistry =
                 conditionHandlerRegistry ?? throw new ArgumentNullException(nameof(conditionHandlerRegistry));
             this.rewardSystem = rewardSystem ?? throw new ArgumentNullException(nameof(rewardSystem));
             this.redDotSystem = redDotSystem ?? throw new ArgumentNullException(nameof(redDotSystem));
             this.taskRedDotConfig = taskRedDotConfig ?? throw new ArgumentNullException(nameof(taskRedDotConfig));
         }
-
-        /// <summary>获取目标 Handler 注册表，供架构装配阶段扩展默认玩法。</summary>
-        public TaskObjectiveHandlerRegistry ObjectiveHandlerRegistry => objectiveHandlerRegistry;
 
         /// <summary>获取 TaskSystem 是否已初始化。</summary>
         internal bool IsInitialized => initialized;
@@ -150,6 +142,24 @@ namespace RPG.TaskSystemNS
         #endregion
 
         #region 查询与跨任务状态
+        /// <summary>查询当前追踪任务按目标顺序选出的世界导航 Transform。</summary>
+        /// <param name="target">当前未完成目标的世界 Transform。</param>
+        /// <returns>追踪任务处于 InProgress 且目标位置当前可用时返回 true。</returns>
+        /// <param name="offset">导航锚点的偏移量。</param>
+        /// <exception cref="InvalidOperationException">TaskSystem 尚未初始化时抛出。</exception>
+        /// <exception cref="Exception">所选目标 Runtime 的导航解析发生错误时继续传播。</exception>
+        public bool TryGetTrackedNavigationTarget(out Transform target, out Vector3 offset)
+        {
+            EnsureInitialized();
+            if (trackedTaskId.IsValid &&
+                taskRuntimeByTaskIdMap.TryGetValue(trackedTaskId, out TaskRuntime taskRuntime))
+                return taskRuntime.TryGetNavigationTarget(out target, out offset);
+
+            offset = Vector3.zero;
+            target = null;
+            return false;
+        }
+
         // 资格查询与活动任务实例读取。
         /// <summary>按 TaskId 查询资格状态并返回未满足条件的结构化原因。</summary>
         /// <param name="taskId">任务标识。</param>
@@ -307,9 +317,8 @@ namespace RPG.TaskSystemNS
             }
 
             TaskDefinition definition = TaskConfigManager.Instance.GetRequiredDefinition(taskId);
-            ValidateHandlerRegistrations(definition);
             var record = new TaskRecord(definition);
-            var taskRuntime = new TaskRuntime(definition, record, objectiveHandlerRegistry);
+            var taskRuntime = new TaskRuntime(definition, record);
             if (taskRuntimeByTaskIdMap.ContainsKey(taskId) || completedTaskIds.Contains(taskId))
             {
                 TaskAvailabilityResult latestAvailability = GetAvailability(taskId);
@@ -675,7 +684,6 @@ namespace RPG.TaskSystemNS
             {
                 TaskId taskId = new TaskId(recordSnapshot.TaskId);
                 TaskDefinition definition = TaskConfigManager.Instance.GetRequiredDefinition(taskId);
-                ValidateHandlerRegistrations(definition);
                 if (restoredTaskRuntimeByTaskIdMap.ContainsKey(taskId))
                 {
                     throw new InvalidOperationException($"任务快照包含重复活动任务：{taskId}。");
@@ -730,7 +738,7 @@ namespace RPG.TaskSystemNS
                 record.SetState(recordSnapshot.State);
                 restoredTaskRuntimeByTaskIdMap.Add(
                     taskId,
-                    new TaskRuntime(definition, record, objectiveHandlerRegistry));
+                    new TaskRuntime(definition, record));
             }
         }
 
@@ -857,21 +865,6 @@ namespace RPG.TaskSystemNS
             {
                 Debug.Log(
                     $"[TaskSystem] 已同步未读任务红点自身值，main={previousMainCount}->{mainCount}, side={previousSideCount}->{sideCount}。");
-            }
-        }
-
-        // 配置注册完整性和失败状态转换。
-        /// <summary>确认活动任务全部目标都有已注册 Handler。</summary>
-        /// <param name="definition">任务静态定义。</param>
-        private void ValidateHandlerRegistrations(TaskDefinition definition)
-        {
-            for (int stageIndex = 0; stageIndex < definition.Stages.Count; stageIndex++)
-            {
-                TaskStageDefinition stage = definition.Stages[stageIndex];
-                for (int objectiveIndex = 0; objectiveIndex < stage.Objectives.Count; objectiveIndex++)
-                {
-                    objectiveHandlerRegistry.Resolve(stage.Objectives[objectiveIndex]);
-                }
             }
         }
 

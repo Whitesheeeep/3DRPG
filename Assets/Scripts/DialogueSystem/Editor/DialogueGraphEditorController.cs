@@ -134,8 +134,9 @@ namespace RPG.DialogueSystemModule.Editor
         /// </summary>
         private void CreateNewAsset()
         {
+            string defaultDirectory = editorState.GetGraphCreationDirectory();
             string path = EditorUtility.SaveFilePanelInProject(
-                "创建 DialogueAsset", "DialogueAsset", "asset", "选择对话资产保存位置");
+                "创建 DialogueAsset", "DialogueAsset", "asset", "选择对话资产保存位置", defaultDirectory);
             if (string.IsNullOrEmpty(path)) return;
 
             DialogueAsset asset = UnityEngine.ScriptableObject.CreateInstance<DialogueAsset>();
@@ -154,6 +155,10 @@ namespace RPG.DialogueSystemModule.Editor
             AssetDatabase.AddObjectToAsset(speech, asset);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
+            editorState.RecordGraphCreationDirectory(path);
+            editorState.SaveIfDirty();
+            Debug.Log(
+                $"[DialogueGraphEditorController] 新建 Dialogue Graph 已保存，assetPath={path}, defaultDirectory={editorState.GetGraphCreationDirectory()}");
             OpenAsset(asset);
         }
 

@@ -54,12 +54,12 @@
 | 每任务独立 `TaskDefinition` 资产、按 `TaskId` 索引及配置校验 | 已实现 |
 | 按顺序执行任务阶段；当前阶段目标全部完成后推进 | 已实现 |
 | 统一资格查询和接取 API；前置任务已完成条件 | 已实现 |
-| 当前阶段目标 Handler 订阅与切换、追踪、未读和任务事实事件 | 已实现 |
+| Objective Definition 创建 Runtime、阶段监听与切换、追踪、未读和任务事实事件 | 已实现 |
 | 引用指定 `DialogueAsset` 并在其正常结束时累计目标进度 | 已实现；首个正式玩法目标 |
 | 手动提交通用奖励；摩拉、原石、可堆叠物品、武器和圣遗物统一预检与发放 | 已实现 |
 | 保存当前阶段进度、活动状态、追踪、未读和完成 ID；任务模块 v2 | 已实现 |
 | 任务链/章节、更多接取条件和新的奖励类型 | 后续扩展 |
-| 导航目标、资源占用和阻塞解释 | 后续扩展 |
+| 对话目标 NPC 导航与 HUD 世界标记 | 已实现；其他导航类型、资源占用和阻塞解释后续扩展 |
 | 基础活动任务 UI、统一打开入口和任务未读红点数据源 | 已接入；当前不展示未接取任务 |
 | 更完整的任务查询层、正式 NPC/剧情接取调用方 | 后续扩展 |
 
@@ -186,7 +186,7 @@ TryAcceptTask(TaskId taskId, TaskAcceptSource source) -> TaskAcceptResult
 
 1. 解析任务定义并校验配置。
 2. 检查任务是否已完成或已活动，并评估接取条件。
-3. 预解析全部阶段的目标 Handler，配置缺失时明确抛出错误。
+3. 确认静态任务配置有效；不提前创建各阶段 Runtime。
 4. 创建临时活动记录并启动首阶段监听。
 5. 监听建立成功后才提交接取事实、加入未读集合并发布接取事件。
 
@@ -204,48 +204,41 @@ TryAcceptTask(TaskId taskId, TaskAcceptSource source) -> TaskAcceptResult
 - `RewardClaimInProgress`（同一任务已有领奖流程执行时）
 - `RewardRejected`（货币钱包预检或发放拒绝）
 
-任务不存在、已活动、已完成、条件未满足分别映射为 `TaskNotFound`、`AlreadyActive`、`AlreadyCompleted`、`ConditionNotMet`。重复 ID、缺少 Handler、非法阶段或奖励配置直接抛出或上报，不转换成普通玩家可恢复失败。资源阻塞与配置错误结果尚未实现。
+任务不存在、已活动、已完成、条件未满足分别映射为 `TaskNotFound`、`AlreadyActive`、`AlreadyCompleted`、`ConditionNotMet`。重复 ID、Definition 创建 Runtime 失败、非法阶段或奖励配置直接抛出或上报，不转换成普通玩家可恢复失败。资源阻塞与配置错误结果尚未实现。
 
 ## 5. 目标与阶段运行时
 
 ### 5.1 目标语义
 
-每个目标归属一个阶段，继续使用 `TaskObjectiveHandlerRegistry` 的显式类型注册模式：
+每个目标归属一个阶段；Objective Definition 负责创建独立的目标 Runtime，配置对象不保存运行状态：
 
-- 当前已接入首个正式目标 `TaskDialogueCompletedObjectiveDefinition`：任务资产引用一个 `DialogueAsset`，目标 Runtime 在当前阶段监听 `DialogueEndedEvent`；只有该资源以 `DialogueEndStatus.Completed` 结束时增加 1，`Required` 默认 1。开始会话、失败结束、其他资源和监听启动前的历史会话均不补计。
-- 其他玩法目标仍通过 `TaskObjectiveHandlerRegistry.RegisterDefault()` 接入；具体战斗、背包等 Handler 后续实现。
+- 当前正式目标 `TaskDialogueCompletedObjectiveDefinition` 引用一个 `DialogueAsset`，并可选填 NPCId 作为导航来源；目标 Runtime 在当前阶段监听 `DialogueEndedEvent`。只有该资源以 `DialogueEndStatus.Completed` 结束时增加 1，`Required` 默认 1。开始会话、失败结束、其他资源和监听启动前的历史会话均不补计。
+- 其他玩法目标通过自己的 Definition 工厂创建相应 Runtime；新的目标类型无需加入 Objective Handler 注册表。
 - 阶段完成只由当前阶段目标决定，后续阶段目标不能提前计入。
 - 阶段切换时停止旧阶段目标监听，再创建并启动新阶段目标监听。
 
-目标进度变化发布任务事实事件；存档恢复只恢复目标进度并重新建立当前阶段监听，不重放对话结束或任务进度事件。任务 v2 快照不保存 DialogueAsset 引用，引用始终来自静态任务定义。
+目标进度变化发布任务事实事件；存档恢复只恢复目标进度并重新建立当前阶段监听，不重放对话结束或任务进度事件。任务 v2 快照不保存 DialogueAsset 或 NPC 引用，这些配置始终来自静态任务定义。
 
 ### 5.2 阶段切换约束
 
 - 当前阶段未全部完成时不能手动跳阶段。
 - 阶段切换是一次有序状态修改：停止旧运行时、写入新阶段进度、建立并启动新阶段监听；成功后才发布阶段切换事件。
-- 新阶段初始化失败属于配置/集成错误，不能伪造阶段完成。配置 Handler 在接取时预解析，运行期建立监听仍可能暴露集成错误。
+- 新阶段初始化失败属于配置/集成错误，不能伪造阶段完成。Definition 创建 Runtime 或建立监听时发生的集成错误会在运行期暴露。
 - 追踪任务切换不影响任何任务阶段或目标进度。
 
-## 6. 导航契约（后续能力）
+## 6. NPC 导航契约
 
-任务系统提供语义导航，不直接引用地图或 HUD：
+对话 Objective 可以配置稳定 NPCId。配置了 NPCId 时，其 Runtime 在启动监听时从 GameArchitecture 获取并缓存 NPCManager，再按 ID 查询当前场景 NPC 锚点。TaskStageRuntime 按配置顺序选择首个未完成且声明导航能力的 Runtime，TaskSystem 将最终 Transform 暴露给 HUD 查询。NPC 未加载时查询失败并隐藏指示标，不跳到后续目标。该查询不改变 Objective 完成条件、不写入任务记录，也不进入存档。
+
+任务层只提供目标 Transform，不依赖 HUD，也不保存 Transform 到任务记录或存档：
 
 ```text
-TaskNavigationInfo
-├─ TaskId
-├─ StageId
-├─ TargetKind: Npc / SceneEntity / WorldPosition / Area
-├─ TargetId or Position/AreaData
-├─ DisplayName
-├─ RegionId
-└─ IsAvailable
+TaskSystem.TryGetTrackedNavigationTarget(out Transform target)
 ```
 
-- `Npc`：使用稳定 NPC/参与者 ID，由场景或 NPC 系统解析当前实例。
-- `SceneEntity`：使用稳定场景实体 ID，由场景系统解析位置。
-- `WorldPosition`：保存配置坐标和场景/区域 ID。
-- `Area`：保存区域 ID、中心和范围，用于探索或范围型目标。
-- 当前阶段没有导航配置，或目标暂不可解析时，任务仍可追踪，但导航层只收到 `IsAvailable = false`。
+- NPC 使用区分大小写的稳定 ID，由 NPCManager 解析当前已加载实例及显式导航锚点。
+- 当前阶段没有导航配置，或首个选定 NPC 暂不可解析时，任务仍可追踪，查询返回 `false`。
+- SceneEntity、WorldPosition 和 Area 导航类型留待对应目标类型接入时定义。
 - 任务系统不自动打开地图、不移动玩家、不选择传送点，也不负责寻路。
 
 ## 7. NPC/场景资源冲突（后续能力）
@@ -320,7 +313,7 @@ flowchart TD
 - 按分类、章节和状态查询任务列表。
 - 任务详情、当前阶段、目标进度和奖励预览。
 - `TaskAvailabilityResult` 及可跳转的前置任务。
-- 当前追踪任务与 `TaskNavigationInfo`。
+- 当前追踪任务的 `TaskSystem.TryGetTrackedNavigationTarget(out Transform)` 查询。
 - `TaskBlockedInfo` 和解除条件。
 - 已完成任务的摘要、完成时间和奖励领取结果（若未来存档记录这些展示字段）。
 
@@ -334,12 +327,13 @@ Query 只读，不修改任务状态；ViewModel 通过 Command 调用接取、�
 
 HUD 左侧摘要只显示当前追踪的活动任务，包含任务标题和当前阶段的全部目标进度；完成目标保留在列表并显示绿色图像标记，完成文字较小且显示为低对比度灰色。任务待领奖时摘要仍显示绿色“可领取奖励”，取消追踪或领奖完成后隐藏。该 HUD 只展示任务事实，不接收点击，也不确认任务未读。目标说明按“目标说明、阶段标题、完成目标”顺序回退；存在匹配的导航位置时显示三维距离，没有位置来源时隐藏距离行。摘要和目标行使用 UGUI LayoutGroup 管理排布。
 
-中间世界标记目前仅用于 `TestInteractableScene` 的 Cube (1) 两阶段对话任务验证：测试组件显式传入任务 ID、Cube Transform 和 `(0, 1.8, 0)` 偏移，默认关闭标记；玩家通过 Odin 按钮单独设置追踪任务和启停标记。标记只在绑定任务正在追踪且为 `InProgress` 时出现，屏幕外或相机背后的目标会显示在安全边缘并旋转方向箭头。正式 NPC 位置数据源尚未接入；后续来源应提供同一类展示输入，不把位置写入任务定义或存档。
+中间世界标记由追踪任务的当前阶段目标驱动。对话目标可选配置 NPCId；任务层选择首个未完成且具备导航能力的目标，对话 Runtime 在启动监听时获取并缓存 NPCManager，再查询已加载 NPC 的显式锚点 Transform。HUD 仅在任务为 `InProgress` 且目标 Transform 可用时投影标记；NPC 暂未加载时隐藏标记和距离，场景注册后自动显示。屏幕外或相机背后的目标显示在安全边缘并旋转方向箭头。
 
 ~~~mermaid
 flowchart LR
     Facts[TaskSystem：追踪任务与阶段目标事实] --> Tracker[HUD 左侧摘要]
-    Test[Cube 1 测试按钮：TaskId、Transform、偏移] --> Gate{任务正被追踪且 InProgress?}
+    Runtime[Objective Runtime：NPCId 查询锚点] --> Facts[TaskSystem 导航查询]
+    Facts --> Gate{追踪任务有可用目标且 InProgress?}
     Player[活动角色] --> Marker[HUD 世界标记]
     Camera[MainCamera 投影] --> Marker
     Gate -->|是| Marker
@@ -414,16 +408,16 @@ sequenceDiagram
 
 `TaskConfigManager` 持有已校验的任务数据库引用并按 `TaskId` 查询定义。`TaskSystem` 管理玩家任务集合、全局追踪和未读事实，并负责接取、领奖、存档与恢复编排。
 
-每个活动任务由 `TaskRuntime` 持有唯一 `TaskRecord`；它推进整条任务阶段。`TaskStageRuntime` 管理当前阶段，目标运行时负责最低层领域事件监听。任务逻辑不直接依赖战斗、背包、对话、地图、UI 或 NPC GameObject。
+每个活动任务由 `TaskRuntime` 持有唯一 `TaskRecord`；它推进整条任务阶段。`TaskStageRuntime` 管理当前阶段，目标运行时负责最低层领域事件监听与自身导航解析。对话 ObjectiveRuntime 在启动监听时从 GameArchitecture 获取 NPCManager，并用稳定 ID 查询当前场景锚点；通用 Objective 上下文只提供任务身份和进度操作，HUD 只消费任务系统返回的 Transform。
 
 ### 11.2 已实现与待实现契约
 
 已经提供的业务契约与 API：
 
-- `ITaskObjectiveHandler`：创建阶段目标运行时。
+- `TaskObjectiveDefinition.CreateRuntime`：由静态目标配置创建任务实例独有的 Objective Runtime。
 - `ITaskConditionHandler`：评估接取条件并返回结构化原因；目前注册前置任务已完成 Handler。
 - `TaskConfigManager.TryGetDefinition` 与 `GetRequiredDefinition`。
-- `TaskSystem.GetAvailability`、`TryAcceptTask`、`TryClaimReward`、追踪、未读和快照入口。
+- `TaskSystem.GetAvailability`、`TryAcceptTask`、`TryClaimReward`、`TryGetTrackedNavigationTarget`、追踪、未读和快照入口。
 - `TaskRuntime`、`TaskStageRuntime` 与目标运行时的分层生命周期。
 - `RewardSystem.CanGrant` 与 `RewardSystem.TryGrant`；任务领奖由 `TaskSystem` 统一编排。
 - `CurrencyRewardDefinition` 支持现有摩拉和原石；`ItemRewardDefinition` 支持可堆叠物品、武器和圣遗物。
@@ -488,9 +482,9 @@ sequenceDiagram
 - 当前阶段多个目标同时显示；未完成目标按事件更新，已完成目标保留绿色完成标记；阶段切换后只显示新阶段目标。
 - `Claimable` 状态保留摘要并显示领奖提示，世界标记隐藏；取消追踪后不再显示摘要或距离。
 - HUD 展示不会调用 `AcknowledgeTask()`，不清除未读状态；HUD 开关及读档不会重复订阅或累计目标进度。
-- 只有启用 Cube (1) 测试位置输入，且其任务正在追踪并处于 `InProgress` 时，才显示中间世界标记与左侧距离；没有目标或相机/活动角色时隐藏。
+- 当前追踪任务处于 `InProgress` 且阶段首个未完成导航目标可解析时显示中间世界标记与左侧距离；NPC 暂未加载或没有目标时隐藏。
 - 屏幕内目标显示标记和整数米数；屏幕外及相机背后目标被限制到视口安全边缘，方向箭头指向目标方向。
-- 测试按钮不自动接取任务、不触发对话、不领奖；真实任务生命周期继续通过 TaskSystem 和 DialogueSystem 的既有 API 验证。
+- 任务测试按钮只负责接取或追踪，不传入 HUD 导航目标；NPC 导航由 Objective 配置、NPCIdentity 注册和 TaskSystem 查询驱动。
 
 ## 13. 后续实现顺序
 

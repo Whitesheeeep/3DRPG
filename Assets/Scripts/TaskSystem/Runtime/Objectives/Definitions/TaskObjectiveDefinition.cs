@@ -5,7 +5,7 @@ using UnityEngine;
 namespace RPG.TaskSystemNS
 {
     /// <summary>
-    /// 描述一个需要由目标 Handler 转换为事件监听的阶段目标。
+    /// 描述任务阶段中的静态目标配置，并负责创建对应的独立运行时。
     /// </summary>
     [Serializable]
     public abstract class TaskObjectiveDefinition
@@ -76,6 +76,12 @@ namespace RPG.TaskSystemNS
 
         /// <summary>获取显示给玩家的目标说明。</summary>
         public string DisplayDescription => displayDescription ?? string.Empty;
+
+        /// <summary>根据静态配置和所属任务上下文创建新的目标运行时实例。</summary>
+        /// <param name="context">由 TaskRuntime 限定到当前任务与阶段的运行时上下文。</param>
+        /// <returns>本任务实例专属的目标 Runtime。</returns>
+        /// <exception cref="ArgumentNullException">实现需要的配置或上下文为空时抛出。</exception>
+        public abstract ITaskObjectiveRuntime CreateRuntime(ITaskObjectiveRuntimeContext context);
 
         /// <summary>
         /// 校验目标标识与数量。

@@ -22,6 +22,21 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 257b506df85d3f54da750f7b533970dc
+    m_Address: Character/ArlecchinoSeparated
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 68df0445e08273749b1c69182913a9fe
+    m_Address: Character/RuskSeparated
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7965234a18e3e144d9572204624609dc
+    m_Address: Character/OdetaASeparated
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 80487ac97fa5b0643a608f804c1efed8
     m_Address: Character/OdetaA
     m_ReadOnly: 0

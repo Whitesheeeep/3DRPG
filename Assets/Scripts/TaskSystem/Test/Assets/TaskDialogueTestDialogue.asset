@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   nodeId: ff8cb1a0-fcb7-481f-869d-092482ce3cb4
-  editorPosition: {x: 0, y: 0}
+  editorPosition: {x: 456, y: -138.39998}
   firstSpeechNode: {fileID: 2404751493292340337}
 --- !u!114 &11400000
 MonoBehaviour:
@@ -46,11 +46,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   nodeId: 6306c8ff-34bb-4344-a444-f66bc48fc25f
-  editorPosition: {x: 0, y: 0}
+  editorPosition: {x: 135.20001, y: -155.2}
   nodeName: "\u4EFB\u52A1\u6D4B\u8BD5\u5BF9\u767D"
   speaker: {fileID: 11400000, guid: 4663cf08600c8fb4682d10fa508a0b57, type: 2}
   dialogueName: "\u6D4B\u8BD5\u5C45\u6C11"
-  text: "\u8C22\u8C22\u4F60\u613F\u610F\u542C\u6211\u8BF4\u5B8C\u3002"
+  text: "\u4F60\u597D\u6211\u53EA\u662F\u4E2ANPC"
   animationClip: {fileID: 0}
   voiceClip: {fileID: 0}
   animationFadeDuration: 0
@@ -69,4 +69,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   nodeId: 8085edef-f6c8-42f9-a228-4766c7cdd7a1
-  editorPosition: {x: 0, y: 0}
+  editorPosition: {x: -190.4, y: -103.2}

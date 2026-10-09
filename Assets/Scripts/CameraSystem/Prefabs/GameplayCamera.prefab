@@ -58,7 +58,7 @@ Transform:
   m_GameObject: {fileID: 2057030992816912786}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.14, z: -3}
+  m_LocalPosition: {x: 0, y: 1.14, z: -2.499999}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -156,7 +156,7 @@ Transform:
   m_GameObject: {fileID: 2808503479532813571}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.14, z: -3}
+  m_LocalPosition: {x: 0, y: 1.14, z: -2.499999}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -171,7 +171,7 @@ Camera:
   m_GameObject: {fileID: 2808503479532813571}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 2
+  m_ClearFlags: 1
   m_BackGroundColor: {r: 0, g: 0, b: 0, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
@@ -195,7 +195,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 60.000004
+  field of view: 60
   orthographic: 0
   orthographic size: 5
   m_Depth: -1
@@ -365,7 +365,7 @@ MonoBehaviour:
   m_ZDamping: 0.25
   m_TargetMovementOnly: 1
   m_ScreenX: 0.5
-  m_ScreenY: 0.5
+  m_ScreenY: 0.758
   m_CameraDistance: 3
   m_DeadZoneWidth: 0
   m_DeadZoneHeight: 0
@@ -413,7 +413,7 @@ Transform:
   m_GameObject: {fileID: 3644605865806934321}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0.9, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -673,6 +673,7 @@ MonoBehaviour:
   playerFramingTarget: {fileID: 5660633250332142511}
   lockedTargetFramingTarget: {fileID: 5246829229375775556}
   cameraManager: {fileID: 33192862775286117}
+  startInPresentationMode: 1
   pointerDegreesPerPixel: 0.15
   stickDegreesPerSecond: 180
   invertLookY: 0
@@ -777,7 +778,7 @@ MonoBehaviour:
   ShoulderOffset: {x: 0, y: 0, z: 0}
   VerticalArmLength: 0
   CameraSide: 1
-  CameraDistance: 3
+  CameraDistance: 2.499999
   CameraCollisionFilter:
     serializedVersion: 2
     m_Bits: 19

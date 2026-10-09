@@ -11,10 +11,9 @@ namespace RPG.TaskSystemNS
     {
         #region 依赖字段
 
-        // 依赖字段：所属 TaskRuntime 提供权威 Record；注册表根据每个目标定义创建 ObjectiveRuntime。
+        // 依赖字段：所属 TaskRuntime 提供权威 Record 和 NPC 查询依赖；Definition 直接创建目标 Runtime。
         private readonly TaskRuntime taskRuntime;
         private readonly TaskStageDefinition stageDefinition;
-        private readonly TaskObjectiveHandlerRegistry objectiveHandlerRegistry;
 
         #endregion
 
@@ -33,18 +32,14 @@ namespace RPG.TaskSystemNS
         /// <summary>创建任务单个阶段的执行上下文。</summary>
         /// <param name="taskRuntime">拥有任务 Record 的实例。</param>
         /// <param name="stageDefinition">静态阶段定义。</param>
-        /// <param name="objectiveHandlerRegistry">目标 Handler 注册表。</param>
         /// <exception cref="ArgumentNullException">必需依赖为空时抛出。</exception>
         /// <exception cref="InvalidOperationException">Record 缺少当前阶段目标进度时抛出。</exception>
         public TaskStageRuntime(
             TaskRuntime taskRuntime,
-            TaskStageDefinition stageDefinition,
-            TaskObjectiveHandlerRegistry objectiveHandlerRegistry)
+            TaskStageDefinition stageDefinition)
         {
             this.taskRuntime = taskRuntime ?? throw new ArgumentNullException(nameof(taskRuntime));
             this.stageDefinition = stageDefinition ?? throw new ArgumentNullException(nameof(stageDefinition));
-            this.objectiveHandlerRegistry =
-                objectiveHandlerRegistry ?? throw new ArgumentNullException(nameof(objectiveHandlerRegistry));
 
             for (int index = 0; index < stageDefinition.Objectives.Count; index++)
             {
@@ -88,12 +83,34 @@ namespace RPG.TaskSystemNS
             }
         }
 
+        /// <summary>按配置顺序选择首个未完成且声明导航的目标，并解析其 Transform。</summary>
+        /// <param name="target">所选目标的世界导航 Transform。</param>
+        /// <returns>当前阶段存在可用导航 Transform 时返回 true。</returns>
+        /// <exception cref="Exception">目标 Runtime 的导航解析发生错误时继续传播。</exception>
+        public bool TryGetNavigationTarget(out Transform target, out Vector3 offset)
+        {
+            for (int index = 0; index < objectiveRuntimeList.Count; index++)
+            {
+                if (progressList[index].IsComplete ||
+                    !(objectiveRuntimeList[index] is ITaskObjectiveNavigationProvider navigationProvider) ||
+                    !navigationProvider.HasNavigationTarget)
+                    continue;
+
+                // 已选中的 NPC 暂不可用时不跳到后续目标，避免场景加载状态改变任务导航顺序。
+                return navigationProvider.TryGetNavigationTarget(out target, out offset);
+            }
+
+            offset = Vector3.zero;
+            target = null;
+            return false;
+        }
+
         #endregion
 
         #region 监听生命周期
 
         /// <summary>创建并启动阶段所有 ObjectiveRuntime；失败时释放已启动订阅。</summary>
-        /// <exception cref="InvalidOperationException">缺少 Handler 或创建目标运行时失败时抛出。</exception>
+        /// <exception cref="InvalidOperationException">Definition 创建目标运行时失败时抛出。</exception>
         public void StartListening()
         {
             if (listening)
@@ -106,14 +123,12 @@ namespace RPG.TaskSystemNS
                 for (int index = 0; index < stageDefinition.Objectives.Count; index++)
                 {
                     TaskObjectiveDefinition objective = stageDefinition.Objectives[index];
-                    ITaskObjectiveHandler handler = objectiveHandlerRegistry.Resolve(objective);
-                    ITaskObjectiveRuntime objectiveRuntime = handler.CreateRuntime(
-                        objective,
+                    ITaskObjectiveRuntime objectiveRuntime = objective.CreateRuntime(
                         taskRuntime.CreateObjectiveContext(this, objective.ObjectiveId));
                     if (objectiveRuntime == null)
                     {
                         throw new InvalidOperationException(
-                            $"目标 Handler {handler.GetType().FullName} 返回了空运行时。");
+                            $"目标 Definition {objective.GetType().FullName} 返回了空运行时。");
                     }
 
                     objectiveRuntimeList.Add(objectiveRuntime);

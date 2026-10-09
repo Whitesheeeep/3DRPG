@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using RPG.Character.Animation;
 using Sirenix.OdinInspector;
@@ -49,6 +50,10 @@ namespace RPG.DialogueSystemModule
         #endregion
 
         #region Unity 生命周期
+        private void Awake()
+        {
+            animationPlayerComponent ??= GetComponentInChildren<IAnimationPlayer>();
+        }
 
         /// <summary>
         /// 在未配置引用时从同一对象获取 AudioSource 和动画接口，保持场景组件使用简单。
@@ -56,16 +61,7 @@ namespace RPG.DialogueSystemModule
         private void Reset()
         {
             voiceAudioSource = GetComponent<AudioSource>();
-            // Unity 的 GetComponent<T> 泛型约束要求 Component，接口能力通过同对象 MonoBehaviour 实例查找。
-            MonoBehaviour[] components = GetComponents<MonoBehaviour>();
-            for (int index = 0; index < components.Length; index++)
-            {
-                if (components[index] is IAnimationPlayer animationPlayer)
-                {
-                    animationPlayerComponent = animationPlayer;
-                    break;
-                }
-            }
+            animationPlayerComponent = GetComponentInChildren<IAnimationPlayer>();
         }
 
         #endregion

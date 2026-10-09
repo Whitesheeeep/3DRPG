@@ -9,7 +9,6 @@ using RPG.Game.UI.Config;
 using RPG.Game.UI.Services;
 using RPG.Game.UI.Views.HUD;
 using RPG.PlayerInputSystem;
-using RPG.TaskSystemNS;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.UI;
@@ -135,27 +134,6 @@ namespace RPG.Game.UI.Controllers
             ClearEffectViews();
             taskController?.OnWindowHidden();
             lockTargetController?.HandleWindowHidden();
-        }
-
-        /// <summary>向 HUD 任务控制器设置测试或玩法提供的导航目标。</summary>
-        /// <param name="taskId">目标所属任务标识。</param>
-        /// <param name="target">目标世界 Transform。</param>
-        /// <param name="offset">相对目标原点的世界坐标偏移。</param>
-        public void SetTaskNavigationTarget(TaskId taskId, Transform target, Vector3 offset)
-        {
-            taskController.SetNavigationTarget(taskId, target, offset);
-        }
-
-        /// <summary>清除 HUD 当前使用的导航目标输入。</summary>
-        public void ClearTaskNavigationTarget()
-        {
-            if (disposed)
-            {
-                WSLog.Log("[HUDWindowController] HUD 已释放，忽略迟到的任务导航清理请求。");
-                return;
-            }
-
-            taskController.ClearNavigationTarget();
         }
 
         /// <summary>解除角色、队伍和 ASC 事件订阅，并释放 HUD 持有的头像图集引用。</summary>

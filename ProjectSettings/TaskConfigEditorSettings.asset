@@ -18,9 +18,13 @@ MonoBehaviour:
     - suffixId: dialogue
       displayName: "\u5BF9\u8BDD\u4EFB\u52A1"
   - categoryId: side
-    suffixes: []
+    suffixes:
+    - suffixId: dialogue
+      displayName: "\u5BF9\u8BDD"
   sequencesByCategory:
   - categoryId: main
+    nextNumber: 2
+  - categoryId: side
     nextNumber: 2
   definitionFolder: Assets/Scripts/TaskSystem/Runtime/Config/Assets/Definitions
   taskIdSourceDatabase: {fileID: 11400000, guid: f3953089f2e468f9d6691c3e6b57c223, type: 2}

@@ -1,0 +1,188 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-7446122950741856811
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afa82bc2ce69471a8fbb64b182a292ad, type: 3}
+  m_Name: Speech 003
+  m_EditorClassIdentifier: 
+  nodeId: 26b625f7-8bb8-4dfc-b922-5ea76a7e494e
+  editorPosition: {x: 872.9669, y: -66.60079}
+  nodeName: Speech 003
+  speaker: {fileID: 11400000, guid: 70e23c899cfca02459036f9b573689b6, type: 2}
+  dialogueName: 
+  text: "\u8C22\u8C22\u4F60\uFF0C\u6211\u53EB\u963F\u857E\u5947\u8BFA\u3002"
+  animationClip: {fileID: 0}
+  voiceClip: {fileID: 0}
+  animationFadeDuration: 0
+  nextNode: {fileID: 3519131704628403053}
+  choices: []
+--- !u!114 &-5718779570905749165
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17fb169762ea4f91bd4b4851eb8c50e2, type: 3}
+  m_Name: Choice 001
+  m_EditorClassIdentifier: 
+  nodeId: c20bb01b-11b6-4756-af41-687b1bb1ca55
+  editorPosition: {x: 494.3146, y: -184.83179}
+  nodeName: Choice 001
+  text: "\u6211\u559C\u6B22\u4F60\uFF01"
+  conditions: []
+  actions:
+  - rid: 1466742107628896256
+  targetNode: {fileID: -7446122950741856811}
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742107628896256
+      type: {class: DialogueRewardExecution, ns: RPG.DialogueSystemModule, asm: Assembly-CSharp}
+      data:
+        rewards:
+        - rid: 1466742107628896257
+        - rid: 1466742107628896258
+    - rid: 1466742107628896257
+      type: {class: CurrencyRewardDefinition, ns: RPG.RewardSystemNS, asm: Assembly-CSharp}
+      data:
+        amounts:
+        - currencyId: 1
+          amount: 10000
+    - rid: 1466742107628896258
+      type: {class: ItemRewardDefinition, ns: RPG.RewardSystemNS, asm: Assembly-CSharp}
+      data:
+        items:
+        - itemId:
+            value: material_0016
+          quantity: 10
+--- !u!114 &-5262619158988262825
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43893bc859cd4e6086ef32b05a8d47f9, type: 3}
+  m_Name: EntryNode
+  m_EditorClassIdentifier: 
+  nodeId: a0ea296b-2b60-4ed2-9a35-34b78bb064bd
+  editorPosition: {x: -748, y: -0.8000107}
+  firstSpeechNode: {fileID: 9038666131402934523}
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8fc6020cc6de497bb9a10045174cd476, type: 3}
+  m_Name: TaskForArlecchinoName
+  m_EditorClassIdentifier: 
+  dialogueId: TaskForArlecchinoName
+  entryNode: {fileID: -5262619158988262825}
+  nodes:
+  - {fileID: -5262619158988262825}
+  - {fileID: 9038666131402934523}
+  - {fileID: 3519131704628403053}
+  - {fileID: 5316536521475610419}
+  - {fileID: -5718779570905749165}
+  - {fileID: 4674084194028551063}
+  - {fileID: -7446122950741856811}
+--- !u!114 &3519131704628403053
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8553e8b9ae924407be47d6c9292d2d05, type: 3}
+  m_Name: EndNode
+  m_EditorClassIdentifier: 
+  nodeId: 55c43f3c-3905-4908-8928-3f15b5daea54
+  editorPosition: {x: 1180.8, y: -29.600027}
+--- !u!114 &4674084194028551063
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17fb169762ea4f91bd4b4851eb8c50e2, type: 3}
+  m_Name: Choice 002
+  m_EditorClassIdentifier: 
+  nodeId: 91f0538a-cf6e-4504-a24c-e3d202eaae4d
+  editorPosition: {x: 494.68442, y: 52.338047}
+  nodeName: Choice 002
+  text: "\u5F88\u611F\u5174\u8DA3\uFF01"
+  conditions: []
+  actions: []
+  targetNode: {fileID: -7446122950741856811}
+  references:
+    version: 2
+    RefIds: []
+--- !u!114 &5316536521475610419
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afa82bc2ce69471a8fbb64b182a292ad, type: 3}
+  m_Name: Speech 002
+  m_EditorClassIdentifier: 
+  nodeId: d3d00b9c-bf38-4e19-9a1a-dd0a4f96f3a5
+  editorPosition: {x: 33.332947, y: -60.602486}
+  nodeName: Speech 002
+  speaker: {fileID: 11400000, guid: 70e23c899cfca02459036f9b573689b6, type: 2}
+  dialogueName: 
+  text: "\u6211\u662F\u4F60\u5BF9\u6211\u5F88\u611F\u5174\u8DA3\uFF1F"
+  animationClip: {fileID: 0}
+  voiceClip: {fileID: 0}
+  animationFadeDuration: 0
+  nextNode: {fileID: 0}
+  choices:
+  - {fileID: -5718779570905749165}
+  - {fileID: 4674084194028551063}
+--- !u!114 &9038666131402934523
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afa82bc2ce69471a8fbb64b182a292ad, type: 3}
+  m_Name: Speech 001
+  m_EditorClassIdentifier: 
+  nodeId: e42e27b3-21b3-434b-a0bd-f388969facee
+  editorPosition: {x: -253.6, y: -29.600042}
+  nodeName: Speech 001
+  speaker: {fileID: 11400000, guid: 032bd966221ad854ab394fca1df0980c, type: 2}
+  dialogueName: "\u73A9\u5BB6"
+  text: "\u4F60\u662F\u8C01\uFF1F"
+  animationClip: {fileID: 0}
+  voiceClip: {fileID: 0}
+  animationFadeDuration: 0
+  nextNode: {fileID: 5316536521475610419}
+  choices: []

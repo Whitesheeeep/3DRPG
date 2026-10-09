@@ -11,10 +11,9 @@ namespace RPG.TaskSystemNS
     {
         #region 依赖字段
 
-        // 依赖字段：静态 Definition 描述玩法；Record 保存唯一玩家事实；注册表按目标类型创建 ObjectiveRuntime。
+        // 依赖字段：Definition 描述玩法，Record 保存该任务实例唯一的玩家事实。
         private readonly TaskDefinition definition;
         private readonly TaskRecord record;
-        private readonly TaskObjectiveHandlerRegistry objectiveHandlerRegistry;
 
         #endregion
 
@@ -34,18 +33,14 @@ namespace RPG.TaskSystemNS
         /// <summary>创建由任务系统持有的完整任务运行实例。</summary>
         /// <param name="definition">静态任务定义。</param>
         /// <param name="record">该任务唯一的可存档状态。</param>
-        /// <param name="objectiveHandlerRegistry">创建目标运行时的注册表。</param>
         /// <exception cref="ArgumentNullException">必需依赖为空时抛出。</exception>
         /// <exception cref="ArgumentException">定义与记录不匹配时抛出。</exception>
         public TaskRuntime(
             TaskDefinition definition,
-            TaskRecord record,
-            TaskObjectiveHandlerRegistry objectiveHandlerRegistry)
+            TaskRecord record)
         {
             this.definition = definition ?? throw new ArgumentNullException(nameof(definition));
             this.record = record ?? throw new ArgumentNullException(nameof(record));
-            this.objectiveHandlerRegistry =
-                objectiveHandlerRegistry ?? throw new ArgumentNullException(nameof(objectiveHandlerRegistry));
 
             if (record.TaskId != definition.TaskId ||
                 !definition.TryGetStage(record.CurrentStageId, out _, out _))
@@ -65,6 +60,19 @@ namespace RPG.TaskSystemNS
 
         /// <summary>获取当前阶段是否正在接收目标事件。</summary>
         public bool IsListening => currentStageRuntime != null && currentStageRuntime.IsListening;
+
+        /// <summary>转发当前阶段的任务导航目标查询。</summary>
+        /// <param name="target">当前任务目标对应的场景 Transform。</param>
+        /// <returns>当前 InProgress 阶段存在可用目标时返回 true。</returns>
+        public bool TryGetNavigationTarget(out Transform target, out Vector3 offset)
+        {
+            if (record.State == E_TaskLifecycleState.InProgress && currentStageRuntime != null)
+                return currentStageRuntime.TryGetNavigationTarget(out target, out offset);
+
+            offset = Vector3.zero;
+            target = null;
+            return false;
+        }
 
         #endregion
 
@@ -199,7 +207,7 @@ namespace RPG.TaskSystemNS
         /// <param name="suppressProgressDuringStart">是否丢弃监听建立期间同步触发的进度回调。</param>
         private void StartStageRuntime(TaskStageDefinition stage, bool suppressProgressDuringStart = false)
         {
-            var nextStageRuntime = new TaskStageRuntime(this, stage, objectiveHandlerRegistry);
+            var nextStageRuntime = new TaskStageRuntime(this, stage);
             currentStageRuntime = nextStageRuntime;
             startingStageRuntime = true;
             suppressObjectiveProgressDuringStart = suppressProgressDuringStart;

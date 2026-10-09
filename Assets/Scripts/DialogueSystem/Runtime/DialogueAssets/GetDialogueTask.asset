@@ -1,0 +1,173 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-7569881803253149821
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17fb169762ea4f91bd4b4851eb8c50e2, type: 3}
+  m_Name: Choice 002
+  m_EditorClassIdentifier: 
+  nodeId: 4fffc85e-a850-41ad-99b5-b0d5e7911c97
+  editorPosition: {x: -714.79803, y: 169.13579}
+  nodeName: Choice 002
+  text: "\u6CA1\u4EC0\u4E48"
+  conditions: []
+  actions: []
+  targetNode: {fileID: -2996367470279749325}
+  references:
+    version: 2
+    RefIds: []
+--- !u!114 &-5393335066782233791
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43893bc859cd4e6086ef32b05a8d47f9, type: 3}
+  m_Name: EntryNode
+  m_EditorClassIdentifier: 
+  nodeId: 6ae2516a-5e19-4f46-b0ea-f5fc944535de
+  editorPosition: {x: -1414.3999, y: 51.20003}
+  firstSpeechNode: {fileID: -399699190826720140}
+--- !u!114 &-2996367470279749325
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afa82bc2ce69471a8fbb64b182a292ad, type: 3}
+  m_Name: Speech 003
+  m_EditorClassIdentifier: 
+  nodeId: bfe9d78c-39b5-4d6d-bf8e-f5019945d9b7
+  editorPosition: {x: -410.42258, y: 184.49112}
+  nodeName: Speech 003
+  speaker: {fileID: 11400000, guid: 4663cf08600c8fb4682d10fa508a0b57, type: 2}
+  dialogueName: 
+  text: 
+  animationClip: {fileID: 0}
+  voiceClip: {fileID: 0}
+  animationFadeDuration: 0
+  nextNode: {fileID: 8844625113285417822}
+  choices: []
+--- !u!114 &-399699190826720140
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afa82bc2ce69471a8fbb64b182a292ad, type: 3}
+  m_Name: Speech 001
+  m_EditorClassIdentifier: 
+  nodeId: 0f1c8ad8-4e5d-40bf-af44-0946f4db2741
+  editorPosition: {x: -1064, y: 31.999987}
+  nodeName: Speech 001
+  speaker: {fileID: 11400000, guid: 4663cf08600c8fb4682d10fa508a0b57, type: 2}
+  dialogueName: 
+  text: "\u4F60\u597D\uFF01"
+  animationClip: {fileID: 0}
+  voiceClip: {fileID: 0}
+  animationFadeDuration: 0
+  nextNode: {fileID: 0}
+  choices:
+  - {fileID: 7199175379651869845}
+  - {fileID: -7569881803253149821}
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8fc6020cc6de497bb9a10045174cd476, type: 3}
+  m_Name: GetDialogueTask
+  m_EditorClassIdentifier: 
+  dialogueId: GetDialogueTask
+  entryNode: {fileID: -5393335066782233791}
+  nodes:
+  - {fileID: -5393335066782233791}
+  - {fileID: -399699190826720140}
+  - {fileID: 8844625113285417822}
+  - {fileID: 7199175379651869845}
+  - {fileID: -7569881803253149821}
+  - {fileID: 1121194665868328004}
+  - {fileID: -2996367470279749325}
+--- !u!114 &1121194665868328004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afa82bc2ce69471a8fbb64b182a292ad, type: 3}
+  m_Name: Speech 002
+  m_EditorClassIdentifier: 
+  nodeId: ccb28b53-a86c-4c76-9c45-041befaa8c88
+  editorPosition: {x: -410.49887, y: -64.05493}
+  nodeName: Speech 002
+  speaker: {fileID: 11400000, guid: 4663cf08600c8fb4682d10fa508a0b57, type: 2}
+  dialogueName: 
+  text: "\u90A3\u7B97\u4E86"
+  animationClip: {fileID: 0}
+  voiceClip: {fileID: 0}
+  animationFadeDuration: 0
+  nextNode: {fileID: 8844625113285417822}
+  choices: []
+--- !u!114 &7199175379651869845
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17fb169762ea4f91bd4b4851eb8c50e2, type: 3}
+  m_Name: Choice 001
+  m_EditorClassIdentifier: 
+  nodeId: 6349de8d-35b2-447d-8ea3-1d5e232297cb
+  editorPosition: {x: -713.98804, y: -45.64245}
+  nodeName: "\u7ED9\u4E88\u521D\u59CB\u4EFB\u52A1\u9009\u62E9"
+  text: "\u7ED9\u6211\u521D\u59CB\u4EFB\u52A1"
+  conditions: []
+  actions:
+  - rid: 1466742107628896263
+  targetNode: {fileID: 1121194665868328004}
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742107628896263
+      type: {class: DialogueGiveTaskExecution, ns: RPG.DialogueSystemModule, asm: Assembly-CSharp}
+      data:
+        taskId: side_001_dialogue
+--- !u!114 &8844625113285417822
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8553e8b9ae924407be47d6c9292d2d05, type: 3}
+  m_Name: EndNode
+  m_EditorClassIdentifier: 
+  nodeId: 7461dd5a-f8e7-475f-89c0-d85d70cc6f8b
+  editorPosition: {x: -108.882965, y: 34.008953}

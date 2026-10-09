@@ -461,9 +461,9 @@ namespace RPG.CameraSystem
                 desiredFreeCameraDistance + direction * freeZoomStep,
                 minimumFreeCameraDistance,
                 maximumFreeCameraDistance);
-            Debug.Log(
+            /*Debug.Log(
                 $"[GameplayCameraController] 自由镜头滚轮缩放，direction={direction}，targetDistance={desiredFreeCameraDistance:0.00}m。",
-                this);
+                this);*/
         }
 
         #endregion
@@ -756,15 +756,103 @@ namespace RPG.CameraSystem
             Debug.Log($"[GameplayCameraController] 已进入界面镜头模式并暂停 Brain，camera={name}。", this);
         }
 
-        /// <summary>在角色初始化和出生点定位完成后启用自由观察并绑定 Player。</summary>
+        /// <summary>恢复正式游戏相机并绑定当前可用的 Player，沿用现有观察方向。</summary>
         public void EnterGameplayMode()
         {
+            EnterGameplayMode(null, default);
+        }
+
+        /// <summary>场景加载成功后按角色水平朝向恢复相机，并保留当前俯仰角与缩放距离。</summary>
+        /// <exception cref="InvalidOperationException">Player 未就绪或角色没有有效水平前方向时抛出。</exception>
+        public void AlignToPlayerAndEnterGameplayMode()
+        {
+            PlayerController player = PlayerController.Instance;
+            if (player == null || !player.IsReady)
+            {
+                string error = "[GameplayCameraController] 场景流程成功但 Player 尚未就绪，无法按角色朝向恢复相机。";
+                Debug.LogError(error, this);
+                throw new InvalidOperationException(error);
+            }
+
+            Transform playerRoot = player.CharacterRoot;
+            if (playerRoot == null)
+            {
+                string error = $"[GameplayCameraController] 场景流程成功但 Player '{player.name}' 缺少 CharacterRoot。";
+                Debug.LogError(error, this);
+                throw new InvalidOperationException(error);
+            }
+
+            Vector3 horizontalForward = Vector3.ProjectOnPlane(playerRoot.forward, Vector3.up);
+            if (horizontalForward.sqrMagnitude <= 0.0001f)
+            {
+                string error = $"[GameplayCameraController] Player '{player.name}' 的水平前方向无效，无法恢复相机。";
+                Debug.LogError(error, this);
+                throw new InvalidOperationException(error);
+            }
+
+            EnterGameplayMode(playerRoot, horizontalForward.normalized);
+        }
+
+        /// <summary>按普通恢复或成功转场的要求绑定玩家，并在启用 Brain 前完成朝向同步。</summary>
+        /// <param name="playerRootToAlign">成功转场时需要对齐的角色根节点；失败恢复时为空。</param>
+        /// <param name="horizontalForward">成功转场时角色的单位水平前方向。</param>
+        /// <exception cref="InvalidOperationException">成功转场时出生点 Player 无法绑定或根节点已被替换时抛出。</exception>
+        private void EnterGameplayMode(Transform playerRootToAlign, Vector3 horizontalForward)
+        {
             SetCameraPriorities(false);
-            // 恢复单一 Brain 后再绑定玩家，使正式游戏沿用同一 Main Camera 输出链。
-            brain.enabled = true;
-            if (!TryBindPlayer())
-                StartPlayerBindingWait();
-            Debug.Log($"[GameplayCameraController] 已恢复 Brain 并切换到正式游戏镜头，playerBound={boundPlayer != null}。", this);
+
+            if (playerRootToAlign == null)
+            {
+                // 失败或取消时保留相机原视角，并沿用可等待玩家绑定的恢复行为。
+                brain.enabled = true;
+                if (!TryBindPlayer())
+                    StartPlayerBindingWait();
+            }
+            else
+            {
+                // 成功时先绑定出生点已应用的 Player，避免绑定逻辑从旧 Brain 朝向覆盖目标方向。
+                if (!TryBindPlayer() || boundPlayerRoot != playerRootToAlign)
+                {
+                    string error = $"[GameplayCameraController] 无法绑定出生点 Player '{playerRootToAlign.name}'。";
+                    Debug.LogError(error, this);
+                    throw new InvalidOperationException(error);
+                }
+
+                SynchronizeCameraToPlayer(playerRootToAlign, horizontalForward);
+                brain.enabled = true;
+            }
+
+            Debug.Log(
+                $"[GameplayCameraController] 已恢复正式游戏相机，playerBound={boundPlayer != null}，" +
+                $"alignedToPlayer={playerRootToAlign != null}。", this);
+        }
+
+        /// <summary>将跟随支点、构图代理和 Virtual Camera 状态同步到角色出生朝向。</summary>
+        /// <param name="playerRoot">本次场景流程已就绪的角色世界根节点。</param>
+        /// <param name="horizontalForward">归一化后的水平前方向。</param>
+        private void SynchronizeCameraToPlayer(Transform playerRoot, Vector3 horizontalForward)
+        {
+            // 先把固定世界轴偏移与构图代理搬到新场景，再刷新 Target Group 的本帧构图输入。
+            cameraPivot.position = playerRoot.position + cameraPivotWorldOffset;
+            playerFramingTarget.position = playerRoot.position + playerFramingWorldOffset;
+            UpdateTargetFramingTarget();
+            targetGroup.DoUpdate();
+
+            yaw = Mathf.Atan2(horizontalForward.x, horizontalForward.z) * Mathf.Rad2Deg;
+            Quaternion orientation = Quaternion.Euler(-pitch, yaw, 0f);
+            cameraPivot.rotation = orientation;
+            freeLookVirtualCamera.transform.rotation = orientation;
+            lockedVirtualCamera.transform.rotation = orientation;
+
+            // Brain 在同步完成后才重新启用；让 Cinemachine 从新出生点计算状态，不沿用旧场景阻尼缓存。
+            freeLookVirtualCamera.PreviousStateIsValid = false;
+            lockedVirtualCamera.PreviousStateIsValid = false;
+            lockYawVelocity = 0f;
+            lockPitchVelocity = 0f;
+            discardNextLookSample = true;
+            Debug.Log(
+                $"[GameplayCameraController] 相机已对齐 Player 水平朝向，player={boundPlayer.name}，" +
+                $"yaw={yaw:0.0}，pitch={pitch:0.0}，distance={freeLookFollow.CameraDistance:0.00}m。", this);
         }
 
         #endregion

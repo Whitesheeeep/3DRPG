@@ -2,11 +2,11 @@
 
 WSFrame 组合加载按职责分为 `Loading/Flow`（流程控制与展示契约）、`Loading/Execution`（Context、Tracker、场景模块、校验器和任务）及 `Loading/Data`（配置、数据库和快照）。框架入口和接入细节见下方文档链接。
 
-通用任务执行由 WSFrame 的 [`SceneLoadingSystem`](../../../WSFrame/SceneSystem/Loading/SceneLoading_README.md) 提供。RPG 的 ConfigInstaller 调用 `SceneLoadingSystem.RegisterDatabase`，由系统在注册时验证数据库并建立 SceneId 索引；`GameArchitecture` 注册系统实例并注入 `GameSceneLoadingPresentation`。玩家初始化、出生点定位、窗口预加载和场景入口仍由 RPG 实现。系统查询配置后执行其嵌套任务树；运行状态与 Addressables 句柄保存在本次运行时对象内，不写入任务资产。
+通用任务执行由 WSFrame 的 [`SceneLoadingSystem`](../../../WSFrame/SceneSystem/Loading/SceneLoading_README.md) 提供。RPG 的 ConfigInstaller 调用 `SceneLoadingSystem.RegisterDatabase`，由系统在注册时验证数据库并建立 SceneId 索引；`GameArchitecture` 注册系统实例并注入 `GameSceneLoadingPresentation`。已有 `SceneLoadConfig` 的开始窗口和交互组件直接调用 Config 重载；只有 `SceneLoadingEntry` 等只保存 SceneId 的入口才通过数据库解析。玩家初始化、出生点定位和窗口预加载仍由 RPG 实现；运行状态与 Addressables 句柄保存在本次运行时对象内，不写入任务资产。
 
 项目窗口准备由 `WindowPreloadSceneLoadTask` 直接调用 UIManager 完成，按六个窗口的真实完成数量汇报进度。窗口预热会创建窗口并触发 `OnAwake` 与 Controller 初始化，因此必须在 `PlayerInitializationSceneLoadTask` 之后执行。HUD、Choice、Dialogue、Bag、Character 和装备培养窗口均在正式场景流程中预热；Choice 和 Dialogue 的内部 View 初始化完成后，后续任务才会继续。
 
-GameStart 场景由显式放置的 WSFrameRoot、UIRoot、UICamera、UIEventSystem 和常驻 GameplayCamera 组成。`GameStartEntry` 打开 `GameStartWindow`，开始按钮调用现有 `SceneLoadingSystem.LoadAsync`。庭院激活后，角色初始化任务进入准备门禁，唯一 `PlayerSpawnPoint` 的世界位姿定位共享 CharacterRoot。完整任务树成功并完成加载界面收尾后，`SceneLoadingSystem` 发送 `Completed`；RPG 的 `GameSceneFlowSystem` 订阅该事件，恢复玩家和 GameplayCamera，关闭开始窗口并显示已预热的 HUD。
+GameStart 场景由显式放置的 WSFrameRoot、UIRoot、UICamera、UIEventSystem 和常驻 GameplayCamera 组成。`GameStartEntry` 打开 `GameStartWindow`，开始按钮把已持有的 `SceneLoadConfig` 传给 `SceneLoadingSystem.LoadAsync`。庭院激活后，角色初始化任务进入准备门禁，唯一 `PlayerSpawnPoint` 的世界位姿定位共享 CharacterRoot。完整任务树成功并完成加载界面收尾后，`SceneLoadingSystem` 发送 `Completed`；RPG 的 `GameSceneFlowSystem` 订阅该事件，关闭开始窗口、恢复玩家、调用 `GameplayCameraController` 将水平朝向对齐 `CharacterRoot` 并恢复 Brain，最后显示已预热的 HUD。
 
 ```mermaid
 flowchart LR
@@ -19,8 +19,9 @@ flowchart LR
     G --> H[PlayerSpawnSceneLoadTask：应用唯一出生点]
     H --> I[显示 100% 并关闭 LoadingWindow]
     I --> J[SceneLoadingSystem 发送 Completed]
-    J --> K[GameSceneFlowSystem 恢复玩家与 GameplayCamera]
-    K --> L[关闭开始窗口并显示已预热的 HUD]
+    J --> K[GameSceneFlowSystem 关闭开始窗口并恢复 Player]
+    K --> L[GameplayCameraController 对齐水平朝向并恢复 Brain]
+    L --> M[显示已预热的 HUD]
 ```
 
 ## GameStart、庭院与 BossScene
@@ -38,9 +39,9 @@ GameStart
 └─ GameStartEntry                      # 显式引用 GameplayCameraController
 ```
 
-`UIRoot`、`UICamera` 和 `UIEventSystem` 均直接放入 GameStart 场景；UIManager 会识别已存在的对象并避免重复创建。GameplayCamera 根节点跨场景常驻，开始界面和场景准备期间进入 Presentation 模式，全部任务成功后切回 FreeLook；没有第二台 GameStart Camera，也不需要庭院相机。
+`UIRoot`、`UICamera` 和 `UIEventSystem` 均直接放入 GameStart 场景；UIManager 会识别已存在的对象并避免重复创建。GameplayCamera 根节点跨场景常驻，开始界面和场景准备期间进入 Presentation 模式；流程成功后，`GameSceneFlowSystem` 让相机按角色水平前方向对齐并恢复 Brain，保留已有俯仰角和缩放距离。没有第二台 GameStart Camera，也不需要庭院相机。
 
-庭院中配置的 `SceneTransitionInteractable : InteractableObject` 绑定 `scene.boss` 和 Trigger `BoxCollider`。玩家移动根节点进入出生点前方的盒体时，现有 `InteractionDetector` 显示“进入首领场景”选项；选择后才调用 `SceneLoadingSystem.LoadAsync`。提交前会再次检查交互范围、玩家就绪状态和加载互斥。
+庭院中配置的 `SceneTransitionInteractable : InteractableObject` 绑定目标 `SceneLoadConfig`（例如 `scene.boss`）和 Trigger `BoxCollider`。玩家移动根节点进入出生点前方的盒体时，现有 `InteractionDetector` 显示“进入首领场景”选项；选择后若配置引用存在，就优先将该配置传给 `SceneLoadingSystem.LoadAsync`；配置为空时则使用 `SceneIdDropdown` 中选择的 ID，由 `SceneLoadingSystem` 从数据库解析配置并加载。提交前会再次检查玩家就绪状态和加载互斥。
 
 ```mermaid
 flowchart LR
@@ -97,7 +98,7 @@ flowchart TD
     Progress --> Complete[根任务成功，进度变为 100%]
     Complete --> Close[展示 100% 并关闭 LoadingWindow]
     Close --> Notify[SceneLoadingSystem 发送 Completed]
-    Notify --> HUD[GameSceneFlowSystem 恢复玩家、相机并显示已预热 HUD]
+    Notify --> HUD[GameSceneFlowSystem 恢复玩家、对齐相机并显示已预热 HUD]
     Progress --> Failure[失败或取消时保留错误遮罩]
 ```
 
@@ -147,7 +148,7 @@ progressRegistration.UnRegister();
 taskRegistration.UnRegister();
 ```
 
-`RegisterSnapshotChanged` 会在整体进度、场景就绪状态或流程终态变化时提供 `SceneLoadExecutionSnapshot`；`RegisterTaskChanged` 提供任务引用路径和局部进度。另可订阅 `RegisterCompleted`、`RegisterFailed`、`RegisterCancelled`，或直接读取最近一次 `CurrentSnapshot`。成功快照先报告 100%，加载展示收尾后才发送 `RegisterCompleted`，供 RPG 显示已预热的 HUD 并恢复玩家与相机。快照只读且共享给 UI 和外部订阅者；事件回调异常会记录日志，不会中断加载。
+`RegisterSnapshotChanged` 会在整体进度、场景就绪状态或流程终态变化时提供 `SceneLoadExecutionSnapshot`；`RegisterTaskChanged` 提供任务引用路径和局部进度。另可订阅 `RegisterCompleted`、`RegisterFailed`、`RegisterCancelled`，或直接读取最近一次 `CurrentSnapshot`。成功快照先报告 100%，加载展示收尾后才发送 `RegisterCompleted`，供 RPG 的 `GameSceneFlowSystem` 恢复玩家、让 Camera Controller 对齐角色方向并显示已预热的 HUD。快照只读且共享给 UI 和外部订阅者；事件回调异常会记录日志，不会中断加载。
 
 ## 调用与直接打开场景
 
@@ -158,12 +159,14 @@ using UnityEngine.SceneManagement;
 
 SceneLoadingSystem loading = GameArchitecture.Interface.GetSystem<SceneLoadingSystem>();
 Scene targetScene = await loading.LoadAsync("scene.market");
+SceneLoadConfig targetConfig = data.TargetSceneConfig;
+Scene configuredTargetScene = await loading.LoadAsync(targetConfig);
 
 // 仅卸载本次统一流程通过 Addressables Additive 加载并持有的场景。
 await loading.UnloadSceneAsync(targetScene);
 ```
 
-需要独立进入 Play Mode 的场景，在场景中添加 `SceneLoadingEntry` 并填写数据库里的 `SceneId`。统一流程进入该场景时，入口按正在执行的 SceneId 或 Addressables 已持有的具体 Scene 实例识别来源，不会重复初始化；直接打开场景时，它会复用同一任务树并让 AddressableSceneLoadTask 校验当前 Scene，而不重新加载。接入统一任务树的玩家 Prefab 必须关闭 `initializeOnStart`，由 `PlayerInitializationSceneLoadTask` 统一控制角色准备门禁。窗口预加载由 `WindowPreloadSceneLoadTask` 直接调用 UIManager；取消流程只取消任务等待，不撤销已开始的窗口实例化或 Unity 场景加载副作用。
+需要独立进入 Play Mode 的场景，在场景中添加 `SceneLoadingEntry` 并通过 SceneId 下拉选择数据库里的配置。统一流程进入该场景时，入口按正在执行的 SceneId 或 Addressables 已持有的具体 Scene 实例识别来源，不会重复初始化；直接打开场景时，它会通过 SceneId 查询配置、复用同一任务树并让 AddressableSceneLoadTask 校验当前 Scene，而不重新加载。接入统一任务树的玩家 Prefab 必须关闭 `initializeOnStart`，由 `PlayerInitializationSceneLoadTask` 统一控制角色准备门禁。窗口预加载由 `WindowPreloadSceneLoadTask` 直接调用 UIManager；取消流程只取消任务等待，不撤销已开始的窗口实例化或 Unity 场景加载副作用。
 
 ## 失败与校验
 

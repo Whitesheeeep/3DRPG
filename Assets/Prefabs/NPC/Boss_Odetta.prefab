@@ -27266,6 +27266,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4b0799f21e062a46bc8ef0c1cb35599, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  localCueHandlers: []
+  references:
+    version: 2
+    RefIds: []
 --- !u!114 &3747110262338139537
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -27360,6 +27364,7 @@ MonoBehaviour:
   markerProvider: {fileID: 3747110262338139537}
   skillRuntimeHost: {fileID: 8527450174945660334}
   animationController: {fileID: 478637654016026058}
+  weaponRigController: {fileID: 0}
   npcController: {fileID: 135778691529142037}
 --- !u!114 &135778691529142037
 MonoBehaviour:

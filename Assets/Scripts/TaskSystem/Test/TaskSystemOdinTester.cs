@@ -272,15 +272,6 @@ namespace RPG.TaskSystemNS.Tests
                 restoreTaskSystemAfterTest = true;
                 architectureTaskSystem.ClearPlayerTaskState();
                 TaskConfigManager.ResetForTests(testDatabase);
-                var objectiveHandlerRegistry = new TaskObjectiveHandlerRegistry();
-                objectiveHandlerRegistry.RegisterDefault();
-                objectiveHandlerRegistry.RegisterDefault();
-                Assert(
-                    objectiveHandlerRegistry.Resolve(new TaskDialogueCompletedObjectiveDefinition(
-                        "objective.dialogue.registry",
-                        targetDialogueGraph.Asset)) is TaskDialogueCompletedObjectiveHandler,
-                    "默认目标注册表应显式登记对话完成 Handler，重复默认注册保持幂等。");
-                objectiveHandlerRegistry.Register(new TestObjectiveHandler());
                 var conditionHandlerRegistry = new TaskConditionHandlerRegistry();
                 conditionHandlerRegistry.RegisterDefault();
                 conditionHandlerRegistry.RegisterDefault();
@@ -292,7 +283,6 @@ namespace RPG.TaskSystemNS.Tests
                 Assert(rewardHandlerRegistry.Count == 1, "奖励默认 Handler 重复调用不能重复登记。");
                 var testRewardSystem = new RewardSystem(rewardHandlerRegistry);
                 testSystem = new TaskSystem(
-                    objectiveHandlerRegistry,
                     conditionHandlerRegistry,
                     testRewardSystem,
                     GameArchitecture.Interface.GetSystem<RedDotSystem>(),
@@ -1155,6 +1145,14 @@ namespace RPG.TaskSystemNS.Tests
             /// 获取测试目标监听的事件键。
             /// </summary>
             public string EventKey => eventKey;
+
+            /// <summary>由测试定义直接创建对应事件 Runtime。</summary>
+            /// <param name="context">当前任务实例的受限进度上下文。</param>
+            /// <returns>订阅测试领域事件的独立运行时。</returns>
+            public override ITaskObjectiveRuntime CreateRuntime(ITaskObjectiveRuntimeContext context)
+            {
+                return new TestObjectiveRuntime(eventKey, context);
+            }
         }
 
         /// <summary>
@@ -1175,25 +1173,6 @@ namespace RPG.TaskSystemNS.Tests
             /// 获取事件键。
             /// </summary>
             public string EventKey { get; }
-        }
-
-        /// <summary>
-        /// 将测试目标定义映射为可订阅测试事件的 Handler。
-        /// </summary>
-        private sealed class TestObjectiveHandler : TaskObjectiveHandler<TestObjectiveDefinition>
-        {
-            /// <summary>
-            /// 创建测试目标运行时。
-            /// </summary>
-            /// <param name="definition">测试目标定义。</param>
-            /// <param name="context">目标进度上下文。</param>
-            /// <returns>可订阅测试事件的运行时。</returns>
-            public override ITaskObjectiveRuntime CreateRuntime(
-                TestObjectiveDefinition definition,
-                ITaskObjectiveRuntimeContext context)
-            {
-                return new TestObjectiveRuntime(definition.EventKey, context);
-            }
         }
 
         /// <summary>

@@ -10,6 +10,7 @@ using RPG.TaskSystemNS;
 using RPG.Game.Loading;
 using RPG.Game.UI.Escape;
 using RPG.Game.UI.Loading;
+using RPG.NPC;
 using UnityEngine;
 using WS_Modules.BusinessArchitecture;
 using WS_Modules.SceneModule;
@@ -45,6 +46,9 @@ namespace RPG.Game
                 serializerRegistry,
                 snapshotTypeRegistry);
             RegisterManager(saveManager);
+
+            // 对话 Toggle 的跨场景完成事实由状态 Manager 持有，并在其 OnInit 注册 SaveModule。
+            RegisterManager(new DialogueInteractionManager(saveManager));
 
             // 角色实例先于装备 Manager 注册，后续角色装备关系存档会在三类实例存档之后恢复。
             CharacterRosterManager characterRosterManager = new CharacterRosterManager(saveManager);
@@ -100,13 +104,11 @@ namespace RPG.Game
             var rewardSystem = new RewardSystem(rewardHandlerRegistry);
             RegisterSystem(rewardSystem);
 
-            // 任务定义由 ConfigInstaller 注入；默认 Handler 由各领域注册表集中登记。
-            var taskObjectiveHandlerRegistry = new TaskObjectiveHandlerRegistry();
-            taskObjectiveHandlerRegistry.RegisterDefault();
+            // NPCManager 由架构统一持有；需要导航的具体 ObjectiveRuntime 在启动时自行获取。
+            RegisterManager(new NPCManager());
             var taskConditionHandlerRegistry = new TaskConditionHandlerRegistry();
             taskConditionHandlerRegistry.RegisterDefault();
             var taskSystem = new TaskSystem(
-                taskObjectiveHandlerRegistry,
                 taskConditionHandlerRegistry,
                 rewardSystem,
                 redDotSystem,

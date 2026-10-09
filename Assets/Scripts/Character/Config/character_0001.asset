@@ -19,7 +19,7 @@ MonoBehaviour:
     introduction: "\u5965\u9EDB\u5854"
     rarity: 5
   presentation:
-    prefabAddress: Character/OdetaA
+    prefabAddress: Character/OdetaASeparated
     sideIconAddress: CharacterSideIcons
     sideIconSpriteName: Odetta_Side
     avatarAddress: Characters

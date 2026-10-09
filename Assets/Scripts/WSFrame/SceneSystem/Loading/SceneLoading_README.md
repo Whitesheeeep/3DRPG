@@ -63,10 +63,13 @@ flowchart LR
 
 ## 运行时入口
 
-- `LoadAsync(sceneId, cancellationToken)` 查询稳定 `SceneId` 并运行完整任务树，返回目标 `Scene`。
+- `LoadAsync(config, cancellationToken)` 直接运行调用方已有的 `SceneLoadConfig`，不要求先注册或查询数据库。
+- `LoadAsync(sceneId, cancellationToken)` 通过已注册数据库解析稳定 `SceneId`，再进入相同执行流程。
 - `InitializeCurrentSceneAsync(sceneId, cancellationToken)` 让已直接打开的活动场景执行相同准备任务；`AddressableSceneLoadTask` 只校验并登记当前场景，不会重复加载。
 - `IsSceneJoiningCurrentFlow(sceneId, scene)` 供场景入口识别统一流程已加载的目标场景，避免创建第二个流程。
 - `UnloadSceneAsync(scene, cancellationToken)` 只卸载本系统 Addressables 模块持有的 Additive 场景并释放其句柄。
+
+`SceneLoadingEntry.sceneId` 使用 `SceneIdDropdown` PropertyDrawer 从 `SceneLoadDatabase` 的场景列表中选择稳定 ID。编辑器会话自动选用唯一数据库；项目有多个数据库时，在 Inspector 中明确选择后再选场景。Drawer 只通过 `SerializedProperty` 写入 ID，缺失或重复 ID 会显示提示并保留原字段值；运行时类型不依赖 UnityEditor。`SceneLoadConfig.sceneId` 是 ID 定义本身，仍由配置作者编辑，不使用该选择器。
 
 同一个 `SceneLoadingSystem` 一次只允许一个完整流程运行。配置与任务资产保存定义；进度、事件和 Addressables 句柄属于当前运行实例，不写回任务资产。
 

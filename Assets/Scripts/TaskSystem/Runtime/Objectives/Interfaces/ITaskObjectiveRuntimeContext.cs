@@ -1,7 +1,7 @@
 namespace RPG.TaskSystemNS
 {
     /// <summary>
-    /// 为目标 Handler 提供受限的进度访问；写入由拥有 Record 的 TaskRuntime 校验。
+    /// 为目标 Runtime 提供受限的任务身份与进度访问；进度写入由 TaskRuntime 校验。
     /// </summary>
     public interface ITaskObjectiveRuntimeContext
     {

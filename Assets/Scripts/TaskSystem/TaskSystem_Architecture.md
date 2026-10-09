@@ -30,7 +30,7 @@ flowchart TD
 | `TaskSystem` | 活动 `TaskRuntime`、完成 ID、追踪 ID、未读 ID | GameArchitecture 会话 | 资格查询、统一接取、领奖、全局任务事实与快照 |
 | `TaskRuntime` | `TaskDefinition` 引用、唯一 `TaskRecord`、当前 `TaskStageRuntime` | 接取成功至领奖完成 | 推进单条任务阶段、写入目标进度、进入 Claimable |
 | `TaskStageRuntime` | 当前 `TaskStageDefinition`、目标进度引用、目标运行时订阅 | 当前阶段执行期间 | 启停本阶段全部目标监听并检查阶段完成 |
-| `ITaskObjectiveRuntime` | 目标 Handler 建立的具体监听 | 所属阶段执行期间 | 接收领域事件并通过受限上下文提交目标进度 |
+| `ITaskObjectiveRuntime` | Definition 创建的目标监听实例 | 所属阶段执行期间 | 接收领域事件并通过受限上下文提交目标进度及可选导航查询 |
 | `TaskSaveSnapshot` | 活动 Record 快照及全局任务事实 | 保存或加载时 | 与配置引用、运行时对象和事件句柄隔离的 v2 DTO |
 
 `TaskRecord` 归对应的 `TaskRuntime` 所有。阶段和目标运行时只引用其当前阶段进度，不复制玩家进度数据。任务进入 `Claimable` 后，`TaskRuntime` 和 Record 继续保留，阶段监听停止；领奖成功后 `TaskSystem` 才移除该实例并记录完成 ID。
@@ -203,9 +203,7 @@ Assets/Scripts/TaskSystem/
 │  └─ Registries/            TaskConditionHandlerRegistry
 ├─ Runtime/Objectives/
 │  ├─ Definitions/           TaskObjectiveDefinition
-│  ├─ Interfaces/            Handler、目标运行时及受限上下文契约
-│  ├─ Handlers/              TaskObjectiveHandler<TDefinition> 与具体 Handler
-│  └─ Registries/            TaskObjectiveHandlerRegistry
+│  └─ Interfaces/            目标 Runtime、导航能力及受限上下文契约
 ├─ Runtime/Core/             TaskSystem、TaskRuntime、TaskStageRuntime
 ├─ Runtime/Data/             TaskRecord、命令结果和稳定 ID
 ├─ Runtime/Events/           任务事实事件载荷
@@ -215,14 +213,13 @@ Assets/Scripts/TaskSystem/
 
 ## 5. 新增能力与其他系统接入
 
-任务定义与 Handler 按精确 CLR 类型配对。新增类型放在 `RPG.TaskSystemNS` 命名空间下对应的 Definitions、Interfaces、Handlers 或 Registries 目录；不依赖反射扫描，也不在 NPC、对话或玩法调用方临时创建 Handler。
+Objective Definition 直接创建各任务实例独有的 Runtime；新增目标类型放在 `RPG.TaskSystemNS` 对应的 Definitions 目录，并在 Definition 中实现工厂方法。任务层不依赖反射扫描，也不需要 Objective Handler 注册表。
 
 | 扩展内容 | 继承或实现 | 放置和登记方式 |
 | --- | --- | --- |
-| 新任务目标配置 | 继承 [TaskObjectiveDefinition](Runtime/Objectives/Definitions/TaskObjectiveDefinition.cs)，重写校验时先调用 `base.Validate()` | 放入 `Runtime/Objectives/Definitions/`；在任务资产对应阶段的目标列表中配置 |
-| 完成指定对话资源 | 使用 [`TaskDialogueCompletedObjectiveDefinition`](Runtime/Objectives/Definitions/TaskDialogueCompletedObjectiveDefinition.cs)，引用 `DialogueAsset` 并设置 `Required` | 在阶段目标列表配置；由默认注册的对话 Handler 解析 |
-| 目标 Handler | 继承 [`TaskObjectiveHandler<TDefinition>`](Runtime/Objectives/Handlers/TaskObjectiveHandler.cs) 并实现 `CreateRuntime()` | 放入 `Runtime/Objectives/Handlers/`；在 [TaskObjectiveHandlerRegistry](Runtime/Objectives/Registries/TaskObjectiveHandlerRegistry.cs) 的 `RegisterDefault()` 中调用 `Register<TDefinition>()` |
-| 目标运行时 | 实现 [ITaskObjectiveRuntime](Runtime/Objectives/Interfaces/ITaskObjectiveRuntime.cs) | 由对应 Handler 创建；无需单独登记 |
+| 新任务目标配置 | 继承 [TaskObjectiveDefinition](Runtime/Objectives/Definitions/TaskObjectiveDefinition.cs)，实现 `CreateRuntime()` 并在校验时先调用 `base.Validate()` | 放入 `Runtime/Objectives/Definitions/`；在任务资产对应阶段的目标列表中配置 |
+| 完成指定对话资源 | 使用 [`TaskDialogueCompletedObjectiveDefinition`](Runtime/Objectives/Definitions/TaskDialogueCompletedObjectiveDefinition.cs)，引用 `DialogueAsset`、设置 `Required`，可选配置导航 NPCId | 在阶段目标列表配置；Definition 直接创建对话 Runtime |
+| 目标运行时 | 实现 [ITaskObjectiveRuntime](Runtime/Objectives/Interfaces/ITaskObjectiveRuntime.cs)，需要导航时实现 `ITaskObjectiveNavigationProvider` | 由对应 Definition 创建；阶段 Runtime 管理监听生命周期 |
 | 新接取条件配置 | 继承 [TaskConditionDefinition](Runtime/Conditions/Definitions/TaskConditionDefinition.cs) 并实现自己的 `Validate()` | 放入 `Runtime/Conditions/Definitions/`；在任务资产的接取条件列表中配置 |
 | 条件 Handler | 实现 [ITaskConditionHandler](Runtime/Conditions/Interfaces/ITaskConditionHandler.cs) | 放入 `Runtime/Conditions/Handlers/`；在 [TaskConditionHandlerRegistry](Runtime/Conditions/Registries/TaskConditionHandlerRegistry.cs) 的 `RegisterDefault()` 中调用 `Register<TDefinition>()` |
 
@@ -230,16 +227,14 @@ Assets/Scripts/TaskSystem/
 
 ~~~mermaid
 flowchart LR
-    Definition[TaskObjectiveDefinition] -->|精确 CLR 类型| Registry[TaskObjectiveHandlerRegistry]
-    Registry --> Handler[TaskObjectiveHandler<TDefinition>]
-    Handler -->|创建| Runtime[自定义 ObjectiveRuntime]
+    Definition[TaskObjectiveDefinition] -->|CreateRuntime(context)| Runtime[自定义 ObjectiveRuntime]
     Stage[TaskStageRuntime] -->|StartListening / StopListening| Runtime
     Event[玩法事件] --> Runtime
     Runtime -->|AddProgress / SetProgress| Context[ITaskObjectiveRuntimeContext]
     Context --> Record[TaskRuntime 持有的 TaskRecord]
 ~~~
 
-当前第一个正式玩法目标是完成指定的 `DialogueAsset`。它由 [`TaskDialogueCompletedObjectiveHandler`](Runtime/Objectives/Handlers/TaskDialogueCompletedObjectiveHandler.cs) 创建运行时；运行时只在当前阶段订阅 `DialogueEndedEvent`，并同时要求 `Status == Completed` 与 `Session.Request.Asset` 引用相同。开始对话、Failed 结束、其他资源及接取前的历史对话都不计数。`Required` 默认为 1；任务 v2 快照仍只保存当前阶段的目标进度，恢复监听不会重放结束事件。对话结束事件由 [`DialogueSystem`](../DialogueSystem/Runtime/DialogueSystem.cs) 在会话资源清理后通过 WSFrame `EventSystem` 发布。
+当前正式目标是完成指定的 `DialogueAsset`。Definition 直接创建 [`TaskDialogueCompletedObjectiveRuntime`](Runtime/Objectives/Handlers/TaskDialogueCompletedObjectiveRuntime.cs)；Runtime 只在当前阶段订阅 `DialogueEndedEvent`，并同时要求 `Status == Completed` 与 `Session.Request.Asset` 引用相同。开始对话、Failed 结束、其他资源及接取前的历史对话都不计数。`Required` 默认为 1；任务 v2 快照仍只保存当前阶段的目标进度，恢复监听不会重放结束事件。可选 NPCId 只用于导航定位，不改变完成判定。对话结束事件由 [`DialogueSystem`](../DialogueSystem/Runtime/DialogueSystem.cs) 在会话资源清理后通过 WSFrame `EventSystem` 发布。
 
 ~~~mermaid
 sequenceDiagram
@@ -256,7 +251,7 @@ sequenceDiagram
     Context->>Runtime: 更新当前 TaskRecord 并检查阶段
 ~~~
 
-以下示例类型放在 `RPG.TaskSystemNS` 命名空间中。目标运行时由 Handler 创建，示例代码在下文说明其监听约束。
+以下示例类型放在 `RPG.TaskSystemNS` 命名空间中。目标 Definition 每次创建独立 Runtime，Runtime 只在阶段启动后监听玩法事件。
 
 ~~~csharp
 using System;
@@ -279,34 +274,26 @@ public sealed class ExampleEnemyObjectiveDefinition : TaskObjectiveDefinition
         if (string.IsNullOrWhiteSpace(enemyId))
             throw new ArgumentException("敌人 ID 不能为空。", nameof(enemyId));
     }
-}
 
-/// <summary>为示例敌人目标创建事件监听运行时。</summary>
-public sealed class ExampleEnemyObjectiveHandler
-    : TaskObjectiveHandler<ExampleEnemyObjectiveDefinition>
-{
-    /// <summary>创建持有定义与受限进度上下文的目标实例。</summary>
-    /// <param name="definition">该目标的静态配置。</param>
+    /// <summary>创建该目标独有的事件监听 Runtime。</summary>
     /// <param name="context">由 TaskRuntime 提供的进度上下文。</param>
-    /// <returns>负责订阅玩法击败事件的目标运行时。</returns>
-    public override ITaskObjectiveRuntime CreateRuntime(
-        ExampleEnemyObjectiveDefinition definition,
-        ITaskObjectiveRuntimeContext context)
+    /// <returns>负责订阅玩法击败事件的目标 Runtime。</returns>
+    public override ITaskObjectiveRuntime CreateRuntime(ITaskObjectiveRuntimeContext context)
     {
-        return new ExampleEnemyObjectiveRuntime(definition, context);
+        return new ExampleEnemyObjectiveRuntime(this, context);
     }
 }
 ~~~
 
-`ExampleEnemyObjectiveRuntime` 是扩展示例名称，需要在 `Runtime/Objectives/Handlers/` 中实现 `ITaskObjectiveRuntime`：`StartListening()` 注册玩法事件，`StopListening()` 释放该实例创建的全部订阅；事件匹配定义后通过 `context.AddProgress()` 或 `context.SetProgress()` 更新进度。两个生命周期方法必须支持重复调用。构造函数和 Handler 创建实例时只建立对象与上下文，不能累计进度；阶段启动后才开始监听。目标上下文会拒绝已经失效阶段的迟到回调。
+`ExampleEnemyObjectiveRuntime` 在 `Runtime/Objectives/Handlers/` 或专用运行时目录实现 `ITaskObjectiveRuntime`：`StartListening()` 注册玩法事件，`StopListening()` 释放该实例创建的全部订阅；事件匹配定义后通过 `context.AddProgress()` 或 `context.SetProgress()` 更新进度。两个生命周期方法必须支持重复调用。构造函数和 Definition 工厂只建立对象与上下文，不能累计进度；阶段启动后才开始监听。目标上下文会拒绝已经失效阶段的迟到回调。
 
 条件 Handler 的 `Evaluate(TaskConditionDefinition, TaskSystem)` 只查询任务事实：条件满足返回 `null`，不满足返回 `TaskAvailabilityReason`。它不接取任务、不修改玩家任务状态；无效定义或类型不匹配应明确报错。自定义条件字段由定义的 `Validate()` 校验，扩展时调用 `base.Validate()`。当新条件需要表达当前尚无的失败原因时，应同时扩展任务资格原因类型和消费该原因的界面文案映射。
 
 注册约束：
 
-- `TaskObjectiveHandlerRegistry.RegisterDefault()` 和 `TaskConditionHandlerRegistry.RegisterDefault()` 是默认 Handler 的集中登记点；在各自方法内增加新 Handler 的 `Register<TDefinition>()` 调用。GameArchitecture 只调用这两个默认注册入口。
-- Handler 通过定义的精确 CLR 类型解析。相同类型重复登记会报错；重复调用默认注册入口不会重复登记。缺少对应 Handler 属于配置错误。
-- 玩法验证用的 Handler 只从 Odin 测试入口注入，不加入正式 `RegisterDefault()`。
+- Objective Runtime 由对应 Definition 创建，不登记 Objective Handler；创建失败由阶段启动流程释放已创建 Runtime 并传播异常。
+- 接取条件仍通过 `TaskConditionHandlerRegistry` 按精确定义类型解析，默认条件 Handler 在 `RegisterDefault()` 中显式登记。
+- 玩法奖励仍通过 `RewardHandlerRegistry` 登记；不与 Objective 创建职责混合。
 - 新增任务分类时，在 [TaskCategoryCatalog](Runtime/Config/TaskCategoryCatalog.cs) 登记稳定 ID 与显示名；Inspector 候选项来自同一静态表。任务奖励配置继承通用 [RewardDefinition](../RewardSystem/Runtime/Definitions/RewardDefinition.cs)，按[奖励系统扩展指南](../RewardSystem/RewardSystem_Architecture.md)登记 Handler。
 
 其他系统通过 `TaskSystem` 的业务 API 接入，不持有任务实例内部数据：
@@ -359,9 +346,9 @@ HUD 红点复用 RedDotSystem。`TaskSystem` 持有 RedDotSystem 与 TaskRedDotC
 
 任务窗口运行时 UI 位于 `Game/Runtime/UI/Controllers/TaskWindowController.cs`、`TaskWindowFlowCoordinator.cs`、`Game/Runtime/UI/Task/` 与 `Game/Runtime/UI/Views/Task/`。`E_TaskCategoryFilter` 与 `TaskBrowseStateModel` 保存纯浏览筛选和选择状态；`TaskWindowView` 管列表与页签；`TaskDetailsPanelView` 管详情目标、奖励与用户操作意图。UI 只查询任务事实并调用 TaskSystem 命令，不创建或直接改写 `TaskRecord`、`TaskRuntime`。
 
-### HUD 追踪任务摘要与临时世界标记
+### HUD 追踪任务摘要与 NPC 世界标记
 
-HUD 左侧摘要只投影 `TaskSystem.TrackedTaskId` 对应的活动任务。它显示任务标题和当前阶段的全部目标；目标说明回退为“目标说明 → 阶段标题 → 完成目标”。完成状态使用独立图像标记，完成文字缩小并显示为低对比度灰色；仅“可领取奖励”状态文字使用绿色。任务进入 `Claimable` 后仍保留摘要；领奖完成或取消追踪后摘要隐藏。该展示不接收点击、不调用 `AcknowledgeTask()`，因此不会改变未读事实。摘要距离仅在当前追踪任务具有匹配的临时导航位置时显示。
+HUD 左侧摘要只投影 `TaskSystem.TrackedTaskId` 对应的活动任务。它显示任务标题和当前阶段的全部目标；目标说明回退为“目标说明 → 阶段标题 → 完成目标”。完成状态使用独立图像标记，完成文字缩小并显示为低对比度灰色；仅“可领取奖励”状态文字使用绿色。任务进入 `Claimable` 后仍保留摘要；领奖完成或取消追踪后摘要隐藏。该展示不接收点击、不调用 `AcknowledgeTask()`，因此不会改变未读事实。导航距离由当前追踪任务提供的 Transform 计算。
 
 HUD 摘要的标题、状态行、距离行和目标列表由 UGUI `VerticalLayoutGroup` 排列，标题行由 `HorizontalLayoutGroup` 排列，目标容器使用纵向布局。隐藏可选行时布局自动收拢；代码只管理行对象复用和展示数据，不计算各行坐标或面板高度。
 
@@ -370,7 +357,8 @@ flowchart LR
     TaskSystem[TaskSystem：追踪、阶段与进度事实] --> Controller[HUDTaskController]
     Controller --> Tracker[HUDTaskTrackerView]
     Tracker --> Rows[HUDTaskObjectiveRowView：Image 状态标记与目标文字]
-    Tester[Cube 1 Odin 测试输入] -->|TaskId、Transform、offset| Controller
+    Objective[当前未完成目标 Runtime] -->|NPCId 查找 Transform| NavQuery[TaskSystem 导航查询]
+    NavQuery -->|当前追踪目标 Transform| Controller
     Player[活动角色位置] --> Marker[HUDTaskWorldMarkerView]
     Camera[缓存的 Gameplay MainCamera] -->|WorldToScreenPoint 与 HUD Canvas 坐标| Marker
     Controller -->|只在任务被追踪且 InProgress 时投影| Marker
@@ -379,7 +367,7 @@ flowchart LR
 
 `HUDWindowController` 通过显式序列化引用管理 `HUDTaskController` 生命周期；HUD 显示时订阅接取、追踪、进度、阶段、状态、待领奖、完成和成功读档事实，晚帧合并刷新任务摘要及移动目标投影，隐藏时注销订阅并隐藏两种展示。目标投影缓存 `Camera.main`，转换到 HUD Canvas 坐标；屏幕内显示菱形任务标记和到目标原点的三维整数米数，屏幕外或相机背后时将标记限制在安全边缘并显示朝向箭头。没有相机、活动角色或有效目标时隐藏投影。
 
-世界位置是 HUD 展示输入，不属于 `TaskDefinition`、`TaskRecord`、`TaskRuntime` 或 v2 快照。`Test/TaskHUDOdinTester.cs` 在 Play Mode 监听任务追踪、状态、HUD 打开与成功读档事件；当两阶段对话测试任务或多目标对话测试任务被追踪且仍在进行中时，自动把 `TestInteractableScene` 的 Cube (1) 和 `(0, 1.8, 0)` 偏移传给 HUD，切换到其他任务、待领奖或禁用测试组件时清除该临时目标。新的多目标测试任务在一个阶段中同时监听同一 `DialogueAsset` 三次需求为 1、2、3 的目标，用来观察并行进度、逐条完成及 HUD 图标状态。正式 NPC 或其他玩法数据源以后直接调用 `HUDTaskController.SetNavigationTarget(TaskId, Transform, Vector3)` 与 `ClearNavigationTarget()`。HUD 固定容器保存在 `HUDWindow.prefab`，目标行由独立 `HUDTaskObjectiveRow.prefab` 按需创建并复用；两种状态图使用 32×32 透明任务 Sprite，按 Prefab 的 UI 尺寸缩小显示。
+导航目标来自当前追踪任务当前阶段首个未完成且声明导航能力的 Objective Runtime。TaskSystem 选择目标并返回 Transform；配置了 NPCId 的对话 Runtime 在启动监听时从 GameArchitecture 获取并缓存 NPCManager，之后按 ID 查询当前锚点。NPC 未加载时保留同一目标并让 HUD 隐藏指示标。HUD 仅负责将 Transform 投影到屏幕并显示距离，不向窗口注入业务导航状态。NPCIdentity 在场景启用期间注册稳定 ID 与显式锚点；禁用时注销。`Test/TaskHUDOdinTester.cs` 只负责接取和追踪测试任务，导航使用任务定义和场景 NPC 的正式数据流。HUD 固定容器保存在 `HUDWindow.prefab`，目标行由独立 `HUDTaskObjectiveRow.prefab` 按需创建并复用。
 
 ## 任务配置编辑器
 
@@ -406,7 +394,7 @@ flowchart LR
 | 搜索、筛选与排序 | 搜索 TaskId、标题和资产路径；按全部、主线、支线筛选；按 TaskId、分类或标题升降序排序。列表排序不修改数据库顺序。 |
 | 列表菜单 | 任务行右键可重命名、复制、定位、加入或移出数据库、删除资产；空白处右键可按分类和后缀新建、刷新或校验。删除会先清理项目中所有 TaskDatabase 对该资产的引用；其他任务的前置条件引用保留，由校验显示失效引用。 |
 | 任务详情 | 使用 `SerializedObject`、`PropertyField` 和 Undo 编辑标题、分类、说明、接取条件、阶段目标和通用奖励。TaskId 只读。阶段可增删和排序；阶段 ID 随配置项保留，阶段内目标 ID 由多态定义自身配置。 |
-| 多态配置 | 接取条件、目标和奖励由现有 `ManagedReferenceDropdownPropertyDrawer<TBase>` 展示派生类型选择。增加新的派生定义时无需修改窗口；运行时 Handler 仍需按各自 Registry 规则显式登记。 |
+| 多态配置 | 接取条件、目标和奖励由现有 `ManagedReferenceDropdownPropertyDrawer<TBase>` 展示派生类型选择。Objective Definition 自行创建 Runtime；接取条件与奖励仍使用各自 Registry Handler。 |
 | 后缀与创建位置 | 后缀设置、分类编号计数、TaskId 候选数据库和资产目录保存在 `ProjectSettings/TaskConfigEditorSettings.asset`。候选来源需在表头明确选择，和当前编辑数据库分别保存；资产目录也位于表头并使用 `WSFolderPath` Inspector Drawer 选择或输入，默认目录为 `Assets/Scripts/TaskSystem/Runtime/Config/Assets/Definitions`。 |
 | 无效草稿 | 编辑器列表从序列化字段读取原始 TaskId 和分类。空 ID、格式错误或未登记分类的草稿仍可搜索、定位和删除，详情及列表提示其错误；它们不阻止其他任务扫描编号和新建。运行时值对象仍执行严格校验。 |
 | 界面状态 | 列表行按完整固定行高绘制，使用悬停、选中和无效状态提示；详情分为基本信息、接取条件、阶段和奖励卡片。颜色适配 Unity 深浅主题，删除阶段按钮使用危险操作配色。 |

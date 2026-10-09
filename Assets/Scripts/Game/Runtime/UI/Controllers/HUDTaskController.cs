@@ -29,9 +29,6 @@ namespace RPG.Game.UI.Controllers
         #endregion
 
         #region HUD 与导航状态
-        private TaskId navigationTaskId;
-        private Transform navigationTarget;
-        private Vector3 navigationTargetOffset;
         private string lastDistanceLabel = string.Empty;
         private float nextCameraResolveTime;
         private bool initialized;
@@ -97,7 +94,6 @@ namespace RPG.Game.UI.Controllers
                 return;
 
             OnWindowHidden();
-            ClearNavigationTarget();
             taskSystem = null;
             saveManager = null;
             trackerView = null;
@@ -120,44 +116,6 @@ namespace RPG.Game.UI.Controllers
             if (gameplayCamera == null && Time.unscaledTime >= nextCameraResolveTime)
                 ResolveGameplayCamera();
             RefreshNavigationProjection();
-        }
-        #endregion
-
-        #region 外部导航输入
-        /// <summary>设置由测试或玩法来源提供的世界目标；该数据只用于 HUD 展示，不写入任务记录。</summary>
-        /// <param name="taskId">目标所属任务。</param>
-        /// <param name="target">目标世界 Transform。</param>
-        /// <param name="offset">相对目标原点的世界坐标偏移。</param>
-        /// <exception cref="ArgumentException">任务或目标无效时抛出。</exception>
-        public void SetNavigationTarget(TaskId taskId, Transform target, Vector3 offset)
-        {
-            if (!taskId.IsValid)
-                throw new ArgumentException("HUD 导航目标必须关联有效 TaskId。", nameof(taskId));
-            if (target == null)
-                throw new ArgumentNullException(nameof(target));
-
-            navigationTaskId = taskId;
-            navigationTarget = target;
-            navigationTargetOffset = offset;
-            lastDistanceLabel = string.Empty;
-            MarkRefreshPending();
-            Debug.Log($"[HUDTaskController] 已设置 HUD 临时导航目标，taskId={taskId}, target={target.name}。", this);
-        }
-
-        /// <summary>清除外部导航目标并同步移除摘要距离行和世界标记。</summary>
-        public void ClearNavigationTarget()
-        {
-            if (!navigationTaskId.IsValid && navigationTarget == null)
-                return;
-
-            Debug.Log($"[HUDTaskController] 清除 HUD 临时导航目标，taskId={navigationTaskId}。", this);
-            navigationTaskId = default;
-            navigationTarget = null;
-            navigationTargetOffset = Vector3.zero;
-            lastDistanceLabel = string.Empty;
-            if (trackerView != null)
-                trackerView.SetDistanceLabel(string.Empty);
-            worldMarkerView?.Hide();
         }
         #endregion
 
@@ -312,13 +270,11 @@ namespace RPG.Game.UI.Controllers
             MarkRefreshPending();
         }
 
-        /// <summary>校验追踪任务和临时目标归属后逐帧更新坐标与距离。</summary>
+        /// <summary>读取任务层选出的 Transform 并逐帧更新屏幕坐标与距离。</summary>
         private void RefreshNavigationProjection()
         {
-            if (!navigationTaskId.IsValid || navigationTarget == null ||
-                taskSystem.TrackedTaskId != navigationTaskId ||
-                !taskSystem.TryGetActiveRecord(navigationTaskId, out TaskRecord record) ||
-                record.State != E_TaskLifecycleState.InProgress ||
+            if (!taskSystem.TryGetTrackedNavigationTarget(out Transform navigationTarget, out Vector3 offset) ||
+                navigationTarget == null ||
                 characterManager == null || !characterManager.IsReady ||
                 characterManager.ActiveCharacter == null || gameplayCamera == null)
             {
@@ -328,7 +284,7 @@ namespace RPG.Game.UI.Controllers
             }
 
             Transform playerTransform = characterManager.ActiveCharacter.transform;
-            int distance = worldMarkerView.Render(gameplayCamera, playerTransform, navigationTarget, navigationTargetOffset);
+            int distance = worldMarkerView.Render(gameplayCamera, playerTransform, navigationTarget, offset);
             SetTrackerDistance(distance >= 0 ? $"{distance}m" : string.Empty);
         }
 

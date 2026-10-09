@@ -71,13 +71,14 @@ namespace RPG.Game.UI.Controllers
             LoadTargetSceneAsync().Forget(HandleRequestFailure);
         }
 
-        /// <summary>使用配置的 SceneId 进入统一加载流程，不绑定开始场景对象的销毁令牌。</summary>
+        /// <summary>直接使用窗口持有的目标配置进入统一加载流程，不绑定开始场景对象的销毁令牌。</summary>
         /// <returns>目标 Scene 及所有场景准备任务完成后的异步任务。</returns>
         private async UniTask LoadTargetSceneAsync()
         {
             SceneLoadingSystem sceneLoadingSystem = GameArchitecture.Interface.GetSystem<SceneLoadingSystem>();
-            WSLog.Log($"[GameStartWindowController] 提交开始游戏请求，sceneId={data.TargetSceneConfig.SceneId}。");
-            await sceneLoadingSystem.LoadAsync(data.TargetSceneConfig.SceneId);
+            SceneLoadConfig targetSceneConfig = data.TargetSceneConfig;
+            WSLog.Log($"[GameStartWindowController] 提交开始游戏请求，sceneId={targetSceneConfig.SceneId}。");
+            await sceneLoadingSystem.LoadAsync(targetSceneConfig);
         }
 
         /// <summary>显示加载异常，并允许用户在关闭终态提示后重新发起请求。</summary>

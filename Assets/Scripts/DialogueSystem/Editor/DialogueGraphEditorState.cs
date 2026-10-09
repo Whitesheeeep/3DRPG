@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
 using UnityEngine;
 
@@ -12,7 +13,16 @@ namespace RPG.DialogueSystemModule.Editor
     [FilePath("Library/DialogueGraphEditorState.asset", FilePathAttribute.Location.ProjectFolder)]
     internal sealed class DialogueGraphEditorState : ScriptableSingleton<DialogueGraphEditorState>
     {
+        #region 常量
+
+        private const string DefaultGraphCreationDirectory = "Assets";
+
+        #endregion
+
         #region 序列化状态
+
+        // 对话资产的最近创建目录属于 Editor 本地状态，不写入业务资产。
+        [SerializeField] private string lastGraphCreationDirectory = DefaultGraphCreationDirectory;
 
         // 只保存资产 GUID，避免 Library 状态文件持有 Unity 对象引用或脆弱的资产路径。
         [SerializeField] private string lastAssetGuid = string.Empty;
@@ -59,6 +69,38 @@ namespace RPG.DialogueSystemModule.Editor
             string guid = GetAssetGuid(asset);
             if (string.Equals(lastAssetGuid, guid, StringComparison.Ordinal)) return;
             lastAssetGuid = guid;
+            dirty = true;
+        }
+
+        /// <summary>
+        /// 获取 New Graph 保存面板应使用的默认目录；目录失效时恢复为 Assets。
+        /// </summary>
+        /// <returns>有效的 Unity Assets 目录。</returns>
+        internal string GetGraphCreationDirectory()
+        {
+            string directory = NormalizeAssetDirectory(lastGraphCreationDirectory);
+            if (IsValidAssetDirectory(directory)) return directory;
+
+            // 目录被删除或移出 Assets 后立即持久化回退值，避免每次打开面板都重复处理旧路径。
+            lastGraphCreationDirectory = DefaultGraphCreationDirectory;
+            dirty = true;
+            SaveIfDirty();
+            Debug.LogWarning(
+                $"[DialogueGraphEditorState] 上次 Dialogue Graph 创建目录无效，已恢复为 {DefaultGraphCreationDirectory}。");
+            return DefaultGraphCreationDirectory;
+        }
+
+        /// <summary>
+        /// 从已成功创建的 DialogueAsset 路径记录其父目录。
+        /// </summary>
+        /// <param name="assetPath">Unity AssetDatabase 返回的项目相对资产路径。</param>
+        internal void RecordGraphCreationDirectory(string assetPath)
+        {
+            string directory = NormalizeAssetDirectory(Path.GetDirectoryName(assetPath));
+            if (!IsValidAssetDirectory(directory)) return;
+            if (string.Equals(lastGraphCreationDirectory, directory, StringComparison.Ordinal)) return;
+
+            lastGraphCreationDirectory = directory;
             dirty = true;
         }
 
@@ -136,6 +178,30 @@ namespace RPG.DialogueSystemModule.Editor
             if (asset == null) return string.Empty;
             string assetPath = AssetDatabase.GetAssetPath(asset);
             return string.IsNullOrEmpty(assetPath) ? string.Empty : AssetDatabase.AssetPathToGUID(assetPath);
+        }
+
+        /// <summary>
+        /// 统一 Editor 资产目录的分隔符，并为空路径提供默认目录。
+        /// </summary>
+        /// <param name="directory">待规范化的 Unity 项目目录。</param>
+        /// <returns>使用正斜杠的项目相对目录。</returns>
+        private static string NormalizeAssetDirectory(string directory)
+        {
+            return string.IsNullOrWhiteSpace(directory)
+                ? DefaultGraphCreationDirectory
+                : directory.Replace('\\', '/').TrimEnd('/');
+        }
+
+        /// <summary>
+        /// 检查目录是否位于 Assets 下且仍由 AssetDatabase 管理。
+        /// </summary>
+        /// <param name="directory">待验证的项目相对目录。</param>
+        /// <returns>目录可用于 Unity 资产保存面板时返回 true。</returns>
+        private static bool IsValidAssetDirectory(string directory)
+        {
+            bool isInsideAssets = string.Equals(directory, DefaultGraphCreationDirectory, StringComparison.Ordinal)
+                                  || directory.StartsWith(DefaultGraphCreationDirectory + "/", StringComparison.Ordinal);
+            return isInsideAssets && AssetDatabase.IsValidFolder(directory);
         }
 
         /// <summary>

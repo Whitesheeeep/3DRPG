@@ -90,7 +90,7 @@ namespace RPG.Game.Loading
             preparedPlayer = null;
         }
 
-        /// <summary>关闭开始窗口后恢复玩家与 GameplayCamera，并显示已经预热的 HUD。</summary>
+        /// <summary>关闭开始窗口、恢复玩家和相机朝向，最后显示已经预热的 HUD。</summary>
         /// <param name="snapshot">完成的场景流程快照。</param>
         /// <returns>RPG 场景收尾与 HUD 显示请求提交完成后的异步任务。</returns>
         private async UniTask CompleteGameplayAsync(SceneLoadExecutionSnapshot snapshot)
@@ -109,7 +109,7 @@ namespace RPG.Game.Loading
             GameplayCameraController cameraController = cameraManager.GetComponent<GameplayCameraController>();
             if (cameraController == null)
                 throw new InvalidOperationException("[GameSceneFlowSystem] CinemachineManager 根节点缺少 GameplayCameraController。");
-            cameraController.EnterGameplayMode();
+            cameraController.AlignToPlayerAndEnterGameplayMode();
 
             await UIManager.Instance.PopUpWindowAsync<HUDWindow>();
             WSLog.Log($"[GameSceneFlowSystem] 正式游戏状态已恢复并显示 HUD，sceneId={snapshot.SceneId}。");

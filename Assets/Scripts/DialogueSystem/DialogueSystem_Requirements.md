@@ -13,6 +13,7 @@
 - 玩家通过通用 `Interact` 目标开始 NPC 对话。
 - 对话内容由 ScriptableObject 图资产配置。
 - 支持 Speech、Choice 以及无类型配置的 Completed End；Condition 和 Action 配置在 Choice 内。
+- Choice Action 支持通过 TaskSystem 接取任务，并通过 RewardSystem 一次性发放物品与摩拉。
 - 对话期间通过通用 LooseGameplayTag 事件请求 `State.Block.Movement` 与 `State.Block.AbilityActivation`，不创建对话专属 Tag。
 - 使用现有 WSFrame `UIManager + WindowBase` 显示对话界面。
 - 使用 `DialogueSession` 管理一次对话周期。
@@ -26,7 +27,6 @@
 - 不制作镜头切换、角色走位、转身、过场动画或镜头演出。
 - 不保存对话中途进度。
 - 不接入本地化 Key、语音等待或自动推进；VoiceClip 只负责按对白节点播放。正文显示由 DialogueWindow 的 UI View 复用现有 `TMProTypeWriter`，不进入对话领域层。
-- 不内置任务、背包、奖励等具体业务命令。
 - 不提供通用 Escape 或关闭按钮取消对话。
 - 不通过禁用 PlayerController、Locomotion 或其他组件实现站桩。
 - DialogueSystem、DialogueSession 和 Controller 不使用 UniTask、TaskCompletionSource 或异步等待式对话接口；ChoiceView 的 Addressable 行资源初始化例外允许使用 UniTask。
@@ -117,6 +117,30 @@ public override DialogueConditionResult Evaluate(DialogueCommandContext context)
 ```
 
 第一版不使用运行时反射执行和 UnityEvent。Condition/Action 定义由 `[SerializeReference]` 保存，编辑器通过 `TypeCache` 自动发现可实例化派生类型；运行时由 `DialogueSystem` 创建一次性的 `DialogueCommandContext`，命令通过 Context 的实际 `IArchitecture` 获取 Manager/System，或调用已有 Singleton。命令不保存任何运行时引用，也不需要注册入口。
+
+`DialogueRewardExecution` 是内置的奖励 Action。它将有序 `RewardDefinition` 列表保存在 Choice 的 SerializeReference 数据中，复用 `ItemRewardDefinition` 和 `CurrencyRewardDefinition` 配置物品与货币；摩拉使用 `CurrencyId.Mola`。执行时通过 Context 获取当前架构的 `RewardSystem`，一次调用 `TryGrant`，由 RewardSystem 统一预检、提交状态并发布奖励通知。
+
+```mermaid
+flowchart LR
+    Choice["Choice: DialogueRewardExecution"] --> Definitions["ItemRewardDefinition + CurrencyRewardDefinition"]
+    Definitions --> Execution["RewardSystem.TryGrant 一次批次调用"]
+    Execution --> Prepare["预检所有物品与货币"]
+    Prepare -->|"全部通过"| Commit["提交并发布通知"]
+    Prepare -->|"任一拒绝"| Failed["抛出异常，对话结束为 Failed"]
+```
+
+奖励 Action 的 Graph 校验会拒绝空列表、空定义和无效奖励项。批次成功后，对话沿 Choice 的目标继续；批次被拒绝时不会继续跳转。该命令本身不记录领取状态，重复执行会再次发奖；一次性领取需要由业务 Condition 判断。
+
+`DialogueGiveTaskExecution` 通过 `TaskIdDropdown` 配置一个任务，并经 Context 获取当前架构的 `TaskSystem`，使用 `E_TaskAcceptSource.Dialogue` 调用统一接取入口。接取成功时，任务 Runtime、首阶段监听、未读红点与 `TaskAcceptedEventArgs` 都由 TaskSystem 正常处理。任务已经活动或完成时命令视为满足，不重复接取并继续对话；其他拒绝结果（例如任务不存在或前置条件未满足）会抛出异常，令当前对话结束为 `Failed`。需要接取多个任务时，可在同一 Choice 上按顺序配置多个任务 Action；前序成功接取不会因后续 Action 失败而回滚。
+
+```mermaid
+flowchart LR
+    Choice["Choice: DialogueGiveTaskExecution"] --> TaskSystem["TaskSystem.TryAcceptTask<br/>Source = Dialogue"]
+    TaskSystem -->|"接取成功"| Active["建立任务 Runtime、未读状态并发布事件"]
+    TaskSystem -->|"已活动 / 已完成"| Continue["继续对话"]
+    Active --> Continue
+    TaskSystem -->|"任务不存在 / 条件未满足"| Failed["抛出异常并结束对话为 Failed"]
+```
 
 ## 3. 同步运行时 API
 
@@ -296,6 +320,8 @@ animationPlayer.Play(
 - Session 结束时停止或淡出由本会话启动的动画状态。
 - 不处理镜头、移动、转身或角色站位演出。
 
+站桩 NPC 的基础待机由 `NPCIdleAnimationStateMachine` 在 `AnimationLayerType.Base` 层持续播放。对白动画仍位于 Action 层；Action 层动作停止后，Base 层的 Idle 动画继续提供角色基础姿态。Idle 状态机跟随 NPC 组件启停，不在每帧重播动画。
+
 ## 6. 节点图校验与运行保护
 
 编辑期或启动期必须校验：
@@ -359,11 +385,10 @@ Interactor 只在当前候选集合中进行视野、遮挡和评分处理：
 
 ### 7.4 对话交互适配
 
-`DialogueInteractable` 或等价适配组件负责保存：
-
-- DialogueAsset。
-- NPC 的 `DialogueParticipant` 组件入口。
-- 从交互发起者父级 `DialogueParticipant` 构建 Initiator Context。
+`DialogueInteractable` 在场景组件中保存有序对话条目，每条绑定交互名称、DialogueAsset、
+稳定 OptionId 与重复策略；旧版单 `DialogueAsset` 场景仍兼容为 Repeatable 对话。NPC 的
+`DialogueParticipant` 可由 ParticipantRoot 查找，Initiator Context 从交互发起者父级的
+`DialogueParticipant` 构建。Toggle 还需要场景 NPC 的稳定 `NPCIdentity.NPCId`。
 
 它实现通用 `IInteractable`，在 `Interact` 选项被执行时构建 `DialogueRequest` 并调用 `DialogueSystem.TryStartDialogue`。
 
@@ -560,16 +585,20 @@ flowchart LR
     Window["DialogueGraphEditorWindow"] --> State["DialogueGraphEditorState\nLibrary"]
     State --> Last["lastAssetGuid"]
     State --> Viewports["AssetGuid -> Position + Scale"]
+    State --> CreateFolder["lastGraphCreationDirectory"]
     Window --> Controller["DialogueGraphEditorController"]
     Controller --> Graph["DialogueGraphView"]
     Graph -->|"平移 / 缩放"| Controller
     Controller -->|"切换 / 关闭时保存"| State
+    Controller -->|"成功创建 Graph 后保存目录"| State
 ```
 
 规则：
 
 - 上次编辑资产只保存 GUID；资产移动或重命名后仍可恢复，资产被删除时清除失效记录并打开空编辑器。
 - 每个 DialogueAsset 独立保存 GraphView 的 `viewTransform.position` 和 `viewTransform.scale`。
+- New Graph 保存面板的默认目录记录在 `lastGraphCreationDirectory`；只有 Graph 创建并保存成功后才更新，取消创建不改变记录。目录失效或不在 `Assets` 下时回退到 `Assets`。
+- 创建目录、最近编辑资产和视口均由同一个 `DialogueGraphEditorState` 保存到 Library；目录移动或重命名不自动跟随，原路径失效后回退到 `Assets`。
 - 平移、滚轮缩放期间只更新内存，不持续写 `Library` 文件；切换资产、清空资产、关闭窗口或脚本域重载时一次性保存。
 - 明确双击打开的资产优先于上次资产；重复打开当前资产不重建 GraphView，也不重置当前视口。
 - 没有历史视口的资产首次打开时，在布局完成后调用一次 `FrameAll()`；空图保持默认视口。
@@ -887,5 +916,45 @@ flowchart LR
 - 可配置打字速度、跳过策略和语音表现。
 - 动画 Transition、动画事件和更复杂的 3D 演出。
 - 对话会话存档和断点恢复。
-- 任务、背包、奖励等正式业务命令实现。
+- 更多任务、背包和奖励类正式业务命令。
 - 镜头、角色朝向、表情和过场演出。
+
+### 13.5 多对话交互与 Toggle 完成存档
+
+`DialogueInteractable` 可为同一 NPC 提供有序的多个对话选项。每一项配置交互名称、
+`DialogueAsset`、重复策略和自动生成的稳定 `OptionId`。修改名称、替换资产或调整列表
+顺序不会更改该选项身份。
+
+```mermaid
+flowchart LR
+    Entries["DialogueInteractable 有序条目"] --> Provider["缓存 InteractionOption"]
+    Provider --> Filter{"Toggle 已完成？"}
+    Filter -->|否 / Repeatable| UI["交互选项 UI"]
+    Filter -->|是| Hide["不再贡献该 Option"]
+    UI --> Start["DialogueSystem 启动会话"]
+    Start -->|启动失败| Retry["保持可用"]
+    Start -->|Toggle 启动成功| Track["DialogueInteractionManager 跟踪 Session"]
+    Track --> End{"Session 结束状态"}
+    End -->|Completed| Save["记 NPCId + OptionId"]
+    End -->|Failed| Retry
+    Save --> Snapshot["下次正常存档写入 SaveModule"]
+```
+
+`Repeatable` 每次都可再次启动。`Toggle` 只有在对话正常到达 EndNode 后才完成；启动失败
+或以 `Failed` 结束时仍可重试。完成后该条目从交互选项中消失，组件上的其他选项不受影响。
+
+Toggle 使用场景 `NPCIdentity.NPCId` 与条目的 `OptionId` 组成存档身份，因此同一
+`DialogueAsset` 被多个 NPC 使用时会分别记忆。含 Toggle 的 `DialogueInteractable` 必须
+引用或能从 `ParticipantRoot` / 组件父级找到有效 `NPCIdentity`；玩家和 NPC 的
+`DialogueParticipant` 仍按各自层级向父级查找。每个 NPCIdentity 层级只配置一个
+`DialogueInteractable`；组件启动时检查该身份根节点下是否重复挂载。
+
+`DialogueInteractionManager` 属于 `GameArchitecture`，跟踪会话结束并持有完成状态；
+`DialogueInteractionSaveModule` 使用稳定模块 ID `dialogue-interaction` 和版本 `1`。
+保存快照只包含排序后的 NPCId 与 OptionId，不包含场景对象。读档整体替换完成集合，旧
+存档缺少此模块时恢复为空集合；场景暂未加载或配置后来移除都不会清掉旧记录。对话完成
+后只更新内存，状态在下一次正常存档时落盘。
+
+旧场景若仍只配置隐藏的单个 `dialogueAsset` 字段，会继续贡献原有 Repeatable“对话”
+选项；新配置使用列表，且列表非空时优先采用列表内容。Editor Play Mode 可使用
+`DialogueInteractionOdinTester` 验证 Toggle 完成记录、存档快照恢复与空快照整体替换。

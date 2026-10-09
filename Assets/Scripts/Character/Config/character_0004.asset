@@ -19,7 +19,7 @@ MonoBehaviour:
     introduction: "\u963F\u857E\u5947\u8BFA"
     rarity: 5
   presentation:
-    prefabAddress: Character/Arlecchino
+    prefabAddress: Character/ArlecchinoSeparated
     sideIconAddress: CharacterSideIcons
     sideIconSpriteName: UI_AvatarIcon_Side_Arlecchino
     avatarAddress: Characters

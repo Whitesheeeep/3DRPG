@@ -446,7 +446,7 @@ MonoBehaviour:
     inputOpenNormalizedTime: 0.95
     fallDetectionNormalizedTime: 0.95
   movementAcceleration: 1
-  turnSpeed: 0.64
+  turnSpeed: 1
   runSpeedMultiplier: 2
   correctionSpeed: 5
   startDirectionCorrectionNormalizedTime: 0.4
@@ -538,7 +538,7 @@ MonoBehaviour:
     allTags: []
     anyTags: []
     banedTags: []
-  walkReferenceSpeed: 1.2
+  walkReferenceSpeed: 1.287
   runReferenceSpeed: 2.8
   runFeetParameter: {fileID: 11400000, guid: 2e7a66094800e644e9d6bb724bdd7a80, type: 2}
   references:

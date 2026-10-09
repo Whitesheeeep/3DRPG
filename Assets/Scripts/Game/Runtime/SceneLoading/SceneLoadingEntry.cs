@@ -13,7 +13,7 @@ namespace RPG.Game.Loading
     {
         #region 场景配置
 
-        [SerializeField, Tooltip("在 SceneLoadDatabase 中配置的稳定场景 ID。")]
+        [SerializeField, SceneIdDropdown, Tooltip("从 SceneLoadDatabase 选择的稳定场景 ID。")]
         private string sceneId;
 
         #endregion

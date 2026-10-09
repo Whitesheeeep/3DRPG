@@ -171,6 +171,23 @@ namespace WS_Modules.SceneModule
         public UniTask<Scene> LoadAsync(string sceneId, CancellationToken cancellationToken = default)
         {
             SceneLoadConfig config = GetSceneConfig(sceneId);
+            return LoadAsync(config, cancellationToken);
+        }
+
+        /// <summary>直接执行调用方已有的场景配置，不通过 SceneId 数据库再次查询。</summary>
+        /// <param name="config">包含 Addressables 引用和任务树的目标场景配置。</param>
+        /// <param name="cancellationToken">请求方协作式取消令牌。</param>
+        /// <returns>所有任务成功后已激活的目标场景。</returns>
+        /// <exception cref="ArgumentNullException">配置为空或已被销毁时抛出。</exception>
+        public UniTask<Scene> LoadAsync(SceneLoadConfig config, CancellationToken cancellationToken = default)
+        {
+            if (config == null)
+            {
+                var exception = new ArgumentNullException(nameof(config), "[SceneLoadingSystem] 场景配置不能为空。");
+                WSLog.LogError(exception.Message);
+                throw exception;
+            }
+
             return ExecuteAsync(config, initializesCurrentScene: false, default, cancellationToken);
         }
 

@@ -12,3 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 68bffd5554ad3694095e5f54727149fa, type: 3}
   m_Name: "WindowUI \u9884\u70ED"
   m_EditorClassIdentifier: 
+  progressWeight: 5
