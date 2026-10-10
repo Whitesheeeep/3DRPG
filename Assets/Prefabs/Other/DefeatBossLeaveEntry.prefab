@@ -1,0 +1,144 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &55909714209926653
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4133179158870029689}
+  - component: {fileID: 6206953255267490613}
+  m_Layer: 0
+  m_Name: DefeatBossLeaveEntry
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4133179158870029689
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 55909714209926653}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.553, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 7634924255340668789}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6206953255267490613
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 55909714209926653}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f64c2cb2e114cd0aa98ec177a91f003, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetSceneConfig: {fileID: 0}
+  targetSceneId: scene.7f32e78d
+  interactionArea: {fileID: 2932361736966436079}
+  optionDisplayName: "\u8FDB\u5165\u9996\u9886\u573A\u666F"
+  optionIcon: {fileID: 0}
+  priority: 0
+--- !u!1001 &7961812555186651294
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 4133179158870029689}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 31faf37afbd5b1f4790650606abc0437, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 31faf37afbd5b1f4790650606abc0437, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.44646755
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 31faf37afbd5b1f4790650606abc0437, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 31faf37afbd5b1f4790650606abc0437, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071067
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 31faf37afbd5b1f4790650606abc0437, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 31faf37afbd5b1f4790650606abc0437, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 31faf37afbd5b1f4790650606abc0437, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 31faf37afbd5b1f4790650606abc0437, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 31faf37afbd5b1f4790650606abc0437, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 31faf37afbd5b1f4790650606abc0437, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 31faf37afbd5b1f4790650606abc0437, type: 3}
+      propertyPath: m_Name
+      value: Pine-Backed Tea Chair
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 31faf37afbd5b1f4790650606abc0437, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2932361736966436079}
+  m_SourcePrefab: {fileID: 100100000, guid: 31faf37afbd5b1f4790650606abc0437, type: 3}
+--- !u!1 &7115515354925268431 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 31faf37afbd5b1f4790650606abc0437, type: 3}
+  m_PrefabInstance: {fileID: 7961812555186651294}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &2932361736966436079
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7115515354925268431}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.66122925, y: 0.6536971, z: 1.0042108}
+  m_Center: {x: -0.000221923, y: -0.0014214515, z: 0.055637665}
+--- !u!4 &7634924255340668789 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 31faf37afbd5b1f4790650606abc0437, type: 3}
+  m_PrefabInstance: {fileID: 7961812555186651294}
+  m_PrefabAsset: {fileID: 0}
