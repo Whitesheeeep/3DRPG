@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Boss_Odetta_Config
   m_EditorClassIdentifier: 
   initialAttributeSets:
-  - {fileID: 11400000, guid: 17420cb7ad28dcc42924daee744719b8, type: 2}
+  - {fileID: 11400000, guid: a4748f229560d7c41a6e715b0971427c, type: 2}
   growthProfile: {fileID: 11400000, guid: 97d67dd087a07f32084b09982729c1b7, type: 2}
   resourceRules:
   - resourceAttribute:

@@ -14,28 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   definitions:
   - attribute:
-      id: 0
-      name: Health
-      displayName: "\u5F53\u524D\u751F\u547D\u503C"
-    type: 1
-    defaultValue: 3
-    minValue: 0
-    maxValue: 1000000
-    baseValue: 0
-    currentValue: 0
-    ownerSet: {fileID: 11400000}
-  - attribute:
-      id: 1
-      name: MaxHealth
-      displayName: "\u751F\u547D\u503C\u4E0A\u9650"
-    type: 0
-    defaultValue: 500
-    minValue: 0
-    maxValue: Infinity
-    baseValue: 0
-    currentValue: 0
-    ownerSet: {fileID: 11400000}
-  - attribute:
       id: 2
       name: Armor
       displayName: "\u9632\u5FA1\u529B"
@@ -97,6 +75,28 @@ MonoBehaviour:
     type: 0
     defaultValue: 0.5
     minValue: 0
+    maxValue: Infinity
+    baseValue: 0
+    currentValue: 0
+    ownerSet: {fileID: 11400000}
+  - attribute:
+      id: 1
+      name: MaxHealth
+      displayName: "\u751F\u547D\u503C\u4E0A\u9650"
+    type: 1
+    defaultValue: 0
+    minValue: -Infinity
+    maxValue: Infinity
+    baseValue: 0
+    currentValue: 0
+    ownerSet: {fileID: 11400000}
+  - attribute:
+      id: 0
+      name: Health
+      displayName: "\u5F53\u524D\u751F\u547D\u503C"
+    type: 0
+    defaultValue: 0
+    minValue: -Infinity
     maxValue: Infinity
     baseValue: 0
     currentValue: 0

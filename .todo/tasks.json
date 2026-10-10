@@ -202,7 +202,7 @@
     "tags": [],
     "title": "红点系统",
     "description": "",
-    "status": "TODO",
+    "status": "DONE",
     "date": {
       "date": {
         "year": 2026,
@@ -216,6 +216,19 @@
         "nano": 479913900
       }
     },
+    "finishDate": {
+      "date": {
+        "year": 2026,
+        "month": 10,
+        "day": 9
+      },
+      "time": {
+        "hour": 19,
+        "minute": 36,
+        "second": 9,
+        "nano": 409098700
+      }
+    },
     "isImported": false
   },
   {
@@ -224,7 +237,7 @@
     "tags": [],
     "title": "任务系统配合红点系统一起",
     "description": "",
-    "status": "TODO",
+    "status": "DONE",
     "date": {
       "date": {
         "year": 2026,
@@ -236,6 +249,19 @@
         "minute": 2,
         "second": 44,
         "nano": 52288900
+      }
+    },
+    "finishDate": {
+      "date": {
+        "year": 2026,
+        "month": 10,
+        "day": 9
+      },
+      "time": {
+        "hour": 19,
+        "minute": 36,
+        "second": 18,
+        "nano": 45647100
       }
     },
     "isImported": false
