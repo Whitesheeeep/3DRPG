@@ -25,7 +25,7 @@ namespace RPG.NPC
         public override IMotionDriver MotionDriver => Controller.MotionDriver;
 
         /// <inheritdoc />
-        public override IFullBodyActionArbiter FullBodyActionArbiter => Controller.FullBodyActionArbiter;
+        public override IFullBodyActionArbiter FullBodyActionArbiter => Controller;
 
         /// <summary>获取此 Actor 所属的 NPCController。</summary>
         public NPCController Controller => npcController != null
@@ -44,6 +44,8 @@ namespace RPG.NPC
                 npcController = GetComponent<NPCController>();
             if (npcController == null)
                 throw new InvalidOperationException($"NPCActor '{name}' 缺少同节点 NPCController。");
+
+            markerProvider.TryRebuild();
         }
 
         // Animator 运动转发

@@ -293,6 +293,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private ToggleGameplayAbilityData toggleSkill;
         [SerializeField, AssetsOnly, Tooltip("使用异步 SprintGATask 的 QuickShift 冲刺 Ability SO。")]
         private AsynchronousGameplayAbilityData quickShiftSkill;
+        [SerializeField, AssetsOnly, Tooltip("使用 NpcTeleportGATask 的 Boss 瞬移 Ability SO。")]
+        private AsynchronousGameplayAbilityData bossTeleportSkill;
         #endregion
 
         #region Odin 测试
@@ -682,6 +684,39 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 data.IsRuntimeConfigurationValid);
             Expect("QuickShift 已 Bake 稳定 AbilityId",
                 data.AbilityId != GameplayAbilityData.InvalidId);
+            LogSummary();
+        }
+
+        /// <summary>验证 Boss 瞬移 GA 的身份标签、独立 Task、冷却与数据库 Bake 结果。</summary>
+        [Button("测试 Boss 瞬移 GA 配置")]
+        public void TestBossTeleportConfiguration()
+        {
+            ResetTest();
+            AsynchronousGameplayAbilityData data = bossTeleportSkill;
+            Expect("Boss 瞬移 GA SO 已配置", data != null);
+            if (data == null)
+            {
+                LogSummary();
+                return;
+            }
+
+            bool hasTeleportTag = false;
+            for (int index = 0; index < data.AbilityTags.Count; index++)
+                if (data.AbilityTags[index] == GameplayTags.Tag_Skill_BossTeleport)
+                {
+                    hasTeleportTag = true;
+                    break;
+                }
+
+            Expect("Boss 瞬移 GA 具有专属身份 Tag", hasTeleportTag);
+            Expect("Boss 瞬移 Root Task 为 NpcTeleportGATaskConfig",
+                data.RootTask is RPG.NPC.NpcTeleportGATaskConfig);
+            Expect("Boss 瞬移 GA 配置独立 Cooldown Effect", data.CooldownEffect != null);
+            Expect("Boss 瞬移 GA Runtime 配置有效", data.IsRuntimeConfigurationValid);
+            Expect("Boss 瞬移 GA 已 Bake 稳定 AbilityId", data.AbilityId != GameplayAbilityData.InvalidId);
+            Expect("GameplayAbilityDatabase 可解析 Boss 瞬移 AbilityId",
+                abilityDatabase != null && abilityDatabase.TryGetAbility(data.AbilityId, out GameplayAbilityData bakedData) &&
+                ReferenceEquals(bakedData, data));
             LogSummary();
         }
 

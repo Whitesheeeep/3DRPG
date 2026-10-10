@@ -83,7 +83,7 @@ MonoBehaviour:
       id: 1
       name: MaxHealth
       displayName: "\u751F\u547D\u503C\u4E0A\u9650"
-    type: 1
+    type: 0
     defaultValue: 0
     minValue: -Infinity
     maxValue: Infinity
@@ -94,7 +94,7 @@ MonoBehaviour:
       id: 0
       name: Health
       displayName: "\u5F53\u524D\u751F\u547D\u503C"
-    type: 0
+    type: 1
     defaultValue: 0
     minValue: -Infinity
     maxValue: Infinity

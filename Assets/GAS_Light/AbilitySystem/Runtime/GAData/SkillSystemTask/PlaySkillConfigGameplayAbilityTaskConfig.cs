@@ -36,7 +36,7 @@ namespace RPG.SkillSystem
         {
             // SetByCaller 只属于本次 Ability Runtime 快照；缺失或非正值保持兼容的完整时间轴入口。
             SkillStartMode startMode = SkillStartMode.TimelineStart;
-            if (runtime.TryGetSetByCaller(GameplayTags.Tag_Skill_ActiveAbility, out float entryValue) &&
+            if (runtime.TryGetSetByCaller(GameplayTags.Tag_Skill_Entry_Active, out float entryValue) &&
                 entryValue > 0f)
                 startMode = SkillStartMode.FirstActivePhase;
             return new PlaySkillConfigGameplayAbilityTask(runtime, skillConfig, startMode);

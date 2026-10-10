@@ -12,7 +12,7 @@ namespace RPG.NPC
         Disabled = -1,
         /// <summary>站立待机。</summary>
         Idle = 0,
-        /// <summary>移动表现状态；首版只播放动画，不提交位移。</summary>
+        /// <summary>由 NavMesh 意图驱动 Walk 动画与程序位移。</summary>
         Move = 1,
         /// <summary>NPC 可行动的根状态。</summary>
         Alive = 2,

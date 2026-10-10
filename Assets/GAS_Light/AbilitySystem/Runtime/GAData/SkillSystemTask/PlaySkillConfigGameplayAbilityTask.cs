@@ -8,6 +8,7 @@ using WS_Modules.GAS.TAG;
 using RPG.Character;
 using RPG.Character.Animation;
 using WS_Modules.GAS.GameplayEffect;
+using WS_Modules.LogModule;
 
 namespace RPG.SkillSystem
 {
@@ -307,7 +308,15 @@ namespace RPG.SkillSystem
             if (args.Config != skillConfig || args.Target == null) return;
             GameplayAbilitySystemComponent target =
                 args.Target.GetComponentInParent<GameplayAbilitySystemComponent>();
-            if (target == null || ReferenceEquals(target, GARuntime.SourceASC)) return;
+            if (target == null)
+            {
+                WSLog.LogWarning(
+                    $"[PlaySkillConfigGameplayAbilityTask] Ability '{GARuntime.Data.name}' ActivationId={GARuntime.ActivationId} 命中目标缺少 ASC。");
+                return;
+            }
+
+            if (ReferenceEquals(target, GARuntime.SourceASC))
+                return;
 
             GameplayEffectApplicationResult lastApplicationResult = null;
             for (int i = 0; i < effectSpecs.Count; i++)

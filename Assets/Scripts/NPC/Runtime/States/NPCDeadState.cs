@@ -6,7 +6,7 @@ using WS_Modules.FSM;
 
 namespace RPG.NPC
 {
-    /// <summary>播放 NPC 死亡动画并在动画结束后销毁 NPC 根实例。</summary>
+    /// <summary>播放 NPC 死亡动画，完成回调先生成可选出口再销毁 NPC 根实例。</summary>
     public sealed class NPCDeadState : StateBase<E_NPCStateId, NPCController>
     {
         #region 动画运行时
@@ -39,7 +39,7 @@ namespace RPG.NPC
             Debug.Log($"[NPCDeadState] NPC '{Owner.name}' 开始播放死亡动画。");
         }
 
-        /// <summary>在动画结束时解绑回调并销毁整个 NPC 实例。</summary>
+        /// <summary>在动画结束时解绑回调、生成出口并销毁整个 NPC 实例。</summary>
         private void OnDeathAnimationEnded()
         {
             if (destructionRequested)
@@ -50,7 +50,8 @@ namespace RPG.NPC
                 deathAnimationState.Events(this).OnEnd -= OnDeathAnimationEnded;
             deathAnimationState = null;
             GameObject npcRoot = Owner.gameObject;
-            Debug.Log($"[NPCDeadState] NPC '{npcRoot.name}' 死亡动画播放完成，销毁实例。");
+            Owner.CompleteDeath();
+            Debug.Log($"[NPCDeadState] NPC '{npcRoot.name}' 死亡动画播放完成，已处理出口并销毁实例。");
             UnityEngine.Object.Destroy(npcRoot);
         }
 

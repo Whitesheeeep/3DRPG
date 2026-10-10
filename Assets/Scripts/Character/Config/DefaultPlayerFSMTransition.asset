@@ -447,7 +447,7 @@ MonoBehaviour:
     fallDetectionNormalizedTime: 0.95
   movementAcceleration: 1
   turnSpeed: 1
-  runSpeedMultiplier: 2
+  runSpeedMultiplier: 3
   correctionSpeed: 5
   startDirectionCorrectionNormalizedTime: 0.4
   coyoteTime: 0.12

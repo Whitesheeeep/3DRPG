@@ -21,7 +21,36 @@ namespace RPG.NPC
         [ShowInInspector, ReadOnly, LabelText("当前状态")]
         private string CurrentStatus => npcController == null || !npcController.IsInitialized
             ? "未初始化"
-            : $"{npcController.Locomotion.CurrentState} / FullBodyOccupied={npcController.IsFullBodyActionOccupied}";
+            : $"{npcController.Locomotion.CurrentState} / FullBodyOccupied={npcController.IsFullBodyActionOccupied} / " +
+              $"NextNormalAttack={npcController.CombatSystem.NextAttackIndex + 1} / " +
+              $"CurrentAttack={npcController.CombatSystem.CurrentAttackIndex + 1} / " +
+              $"AttackRest={npcController.CombatSystem.RecoveryRemaining:F2}s / " +
+              $"WindowDecision={npcController.CombatSystem.LastWindowDecision}";
+
+        /// <summary>获取瞬移预检的路径距离、决策原因和失败退避，便于观察 Conditional Abort。</summary>
+        [ShowInInspector, ReadOnly, LabelText("瞬移条件")]
+        private string TeleportPrecheckStatus => npcController == null || !npcController.IsInitialized
+            ? "未初始化"
+            : $"Allowed={npcController.LastTeleportPrecheckAllowed} / " +
+              $"Path={npcController.LastTeleportPrecheckPathDistance:F2}m / " +
+              $"Retry={npcController.TeleportRetryRemaining:F2}s / " +
+              $"Reason={npcController.LastTeleportPrecheckReason}";
+
+        /// <summary>读取行为树攻击节点在 NPCCombatSystem 中冻结的策略值。</summary>
+        [ShowInInspector, ReadOnly, LabelText("攻击策略快照")]
+        private string AttackDecisionStatus => npcController == null || !npcController.IsInitialized
+            ? "未初始化"
+            : $"Distance={npcController.CombatSystem.AttackDistanceSnapshot:F2}m / " +
+              $"Attack3Rest={npcController.CombatSystem.AttackRestDurationSnapshot:F2}s";
+
+        /// <summary>显示最近一次攻击准入阻断原因和实际水平距离。</summary>
+        [ShowInInspector, ReadOnly, LabelText("攻击准入")]
+        private string AttackReadinessStatus => npcController == null || !npcController.IsInitialized
+            ? "未初始化"
+            : $"Reason={npcController.LastAttackReadinessReason} / " +
+              $"Distance={npcController.LastAttackReadinessDistance:F2}m / " +
+              $"Runtime={npcController.CombatSystem.CurrentRuntime?.State.ToString() ?? "None"} / " +
+              $"ActivationBlock={npcController.LastNormalAttackActivationBlock}";
 
         #endregion
 
@@ -66,6 +95,17 @@ namespace RPG.NPC
             Debug.Log(
                 $"[BossOdinTester] 激活技能 '{abilities[abilityIndex].Name}'，成功={activated}，" +
                 $"ActivationId={(runtime != null ? runtime.ActivationId : -1)}。",
+                npcController);
+        }
+
+        /// <summary>从 NPCCombatSystem 缓存序号启动下一段 Boss 普通攻击。</summary>
+        [Button("启动下一段 Boss 普攻"), GUIColor(1f, 0.85f, 0.6f)]
+        public void ActivateNextNormalAttack()
+        {
+            bool activated = npcController.CombatSystem.TryStartNext(out GameplayAbilityRuntime runtime);
+            Debug.Log(
+                $"[BossOdinTester] 请求启动下一段 Boss 普攻，成功={activated}，" +
+                $"ActivationId={runtime?.ActivationId ?? -1}，NextIndex={npcController.CombatSystem.NextAttackIndex}。",
                 npcController);
         }
 

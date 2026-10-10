@@ -53,7 +53,7 @@ MonoBehaviour:
     - rid: 4928037610329485701
       type: {class: SprintGATaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
       data:
-        targetDistance: 2
+        targetDistance: 4
         directionalTransitions:
         - direction: 0
           transition: {fileID: 11400000, guid: 8f20eddf758ca1841a7f8ba16be78214, type: 2}

@@ -48,7 +48,7 @@ MonoBehaviour:
   targetSceneConfig: {fileID: 0}
   targetSceneId: scene.7f32e78d
   interactionArea: {fileID: 2932361736966436079}
-  optionDisplayName: "\u8FDB\u5165\u9996\u9886\u573A\u666F"
+  optionDisplayName: "\u8FD4\u56DE\u5EAD\u9662"
   optionIcon: {fileID: 0}
   priority: 0
 --- !u!1001 &7961812555186651294
@@ -131,7 +131,7 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3

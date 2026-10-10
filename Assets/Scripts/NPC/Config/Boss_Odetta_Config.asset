@@ -39,7 +39,23 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 09fc43cb8fccaed95deec9430c2f1c57, type: 2}
   - {fileID: 11400000, guid: 51137891711a8b44664e498261dc07f2, type: 2}
   idleTransition: {fileID: 11400000, guid: fba2de96f2c9c704d9b02f1f20b43088, type: 2}
-  moveTransition: {fileID: 11400000, guid: ee0cb3205a1d90547980dbc7aee1615f, type: 2}
+  moveTransition: {fileID: 11400000, guid: e2a2e000188d1eb4abb808524a57f20d, type: 2}
   deathTransition: {fileID: 11400000, guid: b8e18000000000000000000000000005, type: 2}
   activationRules: {fileID: 11400000, guid: 6aef4de02d8d4b9aa6f1e0c4e305f1d2, type: 2}
-  moveParameterX: {fileID: 11400000, guid: bf95c5c8b0cc5d441b7abe5dc3e7977e, type: 2}
+  moveParameterX: {fileID: 11400000, guid: 0ded52023065369438a3fadd69f99e54, type: 2}
+  moveParameterY: {fileID: 11400000, guid: 610194352727ae64582d91bdc9655a71, type: 2}
+  useBehaviorTree: 1
+  normalAttackAbilities:
+  - {fileID: 11400000, guid: d9eb96f74c3f4c35b2a3126adab42bae, type: 2}
+  - {fileID: 11400000, guid: 09fc43cb8fccaed95deec9430c2f1c57, type: 2}
+  - {fileID: 11400000, guid: 51137891711a8b44664e498261dc07f2, type: 2}
+  teleportAbility: {fileID: 11400000, guid: 7966952135ef9864cb2b5ba31833f5be, type: 2}
+  moveSpeed: 1.2
+  teleportForwardOffset: 2
+  teleportLandingRadius: 0.5
+  navigationRefreshInterval: 0.2
+  normalAttackComboRetention: 3
+  attackObstructionMask:
+    serializedVersion: 2
+    m_Bits: 503
+  deathCompletionPrefab: {fileID: 55909714209926653, guid: 794a38b81075e6748ba6894865af9321, type: 3}

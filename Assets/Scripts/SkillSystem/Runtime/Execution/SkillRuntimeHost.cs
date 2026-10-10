@@ -102,6 +102,7 @@ namespace RPG.SkillSystem
         {
             Transform resolvedOrigin = origin != null ? origin : transform;
             animationController ??= GetComponentInChildren<AnimationController>();
+            markerProvider ??= GetComponentInChildren<MarkerProvider>();
             var actor = new SkillActorContext(
                 gameObject,
                 resolvedOrigin,

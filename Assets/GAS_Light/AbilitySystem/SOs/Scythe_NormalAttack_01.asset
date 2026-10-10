@@ -110,7 +110,7 @@ MonoBehaviour:
     markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
     followMode: 0
     cueTags:
-    - id: -1
+    - id: 187
     detectionData:
       rid: 1466742125148766223
   references:

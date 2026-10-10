@@ -191,9 +191,9 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 135778691529142037, guid: 231653b1712e96244be0d3a823ee5ca2, type: 3}
-      propertyPath: npcIdentity
-      value: 
-      objectReference: {fileID: 213228089}
+      propertyPath: generationLevel
+      value: 30
+      objectReference: {fileID: 0}
     - target: {fileID: 1048841919865504374, guid: 231653b1712e96244be0d3a823ee5ca2, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -234,6 +234,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2720963218489226058, guid: 231653b1712e96244be0d3a823ee5ca2, type: 3}
+      propertyPath: m_Material
+      value: 
+      objectReference: {fileID: 767533533}
     - target: {fileID: 5422017710913169865, guid: 231653b1712e96244be0d3a823ee5ca2, type: 3}
       propertyPath: m_Name
       value: Boss_Odetta
@@ -249,68 +253,8 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 5422017710913169865, guid: 231653b1712e96244be0d3a823ee5ca2, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 213228087}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 231653b1712e96244be0d3a823ee5ca2, type: 3}
---- !u!1 &213228085 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 5422017710913169865, guid: 231653b1712e96244be0d3a823ee5ca2, type: 3}
-  m_PrefabInstance: {fileID: 213228084}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &213228087
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 213228085}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8d7b55c7ecdb49a4a89fa5e6f9022861, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  startWhenEnabled: 1
-  asynchronousLoad: 0
-  pauseWhenDisabled: 0
-  restartWhenComplete: 0
-  logTaskChanges: 0
-  group: 0
-  resetValuesOnRestart: 0
-  externalBehavior: {fileID: 0}
-  mBehaviorSource:
-    behaviorName: Behavior
-    behaviorDescription: 
-    mTaskData:
-      types: []
-      parentIndex: 
-      startIndex: 
-      variableStartIndex: 
-      JSONSerialization: '{"EntryTask":{"Type":"BehaviorDesigner.Runtime.Tasks.EntryTask","NodeData":{"Offset":"(-199.3667,-231.867462)"},"ID":0,"Name":"Entry","Instant":true},"RootTask":{"Type":"BehaviorDesigner.Runtime.Tasks.Selector","NodeData":{"Offset":"(-1.51434326,117.595123)"},"ID":1,"Name":"Selector","Instant":true,"AbortTypeabortType":"None","Children":[{"Type":"BehaviorDesigner.Runtime.Tasks.StartBehaviorTree","NodeData":{"Offset":"(-80,150)"},"ID":2,"Name":"Start
-        Behavior Tree","Instant":true,"SharedGameObjectbehaviorGameObject":{"Type":"BehaviorDesigner.Runtime.SharedGameObject","Name":null},"SharedIntgroup":{"Type":"BehaviorDesigner.Runtime.SharedInt","Name":null,"Int32mValue":0},"SharedBoolwaitForCompletion":{"Type":"BehaviorDesigner.Runtime.SharedBool","Name":null,"BooleanmValue":false},"SharedBoolsynchronizeVariables":{"Type":"BehaviorDesigner.Runtime.SharedBool","Name":null,"BooleanmValue":false}},{"Type":"BehaviorDesigner.Runtime.Tasks.Idle","NodeData":{"Offset":"(190,170)"},"ID":3,"Name":"Idle","Instant":true}]},"Variables":[{"Type":"BehaviorDesigner.Runtime.SharedBool","Name":"TestBool","IsShared":true,"BooleanmValue":false}]}'
-      fieldSerializationData:
-        typeName: []
-        fieldNameHash: 
-        startIndex: 
-        dataPosition: 
-        unityObjects: []
-        byteData: 
-        byteDataArray: 
-      Version: 1.7.13
-  gizmoViewMode: 2
-  showBehaviorDesignerGizmo: 1
---- !u!114 &213228089 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 7139285610234567812, guid: 231653b1712e96244be0d3a823ee5ca2, type: 3}
-  m_PrefabInstance: {fileID: 213228084}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 213228085}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2febcd3dab796ab44a2b499c0a3e1176, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &515773044
 GameObject:
   m_ObjectHideFlags: 0
@@ -425,7 +369,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 635949470}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -511,8 +455,8 @@ Transform:
   m_GameObject: {fileID: 735529893}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 0, y: 5, z: -20}
-  m_LocalScale: {x: 1, y: 10, z: 40}
+  m_LocalPosition: {x: 0, y: 5, z: -30}
+  m_LocalScale: {x: 1, y: 10, z: 60}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1857802487}
@@ -588,6 +532,18 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 735529893}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!134 &767533533
+PhysicMaterial:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: 
+  dynamicFriction: 0.6
+  staticFriction: 0.6
+  bounciness: 0
+  frictionCombine: 0
+  bounceCombine: 0
 --- !u!1 &960275182
 GameObject:
   m_ObjectHideFlags: 0
@@ -778,8 +734,8 @@ Transform:
   m_GameObject: {fileID: 1535665680}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 0, y: 5, z: 20}
-  m_LocalScale: {x: 1, y: 10, z: 40}
+  m_LocalPosition: {x: 0, y: 5, z: 30}
+  m_LocalScale: {x: 1, y: 10, z: 60}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1857802487}
@@ -918,8 +874,8 @@ Transform:
   m_GameObject: {fileID: 2135949465}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -20, y: 5, z: 0}
-  m_LocalScale: {x: 1, y: 10, z: 40}
+  m_LocalPosition: {x: -30, y: 5, z: 0}
+  m_LocalScale: {x: 1, y: 10, z: 60}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1857802487}
@@ -1023,8 +979,8 @@ Transform:
   m_GameObject: {fileID: 2141206212}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 20, y: 5, z: 0}
-  m_LocalScale: {x: 1, y: 10, z: 40}
+  m_LocalPosition: {x: 30, y: 5, z: 0}
+  m_LocalScale: {x: 1, y: 10, z: 60}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1857802487}

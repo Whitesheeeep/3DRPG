@@ -12,7 +12,7 @@ namespace RPG.RewardSystemNS.Tests
     {
         #region 测试配置与结果
 
-        [SerializeReference, ListDrawerSettings(Expanded = true)]
+        [SerializeReference, ListDrawerSettings(ShowFoldout = true)]
         private List<RewardDefinition> rewardDefinitions = new List<RewardDefinition>();
 
         [ShowInInspector, ReadOnly]

@@ -35,8 +35,7 @@ MonoBehaviour:
   costEffect: {fileID: 0}
   cooldownEffect: {fileID: 0}
   effects: []
-  cueTags:
-  - id: 187
+  cueTags: []
   damageMultiplier:
     baseValue: 1
     levelCurve:
@@ -59,11 +58,11 @@ MonoBehaviour:
     - rid: 8492673064478303489
       type: {class: AttackFacingGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
       data:
-        scanRadius: 3
+        scanRadius: 5
         targetLayers:
           serializedVersion: 2
-          m_Bits: 128
+          m_Bits: 64
     - rid: 8492673064478303490
       type: {class: PlaySkillConfigGameplayAbilityTaskConfig, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
-        skillConfig: {fileID: 11400000, guid: fdd9cd894abf17948b6985c1c3d92ee2, type: 2}
+        skillConfig: {fileID: 11400000, guid: 83b7d8f2b1ab6d84793cc2a8a2a79cbf, type: 2}

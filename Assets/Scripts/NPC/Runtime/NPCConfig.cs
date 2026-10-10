@@ -5,6 +5,7 @@ using RPG.Character;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using WS_Modules.GAS.AttributeSystem;
+using WS_Modules.GAS.Generated;
 using WS_Modules.GAS.GameplayAbilitySystem;
 
 #if UNITY_EDITOR
@@ -30,7 +31,7 @@ namespace RPG.NPC
         private NPCGrowthProfile growthProfile;
         [SerializeField, LabelText("资源初始化规则")]
         private List<CharacterResourceRule> resourceRules = new();
-        [SerializeField, Required, AssetsOnly, LabelText("可用技能")]
+        [SerializeField, AssetsOnly, LabelText("其他可用技能")]
         private GameplayAbilityData[] grantedAbilities = Array.Empty<GameplayAbilityData>();
         [SerializeField, Required, AssetsOnly, LabelText("Idle 动画")]
         private TransitionAsset idleTransition;
@@ -42,6 +43,32 @@ namespace RPG.NPC
         private GameplayAbilityActivationRules activationRules;
         [SerializeField, Required, AssetsOnly, LabelText("Move 混合参数")]
         private StringAsset moveParameterX;
+        [SerializeField, AssetsOnly, LabelText("Move Y 混合参数")]
+        private StringAsset moveParameterY;
+
+        // Behavior Designer 与 NavMesh 追击参数只在启用 AI 的 NPC 配置中生效。
+        [SerializeField, LabelText("启用行为树 AI")]
+        private bool useBehaviorTree;
+        [SerializeField, AssetsOnly, LabelText("三段普通攻击（有序）")]
+        private GameplayAbilityData[] normalAttackAbilities = Array.Empty<GameplayAbilityData>();
+        [SerializeField, AssetsOnly, LabelText("瞬移 Ability")]
+        private GameplayAbilityData teleportAbility;
+        [SerializeField, MinValue(0.01f), LabelText("移动速度（仅 Walk）")]
+        private float moveSpeed = 2.5f;
+        [SerializeField, MinValue(0.01f), LabelText("瞬移后前方距离")]
+        private float teleportForwardOffset = 2f;
+        [SerializeField, MinValue(0.01f), LabelText("瞬移落点搜索半径")]
+        private float teleportLandingRadius = 0.5f;
+        [SerializeField, MinValue(0.01f), LabelText("路径更新间隔")]
+        private float navigationRefreshInterval = 0.2f;
+        [SerializeField, MinValue(0f), LabelText("普通攻击缓存时间")]
+        private float normalAttackComboRetention = 3f;
+        [SerializeField, LabelText("攻击视线阻挡 Layer")]
+        private LayerMask attackObstructionMask = ~0;
+
+        // 可选死亡表现出口只由正常死亡动画完成回调生成。
+        [SerializeField, AssetsOnly, LabelText("死亡完成时生成")]
+        private GameObject deathCompletionPrefab;
 
         #endregion
 
@@ -77,6 +104,40 @@ namespace RPG.NPC
         /// <summary>获取 Move Mixer 中用于选择步行采样的参数。</summary>
         public StringAsset MoveParameterX => moveParameterX;
 
+        /// <summary>获取 Move Mixer 中用于选择左右步行采样的参数。</summary>
+        public StringAsset MoveParameterY => moveParameterY;
+
+        /// <summary>判断该 NPC 是否在初始化完成后启动外部行为树。</summary>
+        public bool UseBehaviorTree => useBehaviorTree;
+
+        /// <summary>获取按连段顺序执行的三段普通攻击数据。</summary>
+        public IReadOnlyList<GameplayAbilityData> NormalAttackAbilities =>
+            normalAttackAbilities ?? Array.Empty<GameplayAbilityData>();
+
+        /// <summary>获取远距离追击时尝试激活的独立瞬移技能。</summary>
+        public GameplayAbilityData TeleportAbility => teleportAbility;
+
+        /// <summary>获取 Boss Walk 的 NavMeshAgent 速度。</summary>
+        public float MoveSpeed => moveSpeed;
+
+        /// <summary>获取理想瞬移落点相对玩家前向的距离。</summary>
+        public float TeleportForwardOffset => teleportForwardOffset;
+
+        /// <summary>获取瞬移落点在 NavMesh 上允许搜索的最大半径。</summary>
+        public float TeleportLandingRadius => teleportLandingRadius;
+
+        /// <summary>获取导航重算间隔。</summary>
+        public float NavigationRefreshInterval => navigationRefreshInterval;
+
+        /// <summary>获取连段下一段缓存持续时间。</summary>
+        public float NormalAttackComboRetention => normalAttackComboRetention;
+
+        /// <summary>获取攻击时视线检测使用的环境阻挡 LayerMask。</summary>
+        public LayerMask AttackObstructionMask => attackObstructionMask;
+
+        /// <summary>获取死亡动画完成后生成的可选返回入口 Prefab。</summary>
+        public GameObject DeathCompletionPrefab => deathCompletionPrefab;
+
         #endregion
 
         #region 配置校验
@@ -97,8 +158,8 @@ namespace RPG.NPC
             if (growthProfile == null)
                 throw new InvalidOperationException($"NPCConfig '{name}' 未配置 NPCGrowthProfile。");
 
-            if (grantedAbilities == null || grantedAbilities.Length == 0)
-                throw new InvalidOperationException($"NPCConfig '{name}' 必须配置至少一个可用 Ability。");
+            if (grantedAbilities == null)
+                throw new InvalidOperationException($"NPCConfig '{name}' 的 GrantedAbilities 为空引用。");
             for (int index = 0; index < grantedAbilities.Length; index++)
             {
                 if (grantedAbilities[index] == null)
@@ -124,10 +185,74 @@ namespace RPG.NPC
 
             growthProfile.Validate(InitialAttributeSets);
             ValidateResourceRules();
+            ValidateBehaviorTreeConfiguration();
             if (growthProfile.NeedsRebake(InitialAttributeSets))
                 throw new InvalidOperationException(
                     $"NPCConfig '{name}' 的等级属性烘焙结果缺失或已过期，请重新 Bake。");
         }
+
+        /// <summary>校验启用 AI 的 Boss 必须具备三段普攻、瞬移与可用移动参数。</summary>
+        private void ValidateBehaviorTreeConfiguration()
+        {
+            if (!useBehaviorTree)
+            {
+                if (grantedAbilities.Length == 0)
+                    throw new InvalidOperationException($"NPCConfig '{name}' 必须至少授予一个 Ability。");
+                return;
+            }
+
+            if (normalAttackAbilities == null || normalAttackAbilities.Length != 3)
+                throw new InvalidOperationException(
+                    $"NPCConfig '{name}' 的普通攻击必须按顺序配置 Attack1–3，当前数量={normalAttackAbilities?.Length ?? 0}。");
+            for (int index = 0; index < normalAttackAbilities.Length; index++)
+            {
+                GameplayAbilityData ability = normalAttackAbilities[index];
+                if (ability == null)
+                    throw new InvalidOperationException($"NPCConfig '{name}' 的普通攻击[{index}] 未配置。");
+                for (int priorIndex = 0; priorIndex < index; priorIndex++)
+                    if (ReferenceEquals(ability, normalAttackAbilities[priorIndex]))
+                        throw new InvalidOperationException($"NPCConfig '{name}' 重复配置普通攻击 '{ability.name}'。");
+                bool isNormalAttack = false;
+                for (int tagIndex = 0; tagIndex < ability.AbilityTags.Count; tagIndex++)
+                    if (ability.AbilityTags[tagIndex].MatchesTag(GameplayTags.Tag_Skill_NormalAttack))
+                    {
+                        isNormalAttack = true;
+                        break;
+                    }
+                if (!isNormalAttack)
+                    throw new InvalidOperationException(
+                        $"NPCConfig '{name}' 的 '{ability.name}' 缺少 Skill.NormalAttack 分类 Tag。");
+            }
+
+            if (teleportAbility == null)
+                throw new InvalidOperationException($"NPCConfig '{name}' 启用了行为树但没有配置独立瞬移 Ability。");
+            bool isTeleportAbility = false;
+            for (int tagIndex = 0; tagIndex < teleportAbility.AbilityTags.Count; tagIndex++)
+                if (teleportAbility.AbilityTags[tagIndex] == GameplayTags.Tag_Skill_BossTeleport)
+                {
+                    isTeleportAbility = true;
+                    break;
+                }
+            if (!isTeleportAbility)
+                throw new InvalidOperationException(
+                    $"NPCConfig '{name}' 的瞬移 Ability '{teleportAbility.name}' 缺少 Skill.BossTeleport Tag。");
+            if (moveParameterY == null)
+                throw new InvalidOperationException($"NPCConfig '{name}' 启用了二维移动但未配置 MoveParameterY。");
+            if (!IsFinitePositive(moveSpeed) || !IsFinitePositive(teleportForwardOffset) ||
+                !IsFinitePositive(teleportLandingRadius) || !IsFinitePositive(navigationRefreshInterval) ||
+                !IsFiniteNonNegative(normalAttackComboRetention))
+                throw new InvalidOperationException($"NPCConfig '{name}' 含有非法行为树或导航参数。");
+        }
+
+        /// <summary>判断配置数值是否为有限正数。</summary>
+        /// <param name="value">待校验的距离或速度。</param>
+        /// <returns>有限且大于零时返回 true。</returns>
+        private static bool IsFinitePositive(float value) => value > 0f && !float.IsNaN(value) && !float.IsInfinity(value);
+
+        /// <summary>判断配置数值是否为有限非负数。</summary>
+        /// <param name="value">待校验的时间间隔。</param>
+        /// <returns>有限且不小于零时返回 true。</returns>
+        private static bool IsFiniteNonNegative(float value) => value >= 0f && !float.IsNaN(value) && !float.IsInfinity(value);
 
         // 等级属性解析
         /// <summary>使用已验证的成长 Profile 解析指定生成等级的完整 Attribute BaseValue。</summary>
