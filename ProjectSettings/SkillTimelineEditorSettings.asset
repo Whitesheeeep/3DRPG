@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   previewSceneGuid: d09c3d8c5c214a942bedb2612b34ffbc
-  selectedSkillConfigGuid: 712e0c3ed0ee76c428fa7cd7b222b3d9
+  selectedSkillConfigGuid: b1b7b4fa747f8274abdce9a4dec7f0e9
   previewActorGlobalObjectId: GlobalObjectId_V1-1-1892c38e28dbc5a45a6e192051e2dffa-1776669436457576085-0
   gameplayCameraPrefabGuid: e43c9fe6f909474438d9d3f9eef44f8f
   previewCameraModifier: 0

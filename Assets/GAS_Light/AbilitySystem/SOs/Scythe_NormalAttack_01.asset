@@ -104,7 +104,7 @@ MonoBehaviour:
   clips:
   - id: bc157a7fa7e94028ab2e9f8299ae460f
     startFrame: 5
-    durationFrames: 17
+    durationFrames: 11
     sampleIntervalFrames: 1
     detectionId: 0
     markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
@@ -145,10 +145,17 @@ MonoBehaviour:
   - id: c4ac0157bdfb47cd83635494dcee9eba
     animationClip: {fileID: 7400000, guid: dc3c5576cefb3c04d851fd3aa963a5eb, type: 2}
     startFrame: 0
-    durationFrames: 63
+    durationFrames: 45
     sourceStartFrame: 0
     playbackSpeed: 1
     fadeDuration: 0.1
+  - id: 90e83f7904a14729bfe3925704fff2c5
+    animationClip: {fileID: 7400000, guid: d408ff4b131a9c448b3ab312838279da, type: 2}
+    startFrame: 45
+    durationFrames: 18
+    sourceStartFrame: 0
+    playbackSpeed: 1
+    fadeDuration: 0.25
 --- !u!114 &9090366914657983836
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -175,7 +182,7 @@ MonoBehaviour:
     blockAbilityTags: []
   - id: 14dae29f3fba476381f6345299254a59
     startFrame: 5
-    durationFrames: 17
+    durationFrames: 11
     phase: 2
     isCancelable: 0
     runtimeTags: []
@@ -185,8 +192,8 @@ MonoBehaviour:
     - id: 181
     - id: 147
   - id: 6da8a9dbc97641f599f1a2d107cc8065
-    startFrame: 22
-    durationFrames: 41
+    startFrame: 16
+    durationFrames: 47
     phase: 3
     isCancelable: 1
     runtimeTags:

@@ -47,7 +47,7 @@ MonoBehaviour:
   clips:
   - id: fdaba01ec21f485ebccad5f7b66e9505
     startFrame: 11
-    durationFrames: 15
+    durationFrames: 11
     sampleIntervalFrames: 1
     detectionId: 0
     markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
@@ -85,8 +85,8 @@ MonoBehaviour:
   editorLocked: 0
   clips:
   - id: 45c8db67e5c64f5c9d358e18105712a9
-    startFrame: 0
-    durationFrames: 16
+    startFrame: 8
+    durationFrames: 8
     sampleIntervalFrames: 1
     detectionId: 0
     markerKey: {fileID: 0}
@@ -120,7 +120,7 @@ MonoBehaviour:
   clips:
   - id: 7c17a96047a448e6921f4edaa1884676
     startFrame: 0
-    durationFrames: 26
+    durationFrames: 22
     phase: 2
     isCancelable: 0
     runtimeTags: []
@@ -130,8 +130,8 @@ MonoBehaviour:
     - id: 181
     - id: 147
   - id: d6bc41430b424a9588aec66734a32fdc
-    startFrame: 26
-    durationFrames: 37
+    startFrame: 22
+    durationFrames: 41
     phase: 3
     isCancelable: 1
     runtimeTags:
@@ -182,7 +182,14 @@ MonoBehaviour:
   - id: 02c08d03e5664c1c898914af03ca9621
     animationClip: {fileID: 7400000, guid: 73f28b316da10c3478d8ef68c6d468b2, type: 2}
     startFrame: 0
-    durationFrames: 63
+    durationFrames: 52
     sourceStartFrame: 0
     playbackSpeed: 1
     fadeDuration: 0.1
+  - id: a9fea47b3eda4cd1bc2bb48e9bccec09
+    animationClip: {fileID: 7400000, guid: d408ff4b131a9c448b3ab312838279da, type: 2}
+    startFrame: 52
+    durationFrames: 11
+    sourceStartFrame: 0
+    playbackSpeed: 1
+    fadeDuration: 0.25

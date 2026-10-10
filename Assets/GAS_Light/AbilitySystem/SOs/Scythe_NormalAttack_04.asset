@@ -78,10 +78,17 @@ MonoBehaviour:
   - id: 3f130ed9a09f4040b3e2bb963c37fc45
     animationClip: {fileID: 7400000, guid: 7aae9bda692ae0a4cbdc8883b5137cda, type: 2}
     startFrame: 0
-    durationFrames: 77
+    durationFrames: 52
+    sourceStartFrame: 0
+    playbackSpeed: 1.2
+    fadeDuration: 0.1
+  - id: 5203da6bc44643e6b5cad5ccb86b55e2
+    animationClip: {fileID: 7400000, guid: d408ff4b131a9c448b3ab312838279da, type: 2}
+    startFrame: 52
+    durationFrames: 15
     sourceStartFrame: 0
     playbackSpeed: 1
-    fadeDuration: 0.1
+    fadeDuration: 0.25
 --- !u!114 &-4866872975724483892
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -157,7 +164,7 @@ MonoBehaviour:
   clips:
   - id: e0d202074d1f4ca592819c6d4f9f5441
     startFrame: 0
-    durationFrames: 52
+    durationFrames: 47
     phase: 2
     isCancelable: 0
     runtimeTags: []
@@ -165,8 +172,8 @@ MonoBehaviour:
     - id: 126
     - id: 146
   - id: 5b36b3eb9c7b4409ac9d67bf5ad4cc24
-    startFrame: 52
-    durationFrames: 25
+    startFrame: 47
+    durationFrames: 20
     phase: 3
     isCancelable: 1
     runtimeTags:
@@ -189,7 +196,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: bf0bd6fc4975473c991bdbd5bb181bfd
   frameRate: 30
-  durationFrames: 77
+  durationFrames: 80
   isRootMotion: 1
   tracks:
   - {fileID: -346817133221019337}
