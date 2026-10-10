@@ -51,8 +51,8 @@ namespace RPG.Game.Loading.Interaction
                 throw new InvalidOperationException($"[SceneTransitionInteractable] '{name}' 的目标配置缺少 SceneId。");
             if (targetSceneConfig == null && string.IsNullOrWhiteSpace(sceneId))
                 throw new InvalidOperationException($"[SceneTransitionInteractable] '{name}' 未指定目标 SceneLoadConfig 或 SceneId。");
-            if (interactionArea == null || !interactionArea.isTrigger)
-                throw new InvalidOperationException($"[SceneTransitionInteractable] '{name}' 必须绑定 Trigger BoxCollider。");
+            if (interactionArea == null)
+                throw new InvalidOperationException($"[SceneTransitionInteractable] '{name}' 为空。");
             if (string.IsNullOrWhiteSpace(optionDisplayName))
                 throw new InvalidOperationException($"[SceneTransitionInteractable] '{name}' 的交互文案不能为空。");
 

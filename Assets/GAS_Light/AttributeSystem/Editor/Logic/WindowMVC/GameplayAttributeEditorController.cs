@@ -10,10 +10,15 @@ namespace WS_Modules.GAS.Editor
     /// <summary>协调 Attribute Editor View、Registry、Set、Undo、Bake 与 SessionState。</summary>
     public sealed class GameplayAttributeEditorController : IDisposable
     {
-        #region 字段
+        #region 依赖字段
 
         private readonly IGameplayAttributeEditorView view;
         private readonly GameplayAttributeEditorService service = new();
+
+        #endregion
+
+        #region 当前编辑状态
+
         private GameplayAttributeRegistry registry;
         private GameplayAttributeSet set;
         private GameplayAttributeEditorPage page;
@@ -262,28 +267,80 @@ namespace WS_Modules.GAS.Editor
             SelectPage(GameplayAttributeEditorPage.Sets);
         }
 
-        // 使用第一个未被当前 Set 使用的已烘焙 Attribute 创建 Definition。
+        /// <summary>为添加操作准备当前 Set 尚未使用的已烘焙属性菜单。</summary>
+        /// <param name="type">新 Definition 的作者分类。</param>
         private void OnAddDefinitionRequested(GameplayAttributeType type)
         {
-            List<GameplayAttributeEditorNode> nodes = BuildBakedNodes();
-            GameplayAttributeEditorNode selectedNode = nodes.Find(candidate =>
-                registry.TryGetBakedAttribute(candidate.Guid, out GameplayAttribute candidateAttribute) &&
-                GameplayAttributeEditorService.FindDefinitionIndex(
-                    set,
-                    candidateAttribute.Id) < 0);
-            if (selectedNode == null ||
-                !registry.TryGetBakedAttribute(selectedNode.Guid, out GameplayAttribute attribute))
+            if (set == null || registry == null)
             {
-                view.ShowError("Add Attribute Definition", "没有可添加的已烘焙 Attribute。");
-                return;
-            }
-
-            if (!service.AddDefinition(set, attribute, type, out string error))
-            {
+                string error = set == null
+                    ? "请先选择 GameplayAttributeSet。"
+                    : "请先选择 GameplayAttributeRegistry 并完成 Bake。";
+                UnityEngine.Debug.LogWarning($"[GameplayAttributeEditor] 无法打开添加菜单：{error}");
                 view.ShowError("Add Attribute Definition", error);
                 return;
             }
 
+            // 固定本次菜单的目标，并过滤已加入当前 Set 的属性；窗口搜索不影响业务候选。
+            GameplayAttributeSet requestedSet = set;
+            GameplayAttributeRegistry requestedRegistry = registry;
+            List<GameplayAttributeEditorNode> candidates = BuildBakedNodes();
+            candidates.RemoveAll(candidate =>
+                !requestedRegistry.TryGetBakedAttribute(candidate.Guid, out GameplayAttribute attribute) ||
+                GameplayAttributeEditorService.FindDefinitionIndex(requestedSet, attribute.Id) >= 0);
+
+            view.ShowAttributeSelectionMenu(
+                type,
+                candidates,
+                selectedGuid => AddSelectedDefinition(
+                    requestedSet,
+                    requestedRegistry,
+                    type,
+                    selectedGuid));
+        }
+
+        /// <summary>重新解析菜单选择并将 Definition 写入打开菜单时的 AttributeSet。</summary>
+        /// <param name="requestedSet">打开菜单时的目标 AttributeSet。</param>
+        /// <param name="requestedRegistry">打开菜单时用于解析 Spec 的 Registry。</param>
+        /// <param name="type">新 Definition 的作者分类。</param>
+        /// <param name="selectedGuid">菜单项携带的稳定 Spec Guid。</param>
+        private void AddSelectedDefinition(
+            GameplayAttributeSet requestedSet,
+            GameplayAttributeRegistry requestedRegistry,
+            GameplayAttributeType type,
+            string selectedGuid)
+        {
+            if (disposed || set != requestedSet || registry != requestedRegistry)
+            {
+                UnityEngine.Debug.LogWarning(
+                    "[GameplayAttributeEditor] 忽略过期的 Attribute 菜单选择，窗口状态已切换或释放。");
+                return;
+            }
+
+            if (requestedSet == null || requestedRegistry == null ||
+                string.IsNullOrEmpty(selectedGuid) ||
+                !requestedRegistry.TryGetBakedAttribute(selectedGuid, out GameplayAttribute attribute) ||
+                !attribute.IsValid)
+            {
+                const string validationError = "所选 Attribute 已失效或未 Bake，请刷新 Registry 后重试。";
+                UnityEngine.Debug.LogWarning(
+                    $"[GameplayAttributeEditor] 添加 Definition 失败：{validationError}");
+                view.ShowError("Add Attribute Definition", validationError);
+                return;
+            }
+
+            if (!service.AddDefinition(requestedSet, attribute, type, out string error))
+            {
+                UnityEngine.Debug.LogWarning(
+                    $"[GameplayAttributeEditor] 添加 Attribute 失败，set={requestedSet.name}, " +
+                    $"attributeId={attribute.Id}, reason={error}");
+                view.ShowError("Add Attribute Definition", error);
+                return;
+            }
+
+            UnityEngine.Debug.Log(
+                $"[GameplayAttributeEditor] 已添加 Attribute Definition，set={requestedSet.name}, " +
+                $"attributeId={attribute.Id}, type={type}。");
             selectedDefinitionId = attribute.Id;
             GameplayAttributeEditorSession.SelectedDefinitionId = selectedDefinitionId;
             RefreshAll();

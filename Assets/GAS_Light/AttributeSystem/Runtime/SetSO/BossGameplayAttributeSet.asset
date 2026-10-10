@@ -69,17 +69,6 @@ MonoBehaviour:
     currentValue: 0
     ownerSet: {fileID: 0}
   - attribute:
-      id: 2
-      name: Armor
-      displayName: "\u9632\u5FA1\u529B"
-    type: 0
-    defaultValue: 100
-    minValue: 0
-    maxValue: Infinity
-    baseValue: 0
-    currentValue: 0
-    ownerSet: {fileID: 0}
-  - attribute:
       id: 1
       name: MaxHealth
       displayName: "\u751F\u547D\u503C\u4E0A\u9650"
@@ -95,6 +84,17 @@ MonoBehaviour:
       name: MP
       displayName: "\u80FD\u91CF"
     type: 1
+    defaultValue: 0
+    minValue: -Infinity
+    maxValue: Infinity
+    baseValue: 0
+    currentValue: 0
+    ownerSet: {fileID: 0}
+  - attribute:
+      id: 2
+      name: Armor
+      displayName: "\u9632\u5FA1\u529B"
+    type: 0
     defaultValue: 0
     minValue: -Infinity
     maxValue: Infinity

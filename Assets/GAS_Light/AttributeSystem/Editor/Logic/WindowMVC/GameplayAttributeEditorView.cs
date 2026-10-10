@@ -13,7 +13,7 @@ namespace WS_Modules.GAS.Editor
     /// <summary>使用 UI Toolkit 实现 Attribute Specs 与 Attribute Sets 两个子页面。</summary>
     public sealed class GameplayAttributeEditorView : IGameplayAttributeEditorView
     {
-        #region 常量与字段
+        #region 常量
 
         private const string ActiveTabClass = "attribute-sub-tab--active";
         private const string SpecRowUxmlPath =
@@ -21,11 +21,18 @@ namespace WS_Modules.GAS.Editor
         private const string DefinitionRowUxmlPath =
             "Assets/GAS_Light/AttributeSystem/Editor/Style/GameplayAttributeDefinitionRow.uxml";
 
+        #endregion
+
+        #region 依赖字段
+
+        // View 持有的 UXML 控件及行模板引用。
         private readonly VisualElement root;
         private readonly VisualTreeAsset specRowAsset;
         private readonly VisualTreeAsset definitionRowAsset;
         private readonly Button specsPageButton;
         private readonly Button setsPageButton;
+        private readonly Button addStatButton;
+        private readonly Button addResourceButton;
         private readonly ToolbarSearchField searchField;
         private readonly VisualElement specsPage;
         private readonly VisualElement setsPage;
@@ -44,6 +51,10 @@ namespace WS_Modules.GAS.Editor
         private readonly FloatField definitionMinField;
         private readonly FloatField definitionMaxField;
         private readonly HelpBox statusBox;
+
+        #endregion
+
+        #region 渲染状态
 
         private readonly List<GameplayAttributeEditorNode> renderedSpecs = new();
         private readonly List<GameplayAttributeEditorNode> renderedSelectableNodes = new();
@@ -108,6 +119,8 @@ namespace WS_Modules.GAS.Editor
                 throw new InvalidOperationException("Attribute Editor 行 UXML 资源缺失。");
             specsPageButton = Require<Button>("SpecsPageButton");
             setsPageButton = Require<Button>("SetsPageButton");
+            addStatButton = Require<Button>("AddStatButton");
+            addResourceButton = Require<Button>("AddResourceButton");
             searchField = Require<ToolbarSearchField>("SearchField");
             specsPage = Require<VisualElement>("SpecsPage");
             setsPage = Require<VisualElement>("SetsPage");
@@ -302,6 +315,46 @@ namespace WS_Modules.GAS.Editor
             }
         }
 
+        /// <summary>使用 UI Toolkit 原生下拉菜单展示当前分类可添加的 Attribute。</summary>
+        /// <param name="type">新 Definition 的作者分类，也用于定位对应的添加按钮。</param>
+        /// <param name="selectableNodes">当前 Set 尚未使用的已烘焙 Attribute。</param>
+        /// <param name="selectionCallback">用户选中时接收稳定 Spec Guid 的回调。</param>
+        /// <exception cref="ArgumentNullException">selectionCallback 为 null。</exception>
+        public void ShowAttributeSelectionMenu(
+            GameplayAttributeType type,
+            IReadOnlyList<GameplayAttributeEditorNode> selectableNodes,
+            Action<string> selectionCallback)
+        {
+            if (selectionCallback == null)
+                throw new ArgumentNullException(nameof(selectionCallback));
+
+            Button anchor = type == GameplayAttributeType.Stat ? addStatButton : addResourceButton;
+            var menu = new GenericDropdownMenu();
+            if (selectableNodes == null || selectableNodes.Count == 0)
+            {
+                menu.AddDisabledItem("没有可添加的已烘焙 Attribute", false);
+                // worldBound 已是面板坐标，直接交给 UI Toolkit，避免混入 IMGUI 屏幕坐标转换。
+                menu.DropDown(anchor.worldBound, anchor, false);
+                return;
+            }
+
+            // 只把稳定 Spec Guid 交给 Controller，避免 View 保存 Attribute 业务状态。
+            for (int i = 0; i < selectableNodes.Count; i++)
+            {
+                GameplayAttributeEditorNode node = selectableNodes[i];
+                if (node == null) continue;
+
+                string guid = node.Guid;
+                menu.AddItem(
+                    FormatAttributeMenuChoice(node),
+                    false,
+                    () => selectionCallback(guid));
+            }
+
+            // 以按钮所在 Panel 为锚点；菜单按内容决定宽度，不受按钮宽度压缩。
+            menu.DropDown(anchor.worldBound, anchor, false);
+        }
+
         /// <inheritdoc />
         public void RenderStatus(string message, bool isError)
         {
@@ -404,8 +457,8 @@ namespace WS_Modules.GAS.Editor
             specDisplayNameField.RegisterValueChangedCallback(OnSpecDisplayNameChanged);
             specDescriptionField.RegisterValueChangedCallback(OnSpecDescriptionChanged);
             Require<Button>("CreateSetButton").clicked += OnCreateSetClicked;
-            Require<Button>("AddStatButton").clicked += OnAddStatClicked;
-            Require<Button>("AddResourceButton").clicked += OnAddResourceClicked;
+            addStatButton.clicked += OnAddStatClicked;
+            addResourceButton.clicked += OnAddResourceClicked;
             Require<Button>("DeleteDefinitionButton").clicked += OnDeleteDefinitionClicked;
             definitionAttributeField.RegisterValueChangedCallback(OnDefinitionAttributeChanged);
             definitionTypeField.RegisterValueChangedCallback(OnDefinitionTypeChanged);
@@ -432,8 +485,8 @@ namespace WS_Modules.GAS.Editor
             specDisplayNameField.UnregisterValueChangedCallback(OnSpecDisplayNameChanged);
             specDescriptionField.UnregisterValueChangedCallback(OnSpecDescriptionChanged);
             Require<Button>("CreateSetButton").clicked -= OnCreateSetClicked;
-            Require<Button>("AddStatButton").clicked -= OnAddStatClicked;
-            Require<Button>("AddResourceButton").clicked -= OnAddResourceClicked;
+            addStatButton.clicked -= OnAddStatClicked;
+            addResourceButton.clicked -= OnAddResourceClicked;
             Require<Button>("DeleteDefinitionButton").clicked -= OnDeleteDefinitionClicked;
             definitionAttributeField.UnregisterValueChangedCallback(OnDefinitionAttributeChanged);
             definitionTypeField.UnregisterValueChangedCallback(OnDefinitionTypeChanged);
@@ -537,6 +590,18 @@ namespace WS_Modules.GAS.Editor
         /// <returns>同时包含 DisplayName 与 Name 的选项文本。</returns>
         private static string FormatAttributeChoice(GameplayAttributeEditorNode node) =>
             $"{node.DisplayName} ({node.Name})";
+
+        /// <summary>格式化添加菜单选项，包含展示名、技术名和稳定 AttributeId。</summary>
+        /// <param name="node">菜单中的已烘焙 Attribute Spec。</param>
+        /// <returns>供菜单显示的完整识别文本。</returns>
+        private string FormatAttributeMenuChoice(GameplayAttributeEditorNode node)
+        {
+            string idText = currentRegistry != null &&
+                            currentRegistry.TryGetBakedAttribute(node.Guid, out GameplayAttribute attribute)
+                ? attribute.Id.ToString()
+                : "未 Bake";
+            return $"{node.DisplayName} ({node.Name}) [ID: {idText}]";
+        }
 
         // Type 枚举选择完成后立即提交当前完整 Definition。
         private void OnDefinitionTypeChanged(ChangeEvent<Enum> evt) => SubmitDefinition();

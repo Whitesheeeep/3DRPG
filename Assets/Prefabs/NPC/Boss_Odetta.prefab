@@ -22851,6 +22851,7 @@ GameObject:
   - component: {fileID: 135778691529142037}
   - component: {fileID: 7139285610234567812}
   - component: {fileID: 3506830368931034654}
+  - component: {fileID: 4406536873432819135}
   m_Layer: 7
   m_Name: Boss_Odetta
   m_TagString: Untagged
@@ -27384,7 +27385,7 @@ MonoBehaviour:
   generationLevel: 1
   characterController: {fileID: 2720963218489226058}
   actor: {fileID: 1156644827643649595}
-  npcIdentity: {fileID: 0}
+  npcIdentity: {fileID: 7139285610234567812}
   motionDriver:
     horizontalMovementBlockedTags: []
     allMovementBlockedTags: []
@@ -27425,6 +27426,46 @@ NavMeshAgent:
   m_BaseOffset: 0
   m_WalkableMask: 4294967295
   m_ObstacleAvoidanceType: 4
+--- !u!114 &4406536873432819135
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5422017710913169865}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d7b55c7ecdb49a4a89fa5e6f9022861, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  startWhenEnabled: 1
+  asynchronousLoad: 0
+  pauseWhenDisabled: 0
+  restartWhenComplete: 0
+  logTaskChanges: 0
+  group: 0
+  resetValuesOnRestart: 0
+  externalBehavior: {fileID: 0}
+  mBehaviorSource:
+    behaviorName: Behavior
+    behaviorDescription: 
+    mTaskData:
+      types: []
+      parentIndex: 
+      startIndex: 
+      variableStartIndex: 
+      JSONSerialization: '{"EntryTask":{"Type":"BehaviorDesigner.Runtime.Tasks.EntryTask","NodeData":{"Offset":"(-199.3667,-231.867462)"},"ID":0,"Name":"Entry","Instant":true},"Variables":[{"Type":"BehaviorDesigner.Runtime.SharedBool","Name":"TestBool","IsShared":true,"BooleanmValue":false}]}'
+      fieldSerializationData:
+        typeName: []
+        fieldNameHash: 
+        startIndex: 
+        dataPosition: 
+        unityObjects: []
+        byteData: 
+        byteDataArray: 
+      Version: 1.7.13
+  gizmoViewMode: 2
+  showBehaviorDesignerGizmo: 1
 --- !u!1 &5451128041443257534
 GameObject:
   m_ObjectHideFlags: 0

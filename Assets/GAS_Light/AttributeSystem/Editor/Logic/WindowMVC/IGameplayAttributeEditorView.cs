@@ -80,6 +80,14 @@ namespace WS_Modules.GAS.Editor
         void RenderDefinitionDetails(
             GameplayAttributeDefinition definition,
             IReadOnlyList<GameplayAttributeEditorNode> selectableNodes);
+        /// <summary>在对应添加按钮下方显示可选的已烘焙 Attribute。</summary>
+        /// <param name="type">新 Definition 的作者分类。</param>
+        /// <param name="selectableNodes">当前 Set 尚未使用的已烘焙 Attribute。</param>
+        /// <param name="selectionCallback">用户选中时接收稳定 Spec Guid 的回调。</param>
+        void ShowAttributeSelectionMenu(
+            GameplayAttributeType type,
+            IReadOnlyList<GameplayAttributeEditorNode> selectableNodes,
+            Action<string> selectionCallback);
         /// <summary>渲染校验与 Bake 状态文本。</summary>
         /// <param name="message">状态或问题列表。</param>
         /// <param name="isError">是否使用错误视觉状态。</param>
