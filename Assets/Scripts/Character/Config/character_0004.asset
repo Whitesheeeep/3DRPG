@@ -116,7 +116,11 @@ MonoBehaviour:
         displayName: 
       initialValueMode: 0
   combatConfig:
-    normalAttackAbilities: []
+    normalAttackAbilities:
+    - {fileID: 11400000, guid: fd0bb9a098f147b4094ee8e1c32df9b3, type: 2}
+    - {fileID: 11400000, guid: 73f30c78387f60f49a287058d11475f2, type: 2}
+    - {fileID: 11400000, guid: 4bf9da2dc0946ae46a3f2e89ef0e8d4d, type: 2}
+    - {fileID: 11400000, guid: bc9a07b3c7cc272498bf2514468cc80d, type: 2}
     skillInputBindings: []
   locomotion:
     gravity: 9.81

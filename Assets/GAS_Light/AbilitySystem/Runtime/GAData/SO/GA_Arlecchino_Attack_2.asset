@@ -10,15 +10,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 92a3fd70e0644c4da339c935362b3d99, type: 3}
-  m_Name: GA_Boss_Odetta_Attack_3
+  m_Name: GA_Arlecchino_Attack_2
   m_EditorClassIdentifier: 
-  abilityId: 16
-  abilityName: "\u5965\u9EDB\u5854\u666E\u653B3"
+  abilityId: 19
+  abilityName: "\u963F\u857E\u5947\u8BFA\u666E\u653B2"
   icon: {fileID: 0}
-  description: GAS SkillRuntimeHost integration fixture using the existing 35-frame
-    SkillConfig.
+  description: Arlecchino Scythe normal attack segment 2.
   abilityTags:
-  - id: 173
+  - id: 166
   cancelTags:
   - id: 164
   blockAbilityTags: []
@@ -66,4 +65,4 @@ MonoBehaviour:
     - rid: 8492673064478303490
       type: {class: PlaySkillConfigGameplayAbilityTaskConfig, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
-        skillConfig: {fileID: 11400000, guid: 202aa15b2413d8946b2ee3489ec52fd0, type: 2}
+        skillConfig: {fileID: 11400000, guid: 2f3bfb5981eb0574cba9e8b4e1cc46f6, type: 2}

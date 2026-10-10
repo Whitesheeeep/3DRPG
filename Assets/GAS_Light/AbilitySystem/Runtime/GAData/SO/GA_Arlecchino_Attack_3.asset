@@ -10,29 +10,32 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 92a3fd70e0644c4da339c935362b3d99, type: 3}
-  m_Name: GA_Test_SkillConfig2
+  m_Name: GA_Arlecchino_Attack_3
   m_EditorClassIdentifier: 
-  abilityId: 9
-  abilityName: 
+  abilityId: 20
+  abilityName: "\u963F\u857E\u5947\u8BFA\u666E\u653B3"
   icon: {fileID: 0}
-  description: GAS SkillRuntimeHost interruption fixture using Test_SkillConfig2.
+  description: Arlecchino Scythe normal attack segment 3.
   abilityTags:
-  - id: 167
+  - id: 173
   cancelTags:
-  - id: 126
+  - id: 164
   blockAbilityTags: []
   isCancelable: 1
   activationTagQuery:
     allTags: []
     anyTags: []
     banedTags:
-    - id: 36
+    - id: 161
+    - id: 162
+    - id: 163
+    - id: 154
+    - id: 156
   costEffect: {fileID: 0}
   cooldownEffect: {fileID: 0}
-  effects:
-  - {fileID: 11400000, guid: 6861f23c72baf27428de65bec7d0d062, type: 2}
+  effects: []
   cueTags:
-  - id: 21
+  - id: 187
   damageMultiplier:
     baseValue: 1
     levelCurve:
@@ -47,6 +50,19 @@ MonoBehaviour:
     version: 2
     RefIds:
     - rid: 8492673064478303488
+      type: {class: SequenceGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
+      data:
+        children:
+        - rid: 8492673064478303489
+        - rid: 8492673064478303490
+    - rid: 8492673064478303489
+      type: {class: AttackFacingGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
+      data:
+        scanRadius: 3
+        targetLayers:
+          serializedVersion: 2
+          m_Bits: 128
+    - rid: 8492673064478303490
       type: {class: PlaySkillConfigGameplayAbilityTaskConfig, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
-        skillConfig: {fileID: 11400000, guid: 839828534639f3a42bf701d46467a9c1, type: 2}
+        skillConfig: {fileID: 11400000, guid: b1b7b4fa747f8274abdce9a4dec7f0e9, type: 2}
