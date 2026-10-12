@@ -122,7 +122,19 @@ MonoBehaviour:
   muted: 0
   displayName: "\u4E8B\u4EF6\u8F68\u9053"
   editorLocked: 0
-  markers: []
+  markers:
+  - id: 3e1f18b77dde4e08909e11f8fc6857ce
+    frame: 20
+    eventKey: 
+    displayName: "\u4E8B\u4EF6"
+    valueType: 1
+    intValue: 0
+    stringValue: 
+    longValue: 0
+    boolValue: 0
+    doubleValue: 0
+    floatValue: 0
+    objectValue: {fileID: 0}
 --- !u!114 &-5788776629049603891
 MonoBehaviour:
   m_ObjectHideFlags: 1
