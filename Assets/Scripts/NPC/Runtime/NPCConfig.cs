@@ -228,7 +228,7 @@ namespace RPG.NPC
                 throw new InvalidOperationException($"NPCConfig '{name}' 启用了行为树但没有配置独立瞬移 Ability。");
             bool isTeleportAbility = false;
             for (int tagIndex = 0; tagIndex < teleportAbility.AbilityTags.Count; tagIndex++)
-                if (teleportAbility.AbilityTags[tagIndex] == GameplayTags.Tag_Skill_BossTeleport)
+                if (teleportAbility.AbilityTags[tagIndex] == GameplayTags.Tag_Skill_Active_BossTeleport)
                 {
                     isTeleportAbility = true;
                     break;

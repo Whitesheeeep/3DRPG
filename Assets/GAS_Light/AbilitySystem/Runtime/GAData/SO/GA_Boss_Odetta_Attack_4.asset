@@ -21,7 +21,10 @@ MonoBehaviour:
   - id: 174
   cancelTags:
   - id: 164
-  blockAbilityTags: []
+  blockAbilityTags:
+  - id: 164
+  - id: 221
+  - id: 218
   isCancelable: 1
   activationTagQuery:
     allTags: []

@@ -141,7 +141,7 @@ Preview Handler 直接从 `SkillConfig.Tracks.OfType<TTrack>()` 读取对应 Tra
 → 未来 FullBody Action Execution 与 Arbiter 决定候选转换
 ```
 
-阶段允许重复出现，编辑器只约束同轨区间不重叠。`RuntimeTags` 只声明移动、跳跃或其他 Ability 是否可以在该窗口尝试转换，`BlockAbilityTags` 声明当前 Clip 阻止哪些候选 Ability；它们不直接取消当前技能，也不保证目标动作执行成功。Ability 仍通过 GAS `TryActivateAbility` 判断；该轨道不接受 Project 素材拖入，也不注册 Preview Handler。
+阶段允许重复出现，编辑器只约束同轨区间不重叠。`RuntimeTags` 中的 `Skill.Window.CancelBy.Jump/Move` 只声明 FSM 转换是否可在该窗口尝试；GA 之间的交接改由当前 Runtime 的 `IsCancelable` 与 `BlockAbilityTags` 表达，后者按 Ability 分类阻止候选 GA。它们都不直接取消当前技能，也不保证目标动作执行成功；新 GA 仍通过 GAS `TryActivateAbility` 判断。该轨道不接受 Project 素材拖入，也不注册 Preview Handler。
 
 ## 5. Event Track 类型化事件
 

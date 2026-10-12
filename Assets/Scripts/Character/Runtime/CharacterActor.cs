@@ -4,17 +4,20 @@ using Cysharp.Threading.Tasks;
 using RPG.Character.Animation;
 using RPG.ItemSystem;
 using RPG.Character.State;
+using RPG.Combat;
 using RPG.PlayerInputSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.AttributeSystem;
+using WS_Modules.GAS.GameplayAbilitySystem;
 
 namespace RPG.Character
 {
     /// <summary>封装一个角色独立的战斗、能力、动画、挂点和 Locomotion 状态。</summary>
     [RequireComponent(typeof(Animator))]
     [InfoBox("依赖 CharacterConfig、同节点 Humanoid Animator、AnimationController 和 WeaponRigController，以及同节点或子节点中的 ASC、MarkerProvider、SkillRuntimeHost、CharacterWeaponPresentationController；武器表现由 CharacterManager 注入 Roster/WeaponInventory，武器姿态由技能 Task 通过 Owner.WeaponSwitch 驱动；Config 提供角色属性、战斗与 Locomotion 参数，子树 Renderer 用于隐藏后台角色。")]
-    public sealed class CharacterActor : CharacterAbilityActor
+    public sealed class CharacterActor : CharacterAbilityActor, IGameplayAbilityTargetProvider, ICombatDamageReceiver
     {
         #region 配置与运行时状态
 
@@ -29,9 +32,14 @@ namespace RPG.Character
         // 战斗、实例和成长运行时在 CharacterManager 绑定 CharacterInstance 后初始化。
         private readonly CharacterCombatSystem combatSystem = new();
         private CharacterActionArbiter actionArbiter;
+        private CharacterHitReactionSystem hitReactionSystem;
         private CharacterInstance instance;
         private CharacterRuntimeAttributeBinding runtimeAttributeBinding;
         private readonly CharacterAttributeProgressionResolver progressionResolver = new();
+        // 该句柄让 Actor 在离队、初始化回滚或销毁时释放自己的 ASC 伤害路由。
+        private IDisposable damageReceiverRegistration;
+        private bool runtimeStopped = true;
+        private bool isActiveCharacter;
 
         // Player 注入的稳定运行时依赖，不随角色切换重新创建。
         private Transform characterRoot;
@@ -41,10 +49,8 @@ namespace RPG.Character
         private PlayerStateBlackboard stateBlackboard;
         // 预热期间 Animator 可能被临时启用；该标记阻止初始化求值误进入玩家运动结算。
         private bool suppressAnimatorMotion;
-        // 角色表现 Renderer 缓存，SetActivePresentation 时用于隐藏后台角色。
+        // 角色表现 Renderer 缓存，由上场与退场生命周期统一切换可见状态。
         private Renderer[] presentationRenderers;
-        // 武器模型动态替换后重建 Renderer 缓存，并沿用当前角色的显隐状态。
-        private bool isPresentationActive;
         // PlayerController 在 Start 阶段统一初始化队伍；CharacterActor.Start 作为独立实例启用时的幂等兜底。
         private bool runtimeConfigurationInitialized;
 
@@ -72,6 +78,8 @@ namespace RPG.Character
         }
         /// <summary>获取当前角色 Locomotion FSM。</summary>
         public CharacterLocomotionStateMachine Locomotion => locomotion;
+        /// <summary>获取当前 Actor 是否正在场上并代表玩家接受操控。</summary>
+        public bool IsActiveCharacter => isActiveCharacter;
         /// <summary>获取稳定 Player 共享的输入状态黑板。</summary>
         public PlayerStateBlackboard StateBlackboard => stateBlackboard;
         /// <summary>当角色仍有活动能力时，角色切换应直接拒绝。</summary>
@@ -83,6 +91,17 @@ namespace RPG.Character
         /// <inheritdoc />
         public override IFullBodyActionArbiter FullBodyActionArbiter => actionArbiter ??
             throw new InvalidOperationException($"角色 '{name}' 尚未完成 Action Arbiter 初始化。");
+        /// <summary>获取当前 FullBody Runtime，供同步受击解析读取当前 Phase 的取消窗口。</summary>
+        internal GameplayAbilityRuntime CurrentFullBodyRuntime => actionArbiter?.CurrentFullBodyRuntime;
+
+        /// <inheritdoc />
+        public GameplayAbilitySystemComponent TryGetTargetASC()
+        {
+            if (!isActiveAndEnabled || !runtimeConfigurationInitialized || !isActiveCharacter)
+                return null;
+
+            return abilitySystemComponent;
+        }
 
         #endregion
 
@@ -95,15 +114,15 @@ namespace RPG.Character
         private void Start()
         {
             // 正式入口由 PlayerController 初始化流程调用；Player 初始化失败时不能再制造缺少 Locomotion 依赖的次生异常。
-            if (stateBlackboard != null)
+            if (stateBlackboard != null && !runtimeStopped)
                 InitializeFromInstance();
         }
 
-        /// <summary>销毁角色时释放武器表现、FullBody Action 注册并归还共享 Blackboard 占据。</summary>
+        /// <summary>先释放 Actor 自有运行时，再清理基类 Ability 依赖。</summary>
         protected override void OnDestroy()
         {
-            base.OnDestroy();
             StopRuntime();
+            base.OnDestroy();
         }
 
         /// <summary>在父级 PlayerController 先于子角色 Awake 时也能同步解析依赖。</summary>
@@ -168,26 +187,96 @@ namespace RPG.Character
                 combatSystem,
                 abilitySystemComponent,
                 locomotion.GroundedJumpTransitionQueryService);
+            hitReactionSystem = new CharacterHitReactionSystem(this, combatSystem);
+            damageReceiverRegistration = CombatDamagePipeline.RegisterReceiver(abilitySystemComponent, this);
             runtimeConfigurationInitialized = true;
         }
 
-        /// <summary>停止当前 Actor 的实例绑定和战斗运行时，并解除武器表现事件及资源占用。</summary>
+        /// <summary>注销伤害接收并释放当前 Actor 的实例绑定、战斗运行时与表现资源。</summary>
         internal void StopRuntime()
         {
+            if (runtimeStopped)
+                return;
+
+            // 先封闭外部伤害回调，再退出上场状态并逐个释放依赖，防止清理期间再次进入受击流程。
+            runtimeStopped = true;
+            damageReceiverRegistration?.Dispose();
+            damageReceiverRegistration = null;
+            if (isActiveCharacter)
+                OnExit();
+
             weaponPresentationController.PresentationModelChanged -= HandleWeaponPresentationModelChanged;
             weaponPresentationController.StopRuntime();
+            hitReactionSystem?.Dispose();
+            hitReactionSystem = null;
             runtimeAttributeBinding?.Dispose();
             runtimeAttributeBinding = null;
             actionArbiter?.Dispose();
             actionArbiter = null;
             runtimeConfigurationInitialized = false;
             instance = null;
-            isPresentationActive = false;
             if (animator != null) animator.enabled = false;
             if (presentationRenderers == null) presentationRenderers = GetComponentsInChildren<Renderer>(true);
             for (int index = 0; index < presentationRenderers.Length; index++)
                 if (presentationRenderers[index] != null) presentationRenderers[index].forceRenderingOff = true;
             Debug.Log($"[CharacterActor] 已停止角色运行时并解除实例绑定，actor={name}。");
+        }
+
+        /// <summary>接收伤害管线按本角色 ASC 直接路由的伤害结算结果。</summary>
+        /// <param name="result">含 GE 输出与可选本次命中快照的 Gameplay 结果。</param>
+        public void ReceiveDamage(CombatDamageResult result)
+        {
+            if (!runtimeConfigurationInitialized || hitReactionSystem == null)
+                throw new InvalidOperationException($"CharacterActor '{name}' 尚未准备好接收伤害反馈。");
+            if (result == null || result.EffectResult.Target != abilitySystemComponent)
+                throw new InvalidOperationException($"CharacterActor '{name}' 收到其他 ASC 的伤害结果。");
+
+            hitReactionSystem.ReceiveDamage(result);
+        }
+
+        /// <summary>将该 Actor 设置为当前操控角色，并按 Player 控制门禁启动 Locomotion。</summary>
+        /// <exception cref="InvalidOperationException">角色运行时尚未初始化或切换顺序违反 Manager 契约时抛出。</exception>
+        internal void OnEnter()
+        {
+            if (isActiveCharacter)
+                return;
+            if (!runtimeConfigurationInitialized)
+                throw new InvalidOperationException($"CharacterActor '{name}' 尚未初始化，不能进入操控状态。");
+
+            // 先切换共享 MotionDriver 的 Owner；Locomotion.Activate 会立即申请运动控制权。
+            bool activateLocomotion = playerController.PrepareCharacterEntry(this);
+            isActiveCharacter = true;
+            try
+            {
+                SetActivePresentation(true);
+                if (activateLocomotion)
+                    locomotion.Activate();
+                Debug.Log(
+                    $"[CharacterActor] 角色进入操控状态，character={CharacterId}, locomotionActivated={activateLocomotion}。",
+                    this);
+            }
+            catch
+            {
+                // 进入中途失败时归还刚切换的 Owner 与表现，避免 Manager 留下半激活角色。
+                OnExit();
+                throw;
+            }
+        }
+
+        /// <summary>退出操控状态并释放本 Actor 持有的表现、Locomotion 与运动请求。</summary>
+        internal void OnExit()
+        {
+            if (!isActiveCharacter)
+                return;
+
+            // 先退出 Locomotion，再清理 Owner 的剩余运动请求，最后隐藏角色表现。
+            isActiveCharacter = false;
+            locomotion.Deactivate();
+            if (playerController != null)
+                playerController.ReleaseCharacterControl(this);
+            combatSystem.ResetCombo();
+            SetActivePresentation(false);
+            Debug.Log($"[CharacterActor] 角色退出操控状态，character={CharacterId}。", this);
         }
 
         /// <summary>把稳定角色实例、Roster/武器库存及 Player 运动依赖注入角色。</summary>
@@ -215,10 +304,12 @@ namespace RPG.Character
             instance = characterInstance ?? throw new ArgumentNullException(nameof(characterInstance));
             if (instance.Config.CharacterId != config.CharacterId)
                 throw new InvalidOperationException($"CharacterActor '{name}' 的 Prefab Config 与 CharacterInstance 不一致。");
+            runtimeStopped = false;
             locomotion.Configure(instance.Config.Gravity, instance.Config.LocomotionTransition);
             locomotion.Initialize(this, driver);
             weaponPresentationController.PresentationModelChanged += HandleWeaponPresentationModelChanged;
             weaponPresentationController.BindRuntime(instance, rosterManager, weaponInventoryManager);
+            SetActivePresentation(false);
             Debug.Log($"[CharacterActor] 已绑定角色运行时依赖，character={instance.CharacterId}。");
         }
 
@@ -263,14 +354,12 @@ namespace RPG.Character
             playerController.ProcessAnimatorMotion(this, animator.deltaPosition, animator.deltaRotation);
         }
 
-        /// <summary>只切换角色表现，不停用承载 ASC 的节点，也不驱动 Locomotion。</summary>
+        /// <summary>只切换角色视觉表现，不停用承载 ASC 的节点。</summary>
         /// <param name="active">该角色是否成为玩家当前操控对象。</param>
-        internal void SetActivePresentation(bool active)
+        private void SetActivePresentation(bool active)
         {
             EnsureDependencies();
             // ASC 所在对象不能 SetActive(false)，否则后台能力与事件生命周期会被截断。
-            if (!active) combatSystem.ResetCombo();
-            isPresentationActive = active;
             presentationRenderers ??= GetComponentsInChildren<Renderer>(true);
             foreach (Renderer renderer in presentationRenderers)
                 if (renderer != null) renderer.forceRenderingOff = !active;
@@ -282,14 +371,14 @@ namespace RPG.Character
         {
             presentationRenderers = GetComponentsInChildren<Renderer>(true);
             foreach (Renderer renderer in presentationRenderers)
-                if (renderer != null) renderer.forceRenderingOff = !isPresentationActive;
+                if (renderer != null) renderer.forceRenderingOff = !isActiveCharacter;
         }
 
         /// <summary>推进普通 ASC 阶段；后台角色也会执行。</summary>
         /// <param name="deltaTime">本帧缩放时间。</param>
         internal void TickAbility(float deltaTime) => abilitySystemComponent.Tick(deltaTime);
 
-        /// <summary>先推进连段时间，再由角色 Action Arbiter 按 Ability、Jump、Move 顺序处理输入。</summary>
+        /// <summary>先推进连段时间，再按技能槽、普通攻击、Jump、Move 顺序仲裁输入。</summary>
         /// <param name="inputRequests">提供战斗 Request 的输入缓冲区。</param>
         /// <param name="deltaTime">本帧缩放时间。</param>
         internal void AdvanceActionFrame(IPlayerInputRequestBuffer inputRequests, float deltaTime)

@@ -1,7 +1,8 @@
 using System.Collections.Generic;
+using RPG.Combat;
+using Sirenix.OdinInspector;
 using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
-using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.GameplayEffect;
 using WS_Modules.GAS.TAG;
 using WS_Modules.Pooling;
@@ -11,6 +12,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
     /// <summary>保存单次池化投射物快照，通过 Rigidbody 移动并在首次有效碰撞时结算 Effects。</summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Rigidbody), typeof(Collider))]
+    [InfoBox("依赖同节点 Rigidbody 和 Collider；RequireComponent 会在缺失时由 Unity 自动补齐。投射物命中目标时通过父级 Gameplay Provider 解析目标 ASC，未找到有效 Provider 的 Collider 会被忽略。")]
     public sealed class GameplayAbilityProjectileBehaviour : PoolObjectIdentity
     {
         #region 字段
@@ -52,44 +54,50 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             if (remainingLifetime <= 0f) Recycle();
         }
 
-        /// <summary>首次命中其他 ASC 后逐项应用 Effects、发布命中 Cue并回收。</summary>
+        /// <summary>首次命中有效业务目标后逐项应用 Effects、发布命中 Cue 并回收。</summary>
         /// <param name="other">进入 Trigger 的碰撞体。</param>
         private void OnTriggerEnter(Collider other)
         {
             if (!running) return;
 
-            GameplayAbilitySystemComponent target =
-                other.GetComponentInParent<GameplayAbilitySystemComponent>();
-            if (target == null || ReferenceEquals(target, source)) return;
+            var target  = GameplayAbilityHitTargetResolver.TryResolve(other);
+            if (target == null || target == source)
+                return;
             if ((targetLayerMask.value & (1 << target.gameObject.layer)) == 0) return;
 
             running = false;
-            GameplayEffectApplicationResult lastApplicationResult = null;
+            Transform targetRoot = target.Owner.RootTransform;
+            // 投射物来袭方向是飞行方向的反向；Cue 继续使用投射物当前世界旋转。
+            Vector3 incomingDirection = Vector3.ProjectOnPlane(-direction, Vector3.up);
+            var hitSnapshot = new CombatHitSnapshot(
+                source,
+                target,
+                transform.position,
+                incomingDirection,
+                targetRoot.rotation,
+                transform.rotation);
+
+            int appliedEffectCount = 0;
             for (int i = 0; i < effectSpecs.Length; i++)
             {
-                if (effectSpecs[i] != null)
-                {
-                    if (target.TryApplyEffect(
-                            effectSpecs[i],
-                            out GameplayEffectApplicationResult applicationResult))
-                        lastApplicationResult = applicationResult;
-                }
+                if (effectSpecs[i] == null ||
+                    !CombatDamagePipeline.TryApplyHitEffect(
+                        effectSpecs[i], hitSnapshot, out GameplayEffectApplicationResult applicationResult))
+                    continue;
+
+                appliedEffectCount++;
+                CombatHitCuePublisher.Publish(cueTags, hitSnapshot, abilityRuntime, applicationResult);
             }
 
-            for (int i = 0; i < cueTags.Length; i++)
+            if (appliedEffectCount == 0)
             {
-                target.PublishGameplayCue(new GameplayCueRequest(
-                    cueTags[i],
-                    GameplayCueEventType.Execute,
-                    source,
-                    target,
-                    effectRuntime: null,
-                    abilityRuntime: abilityRuntime,
-                    position: transform.position,
-                    rotation: transform.rotation,
-                    effectSpec: lastApplicationResult?.Spec,
-                    applicationResult: lastApplicationResult));
+                // 无 GE 或全部应用失败仍允许命中表现，但不附加错误的 GE Result。
+                CombatHitCuePublisher.Publish(cueTags, hitSnapshot, abilityRuntime, null);
             }
+
+            Debug.Log(
+                $"[GameplayAbilityProjectile] 命中已结算，targetASC='{target.name}'，appliedEffects={appliedEffectCount}。",
+                target);
 
             Recycle();
         }

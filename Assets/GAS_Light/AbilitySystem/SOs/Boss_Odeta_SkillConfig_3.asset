@@ -96,10 +96,10 @@ MonoBehaviour:
     phase: 3
     isCancelable: 1
     runtimeTags:
-    - id: 170
     - id: 171
     - id: 172
-    blockAbilityTags: []
+    blockAbilityTags:
+    - id: 218
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0

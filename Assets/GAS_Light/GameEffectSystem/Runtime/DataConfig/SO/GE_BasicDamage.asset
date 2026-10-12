@@ -21,9 +21,11 @@ MonoBehaviour:
     allTags: []
     anyTags: []
     banedTags: []
-  grantedTags: []
+  grantedTags:
+  - id: 217
   cueTags: []
-  modifiers: []
+  modifiers:
+  - rid: 1466742145039204365
   executions:
   - rid: 731600000000000001
   validationSets:
@@ -33,8 +35,279 @@ MonoBehaviour:
   curveBakeEndX: 90
   curveBakeStep: 1
   bakedCurveXAxisLabel: Level / X
-  bakedCurveHeaders: []
-  bakedCurveRows: []
+  bakedCurveHeaders:
+  - "\u6269\u9664\u8840\u91CF"
+  bakedCurveRows:
+  - x: 1
+    magnitudes:
+    - -100
+  - x: 2
+    magnitudes:
+    - -120.00001
+  - x: 3
+    magnitudes:
+    - -140
+  - x: 4
+    magnitudes:
+    - -160
+  - x: 5
+    magnitudes:
+    - -180
+  - x: 6
+    magnitudes:
+    - -200
+  - x: 7
+    magnitudes:
+    - -200
+  - x: 8
+    magnitudes:
+    - -200
+  - x: 9
+    magnitudes:
+    - -200
+  - x: 10
+    magnitudes:
+    - -200
+  - x: 11
+    magnitudes:
+    - -200
+  - x: 12
+    magnitudes:
+    - -200
+  - x: 13
+    magnitudes:
+    - -200
+  - x: 14
+    magnitudes:
+    - -200
+  - x: 15
+    magnitudes:
+    - -200
+  - x: 16
+    magnitudes:
+    - -200
+  - x: 17
+    magnitudes:
+    - -200
+  - x: 18
+    magnitudes:
+    - -200
+  - x: 19
+    magnitudes:
+    - -200
+  - x: 20
+    magnitudes:
+    - -200
+  - x: 21
+    magnitudes:
+    - -200
+  - x: 22
+    magnitudes:
+    - -200
+  - x: 23
+    magnitudes:
+    - -200
+  - x: 24
+    magnitudes:
+    - -200
+  - x: 25
+    magnitudes:
+    - -200
+  - x: 26
+    magnitudes:
+    - -200
+  - x: 27
+    magnitudes:
+    - -200
+  - x: 28
+    magnitudes:
+    - -200
+  - x: 29
+    magnitudes:
+    - -200
+  - x: 30
+    magnitudes:
+    - -200
+  - x: 31
+    magnitudes:
+    - -200
+  - x: 32
+    magnitudes:
+    - -200
+  - x: 33
+    magnitudes:
+    - -200
+  - x: 34
+    magnitudes:
+    - -200
+  - x: 35
+    magnitudes:
+    - -200
+  - x: 36
+    magnitudes:
+    - -200
+  - x: 37
+    magnitudes:
+    - -200
+  - x: 38
+    magnitudes:
+    - -200
+  - x: 39
+    magnitudes:
+    - -200
+  - x: 40
+    magnitudes:
+    - -200
+  - x: 41
+    magnitudes:
+    - -200
+  - x: 42
+    magnitudes:
+    - -200
+  - x: 43
+    magnitudes:
+    - -200
+  - x: 44
+    magnitudes:
+    - -200
+  - x: 45
+    magnitudes:
+    - -200
+  - x: 46
+    magnitudes:
+    - -200
+  - x: 47
+    magnitudes:
+    - -200
+  - x: 48
+    magnitudes:
+    - -200
+  - x: 49
+    magnitudes:
+    - -200
+  - x: 50
+    magnitudes:
+    - -200
+  - x: 51
+    magnitudes:
+    - -200
+  - x: 52
+    magnitudes:
+    - -200
+  - x: 53
+    magnitudes:
+    - -200
+  - x: 54
+    magnitudes:
+    - -200
+  - x: 55
+    magnitudes:
+    - -200
+  - x: 56
+    magnitudes:
+    - -200
+  - x: 57
+    magnitudes:
+    - -200
+  - x: 58
+    magnitudes:
+    - -200
+  - x: 59
+    magnitudes:
+    - -200
+  - x: 60
+    magnitudes:
+    - -200
+  - x: 61
+    magnitudes:
+    - -200
+  - x: 62
+    magnitudes:
+    - -200
+  - x: 63
+    magnitudes:
+    - -200
+  - x: 64
+    magnitudes:
+    - -200
+  - x: 65
+    magnitudes:
+    - -200
+  - x: 66
+    magnitudes:
+    - -200
+  - x: 67
+    magnitudes:
+    - -200
+  - x: 68
+    magnitudes:
+    - -200
+  - x: 69
+    magnitudes:
+    - -200
+  - x: 70
+    magnitudes:
+    - -200
+  - x: 71
+    magnitudes:
+    - -200
+  - x: 72
+    magnitudes:
+    - -200
+  - x: 73
+    magnitudes:
+    - -200
+  - x: 74
+    magnitudes:
+    - -200
+  - x: 75
+    magnitudes:
+    - -200
+  - x: 76
+    magnitudes:
+    - -200
+  - x: 77
+    magnitudes:
+    - -200
+  - x: 78
+    magnitudes:
+    - -200
+  - x: 79
+    magnitudes:
+    - -200
+  - x: 80
+    magnitudes:
+    - -200
+  - x: 81
+    magnitudes:
+    - -200
+  - x: 82
+    magnitudes:
+    - -200
+  - x: 83
+    magnitudes:
+    - -200
+  - x: 84
+    magnitudes:
+    - -200
+  - x: 85
+    magnitudes:
+    - -200
+  - x: 86
+    magnitudes:
+    - -200
+  - x: 87
+    magnitudes:
+    - -200
+  - x: 88
+    magnitudes:
+    - -200
+  - x: 89
+    magnitudes:
+    - -200
+  - x: 90
+    magnitudes:
+    - -200
   stackingType: 0
   maxStackCount: 1
   denyOverflowApplication: 1
@@ -47,3 +320,38 @@ MonoBehaviour:
     - rid: 731600000000000001
       type: {class: BasicDamageGameplayEffectExecution, ns: WS_Modules.GAS.GameplayEffect, asm: Assembly-CSharp}
       data: 
+    - rid: 1466742145039204365
+      type: {class: CurveGameplayEffectModifier, ns: WS_Modules.GAS.GameplayEffect, asm: Assembly-CSharp}
+      data:
+        attribute:
+          id: 0
+          name: Health
+          displayName: "\u5F53\u524D\u751F\u547D\u503C"
+        type: 0
+        priority: 0
+        baseMagnitude: -100
+        levelCurve:
+          serializedVersion: 2
+          m_Curve:
+          - serializedVersion: 3
+            time: 1
+            value: 1
+            inSlope: 0.2
+            outSlope: 0.2
+            tangentMode: 34
+            weightedMode: 0
+            inWeight: 0
+            outWeight: 0.33333334
+          - serializedVersion: 3
+            time: 6
+            value: 2
+            inSlope: 0.2
+            outSlope: 0.2
+            tangentMode: 34
+            weightedMode: 0
+            inWeight: 0.33333334
+            outWeight: 0
+          m_PreInfinity: 2
+          m_PostInfinity: 2
+          m_RotationOrder: 4
+        bakedResultLabel: "\u6269\u9664\u8840\u91CF"

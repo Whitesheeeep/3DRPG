@@ -50,6 +50,8 @@
         <uie:PropertyField name="NormalAttackAbilitiesField" binding-path="combatConfig.normalAttackAbilities" label="普攻连段" class="config-editor-property-field character-config-property-field" />
         <ui:HelpBox name="EmptyNormalAttackWarning" text="当前角色未配置普通攻击连段。该配置可以正常运行，但 Primary 输入不会触发能力。" message-type="Warning" />
         <uie:PropertyField name="SkillInputBindingsField" binding-path="combatConfig.skillInputBindings" label="技能输入绑定" class="config-editor-property-field character-config-property-field" />
+        <ui:HelpBox text="受击 GE Tag 与 GrantedTags 精确匹配；同一 GE 匹配多项时按列表顺序选择第一个配置。" message-type="Info" />
+        <uie:PropertyField name="HitReactionBindingsField" binding-path="combatConfig.hitReactionBindings" label="受击 GE Tag 与 GA 绑定" class="config-editor-property-field character-config-property-field" />
         <ui:Label text="移动配置" class="config-editor-section-title character-config-section-title" />
         <uie:PropertyField name="GravityField" binding-path="locomotion.gravity" label="重力" class="config-editor-property-field character-config-property-field" />
         <uie:PropertyField name="TransitionField" binding-path="locomotion.locomotionTransition" label="Locomotion 状态过渡" class="config-editor-property-field character-config-property-field" />

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using RPG.PlayerInputSystem;
 using RPG.Character.State;
+using RPG.SkillSystem;
 using UnityEngine;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.Generated;
@@ -32,6 +33,8 @@ namespace RPG.Character
         private readonly Dictionary<GameplayAbilityData, GameplayAbilityHandle> abilityHandleByDataMap = new();
         // key：Sprint、Secondary 或 Skill1 至 Skill4；value：对应技能的 Handle。
         private readonly Dictionary<E_PlayerInputType, GameplayAbilityHandle> skillAbilityHandleByInputMap = new();
+        // key：GE 精确受击标记；value：该标记映射的受击 GA Handle。
+        private readonly Dictionary<GameplayTag, GameplayAbilityHandle> abilityHandleByHitTagMap = new();
         private readonly List<GameplayAbilityHandle> normalAttackHandles = new();
 
         #endregion
@@ -94,6 +97,13 @@ namespace RPG.Character
                 skillAbilityHandleByInputMap.Add(binding.InputType, GetOrGrantAbility(binding.Ability));
             }
 
+            IReadOnlyList<CharacterHitReactionBinding> hitBindings = combatConfig.HitReactionBindings;
+            for (int index = 0; index < hitBindings.Count; index++)
+            {
+                CharacterHitReactionBinding binding = hitBindings[index];
+                abilityHandleByHitTagMap.Add(binding.EffectTag, GetOrGrantAbility(binding.Ability));
+            }
+
             ResetCombo();
             initialized = true;
         }
@@ -114,19 +124,31 @@ namespace RPG.Character
             AdvanceComboRetention(deltaTime);
         }
 
-        /// <summary>按配置顺序尝试技能输入，再处理普通攻击 Press。</summary>
+        /// <summary>按角色配置顺序尝试技能槽位输入。</summary>
         /// <param name="inputRequests">玩家输入请求缓冲区。</param>
-        /// <param name="useComboHandoff">是否把本次 Primary 普攻作为实时连段交接启动。</param>
-        /// <returns>本帧有 Ability 成功激活并消费对应输入阶段时返回 true。</returns>
+        /// <returns>技能成功激活并消费对应输入阶段时返回 true。</returns>
         /// <exception cref="ArgumentNullException">输入缓冲为空时抛出。</exception>
         /// <exception cref="InvalidOperationException">系统尚未初始化时抛出。</exception>
-        internal bool TryExecuteAbilityInput(IPlayerInputRequestBuffer inputRequests,
-            bool useComboHandoff = false)
+        internal bool TryExecuteSkillInput(IPlayerInputRequestBuffer inputRequests)
         {
             if (!initialized) throw new InvalidOperationException("CharacterCombatSystem 尚未初始化。");
             if (inputRequests == null) throw new ArgumentNullException(nameof(inputRequests));
-            return ProcessSkillInputRequests(inputRequests) ||
-                   ProcessNormalAttackInput(inputRequests, useComboHandoff);
+            return ProcessSkillInputRequests(inputRequests);
+        }
+
+        /// <summary>尝试激活当前 Primary Press 对应的普通攻击段位。</summary>
+        /// <param name="inputRequests">玩家输入请求缓冲区。</param>
+        /// <param name="startMode">本次普攻从完整时间轴或最早 Active Phase 启动。</param>
+        /// <returns>普通攻击成功激活并消费 Press 时返回 true。</returns>
+        /// <exception cref="ArgumentNullException">输入缓冲为空时抛出。</exception>
+        /// <exception cref="InvalidOperationException">系统尚未初始化时抛出。</exception>
+        internal bool TryExecuteNormalAttackInput(
+            IPlayerInputRequestBuffer inputRequests,
+            SkillStartMode startMode)
+        {
+            if (!initialized) throw new InvalidOperationException("CharacterCombatSystem 尚未初始化。");
+            if (inputRequests == null) throw new ArgumentNullException(nameof(inputRequests));
+            return ProcessNormalAttackInput(inputRequests, startMode);
         }
 
         /// <summary>按角色配置顺序尝试技能槽位；Sprint 槽只消费短按 Click。</summary>
@@ -172,7 +194,7 @@ namespace RPG.Character
             bool isQuickShift = false;
             for (int tagIndex = 0; tagIndex < abilityTags.Count; tagIndex++)
             {
-                if (abilityTags[tagIndex] != GameplayTags.Tag_Skill_QuickShift) continue;
+                if (abilityTags[tagIndex] != GameplayTags.Tag_Skill_Active_QuickShift) continue;
                 isQuickShift = true;
                 break;
             }
@@ -184,9 +206,31 @@ namespace RPG.Character
             if (worldDirection.sqrMagnitude > 0.0001f) worldDirection.Normalize();
             return new Dictionary<GameplayTag, float>
             {
-                [GameplayTags.Tag_Skill_QuickShift_DirX] = worldDirection.x,
-                [GameplayTags.Tag_Skill_QuickShift_DirY] = worldDirection.z
+                [GameplayTags.Tag_Skill_Active_QuickShift_DirX] = worldDirection.x,
+                [GameplayTags.Tag_Skill_Active_QuickShift_DirY] = worldDirection.z
             };
+        }
+
+        /// <summary>按 GE 的精确受击标记激活配置 GA，并附带本次受击方向。</summary>
+        /// <param name="effectTag">GE GrantedTags 中的精确受击标记。</param>
+        /// <param name="direction">受击方向枚举数值。</param>
+        /// <returns>对应 GA 成功激活时返回 true。</returns>
+        internal bool TryActivateHitReaction(GameplayTag effectTag, float direction)
+        {
+            if (!initialized) throw new InvalidOperationException("CharacterCombatSystem 尚未初始化。");
+            if (!abilityHandleByHitTagMap.TryGetValue(effectTag, out GameplayAbilityHandle handle))
+                return false;
+
+            IReadOnlyDictionary<GameplayTag, float> activationDataByTagMap =
+                new Dictionary<GameplayTag, float>
+                {
+                    [HitReactionGameplayTags.Direction] = direction
+                };
+            bool activated = abilitySystemComponent.TryActivateAbility(handle, activationDataByTagMap, out _);
+            Debug.Log(
+                $"[CharacterCombatSystem] 受击 GA 激活尝试，tagId={effectTag.Id}，direction={direction:F0}，activated={activated}。",
+                abilitySystemComponent);
+            return activated;
         }
 
         /// <summary>判断指定技能是否已有运行时，防止 Sprint 槽重入复用中的 Action Mixer 状态。</summary>
@@ -203,10 +247,10 @@ namespace RPG.Character
 
         /// <summary>冻结当前 Primary Press 的目标段位，并尝试激活对应普通攻击。</summary>
         /// <param name="inputRequests">玩家输入请求缓冲区。</param>
-        /// <param name="useComboHandoff">是否从当前普通攻击的取消窗口实时交接。</param>
+        /// <param name="startMode">本次普攻使用的 SkillConfig 时间轴入口。</param>
         /// <returns>本帧成功激活普通攻击时返回 true。</returns>
         private bool ProcessNormalAttackInput(IPlayerInputRequestBuffer inputRequests,
-            bool useComboHandoff)
+            SkillStartMode startMode)
         {
             if (normalAttackHandles.Count == 0)
             {
@@ -234,7 +278,8 @@ namespace RPG.Character
 
             GameplayAbilityHandle handle = normalAttackHandles[pendingNormalAttackIndex];
             // key：SetByCaller Tag；value：本次 Ability 是否使用 FirstActivePhase 入口。
-            IReadOnlyDictionary<GameplayTag, float> activationDataByTagMap = useComboHandoff
+            IReadOnlyDictionary<GameplayTag, float> activationDataByTagMap =
+                startMode == SkillStartMode.FirstActivePhase
                 ? new Dictionary<GameplayTag, float>
                 {
                     // 现有 Skill.ActiveAbility 只作为一次性入口标记，不写入 ASC Owner Tags。
@@ -244,7 +289,7 @@ namespace RPG.Character
             if (!abilitySystemComponent.TryActivateAbility(handle, activationDataByTagMap, out _))
                 return false;
 
-            if (useComboHandoff)
+            if (startMode == SkillStartMode.FirstActivePhase)
                 Debug.Log(
                     $"[CharacterCombatSystem] 普攻连段实时交接成功，index={pendingNormalAttackIndex}，入口=FirstActivePhase。",
                     abilitySystemComponent);

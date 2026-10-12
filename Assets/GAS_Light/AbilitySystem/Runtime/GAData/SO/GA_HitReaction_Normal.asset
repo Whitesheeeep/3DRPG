@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 92a3fd70e0644c4da339c935362b3d99, type: 3}
+  m_Name: GA_HitReaction_Normal
+  m_EditorClassIdentifier: 
+  abilityId: 23
+  abilityName: "\u666E\u901A\u53D7\u51FB"
+  icon: {fileID: 0}
+  description: "\u6839\u636E\u672C\u6B21\u547D\u4E2D\u65B9\u5411\u64AD\u653E\u56DB\u5411\u53D7\u51FB\u52A8\u753B\uFF0C\u5E76\u5728\u914D\u7F6E\u65F6\u95F4\u540E\u5141\u8BB8\u6280\u80FD\u4E0E\u666E\u901A\u653B\u51FB\u6253\u65AD\u3002"
+  abilityTags:
+  - id: 219
+  cancelTags:
+  - id: 164
+  - id: 126
+  blockAbilityTags:
+  - id: 164
+  - id: 221
+  isCancelable: 1
+  activationTagQuery:
+    allTags: []
+    anyTags: []
+    banedTags: []
+  costEffect: {fileID: 0}
+  cooldownEffect: {fileID: 0}
+  effects: []
+  cueTags: []
+  damageMultiplier:
+    baseValue: 1
+    levelCurve:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  rootTask:
+    rid: 1466742145039204363
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742145039204363
+      type: {class: HitReactionGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
+      data:
+        forwardTransition: {fileID: 11400000, guid: b9b8046f9737f8f4fad602cd1b842140, type: 2}
+        backwardTransition: {fileID: 11400000, guid: f38f7c4ff9d923445b3f68c053c5cdf5, type: 2}
+        leftTransition: {fileID: 11400000, guid: 988521cb047ee1545a8d39829ce96ff7, type: 2}
+        rightTransition: {fileID: 11400000, guid: dd44459a11f2f7a4b879f426be49c924, type: 2}
+        abilityCancelNormalizedTime: 0.6
+        fadeOutDuration: 0.2

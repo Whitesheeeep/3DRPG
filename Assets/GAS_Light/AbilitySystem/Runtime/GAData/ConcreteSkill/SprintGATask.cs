@@ -73,6 +73,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private PlayerStateBlackboard stateBlackboard;
         private IMotionDriver motionDriver;
         private MotionControlHandle motionHandle;
+        private FullBodyActionHandle fullBodyHandle;
         private AnimancerState animationState;
         private AnimancerEvent.Sequence animationEvents;
         private Vector3 worldDirection;
@@ -151,6 +152,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 GARuntime.SourceOwner,
                 MotionPriority.Skill,
                 MotionChannels.Horizontal | MotionChannels.Rotation));
+            // 将 QuickShift 也登记为前台动作，使同步命中解析能读取其 RuntimeTags 并正确拒绝受击。
+            fullBodyHandle = GARuntime.SourceOwner.FullBodyActionArbiter.RegisterFullBodyAction(GARuntime);
 
             IAnimationPlayer animationPlayer = GARuntime.SourceOwner.AnimationPlayer;
             animationState = animationPlayer.Play(AnimationLayerType.Action, selectedTransition);
@@ -226,8 +229,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <returns>单位化的世界水平冲刺方向。</returns>
         private Vector3 ResolveWorldDirection(Transform root)
         {
-            bool hasX = GARuntime.TryGetSetByCaller(GameplayTags.Tag_Skill_QuickShift_DirX, out float x);
-            bool hasZ = GARuntime.TryGetSetByCaller(GameplayTags.Tag_Skill_QuickShift_DirY, out float z);
+            bool hasX = GARuntime.TryGetSetByCaller(GameplayTags.Tag_Skill_Active_QuickShift_DirX, out float x);
+            bool hasZ = GARuntime.TryGetSetByCaller(GameplayTags.Tag_Skill_Active_QuickShift_DirY, out float z);
             Vector3 direction = hasX && hasZ ? new Vector3(x, 0f, z) : Vector3.zero;
             if (direction.sqrMagnitude <= 0.0001f)
             {
@@ -317,6 +320,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             motionHandle?.Dispose();
             motionHandle = null;
             motionDriver = null;
+            fullBodyHandle?.Dispose();
+            fullBodyHandle = null;
             // 先归还技能运动通道，再切入 Locomotion，避免 Run/Walk 在同一帧被技能优先级压住。
             CharacterLocomotionStateId handoffState = TryHandoffToLocomotion();
             string handoffSummary = handoffState == CharacterLocomotionStateId.Disable

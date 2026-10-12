@@ -177,9 +177,11 @@ MonoBehaviour:
     startFrame: 0
     durationFrames: 5
     phase: 1
-    isCancelable: 0
+    isCancelable: 1
     runtimeTags: []
-    blockAbilityTags: []
+    blockAbilityTags:
+    - id: 164
+    - id: 221
   - id: 14dae29f3fba476381f6345299254a59
     startFrame: 5
     durationFrames: 11
@@ -188,9 +190,9 @@ MonoBehaviour:
     runtimeTags: []
     blockAbilityTags:
     - id: 164
-    - id: 167
-    - id: 181
+    - id: 221
     - id: 147
+    - id: 218
   - id: 6da8a9dbc97641f599f1a2d107cc8065
     startFrame: 16
     durationFrames: 47
@@ -198,7 +200,6 @@ MonoBehaviour:
     isCancelable: 1
     runtimeTags:
     - id: 169
-    - id: 170
     - id: 171
     - id: 172
     blockAbilityTags: []

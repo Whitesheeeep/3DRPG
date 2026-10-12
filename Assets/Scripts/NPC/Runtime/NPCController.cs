@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using BehaviorDesigner.Runtime;
 using RPG.Character;
 using RPG.Character.Animation;
+using RPG.Combat;
+using RPG.Game.JumpText;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.AI;
@@ -19,7 +21,8 @@ namespace RPG.NPC
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CharacterController), typeof(NPCActor))]
     [InfoBox("依赖同节点 CharacterController、NPCActor、可选 NPCIdentity；启用行为树的 NPC 还必须配置同节点 NavMeshAgent、BehaviorTree/External Behavior 和已烘焙 NavMesh。安全瞬移与死亡清理会查询子级碰撞体。身份缺失时不会发布可供任务匹配的击败事件。")]
-    public sealed class NPCController : MonoBehaviour, IFullBodyActionArbiter, IFullBodyActionRegistrationOwner, IDisposable
+    public sealed class NPCController : MonoBehaviour, IFullBodyActionArbiter,
+        IFullBodyActionRegistrationOwner, IGameplayAbilityTargetProvider, ICombatDamageReceiver, IDisposable
     {
         #region 配置与依赖字段
 
@@ -43,6 +46,7 @@ namespace RPG.NPC
 
         // ASC、Action 注册和 AI 运行系统由本组件在 Awake/Start 生命周期中建立和释放。
         private GameplayAbilitySystemComponent abilitySystemComponent;
+        private IDisposable damageReceiverRegistration;
         private readonly NPCCombatSystem combatSystem = new();
         private NavMeshPath navigationPath;
         private Collider[] physicsQueryBuffer = new Collider[32];
@@ -71,6 +75,7 @@ namespace RPG.NPC
         private int lastAnimatorMoveFrame = -1;
         private bool deathEventPublished;
         private bool deathCompletionProcessed;
+        private bool missingJumpTextWarningIssued;
         private Transform lastAttackReadinessTarget;
         private string lastAttackReadinessReason = "尚未判定。";
         private float lastAttackReadinessDistance = float.PositiveInfinity;
@@ -110,6 +115,16 @@ namespace RPG.NPC
 
         /// <summary>获取 NPC 运行时是否已完成属性、技能和状态机初始化。</summary>
         public bool IsInitialized => initialized;
+
+        /// <inheritdoc />
+        public GameplayAbilitySystemComponent TryGetTargetASC()
+        {
+            if (disposed || !initialized || !isActiveAndEnabled || abilitySystemComponent == null ||
+                !abilitySystemComponent.IsInitialized)
+                return null;
+
+            return abilitySystemComponent;
+        }
 
         /// <summary>通过 ASC 精确查询该 NPC 是否持有不可逆死亡 Tag。</summary>
         public bool IsDead =>
@@ -333,6 +348,7 @@ namespace RPG.NPC
                     config.NormalAttackAbilities,
                     config.NormalAttackComboRetention);
             }
+            damageReceiverRegistration = CombatDamagePipeline.RegisterReceiver(abilitySystemComponent, this);
             Debug.Log(
                 $"[NPCController] NPC '{name}' 初始化完成，AttributeSets={config.InitialAttributeSets.Count}，" +
                 $"Abilities={config.GrantedAbilities.Count}，State={locomotion.CurrentState}。",
@@ -566,6 +582,38 @@ namespace RPG.NPC
 
         #region 死亡事实与清理
 
+        /// <inheritdoc />
+        public void ReceiveDamage(CombatDamageResult result)
+        {
+            if (result == null)
+                throw new ArgumentNullException(nameof(result));
+            if (!ReferenceEquals(result.EffectResult.Target, abilitySystemComponent))
+                throw new InvalidOperationException(
+                    $"NPCController '{name}' 收到不属于自身 ASC 的 Gameplay 伤害结果。");
+
+            JumpTextManager manager = JumpTextManager.Instance;
+            if (manager == null)
+            {
+                if (!missingJumpTextWarningIssued)
+                {
+                    missingJumpTextWarningIssued = true;
+                    Debug.LogWarning(
+                        $"[NPCController] NPC '{name}' 已结算伤害，但场景中没有 JumpTextManager，跳过伤害跳字。",
+                        this);
+                }
+                return;
+            }
+
+            Vector3 worldPosition = result.HitSnapshot.HasValue
+                ? result.HitSnapshot.Value.HitPoint
+                : actor.RootTransform.position + Vector3.up;
+            manager.ShowDamage(result.FinalDamage, worldPosition, result.IsCritical);
+            Debug.Log(
+                $"[NPCController] NPC '{name}' 已发布伤害跳字，damage={result.FinalDamage:F1}，" +
+                $"critical={result.IsCritical}，hasHitPoint={result.HitSnapshot.HasValue}，position={worldPosition}。",
+                this);
+        }
+
         /// <summary>只在 Health 从正数降至非正数时为 ASC 添加死亡 Tag。</summary>
         /// <param name="attribute">变化的属性。</param>
         /// <param name="oldValue">变化前的当前值。</param>
@@ -712,11 +760,13 @@ namespace RPG.NPC
             if (disposed)
                 return;
             disposed = true;
+            damageReceiverRegistration?.Dispose();
+            damageReceiverRegistration = null;
             StopMove();
             combatSystem.Dispose();
             fullBodyRuntime = null;
             currentRegistrationId = 0;
-            Debug.Log($"[NPCController] NPC '{name}' 已释放 FullBody 注册与导航状态。", this);
+            Debug.Log($"[NPCController] NPC '{name}' 已注销伤害接收并释放 FullBody 注册与导航状态。", this);
         }
 
         #endregion
@@ -957,7 +1007,7 @@ namespace RPG.NPC
                 $"NPCController '{name}' 未授予配置 Ability '{ability.name}'，无法建立 NPCCombatSystem。");
         }
 
-        /// <summary>按普通启动或合法取消窗口交接方式激活指定普通攻击 Spec。</summary>
+        /// <summary>按普通启动或有效分类阻断区间交接方式激活指定普通攻击 Spec。</summary>
         /// <param name="handle">NPCCombatSystem 缓存的 Attack Spec Handle。</param>
         /// <param name="previousRuntime">实时交接时当前正在播放的普通攻击 Runtime；普通启动时为空。</param>
         /// <param name="runtime">成功时返回本次新建 Runtime。</param>
@@ -989,11 +1039,14 @@ namespace RPG.NPC
             }
             else
             {
-                // 只允许真实普通攻击 Cancel Window 交接；任何其他 FullBody Runtime 都保留其控制权。
+                // 只有当前普攻允许普通取消且未阻断普攻分类时，才把 FullBody 控制权交给下一段。
                 if (!IsFullBodyActionOccupied || !ReferenceEquals(fullBodyRuntime, previousRuntime) ||
                     previousRuntime.State != GameplayAbilityRuntimeState.Active ||
                     !previousRuntime.AbilityTags.HasTag(GameplayTags.Tag_Skill_NormalAttack) ||
-                    !previousRuntime.RuntimeTags.HasTag(GameplayTags.Tag_Skill_Window_CancelBy_Ability))
+                    !previousRuntime.IsCancelable ||
+                    NPCCombatSystem.IsAbilityCategoryBlocked(
+                        previousRuntime.BlockAbilityTags.Tags,
+                        GameplayTags.Tag_Skill_NormalAttack))
                 {
                     runtime = null;
                     return false;

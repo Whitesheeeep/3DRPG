@@ -56,7 +56,7 @@ flowchart TD
 
 BossScene 复用已烘焙的 NavMesh。`NPCController` 在 NPC 属性与 GA 初始化完成后启动 External Behavior Tree；树根为 Selector，启用 Restart When Complete 并关闭 Reset Values On Restart，不添加根 Repeater。共享 `Target` 黑板变量保存首次发现的玩家根；`FindPlayerByLayer` 的节点参数控制首次搜索范围和 Player Layer，目标离开搜索范围后继续追踪，失效或死亡后清除。追击使用完整 NavMesh 路径，Agent 仅提供导航意图，实际位移由 MotionDriver 和 CharacterController 结算后同步回 Agent。Boss 只走 Walk；速度由 NPCConfig 配置。
 
-`CanNpcTeleport` 以节点/树共享参数检查完整路径阈值，并在 Lower Priority Conditional Abort 下于 Walk 追击期间重评估；检查包括活动 Ability 的 Block 标签、激活 Tag、Cooldown GrantedTags 与安全落点。预检只读，真正执行由 `TryNpcTeleport` 再检查后触发 GA，失败有短暂退避。当前 Boss 的瞬移阈值为 5 米、成功后等待 0.5 秒，安全落点相对玩家前方 2 米并检查 NavMesh、高度、胶囊空间和遮挡。普攻按 Boss Attack1–3 排列：第一、二段通过 SkillRuntimeHost 的 ActionPhaseChanged 事件检测 CancelBy.Ability 窗口进入，只在入口检查一次目标条件并尝试续接；未续接时当前攻击自然结束，行为树重新判断，3 秒内保留段位缓存。第三段不能续接回第一段，自然结束后休息 0.8 秒。导航停止距离与攻击窗口判定共享 `AttackDistance`，空闲启动缓存段从完整 SkillConfig 第 0 帧播放。有关树结构与节点职责见 [Boss 行为树实施计划](Plans/BossBehaviourTree_Plan.md)。
+`CanNpcTeleport` 以节点/树共享参数检查完整路径阈值，并在 Lower Priority Conditional Abort 下于 Walk 追击期间重评估；检查包括活动 Ability 的 Block 标签、激活 Tag、Cooldown GrantedTags 与安全落点。预检只读，真正执行由 `TryNpcTeleport` 再检查后触发 GA，失败有短暂退避。当前 Boss 的瞬移阈值为 5 米、成功后等待 0.5 秒，安全落点相对玩家前方 2 米并检查 NavMesh、高度、胶囊空间和遮挡。普攻按 Boss Attack1–3 排列：第一、二段通过 SkillRuntimeHost 的 ActionPhaseChanged 事件检测当前 Phase 的 `IsCancelable` 与 `BlockAbilityTags` 是否允许普通攻击分类交接，只在阻断解除边界检查一次目标条件并尝试续接；未续接时当前攻击自然结束，行为树重新判断，3 秒内保留段位缓存。第三段不能续接回第一段，自然结束后休息 0.8 秒。导航停止距离与攻击交接区间判定共享 `AttackDistance`，空闲启动缓存段从完整 SkillConfig 第 0 帧播放。有关树结构与节点职责见 [Boss 行为树实施计划](Plans/BossBehaviourTree_Plan.md)。
 
 ### Odetta 击败任务
 

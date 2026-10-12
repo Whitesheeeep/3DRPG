@@ -37,7 +37,7 @@ namespace WS_Modules.GAS.GameplayEffect
 
         [SerializeField, Tooltip("目标必须满足该查询才能应用；空查询表示不限制。")]
         private GameplayTagQuery targetTagQuery;
-        [SerializeField, Tooltip("非 Instant GE 激活期间赋予 Target 的标签。")]
+        [SerializeField, Tooltip("GE 的 GrantedTags；持续 GE 激活期间赋予 Target，Instant GE 保留作本次效果识别标记。")]
         private GameplayTag[] grantedTags = Array.Empty<GameplayTag>();
         [SerializeField, Tooltip("GE 成功提交后发布的 GameplayCueTag 列表。")]
         private GameplayTag[] cueTags = Array.Empty<GameplayTag>();

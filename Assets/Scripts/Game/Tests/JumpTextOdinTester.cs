@@ -42,6 +42,15 @@ namespace RPG.Game.JumpText.Tests
             Debug.Log($"[JumpTextOdinTester] 暴击伤害已提交，value={testValue}。", this);
         }
 
+        /// <summary>通过 GE 伤害入口验证四舍五入、最小显示值和暴击样式选择。</summary>
+        [Button("测试 GE 伤害跳字")]
+        private void ShowResolvedDamage()
+        {
+            jumpTextManager.ShowDamage(testValue + 0.4f, ResolvePosition(), false);
+            jumpTextManager.ShowDamage(0.2f, ResolvePosition() + Vector3.right * 0.25f, true);
+            Debug.Log("[JumpTextOdinTester] 已通过 ShowDamage 提交普通与最小暴击伤害。", this);
+        }
+
         /// <summary>在测试锚点显示带加号的治疗样式。</summary>
         [Button("显示治疗", ButtonSizes.Medium)]
         private void ShowHealing()

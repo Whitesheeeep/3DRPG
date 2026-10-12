@@ -3,10 +3,32 @@ using System.Collections.Generic;
 using RPG.PlayerInputSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using WS_Modules;
 using WS_Modules.GAS.GameplayAbilitySystem;
+using WS_Modules.GAS.TAG;
 
 namespace RPG.Character
 {
+    /// <summary>把 GE 识别标签映射到角色可激活的受击能力。</summary>
+    [Serializable]
+    public sealed class CharacterHitReactionBinding
+    {
+        #region 配置字段与属性
+
+        [SerializeField, LabelText("受击识别 Tag")]
+        private GameplayTag effectTag;
+        [SerializeField, LabelText("受击 GA")]
+        private GameplayAbilityData ability;
+
+        /// <summary>获取用于识别 GE 的精确标记 Tag。</summary>
+        public GameplayTag EffectTag => effectTag;
+
+        /// <summary>获取该标记对应的受击 GA。</summary>
+        public GameplayAbilityData Ability => ability;
+
+        #endregion
+    }
+
     /// <summary>保存单个角色的普通攻击连段和固定技能输入槽位配置。</summary>
     [Serializable]
     public sealed class CharacterCombatConfig
@@ -19,6 +41,9 @@ namespace RPG.Character
         [SerializeField, LabelText("技能输入绑定")]
         private List<CharacterAbilityInputBinding> skillInputBindings = new();
 
+        [SerializeField, LabelText("受击 GE Tag 与 GA 绑定")]
+        private List<CharacterHitReactionBinding> hitReactionBindings = new();
+
         #endregion
 
         #region 属性
@@ -28,6 +53,9 @@ namespace RPG.Character
 
         /// <summary>获取按作者配置顺序排列的技能输入绑定。</summary>
         public IReadOnlyList<CharacterAbilityInputBinding> SkillInputBindings => skillInputBindings;
+
+        /// <summary>获取 GE 受击标记到受击 GA 的作者配置顺序。</summary>
+        public IReadOnlyList<CharacterHitReactionBinding> HitReactionBindings => hitReactionBindings;
 
         #endregion
 
@@ -49,6 +77,24 @@ namespace RPG.Character
 
             if (skillInputBindings == null)
                 throw new InvalidOperationException($"CharacterConfig '{characterConfigName}' 的技能输入绑定列表为空引用。");
+
+            if (hitReactionBindings == null)
+                throw new InvalidOperationException($"CharacterConfig '{characterConfigName}' 的受击绑定列表为空引用。");
+
+            var configuredHitTags = new HashSet<GameplayTag>();
+            for (int index = 0; index < hitReactionBindings.Count; index++)
+            {
+                CharacterHitReactionBinding binding = hitReactionBindings[index];
+                if (binding == null || binding.Ability == null)
+                    throw new InvalidOperationException(
+                        $"CharacterConfig '{characterConfigName}' 的受击绑定第 {index + 1} 项未配置 GA。");
+                if (!GameplayTagManager.Instance.IsValidTag(binding.EffectTag))
+                    throw new InvalidOperationException(
+                        $"CharacterConfig '{characterConfigName}' 的受击绑定第 {index + 1} 项使用无效 GE Tag {binding.EffectTag}。");
+                if (!configuredHitTags.Add(binding.EffectTag))
+                    throw new InvalidOperationException(
+                        $"CharacterConfig '{characterConfigName}' 的受击 Tag {binding.EffectTag} 被重复绑定。");
+            }
 
             var configuredSkillInputs = new HashSet<E_PlayerInputType>();
             for (int index = 0; index < skillInputBindings.Count; index++)

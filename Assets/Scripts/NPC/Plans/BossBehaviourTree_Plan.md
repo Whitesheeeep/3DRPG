@@ -2,7 +2,7 @@
 
 ## 目标与边界
 
-复用 `BossScene` 已有的 `NavMeshAgent`、`NavMeshSurface` 和烘焙数据，让 Boss 通过 Walk 绕障追击；仅在完整导航路径过长时尝试独立瞬移 GA。Boss 到达范围后，在第一、二段的 Phase 取消窗口入口检测一次是否续接；第三段自然结束后休息再重新判断。死亡动画自然结束后生成可交互的返回庭院入口，不自动切换场景。
+复用 `BossScene` 已有的 `NavMeshAgent`、`NavMeshSurface` 和烘焙数据，让 Boss 通过 Walk 绕障追击；仅在完整导航路径过长时尝试独立瞬移 GA。Boss 到达范围后，在第一、二段普通攻击的 Phase 交接区间入口检测一次是否续接；第三段自然结束后休息再重新判断。死亡动画自然结束后生成可交互的返回庭院入口，不自动切换场景。
 
 ```mermaid
 flowchart TD
@@ -50,7 +50,7 @@ flowchart TD
 
 - `NPCConfig` 按顺序配置独立 Boss Attack1–3；Attack4 保留资产但不加入当前循环。其他授予技能与三段攻击、瞬移 GA 合并去重。
 - `NPCCombatSystem` 持有 Spec Handle、下一段序号、默认 3 秒缩放连段缓存、当前 Runtime 与第三段结束休息状态。只有 ASC 激活成功时推进序号和刷新缓存；缓存过期回到 Attack1。攻击距离和第三段休息时间由 `ExecuteNpcNormalAttack` 在节点启动时快照，当前 Boss 休息时长为 0.8 秒。
-- `NPCCombatSystem` 订阅 `SkillRuntimeHost.ActionPhaseChanged`，按 `ExecutionId` 和事件中的 RuntimeTags 检测 `Skill.Window.CancelBy.Ability` 从关闭到开启。第一、二段窗口进入时检查目标有效性、范围、遮挡与动作暂停状态，只记录一次结果；共用该标签的相邻 Phase 不重复判定，窗口关闭后再次打开可重新判定。
+- `NPCCombatSystem` 订阅 `SkillRuntimeHost.ActionPhaseChanged`，按 `ExecutionId` 检测当前 Phase 是否 `IsCancelable` 且 `BlockAbilityTags` 已解除 `Skill.NormalAttack` 阻断。第一、二段交接区间入口时检查目标有效性、范围、遮挡与动作暂停状态，只记录一次结果；相邻 Phase 若持续开放则不重复判定，阻断重新生效后再次解除才重新判定。
 - 行为树节点消费事件记录的续接机会，并由 ASC 激活事务复核当前 Runtime、取消窗口和激活条件。入口事件在 SkillRuntime 启动调用中同步发布，因此事件回调只记录，交接在回调返回后的行为树更新中执行；每个 Unity 帧最多交接一段。攻击距离由树共享 `AttackDistance` 同时供导航停止、瞬移路径终点和 Phase 窗口判定使用。
 - Idle 或行为树重判后启动缓存段位时采用 SkillConfig 时间轴第 0 帧。第一、二段未续接并自然结束后，当前节点完成并让树重判；第三段不交接，只有自然结束后等待默认 0.8 秒才允许下一次普通攻击。
 - 保留 Boss GA 中已有的 AttackFacing 前置 Task；扫描按配置 Layer 和半径选最近 Collider，并直接使用 Collider Transform，不依赖目标 ASC。Boss 副本的攻击扫描和攻击检测只对 Player Layer 生效，不改玩家 GA 或共用 SkillConfig。

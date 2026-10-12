@@ -194,11 +194,10 @@ namespace RPG.Character
                 characterManager.ActiveCharacterChanged += OnActiveCharacterChanged;
                 CharacterActor activeActor = characterManager.ActiveCharacter ??
                                         throw new InvalidOperationException("CharacterManager Ready 后没有 ActiveCharacter。");
-                motionDriver.SetActiveOwner(activeActor, activeActor.AbilitySystemComponent);
                 runtimeStarted = true;
-                if (scenePreparationActive)
+                if (scenePreparationActive || !isActiveAndEnabled)
                 {
-                    // 场景加载期间允许完成数据初始化，但运动请求保持暂停直到展示层宣布流程成功。
+                    // 场景准备或 Player 禁用期间允许完成数据初始化，但运动请求保持暂停。
                     activeActor.Locomotion.Deactivate();
                     motionDriver.Suspend();
                 }
@@ -444,9 +443,11 @@ namespace RPG.Character
             environmentDetector.ResetAfterTeleport(StateBlackboard);
             CharacterActor active = characterManager.ActiveCharacter;
             active.Locomotion.Deactivate();
-            if (!scenePreparationActive)
+            if (!scenePreparationActive && isActiveAndEnabled)
+            {
                 motionDriver.Resume();
-            active.Locomotion.Activate();
+                active.Locomotion.Activate();
+            }
             motionDriver.ClearTransientRequests();
             Debug.Log($"[PlayerController] 已应用场景出生点，player={name}，position={worldPosition}，forward={horizontalForward.normalized}。", this);
         }
@@ -456,7 +457,7 @@ namespace RPG.Character
         {
             if (!scenePreparationActive) return;
             scenePreparationActive = false;
-            if (runtimeStarted && characterManager.IsReady)
+            if (runtimeStarted && characterManager.IsReady && isActiveAndEnabled)
             {
                 motionDriver.Resume();
                 characterManager.ActiveCharacter?.Locomotion.Activate();
@@ -630,23 +631,54 @@ namespace RPG.Character
         /// <param name="locked">是否正在占用角色表现。</param>
         public void SetDialogueSwitchLocked(bool locked) => dialogueSwitchLocked = locked;
 
-        /// <summary>同步切换 MotionDriver Owner 与对话动画目标。</summary>
+        /// <summary>切换后更新 Active ASC 标签桥接和对话动画目标。</summary>
         /// <param name="previous">旧当前角色。</param>
         /// <param name="current">新当前角色。</param>
         private void OnActiveCharacterChanged(CharacterActor previous, CharacterActor current)
         {
-            if (previous != null)
-            {
-                previous.Locomotion.Deactivate();
-                motionDriver.ReleaseAll(previous);
-            }
-
-            motionDriver.SetActiveOwner(current, current.AbilitySystemComponent);
             looseGameplayTagEventBridge?.RebindActiveAbilitySystem();
-            // IntentTag 和连续 Move 表示稳定 Player 的输入意图；切人不清理本帧输入事实。
-            current.Locomotion.Activate();
             dialogueParticipant?.SetAnimationPlayer(current.AnimationPlayer);
+            Debug.Log(
+                $"[PlayerController] 已同步 Active 角色后续依赖，previous={previous?.CharacterId}, current={current.CharacterId}。",
+                this);
         }
+        #endregion
+
+        #region Actor 上场协调
+
+        /// <summary>在 Actor 激活 Locomotion 前切换共享 MotionDriver Owner 并检查玩家控制门禁。</summary>
+        /// <param name="actor">Manager 已设为 ActiveCharacter 的目标 Actor。</param>
+        /// <returns>Player 已就绪、启用且不处于场景准备时返回 true。</returns>
+        /// <exception cref="ArgumentNullException">目标 Actor 为空时抛出。</exception>
+        /// <exception cref="InvalidOperationException">目标还不是 Manager 当前角色时抛出。</exception>
+        internal bool PrepareCharacterEntry(CharacterActor actor)
+        {
+            if (actor == null)
+                throw new ArgumentNullException(nameof(actor));
+            if (!ReferenceEquals(characterManager.ActiveCharacter, actor))
+                throw new InvalidOperationException(
+                    $"[PlayerController] Actor '{actor.name}' 进入操控前必须先成为 CharacterManager.ActiveCharacter。");
+
+            motionDriver.SetActiveOwner(actor, actor.AbilitySystemComponent);
+            bool canActivateLocomotion = runtimeStarted && isActiveAndEnabled && !scenePreparationActive;
+            Debug.Log(
+                $"[PlayerController] 已准备 Actor 上场，character={actor.CharacterId}, " +
+                $"locomotionAllowed={canActivateLocomotion}, scenePreparation={scenePreparationActive}。",
+                this);
+            return canActivateLocomotion;
+        }
+
+        /// <summary>释放指定 Actor 留在共享 MotionDriver 中的控制请求。</summary>
+        /// <param name="actor">刚刚退出操控的角色。</param>
+        internal void ReleaseCharacterControl(CharacterActor actor)
+        {
+            if (actor == null)
+                return;
+
+            motionDriver.ReleaseAll(actor);
+            Debug.Log($"[PlayerController] 已释放退场 Actor 的运动请求，character={actor.CharacterId}。", this);
+        }
+
         #endregion
 
         #region 切人输入门禁

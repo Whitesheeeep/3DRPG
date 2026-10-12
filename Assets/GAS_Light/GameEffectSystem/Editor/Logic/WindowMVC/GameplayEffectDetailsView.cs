@@ -256,7 +256,8 @@ namespace WS_Modules.GAS.Editor
             SetVisible(durationField, duration);
             SetVisible(periodField, hasEffect && !instant);
             SetVisible(executePeriodField, hasEffect && !instant && periodic);
-            SetVisible(grantedTagsField, hasEffect && !instant);
+            SetVisible(grantedTagsField, hasEffect);
+            grantedTagsField.tooltip = "GrantedTags 用于识别 GE；持续 GE 会在活动期间赋予 Target，Instant GE 只用于本次应用识别。";
             SetVisible(stackingGroup, hasEffect && !instant);
             SetVisible(maxStackCountField, stacking);
             SetVisible(denyOverflowField, stacking);

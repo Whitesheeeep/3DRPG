@@ -31,9 +31,9 @@ namespace RPG.NPC
 
         #endregion
 
-        #region 连段与窗口状态
+        #region 连段与交接区间状态
 
-        // currentRuntime 是 NPCCombatSystem 当前跟踪的普攻；窗口快照用 Host ExecutionId 隔离各次时间轴执行。
+        // currentRuntime 是当前普攻；分类阻断快照用 Host ExecutionId 隔离每次时间轴执行。
         private GameplayAbilityRuntime currentRuntime;
         private int currentAttackIndex;
         private int nextAttackIndex;
@@ -45,10 +45,10 @@ namespace RPG.NPC
         private Transform attackTarget;
         private ulong observedExecutionId;
         private bool hasObservedExecution;
-        private bool observedAbilityWindowOpen;
+        private bool observedNormalAttackHandoffOpen;
         private bool handoffOpportunityAvailable;
         private int lastActivationFrame = -1;
-        private string lastWindowDecision = "尚未进入普攻取消窗口。";
+        private string lastWindowDecision = "尚未进入普攻交接区间。";
 
         // 激活 SkillConfig 时，Host 会在 TryActivateNormalAttack 返回前同步发布入口 Phase。
         private bool activatingNormalAttack;
@@ -71,7 +71,7 @@ namespace RPG.NPC
         /// <summary>获取是否有一个自然结束结果正等待行为树消费。</summary>
         public bool HasPendingAttackCompletion => attackCompletionPending;
 
-        /// <summary>获取最近一次可打断窗口入口的检测结果，供 Odin 手动观察。</summary>
+        /// <summary>获取最近一次普通攻击交接区间入口的检测结果，供 Odin 手动观察。</summary>
         public string LastWindowDecision => lastWindowDecision;
 
         /// <summary>获取当前攻击节点提供的距离策略快照。</summary>
@@ -178,7 +178,7 @@ namespace RPG.NPC
 
         #region 攻击启动与 Phase 续接
 
-        /// <summary>更新行为树共享黑板提供的当前玩家目标，用于下一次窗口入口判定。</summary>
+        /// <summary>更新行为树共享黑板提供的当前玩家目标，用于下一次交接区间入口判定。</summary>
         /// <param name="target">当前有效玩家目标；无有效目标时传入 null。</param>
         public void SetAttackTarget(Transform target)
         {
@@ -237,11 +237,14 @@ namespace RPG.NPC
             if (currentRuntime == null || currentRuntime.State != GameplayAbilityRuntimeState.Active ||
                 currentAttackIndex >= normalAttackHandles.Length - 1 ||
                 !currentRuntime.AbilityTags.HasTag(GameplayTags.Tag_Skill_NormalAttack) ||
-                !currentRuntime.RuntimeTags.HasTag(GameplayTags.Tag_Skill_Window_CancelBy_Ability))
+                !currentRuntime.IsCancelable ||
+                IsAbilityCategoryBlocked(
+                    currentRuntime.BlockAbilityTags.Tags,
+                    GameplayTags.Tag_Skill_NormalAttack))
             {
-                lastWindowDecision = $"Attack{currentAttackIndex + 1} 窗口机会消费时已失效。";
+                lastWindowDecision = $"Attack{currentAttackIndex + 1} 交接机会消费时已失效。";
                 Debug.Log(
-                    $"[NPCCombatSystem] Boss '{owner.name}' 普攻续接机会失效，" +
+                    $"[NPCCombatSystem] Boss '{owner.name}' 普攻交接机会失效，" +
                     $"Attack={currentAttackIndex + 1}，ExecutionId={observedExecutionId}。",
                     owner);
                 return false;
@@ -249,10 +252,10 @@ namespace RPG.NPC
 
             if (!TryActivateCurrentIndex(currentRuntime, out runtime))
             {
-                lastWindowDecision = $"Attack{currentAttackIndex + 1} 窗口续接激活失败，本窗口不重试。";
+                lastWindowDecision = $"Attack{currentAttackIndex + 1} 交接区间激活失败，本区间不重试。";
                 Debug.Log(
-                    $"[NPCCombatSystem] Boss '{owner.name}' 普攻取消窗口内 ASC 激活下一段失败，" +
-                    $"本窗口不再重试，当前段={currentAttackIndex + 1}。",
+                    $"[NPCCombatSystem] Boss '{owner.name}' 普攻交接区间内 ASC 激活下一段失败，" +
+                    $"本区间不再重试，当前段={currentAttackIndex + 1}。",
                     owner);
                 return false;
             }
@@ -372,7 +375,7 @@ namespace RPG.NPC
             ApplyPhaseChange(args, currentAttackIndex);
         }
 
-        /// <summary>按 ExecutionId 追踪取消窗口边界，并只在关闭到开启时记录一次判定。</summary>
+        /// <summary>按 ExecutionId 追踪普通攻击未被分类阻断的交接区间。</summary>
         /// <param name="args">去重后的完整动作阶段快照。</param>
         /// <param name="attackIndex">当前事件所属的普攻段位。</param>
         private void ApplyPhaseChange(SkillActionPhaseChangedEventArgs args, int attackIndex)
@@ -381,45 +384,47 @@ namespace RPG.NPC
             {
                 if (hasObservedExecution && observedExecutionId == args.ExecutionId)
                 {
-                    observedAbilityWindowOpen = false;
+                    observedNormalAttackHandoffOpen = false;
                     handoffOpportunityAvailable = false;
                     hasObservedExecution = false;
                 }
                 return;
             }
 
-            bool windowOpen = ContainsTag(args.RuntimeTags, GameplayTags.Tag_Skill_Window_CancelBy_Ability);
+            bool handoffOpen = args.IsCancelable && !IsAbilityCategoryBlocked(
+                args.BlockAbilityTags,
+                GameplayTags.Tag_Skill_NormalAttack);
             if (!hasObservedExecution || observedExecutionId != args.ExecutionId)
             {
                 observedExecutionId = args.ExecutionId;
                 hasObservedExecution = true;
-                observedAbilityWindowOpen = windowOpen;
+                observedNormalAttackHandoffOpen = handoffOpen;
                 handoffOpportunityAvailable = false;
-                if (windowOpen)
+                if (handoffOpen)
                     RecordWindowEntry(attackIndex, args.ExecutionId, args.Frame);
                 return;
             }
 
-            if (!observedAbilityWindowOpen && windowOpen)
+            if (!observedNormalAttackHandoffOpen && handoffOpen)
                 RecordWindowEntry(attackIndex, args.ExecutionId, args.Frame);
-            else if (observedAbilityWindowOpen && !windowOpen)
+            else if (observedNormalAttackHandoffOpen && !handoffOpen)
                 handoffOpportunityAvailable = false;
 
-            observedAbilityWindowOpen = windowOpen;
+            observedNormalAttackHandoffOpen = handoffOpen;
         }
 
-        /// <summary>在窗口进入边界快照目标条件；第三段只记录窗口信息，不创建续接机会。</summary>
-        /// <param name="attackIndex">刚进入窗口的普攻段位。</param>
-        /// <param name="executionId">产生窗口边界的 SkillRuntimeHost 执行标识。</param>
-        /// <param name="frame">窗口实际生效的逻辑帧。</param>
+        /// <summary>在普攻阻断解除边界快照目标条件；第三段只记录信息，不创建续接机会。</summary>
+        /// <param name="attackIndex">刚进入交接区间的普攻段位。</param>
+        /// <param name="executionId">产生边界的 SkillRuntimeHost 执行标识。</param>
+        /// <param name="frame">阻断快照实际生效的逻辑帧。</param>
         private void RecordWindowEntry(int attackIndex, ulong executionId, int frame)
         {
             if (attackIndex >= normalAttackHandles.Length - 1)
             {
                 handoffOpportunityAvailable = false;
-                lastWindowDecision = $"Attack{attackIndex + 1} 窗口已开启；第三段不续接。";
+                lastWindowDecision = $"Attack{attackIndex + 1} 交接区间已开启；第三段不续接。";
                 Debug.Log(
-                    $"[NPCCombatSystem] Boss '{owner.name}' Attack3 取消窗口开启，连段终段不尝试交接，" +
+                    $"[NPCCombatSystem] Boss '{owner.name}' Attack3 普攻阻断已解除，连段终段不尝试交接，" +
                     $"ExecutionId={executionId}。",
                     owner);
                 return;
@@ -428,23 +433,25 @@ namespace RPG.NPC
             bool canContinue = attackTarget != null && owner.IsReadyToAttack(attackTarget, attackDistance);
             handoffOpportunityAvailable = canContinue;
             lastWindowDecision = canContinue
-                ? $"Attack{attackIndex + 1} 窗口开启：目标当前可攻击，等待消费一次续接机会。"
-                : $"Attack{attackIndex + 1} 窗口开启：目标当前不可攻击，本窗口不续接。";
+                ? $"Attack{attackIndex + 1} 交接区间开启：目标当前可攻击，等待消费一次续接机会。"
+                : $"Attack{attackIndex + 1} 交接区间开启：目标当前不可攻击，本区间不续接。";
             Debug.Log(
-                $"[NPCCombatSystem] Boss '{owner.name}' 普攻取消窗口进入，Attack={attackIndex + 1}，" +
+                $"[NPCCombatSystem] Boss '{owner.name}' 普攻交接区间进入，Attack={attackIndex + 1}，" +
                 $"ExecutionId={executionId}，Frame={frame}，" +
                 $"TargetReady={canContinue}。",
                 owner);
         }
 
-        /// <summary>按事件中的精确 GameplayTag 检查当前 Phase 是否声明了普通技能取消窗口。</summary>
-        /// <param name="tags">Host 发布的 Phase RuntimeTags。</param>
-        /// <param name="targetTag">需要检查的窗口标签。</param>
-        /// <returns>RuntimeTags 中存在指定标签时返回 true。</returns>
-        private static bool ContainsTag(IReadOnlyList<GameplayTag> tags, GameplayTag targetTag)
+        /// <summary>判断当前 Phase 的阻断快照是否覆盖指定候选 Ability 分类。</summary>
+        /// <param name="blockTags">当前 Phase 完整的 Ability 阻断快照。</param>
+        /// <param name="abilityCategory">待检查的候选 Ability 分类。</param>
+        /// <returns>分类被任一阻断 Tag 覆盖时返回 true。</returns>
+        internal static bool IsAbilityCategoryBlocked(
+            IEnumerable<GameplayTag> blockTags,
+            GameplayTag abilityCategory)
         {
-            for (int index = 0; index < tags.Count; index++)
-                if (tags[index] == targetTag)
+            foreach (GameplayTag blockTag in blockTags)
+                if (abilityCategory.MatchesTag(blockTag))
                     return true;
             return false;
         }

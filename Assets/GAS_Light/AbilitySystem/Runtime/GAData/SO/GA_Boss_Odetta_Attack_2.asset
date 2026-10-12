@@ -21,7 +21,10 @@ MonoBehaviour:
   - id: 166
   cancelTags:
   - id: 164
-  blockAbilityTags: []
+  blockAbilityTags:
+  - id: 164
+  - id: 221
+  - id: 218
   isCancelable: 1
   activationTagQuery:
     allTags: []
@@ -34,7 +37,8 @@ MonoBehaviour:
     - id: 156
   costEffect: {fileID: 0}
   cooldownEffect: {fileID: 0}
-  effects: []
+  effects:
+  - {fileID: 11400000, guid: 6ee1a43fbce9fd645960e94931c75fea, type: 2}
   cueTags: []
   damageMultiplier:
     baseValue: 1

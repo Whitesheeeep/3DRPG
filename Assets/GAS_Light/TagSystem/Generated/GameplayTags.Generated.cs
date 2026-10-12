@@ -84,12 +84,24 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_GE_Buff = new GameplayTag(190);
         /// <summary>GE.Buff.AddArmor</summary>
         public static readonly GameplayTag Tag_GE_Buff_AddArmor = new GameplayTag(191);
+        /// <summary>HitReaction</summary>
+        public static readonly GameplayTag Tag_HitReaction = new GameplayTag(216);
+        /// <summary>HitReaction.Normal</summary>
+        public static readonly GameplayTag Tag_HitReaction_Normal = new GameplayTag(217);
         /// <summary>Skill</summary>
         public static readonly GameplayTag Tag_Skill = new GameplayTag(126);
+        /// <summary>Skill.Active</summary>
+        public static readonly GameplayTag Tag_Skill_Active = new GameplayTag(221);
+        /// <summary>Skill.Active.BossTeleport</summary>
+        public static readonly GameplayTag Tag_Skill_Active_BossTeleport = new GameplayTag(213);
+        /// <summary>Skill.Active.QuickShift</summary>
+        public static readonly GameplayTag Tag_Skill_Active_QuickShift = new GameplayTag(181);
+        /// <summary>Skill.Active.QuickShift.DirX</summary>
+        public static readonly GameplayTag Tag_Skill_Active_QuickShift_DirX = new GameplayTag(182);
+        /// <summary>Skill.Active.QuickShift.DirY</summary>
+        public static readonly GameplayTag Tag_Skill_Active_QuickShift_DirY = new GameplayTag(183);
         /// <summary>Skill.ActiveAbility</summary>
         public static readonly GameplayTag Tag_Skill_ActiveAbility = new GameplayTag(167);
-        /// <summary>Skill.BossTeleport</summary>
-        public static readonly GameplayTag Tag_Skill_BossTeleport = new GameplayTag(213);
         /// <summary>Skill.CD</summary>
         public static readonly GameplayTag Tag_Skill_CD = new GameplayTag(184);
         /// <summary>Skill.CD.BossTeleport</summary>
@@ -100,6 +112,12 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_Skill_Entry = new GameplayTag(211);
         /// <summary>Skill.Entry.Active</summary>
         public static readonly GameplayTag Tag_Skill_Entry_Active = new GameplayTag(212);
+        /// <summary>Skill.HitReaction</summary>
+        public static readonly GameplayTag Tag_Skill_HitReaction = new GameplayTag(218);
+        /// <summary>Skill.HitReaction.Direction</summary>
+        public static readonly GameplayTag Tag_Skill_HitReaction_Direction = new GameplayTag(220);
+        /// <summary>Skill.HitReaction.Normal</summary>
+        public static readonly GameplayTag Tag_Skill_HitReaction_Normal = new GameplayTag(219);
         /// <summary>Skill.NormalAttack</summary>
         public static readonly GameplayTag Tag_Skill_NormalAttack = new GameplayTag(164);
         /// <summary>Skill.NormalAttack.Four</summary>
@@ -110,18 +128,14 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_Skill_NormalAttack_Three = new GameplayTag(173);
         /// <summary>Skill.NormalAttack.Two</summary>
         public static readonly GameplayTag Tag_Skill_NormalAttack_Two = new GameplayTag(166);
-        /// <summary>Skill.QuickShift</summary>
-        public static readonly GameplayTag Tag_Skill_QuickShift = new GameplayTag(181);
-        /// <summary>Skill.QuickShift.DirX</summary>
-        public static readonly GameplayTag Tag_Skill_QuickShift_DirX = new GameplayTag(182);
-        /// <summary>Skill.QuickShift.DirY</summary>
-        public static readonly GameplayTag Tag_Skill_QuickShift_DirY = new GameplayTag(183);
         /// <summary>Skill.Window</summary>
         public static readonly GameplayTag Tag_Skill_Window = new GameplayTag(168);
         /// <summary>Skill.Window.CancelBy</summary>
         public static readonly GameplayTag Tag_Skill_Window_CancelBy = new GameplayTag(169);
         /// <summary>Skill.Window.CancelBy.Ability</summary>
         public static readonly GameplayTag Tag_Skill_Window_CancelBy_Ability = new GameplayTag(170);
+        /// <summary>Skill.Window.CancelBy.Hit</summary>
+        public static readonly GameplayTag Tag_Skill_Window_CancelBy_Hit = new GameplayTag(215);
         /// <summary>Skill.Window.CancelBy.Jump</summary>
         public static readonly GameplayTag Tag_Skill_Window_CancelBy_Jump = new GameplayTag(171);
         /// <summary>Skill.Window.CancelBy.Move</summary>

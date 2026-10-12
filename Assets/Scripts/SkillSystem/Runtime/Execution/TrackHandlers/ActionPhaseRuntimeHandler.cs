@@ -154,12 +154,12 @@ namespace RPG.SkillSystem
             for (int i = 0; i < clip.RuntimeTags.Count; i++)
             {
                 GameplayTag tag = clip.RuntimeTags[i];
-                bool isWindowTag = tag == GameplayTags.Tag_Skill_Window_CancelBy_Ability ||
-                                   tag == GameplayTags.Tag_Skill_Window_CancelBy_Jump ||
+                // GA 交接由 BlockAbilityTags 描述；只有交给 FSM 的 Jump/Move 仍使用正向窗口标签。
+                bool isWindowTag = tag == GameplayTags.Tag_Skill_Window_CancelBy_Jump ||
                                    tag == GameplayTags.Tag_Skill_Window_CancelBy_Move;
                 if (isWindowTag && !clip.IsCancelable)
                     throw new InvalidOperationException(
-                        $"SkillConfig '{Context.Request.Config.name}' 的动作阶段 Clip '{clip.Id}' 含转换窗口 TagId={tag.Id}，但 IsCancelable=false。");
+                        $"SkillConfig '{Context.Request.Config.name}' 的动作阶段 Clip '{clip.Id}' 含 FSM 转换窗口 TagId={tag.Id}，但 IsCancelable=false。");
             }
         }
 

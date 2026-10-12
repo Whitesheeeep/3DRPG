@@ -151,6 +151,7 @@ namespace RPG.Character.Editor
                 ConfigureCollection(detailsScrollView.Q<PropertyField>("InitialAttributeSetsField"), "暂无初始属性集");
                 ConfigureCollection(detailsScrollView.Q<PropertyField>("NormalAttackAbilitiesField"), "暂无普通攻击连段");
                 ConfigureCollection(detailsScrollView.Q<PropertyField>("SkillInputBindingsField"), "暂无技能输入绑定");
+                ConfigureCollection(detailsScrollView.Q<PropertyField>("HitReactionBindingsField"), "暂无受击技能绑定");
                 RefreshCombatWarnings();
                 RefreshPreviewImages();
                 RefreshSummary();

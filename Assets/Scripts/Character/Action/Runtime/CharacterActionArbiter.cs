@@ -9,7 +9,7 @@ using WS_Modules.GAS.GameplayAbilitySystem;
 
 namespace RPG.Character
 {
-    /// <summary>按 Ability、Jump、Move 顺序仲裁当前角色的 FullBody 转换候选。</summary>
+    /// <summary>按技能槽、普通攻击、Jump、Move 顺序仲裁当前角色的 FullBody 转换候选。</summary>
     internal sealed class CharacterActionArbiter : IFullBodyActionArbiter, IFullBodyActionRegistrationOwner, IDisposable
     {
         #region 依赖字段
@@ -17,6 +17,7 @@ namespace RPG.Character
         private readonly CharacterActor owner;
         private readonly PlayerStateBlackboard blackboard;
         private readonly AbilityTransitionExecution abilityExecution;
+        private readonly NormalAttackTransitionExecution normalAttackExecution;
         private readonly JumpTransitionExecution jumpExecution;
         private readonly MoveTransitionExecution moveExecution;
 
@@ -27,6 +28,9 @@ namespace RPG.Character
         private FullBodySkillExecution currentFullBodyExecution;
         private int nextRegistrationId;
         private bool disposed;
+
+        /// <summary>获取当前登记的 FullBody Ability Runtime，只供受击准入读取标签快照。</summary>
+        internal GameplayAbilityRuntime CurrentFullBodyRuntime => currentFullBodyExecution?.Runtime;
 
         #endregion
 
@@ -46,6 +50,7 @@ namespace RPG.Character
             owner = sourceOwner ?? throw new ArgumentNullException(nameof(sourceOwner));
             blackboard = sourceBlackboard ?? throw new ArgumentNullException(nameof(sourceBlackboard));
             abilityExecution = new AbilityTransitionExecution(combatSystem);
+            normalAttackExecution = new NormalAttackTransitionExecution(combatSystem);
             jumpExecution = new JumpTransitionExecution(abilitySystemComponent, jumpTransitionQueryService);
             moveExecution = new MoveTransitionExecution(abilitySystemComponent);
         }
@@ -84,20 +89,16 @@ namespace RPG.Character
                 throw new ArgumentNullException(nameof(inputRequests));
 
             FullBodySkillExecution execution = currentFullBodyExecution;
-            // 没有 FullBody 占据时，Ability 输入仍统一经过同一个执行入口；Jump 和 Move 留给 Locomotion。
-            if (execution == null)
-            {
-                abilityExecution.TryExecute(inputRequests, false);
-                return;
-            }
-
-            // 存在 FullBody 占据时，
-            if (execution.Runtime.RuntimeTags.HasTag(GameplayTags.Tag_Skill_Window_CancelBy_Ability) &&
-                abilityExecution.TryExecute(inputRequests,
-                    execution.Runtime.AbilityTags.HasTag(GameplayTags.Tag_Skill_NormalAttack)))
+            // 技能槽输入先于普攻；没有动作占据时两个执行器都使用各自的默认入口。
+            if (abilityExecution.TryExecute(inputRequests, execution?.Runtime))
                 return;
 
-            // Ability 激活可能同步替换 FullBody Runtime；后续候选必须使用刷新后的当前执行。
+            // 技能激活可能同步改变 FullBody 生命周期，因此普攻始终读取最新 Runtime。
+            execution = currentFullBodyExecution;
+            if (normalAttackExecution.TryExecute(inputRequests, execution?.Runtime))
+                return;
+
+            // 普攻激活也可能同步结束或替换动作；Jump 窗口必须读取最新 Runtime。
             execution = currentFullBodyExecution;
             if (execution == null)
                 return;

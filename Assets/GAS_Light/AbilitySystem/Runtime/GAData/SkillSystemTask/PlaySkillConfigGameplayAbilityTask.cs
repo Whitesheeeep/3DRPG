@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using RPG.Combat;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.GameplayAbilitySystem;
-using WS_Modules.GAS.GameplayCue;
 using WS_Modules.GAS.TAG;
 using RPG.Character;
 using RPG.Character.Animation;
@@ -306,65 +306,69 @@ namespace RPG.SkillSystem
         private void OnSkillHit(SkillHitEventArgs args)
         {
             if (args.Config != skillConfig || args.Target == null) return;
-            GameplayAbilitySystemComponent target =
-                args.Target.GetComponentInParent<GameplayAbilitySystemComponent>();
+            var target = GameplayAbilityHitTargetResolver.TryResolve(args.Collider);
             if (target == null)
             {
                 WSLog.LogWarning(
-                    $"[PlaySkillConfigGameplayAbilityTask] Ability '{GARuntime.Data.name}' ActivationId={GARuntime.ActivationId} 命中目标缺少 ASC。");
+                    $"[PlaySkillConfigGameplayAbilityTask] Ability '{GARuntime.Data.name}' ActivationId={GARuntime.ActivationId} " +
+                    $"命中对象 '{args.Target.name}' 没有接受本次命中的有效 Target ASC。");
                 return;
             }
 
             if (ReferenceEquals(target, GARuntime.SourceASC))
                 return;
 
-            GameplayEffectApplicationResult lastApplicationResult = null;
+            Transform sourceRoot = GARuntime.SourceOwner.RootTransform ??
+                throw new InvalidOperationException($"Ability '{GARuntime.Data.name}' Source Owner 缺少 RootTransform。");
+            Transform targetRoot = target.Owner.RootTransform;
+            // 来袭方向属于世界水平面，并从受击目标指向攻击来源；方向退化不会阻止 GE 结算。
+            Vector3 incomingDirection = Vector3.ProjectOnPlane(
+                sourceRoot.position - targetRoot.position, Vector3.up);
+            var hitSnapshot = new CombatHitSnapshot(
+                GARuntime.SourceASC,
+                target,
+                args.Point,
+                incomingDirection,
+                targetRoot.rotation,
+                Quaternion.identity);
+
+            int appliedEffectCount = 0;
             for (int i = 0; i < effectSpecs.Count; i++)
             {
-                if (!target.TryApplyEffect(
+                if (!CombatDamagePipeline.TryApplyHitEffect(
                         effectSpecs[i],
+                        hitSnapshot,
                         out GameplayEffectApplicationResult applicationResult))
                     continue;
-                lastApplicationResult = applicationResult;
+                appliedEffectCount++;
 
                 if (applicationResult.ActiveEffect != null)
                     GARuntime.RetainOwnedEffect(applicationResult.ActiveEffect);
+
+                // 每个成功 GE 都携带自己的 GAS Result；同一 GE 内只合并去重 GA 与 Clip 的标签。
+                CombatHitCuePublisher.Publish(
+                    GARuntime.Data.CueTags,
+                    args.Clip.CueTags,
+                    hitSnapshot,
+                    GARuntime,
+                    applicationResult);
             }
 
-            // 命中 Cue 表示一次有效攻击检测；GE 被免疫或拒绝时也必须发布。GA 与 Clip 标签合并后按 Tag 去重。
-            var publishedCueTagSet = new HashSet<GameplayTag>();
-            PublishHitCueTags(GARuntime.Data.CueTags, args, target, lastApplicationResult, publishedCueTagSet);
-            PublishHitCueTags(args.Clip.CueTags, args, target, lastApplicationResult, publishedCueTagSet);
-        }
-
-        /// <summary>发布单个配置来源中尚未发布的命中 Execute CueTag。</summary>
-        /// <param name="cueTags">GA 或攻击检测 Clip 配置的标签列表。</param>
-        /// <param name="args">当前命中点与目标信息。</param>
-        /// <param name="target">接收 Cue 的目标 ASC。</param>
-        /// <param name="applicationResult">本次命中最后一次成功的 GE 应用结果。</param>
-        /// <param name="publishedCueTagSet">当前命中已发布的精确 Tag 集合。</param>
-        private void PublishHitCueTags(IReadOnlyList<GameplayTag> cueTags, SkillHitEventArgs args,
-            GameplayAbilitySystemComponent target, GameplayEffectApplicationResult applicationResult,
-            HashSet<GameplayTag> publishedCueTagSet)
-        {
-            for (int index = 0; index < cueTags.Count; index++)
+            if (appliedEffectCount == 0)
             {
-                GameplayTag cueTag = cueTags[index];
-                if (!publishedCueTagSet.Add(cueTag)) continue;
-
-                target.PublishGameplayCue(new GameplayCueRequest(
-                    cueTag,
-                    GameplayCueEventType.Execute,
-                    GARuntime.SourceASC,
-                    target,
-                    effectRuntime: null,
-                    abilityRuntime: GARuntime,
-                    position: args.Point,
-                    rotation: Quaternion.identity,
-                    attachTransform: null,
-                    effectSpec: applicationResult?.Spec,
-                    applicationResult: applicationResult));
+                // 命中仍可播放一次纯表现 Cue；GE 全部拒绝时不附带虚构结算结果。
+                CombatHitCuePublisher.Publish(
+                    GARuntime.Data.CueTags,
+                    args.Clip.CueTags,
+                    hitSnapshot,
+                    GARuntime,
+                    null);
             }
+
+            Debug.Log(
+                $"[PlaySkillConfigGameplayAbilityTask] Ability '{GARuntime.Data.name}' 命中已结算，" +
+                $"targetASC='{target.name}'，appliedEffects={appliedEffectCount}，hasIncomingDirection={hitSnapshot.HasIncomingDirection}。",
+                target);
         }
 
         /// <summary>将当前 SkillConfig 的 Projectile 发射事件转换为带有 GA 快照的池化投射物生成。</summary>

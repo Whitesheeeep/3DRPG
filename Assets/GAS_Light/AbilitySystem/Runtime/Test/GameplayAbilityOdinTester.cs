@@ -2,6 +2,8 @@
 using System;
 using System.Collections.Generic;
 using Animancer;
+using RPG.Character;
+using RPG.Combat;
 using RPG.SkillSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
@@ -295,6 +297,18 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private AsynchronousGameplayAbilityData quickShiftSkill;
         [SerializeField, AssetsOnly, Tooltip("使用 NpcTeleportGATask 的 Boss 瞬移 Ability SO。")]
         private AsynchronousGameplayAbilityData bossTeleportSkill;
+        [SerializeField, AssetsOnly, Tooltip("用于验证四方向受击 Task 的 GA_HitReaction_Normal。")]
+        private AsynchronousGameplayAbilityData hitReactionSkill;
+        [SerializeField, Required, Tooltip("场景中的玩家角色 ASC；测试前确认它属于当前 Active 角色。")]
+        private GameplayAbilitySystemComponent hitReactionTestTarget;
+        [SerializeField, AssetsOnly, Tooltip("提交伤害管线手动验证时使用的伤害 GE；按钮会实际扣除指定目标 Health。")]
+        private GameplayEffectData damagePipelineTestEffect;
+        [SerializeField, Required, Tooltip("伤害管线手动验证时命中的 Collider；应属于已注册 Receiver 的角色或 NPC。")]
+        private Collider damagePipelineTestCollider;
+        [SerializeField, EnumToggleButtons, LabelText("受击方向")]
+        private E_HitReactionDirection hitReactionTestDirection;
+        [NonSerialized]
+        private GameplayAbilityRuntime hitReactionRuntimeUnderTest;
         #endregion
 
         #region Odin 测试
@@ -624,7 +638,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
 
             bool hasQuickShiftTag = false;
             for (int index = 0; index < data.AbilityTags.Count; index++)
-                if (data.AbilityTags[index] == GameplayTags.Tag_Skill_QuickShift)
+                if (data.AbilityTags[index] == GameplayTags.Tag_Skill_Active_QuickShift)
                 {
                     hasQuickShiftTag = true;
                     break;
@@ -702,7 +716,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
 
             bool hasTeleportTag = false;
             for (int index = 0; index < data.AbilityTags.Count; index++)
-                if (data.AbilityTags[index] == GameplayTags.Tag_Skill_BossTeleport)
+                if (data.AbilityTags[index] == GameplayTags.Tag_Skill_Active_BossTeleport)
                 {
                     hasTeleportTag = true;
                     break;
@@ -718,6 +732,150 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 abilityDatabase != null && abilityDatabase.TryGetAbility(data.AbilityId, out GameplayAbilityData bakedData) &&
                 ReferenceEquals(bakedData, data));
             LogSummary();
+        }
+
+        /// <summary>向配置目标 ASC 激活一次受击 GA，并验证初始阻断与普通取消许可。</summary>
+        [Button("测试四方向受击 GA")]
+        public void TestHitReactionAbility()
+        {
+            Expect("受击 GA 与目标 ASC 已配置", hitReactionSkill != null && hitReactionTestTarget != null);
+            if (hitReactionSkill == null || hitReactionTestTarget == null)
+            {
+                LogSummary();
+                return;
+            }
+
+            Expect("Root Task 是四方向受击配置",
+                hitReactionSkill.RootTask is HitReactionGameplayAbilityTaskConfig);
+            Expect("受击 Runtime 配置有效", hitReactionSkill.IsRuntimeConfigurationValid);
+            Expect("受击 GA 阻断普攻",
+                ContainsExactTag(hitReactionSkill.BlockAbilityTags, GameplayTags.Tag_Skill_NormalAttack));
+            Expect("受击 GA 阻断主动技能分类",
+                ContainsExactTag(hitReactionSkill.BlockAbilityTags, GameplayTags.Tag_Skill_Active));
+            Expect("受击 GA 不阻断自身分类，允许新的受击替换",
+                !ContainsExactTag(hitReactionSkill.BlockAbilityTags, GameplayTags.Tag_Skill_HitReaction));
+            Expect("受击 GA 保留普通取消许可", hitReactionSkill.IsCancelable);
+            GameplayAbilityHandle handle = hitReactionTestTarget.GiveAbility(hitReactionSkill, 1);
+            var activationDataByTagMap = new Dictionary<GameplayTag, float>
+            {
+                [HitReactionGameplayTags.Direction] = (float)hitReactionTestDirection
+            };
+            hitReactionRuntimeUnderTest = null;
+            bool activated = hitReactionTestTarget.TryActivateAbility(
+                handle, activationDataByTagMap, out hitReactionRuntimeUnderTest);
+            Expect($"受击 GA {hitReactionTestDirection} 激活成功", activated);
+            if (activated && hitReactionRuntimeUnderTest != null)
+            {
+                Expect("受击 Runtime 初始阻断普攻",
+                    hitReactionRuntimeUnderTest.BlockAbilityTags.HasTagExact(GameplayTags.Tag_Skill_NormalAttack));
+                Expect("受击 Runtime 初始阻断主动技能分类",
+                    hitReactionRuntimeUnderTest.BlockAbilityTags.HasTagExact(GameplayTags.Tag_Skill_Active));
+                Expect("受击 Runtime 不阻断后续受击 GA",
+                    !hitReactionRuntimeUnderTest.BlockAbilityTags.HasTagExact(GameplayTags.Tag_Skill_HitReaction));
+                Expect("受击 Runtime 可被普通取消", hitReactionRuntimeUnderTest.IsCancelable);
+            }
+            Debug.Log(
+                $"[GATest][HitReaction] target={hitReactionTestTarget.name}，direction={hitReactionTestDirection}，activated={activated}。",
+                this);
+            LogSummary();
+        }
+
+        /// <summary>读取最近一次测试受击 Runtime 的状态，供动画阈值前后手动比较阻断标签。</summary>
+        [Button("检查受击 GA 阻断状态")]
+        public void InspectHitReactionBlockState()
+        {
+            Expect("已有受击测试 Runtime", hitReactionRuntimeUnderTest != null);
+            if (hitReactionRuntimeUnderTest == null)
+            {
+                LogSummary();
+                return;
+            }
+
+            bool active = hitReactionRuntimeUnderTest.State == GameplayAbilityRuntimeState.Active;
+            bool blocksNormalAttack = hitReactionRuntimeUnderTest.BlockAbilityTags
+                .HasTagExact(GameplayTags.Tag_Skill_NormalAttack);
+            bool blocksActiveAbilities = hitReactionRuntimeUnderTest.BlockAbilityTags
+                .HasTagExact(GameplayTags.Tag_Skill_Active);
+            Debug.Log(
+                $"[GATest][HitReaction] activationId={hitReactionRuntimeUnderTest.ActivationId}，" +
+                $"state={hitReactionRuntimeUnderTest.State}，isCancelable={hitReactionRuntimeUnderTest.IsCancelable}，" +
+                $"blocksNormalAttack={blocksNormalAttack}，blocksActiveAbilities={blocksActiveAbilities}。",
+                this);
+            Expect("受击 Runtime 保持普通取消许可", hitReactionRuntimeUnderTest.IsCancelable);
+            if (active)
+                Expect("受击阻断标签按播放阶段变化", blocksNormalAttack == blocksActiveAbilities);
+            LogSummary();
+        }
+
+        /// <summary>按精确标签身份查找 GA 资源是否显式配置了指定阻断项。</summary>
+        /// <param name="tags">GA 资源中的 BlockAbilityTags 列表。</param>
+        /// <param name="expectedTag">需要查找的 Ability 分类标签。</param>
+        /// <returns>列表显式包含该标签时返回 true。</returns>
+        private static bool ContainsExactTag(IReadOnlyList<GameplayTag> tags, GameplayTag expectedTag)
+        {
+            for (int tagIndex = 0; tagIndex < tags.Count; tagIndex++)
+                if (tags[tagIndex] == expectedTag)
+                    return true;
+            return false;
+        }
+
+        /// <summary>通过正式 Target Provider 与 CombatDamagePipeline 对 Collider 目标提交一次真实伤害。</summary>
+        /// <exception cref="InvalidOperationException">目标 ASC 未注册 Receiver 或 GE 应用违反 GAS 契约时抛出。</exception>
+        [Button("测试 Gameplay 伤害路由（会扣血）")]
+        public void TestGameplayDamageRouting()
+        {
+            ResetTest();
+            try
+            {
+                Expect("伤害 GE 和目标 Collider 已配置", damagePipelineTestEffect != null && damagePipelineTestCollider != null);
+                if (damagePipelineTestEffect == null || damagePipelineTestCollider == null)
+                {
+                    LogSummary();
+                    return;
+                }
+                if (!EnsureAttributesReady("Gameplay 伤害路由"))
+                {
+                    LogSummary();
+                    return;
+                }
+
+                var target = GameplayAbilityHitTargetResolver.TryResolve(damagePipelineTestCollider);
+
+                Transform sourceRoot = source.Owner.RootTransform;
+                Transform targetRoot = target.Owner.RootTransform;
+                Vector3 incomingDirection = Vector3.ProjectOnPlane(
+                    sourceRoot.position - targetRoot.position, Vector3.up);
+                Vector3 hitPoint = damagePipelineTestCollider.ClosestPoint(sourceRoot.position);
+                var snapshot = new CombatHitSnapshot(
+                    source, target, hitPoint, incomingDirection, targetRoot.rotation, Quaternion.identity);
+                var setByCallerMagnitudeByTagMap = new Dictionary<GameplayTag, float>
+                {
+                    [GameplayTags.Tag_Data_Damage_Multiplier] = 1f
+                };
+                bool created = source.TryCreateOutgoingEffectSpec(
+                    damagePipelineTestEffect, 1, setByCallerMagnitudeByTagMap, out GameplayEffectSpec spec);
+                Expect("Source 创建伤害 GE Spec", created);
+                if (!created || !spec.TrySeal())
+                {
+                    LogSummary();
+                    return;
+                }
+
+                bool applied = CombatDamagePipeline.TryApplyHitEffect(spec, snapshot, out GameplayEffectApplicationResult result);
+                Expect("伤害 GE 提交成功并返回同一目标 ASC", applied && result != null &&
+                    ReferenceEquals(result.Target, target));
+                Debug.Log(
+                    $"[GATest][CombatDamage] sourceASC='{source.name}'，targetASC='{target.name}'，" +
+                    $"effect='{damagePipelineTestEffect.name}'，applied={applied}，" +
+                    $"hasIncomingDirection={snapshot.HasIncomingDirection}。",
+                    this);
+                LogSummary();
+            }
+            finally
+            {
+                // 管线契约错误会继续抛出，但不能把隐藏的测试 Source ASC 留在场景中。
+                CleanupSource();
+            }
         }
 
         /// <summary>验证 ActionPhase RuntimeTags 按相邻 Phase 快照差量增加和移除。</summary>
@@ -754,7 +912,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 phaseRuntime.RuntimeTags.HasTagExact(GameplayTags.Tag_Skill_Window_CancelBy_Jump));
 
             var activeTags = new GameplayTagContainer();
-            activeTags.AddTag(GameplayTags.Tag_Skill_Window_CancelBy_Ability);
+            activeTags.AddTag(GameplayTags.Tag_Skill_Entry_Active);
             activeTags.AddTag(GameplayTags.Tag_Skill_Window_CancelBy_Jump);
             phaseRuntime.ApplyPhasePolicy(
                 activeTags,
@@ -764,7 +922,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             Expect("Phase 切换移除旧标签并保留共享标签",
                 !phaseRuntime.RuntimeTags.HasTagExact(GameplayTags.Tag_Skill_Window_CancelBy_Move) &&
                 phaseRuntime.RuntimeTags.HasTagExact(GameplayTags.Tag_Skill_Window_CancelBy_Jump) &&
-                phaseRuntime.RuntimeTags.HasTagExact(GameplayTags.Tag_Skill_Window_CancelBy_Ability));
+                phaseRuntime.RuntimeTags.HasTagExact(GameplayTags.Tag_Skill_Entry_Active));
 
             phaseRuntime.ApplyPhasePolicy(
                 activeTags,
@@ -774,7 +932,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             Expect("重复应用相同 Phase 快照保持不变",
                 phaseRuntime.RuntimeTags.Count == 2 &&
                 phaseRuntime.RuntimeTags.HasTagExact(GameplayTags.Tag_Skill_Window_CancelBy_Jump) &&
-                phaseRuntime.RuntimeTags.HasTagExact(GameplayTags.Tag_Skill_Window_CancelBy_Ability));
+                phaseRuntime.RuntimeTags.HasTagExact(GameplayTags.Tag_Skill_Entry_Active));
 
             phaseRuntime.ApplyPhasePolicy(
                 new GameplayTagContainer(),

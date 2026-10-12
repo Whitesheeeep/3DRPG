@@ -200,6 +200,17 @@ namespace RPG.Game.JumpText
             Show(new JumpTextRequest(value, worldPosition, style, showPositiveSign));
         }
 
+        /// <summary>按 GE 最终伤害发布普通或暴击跳字，并将正伤害至少显示为 1。</summary>
+        /// <param name="damage">GE Execution 返回的最终伤害。</param>
+        /// <param name="worldPosition">跳字出生的命中世界坐标。</param>
+        /// <param name="isCritical">是否使用暴击样式。</param>
+        public void ShowDamage(float damage, Vector3 worldPosition, bool isCritical)
+        {
+            int displayedDamage = Mathf.Max(1, Mathf.RoundToInt(damage));
+            JumpTextStyle style = isCritical ? JumpTextStyle.CriticalDamage : JumpTextStyle.NormalDamage;
+            Show(displayedDamage, worldPosition, style);
+        }
+
         /// <summary>
         /// 清空所有活跃跳字并回收运行时记录；不会销毁共享字体材质和 Mesh。
         /// </summary>

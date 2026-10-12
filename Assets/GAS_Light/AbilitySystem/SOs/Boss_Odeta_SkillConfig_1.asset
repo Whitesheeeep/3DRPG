@@ -203,6 +203,8 @@ MonoBehaviour:
     runtimeTags: []
     blockAbilityTags:
     - id: 164
+    - id: 221
+    - id: 218
   - id: 2df0258a678944b393b7c9f9287d3605
     startFrame: 1
     durationFrames: 14
@@ -211,13 +213,15 @@ MonoBehaviour:
     runtimeTags: []
     blockAbilityTags:
     - id: 164
+    - id: 221
+    - id: 218
   - id: 897b2ea29563432e8ff9f8d1a466d928
     startFrame: 15
     durationFrames: 12
     phase: 3
     isCancelable: 1
     runtimeTags:
-    - id: 170
     - id: 171
     - id: 172
-    blockAbilityTags: []
+    blockAbilityTags:
+    - id: 218

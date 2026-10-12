@@ -75,7 +75,7 @@ namespace RPG.SkillSystem.Editor
         }
 
         /// <summary>
-        /// 将 RuntimeTag 转换窗口转换为 Inspector 与时间轴 Tooltip 共用的完整中文描述。
+        /// 将 RuntimeTag 中交给 FSM 的转换窗口转成时间轴标题与 Tooltip 描述。
         /// </summary>
         /// <param name="transitions">当前动作阶段的 RuntimeTags。</param>
         /// <returns>转换窗口的中文名称；无权限时返回“无”。</returns>
@@ -88,7 +88,24 @@ namespace RPG.SkillSystem.Editor
                 GameplayTag tag = transitions[i];
                 if (tag == GameplayTags.Tag_Skill_Window_CancelBy_Move) names.Add("移动");
                 else if (tag == GameplayTags.Tag_Skill_Window_CancelBy_Jump) names.Add("跳跃");
-                else if (tag == GameplayTags.Tag_Skill_Window_CancelBy_Ability) names.Add("其他 Ability");
+            }
+            return string.Join("、", names);
+        }
+
+        /// <summary>将动作阶段的 GA 阻断分类转成可读的 Tooltip 文本。</summary>
+        /// <param name="blockedTags">当前 Phase 完整生效的 GA 阻断标签。</param>
+        /// <returns>已知角色动作分类使用中文名称，其他标签以稳定 ID 展示。</returns>
+        protected static string GetActionPhaseBlockDescription(IReadOnlyList<GameplayTag> blockedTags)
+        {
+            if (blockedTags == null || blockedTags.Count == 0) return "无";
+            List<string> names = new();
+            for (int i = 0; i < blockedTags.Count; i++)
+            {
+                GameplayTag tag = blockedTags[i];
+                if (tag == GameplayTags.Tag_Skill_NormalAttack) names.Add("普通攻击");
+                else if (tag == GameplayTags.Tag_Skill_Active) names.Add("主动技能");
+                else if (tag == GameplayTags.Tag_Skill_HitReaction) names.Add("受击技能");
+                else names.Add($"TagId={tag.Id}");
             }
             return string.Join("、", names);
         }
@@ -148,9 +165,9 @@ namespace RPG.SkillSystem.Editor
                               $"起始帧：{item.StartFrame}\n" +
                               $"持续帧：{item.DurationFrames}\n" +
                               $"普通取消：{(item.IsCancelable ? "是" : "否")}\n" +
-                              $"Runtime 窗口：{GetActionPhaseTransitionDescription(item.RuntimeTags)}\n" +
-                              $"其他 RuntimeTag：{Math.Max(0, item.RuntimeTags.Count - CountWindowTags(item.RuntimeTags))}\n" +
-                              $"Block Tag 数量：{item.BlockAbilityTags.Count}";
+                              $"FSM 窗口：{GetActionPhaseTransitionDescription(item.RuntimeTags)}\n" +
+                              $"GA 阻断：{GetActionPhaseBlockDescription(item.BlockAbilityTags)}\n" +
+                              $"其他 RuntimeTag：{Math.Max(0, item.RuntimeTags.Count - CountWindowTags(item.RuntimeTags))}";
         }
 
         /// <summary>统计动作阶段 RuntimeTags 中的标准转换窗口数量。</summary>
@@ -161,8 +178,7 @@ namespace RPG.SkillSystem.Editor
             int count = 0;
             for (int i = 0; i < tags.Count; i++)
                 if (tags[i] == GameplayTags.Tag_Skill_Window_CancelBy_Move ||
-                    tags[i] == GameplayTags.Tag_Skill_Window_CancelBy_Jump ||
-                    tags[i] == GameplayTags.Tag_Skill_Window_CancelBy_Ability)
+                    tags[i] == GameplayTags.Tag_Skill_Window_CancelBy_Jump)
                     count++;
             return count;
         }

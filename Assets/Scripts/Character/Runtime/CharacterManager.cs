@@ -4,12 +4,14 @@ using System.Runtime.ExceptionServices;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using RPG.Character.State;
+using RPG.Combat;
 using RPG.Game;
 using RPG.ItemSystem;
 using RPG.PlayerInputSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using WS_Modules.CustomEventSystem;
+using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.ResLoadModule;
 using WSEventSystem = WS_Modules.CustomEventSystem.EventSystem;
 
@@ -18,7 +20,7 @@ namespace RPG.Character
     /// <summary>管理角色配置的异步加载、原子队伍提交与当前角色阶段门禁。</summary>
     [DisallowMultipleComponent]
     [InfoBox("CharacterConfig 指向的每个角色 Prefab 必须在根或子层级（含 inactive）中包含且仅包含一个 CharacterActor；Manager 递归查找该 Prefab 实例。运行时需由 PlayerController 注入 CharacterRoot、MotionDriver、PlayerController 和 PlayerStateBlackboard；actorContainer 可选，未绑定时挂到 CharacterRoot。角色 Prefab 地址由 CharacterConfig 提供并异步加载。")]
-    public sealed class CharacterManager : MonoBehaviour
+    public sealed class CharacterManager : MonoBehaviour, IGameplayAbilityTargetProvider
     {
         #region 配置字段
 
@@ -39,7 +41,6 @@ namespace RPG.Character
         private PlayerController runtimePlayerController;
         private PlayerStateBlackboard runtimeBlackboard;
         private CancellationToken runtimeLifetimeToken;
-
         #endregion
 
         #region 运行时状态
@@ -85,6 +86,14 @@ namespace RPG.Character
         public IReadOnlyList<CharacterActor> CharacterActors => characterActors;
         /// <summary>获取当前由玩家操控的角色。</summary>
         public CharacterActor ActiveCharacter { get; private set; }
+
+        /// <inheritdoc />
+        public GameplayAbilitySystemComponent TryGetTargetASC()
+        {
+            if (!IsReady || ActiveCharacter == null || !ActiveCharacter.TryGetTargetASC())
+                return null;
+            return ActiveCharacter.TryGetTargetASC();
+        }
 
         #endregion
 
@@ -305,7 +314,6 @@ namespace RPG.Character
                 if (actor == null || !rosterManager.TryGetInstance(actor.CharacterId, out CharacterInstance instance))
                 {
                     if (ReferenceEquals(ActiveCharacter, actor)) ActiveCharacter = null;
-                    actor?.StopRuntime();
                     characterActors.RemoveAt(index);
                     if (actor != null) DestroyTrackedCharacterActorRoot(actor);
                     Debug.LogError($"[CharacterManager] 存档恢复后角色 Actor 缺少对应实例，character={actor?.CharacterId}。");
@@ -367,14 +375,14 @@ namespace RPG.Character
             return target == null ? CharacterSwitchStatus.CharacterNotFound : TrySwitch(target.CharacterId);
         }
 
-        /// <summary>完成表现停用、当前引用更新与同步事件发送。</summary>
+        /// <summary>按 Actor 退场、更新当前引用、Actor 入场的顺序提交角色切换。</summary>
         /// <param name="target">已经校验的目标角色。</param>
         private void SwitchInternal(CharacterActor target)
         {
             CharacterActor previous = ActiveCharacter;
-            previous?.SetActivePresentation(false);
+            previous?.OnExit();
             ActiveCharacter = target;
-            target.SetActivePresentation(true);
+            target.OnEnter();
             ActiveCharacterChanged?.Invoke(previous, target);
         }
 
@@ -518,7 +526,10 @@ namespace RPG.Character
                 }
 
                 // 所有可能异步失败的步骤已结束；以下同步更新运行时列表、Party 与操控对象，再发布领域事件。
-                if (preparedActor != null) characterActors.Add(preparedActor);
+                if (preparedActor != null)
+                {
+                    characterActors.Add(preparedActor);
+                }
                 for (int index = 0; index < removedActors.Count; index++)
                     characterActors.Remove(removedActors[index]);
                 partyManager.CommitSlotEdit(candidateParty);
@@ -629,12 +640,10 @@ namespace RPG.Character
                 actor.BindRuntime(runtimeRoot, runtimeMotionDriver, runtimePlayerController, runtimeBlackboard,
                     instance, rosterManager, weaponInventoryManager);
                 actor.InitializeFromInstance();
-                actor.SetActivePresentation(false);
                 await actor.InitializeWeaponPresentationAsync();
                 if (this == null) throw new OperationCanceledException("CharacterManager 已销毁。");
                 if (IsCharacterWorkCancelled()) throw new OperationCanceledException("Player 生命周期已结束。");
                 actor.PrimeIdlePose();
-                actor.SetActivePresentation(false);
                 Debug.Log($"[CharacterManager] 角色 Actor 准备完成并保持隐藏，character={instance.CharacterId}, prefab={prefabAddress}。", this);
                 return actor;
             }
@@ -652,6 +661,7 @@ namespace RPG.Character
         {
             if (!instanceRootByCharacterActorMap.TryGetValue(actor, out GameObject actorRoot))
                 throw new InvalidOperationException($"[CharacterManager] 缺少 Actor 根对象追踪记录：{actor.CharacterId}。");
+            actor.StopRuntime();
             instanceRootByCharacterActorMap.Remove(actor);
             if (actorRoot != null) Destroy(actorRoot);
         }
