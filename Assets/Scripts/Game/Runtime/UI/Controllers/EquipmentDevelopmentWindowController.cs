@@ -39,13 +39,7 @@ namespace RPG.Game.UI.Controllers
         private CharacterRosterManager characterRosterManager;
         private ArtifactInventoryManager artifactInventoryManager;
         private StackableInventoryManager stackableInventoryManager;
-        private IUnRegister weaponChangedUnregister;
-        private IUnRegister currencyChangedUnregister;
-        private IUnRegister currencyRestoredUnregister;
-        private IUnRegister artifactChangedUnregister;
-        private IUnRegister artifactRestoredUnregister;
-        private IUnRegister stackableChangedUnregister;
-        private IUnRegister stackableRestoredUnregister;
+        private readonly UnRegisterListContainer inventoryEventUnregisterList = new();
         private WeaponDevelopmentService developmentService;
         private ArtifactDevelopmentService artifactDevelopmentService;
         private WeaponPreviewRuntime weaponPreviewRuntime;
@@ -113,20 +107,28 @@ namespace RPG.Game.UI.Controllers
                 selectionPanel.SetSortControl(false, selectionSortMode, selectionSortDirection, "数量");
             }
 
-            weaponChangedUnregister = EventSystem.Register_Type<WeaponInstanceChangedEvent>(
-                typeof(WeaponInstanceChangedEvent), HandleWeaponChanged);
-            currencyChangedUnregister = EventSystem.Register_Type<CurrencyBalanceChangedEvent>(
-                typeof(CurrencyBalanceChangedEvent), HandleCurrencyBalanceChanged);
-            currencyRestoredUnregister = EventSystem.Register_Type<CurrencyWalletRestoredEvent>(
-                typeof(CurrencyWalletRestoredEvent), HandleCurrencyWalletRestored);
-            artifactChangedUnregister = EventSystem.Register_Type<ArtifactInstanceChangedEvent>(
-                typeof(ArtifactInstanceChangedEvent), HandleArtifactChanged);
-            artifactRestoredUnregister = EventSystem.Register_Type<ArtifactInventoryRestoredEvent>(
-                typeof(ArtifactInventoryRestoredEvent), HandleArtifactRestored);
-            stackableChangedUnregister = EventSystem.Register_Type<StackableItemChangedEvent>(
-                typeof(StackableItemChangedEvent), HandleStackableChanged);
-            stackableRestoredUnregister = EventSystem.Register_Type<StackableInventoryRestoredEvent>(
-                typeof(StackableInventoryRestoredEvent), HandleStackableRestored);
+            EventSystem.Register_Type<WeaponInstanceChangedEvent>(
+                typeof(WeaponInstanceChangedEvent), HandleWeaponChanged)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<CurrencyBalanceChangedEvent>(
+                typeof(CurrencyBalanceChangedEvent), HandleCurrencyBalanceChanged)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<CurrencyWalletRestoredEvent>(
+                typeof(CurrencyWalletRestoredEvent), HandleCurrencyWalletRestored)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<ArtifactInstanceChangedEvent>(
+                typeof(ArtifactInstanceChangedEvent), HandleArtifactChanged)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<ArtifactInventoryRestoredEvent>(
+                typeof(ArtifactInventoryRestoredEvent), HandleArtifactRestored)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<StackableItemChangedEvent>(
+                typeof(StackableItemChangedEvent), HandleStackableChanged)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<StackableInventoryRestoredEvent>(
+                typeof(StackableInventoryRestoredEvent), HandleStackableRestored)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            Debug.Log($"[EquipmentDevelopmentWindowController] 已注册装备培养相关事件，count={inventoryEventUnregisterList.UnRegisterList.Count}。", this);
             initialized = true;
         }
 
@@ -153,20 +155,8 @@ namespace RPG.Game.UI.Controllers
                 selectionPanel.SortDirectionRequested -= HandleSelectionSortDirectionRequested;
             }
 
-            weaponChangedUnregister?.UnRegister();
-            weaponChangedUnregister = null;
-            currencyChangedUnregister?.UnRegister();
-            currencyChangedUnregister = null;
-            currencyRestoredUnregister?.UnRegister();
-            currencyRestoredUnregister = null;
-            artifactChangedUnregister?.UnRegister();
-            artifactChangedUnregister = null;
-            artifactRestoredUnregister?.UnRegister();
-            artifactRestoredUnregister = null;
-            stackableChangedUnregister?.UnRegister();
-            stackableChangedUnregister = null;
-            stackableRestoredUnregister?.UnRegister();
-            stackableRestoredUnregister = null;
+            inventoryEventUnregisterList.UnRegisterAll();
+            Debug.Log("[EquipmentDevelopmentWindowController] 已注销装备培养相关事件。", this);
             selectionPanel?.HideImmediateAndReset();
             UnregisterSelectionEscCommand();
             spriteAtlasLeaseService?.Dispose();

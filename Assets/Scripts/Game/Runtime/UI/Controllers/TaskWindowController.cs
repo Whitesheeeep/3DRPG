@@ -29,7 +29,7 @@ namespace RPG.Game.UI.Controllers
         private TaskDetailsPanelView detailsView;
         private TaskSystem taskSystem;
         private SaveManager saveManager;
-        private readonly List<IUnRegister> taskEventUnregisters = new List<IUnRegister>();
+        private readonly UnRegisterListContainer taskEventUnregisters = new();
         private bool initialized;
         private bool visible;
         private bool refreshPending;
@@ -117,22 +117,31 @@ namespace RPG.Game.UI.Controllers
         /// <summary>订阅会影响当前任务面板投影的任务事实。</summary>
         private void RegisterTaskEvents()
         {
-            taskEventUnregisters.Add(EventSystem.Register_Type<TaskAcceptedEventArgs>(typeof(TaskAcceptedEventArgs), HandleTaskAccepted));
-            taskEventUnregisters.Add(EventSystem.Register_Type<TaskObjectiveProgressChangedEventArgs>(typeof(TaskObjectiveProgressChangedEventArgs), HandleTaskProgressChanged));
-            taskEventUnregisters.Add(EventSystem.Register_Type<TaskStageChangedEventArgs>(typeof(TaskStageChangedEventArgs), HandleTaskStageChanged));
-            taskEventUnregisters.Add(EventSystem.Register_Type<TaskStateChangedEventArgs>(typeof(TaskStateChangedEventArgs), HandleTaskStateChanged));
-            taskEventUnregisters.Add(EventSystem.Register_Type<TaskRewardClaimableEventArgs>(typeof(TaskRewardClaimableEventArgs), HandleTaskClaimable));
-            taskEventUnregisters.Add(EventSystem.Register_Type<TaskCompletedEventArgs>(typeof(TaskCompletedEventArgs), HandleTaskCompleted));
-            taskEventUnregisters.Add(EventSystem.Register_Type<TaskTrackedChangedEventArgs>(typeof(TaskTrackedChangedEventArgs), HandleTaskTrackedChanged));
-            taskEventUnregisters.Add(EventSystem.Register_Type<TaskAcknowledgedEventArgs>(typeof(TaskAcknowledgedEventArgs), HandleTaskAcknowledged));
+            EventSystem.Register_Type<TaskAcceptedEventArgs>(typeof(TaskAcceptedEventArgs), HandleTaskAccepted)
+                .AddToUnregisterList(taskEventUnregisters);
+            EventSystem.Register_Type<TaskObjectiveProgressChangedEventArgs>(typeof(TaskObjectiveProgressChangedEventArgs), HandleTaskProgressChanged)
+                .AddToUnregisterList(taskEventUnregisters);
+            EventSystem.Register_Type<TaskStageChangedEventArgs>(typeof(TaskStageChangedEventArgs), HandleTaskStageChanged)
+                .AddToUnregisterList(taskEventUnregisters);
+            EventSystem.Register_Type<TaskStateChangedEventArgs>(typeof(TaskStateChangedEventArgs), HandleTaskStateChanged)
+                .AddToUnregisterList(taskEventUnregisters);
+            EventSystem.Register_Type<TaskRewardClaimableEventArgs>(typeof(TaskRewardClaimableEventArgs), HandleTaskClaimable)
+                .AddToUnregisterList(taskEventUnregisters);
+            EventSystem.Register_Type<TaskCompletedEventArgs>(typeof(TaskCompletedEventArgs), HandleTaskCompleted)
+                .AddToUnregisterList(taskEventUnregisters);
+            EventSystem.Register_Type<TaskTrackedChangedEventArgs>(typeof(TaskTrackedChangedEventArgs), HandleTaskTrackedChanged)
+                .AddToUnregisterList(taskEventUnregisters);
+            EventSystem.Register_Type<TaskAcknowledgedEventArgs>(typeof(TaskAcknowledgedEventArgs), HandleTaskAcknowledged)
+                .AddToUnregisterList(taskEventUnregisters);
+            Debug.Log($"[TaskWindowController] 已注册任务面板事件，count={taskEventUnregisters.UnRegisterList.Count}。", this);
         }
 
         /// <summary>注销本窗口显示期间的任务事实订阅。</summary>
         private void UnregisterTaskEvents()
         {
-            for (int index = 0; index < taskEventUnregisters.Count; index++)
-                taskEventUnregisters[index]?.UnRegister();
-            taskEventUnregisters.Clear();
+            int registrationCount = taskEventUnregisters.UnRegisterList.Count;
+            taskEventUnregisters.UnRegisterAll();
+            Debug.Log($"[TaskWindowController] 已注销任务面板事件，count={registrationCount}。", this);
         }
 
         /// <summary>将任务事件和成功读档通知合并为一次 UI 刷新。</summary>

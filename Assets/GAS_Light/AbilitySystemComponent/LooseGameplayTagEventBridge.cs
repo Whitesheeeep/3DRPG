@@ -15,7 +15,8 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         // 提供接收 Tag 事件的 ASC 和事件目标，桥接器不直接依赖具体角色类型。
         private readonly ILooseGameplayTagEventTarget target;
         // 记录本桥接器已经提交给 ASC 的来源，保证 Add/Remove 对称且可安全注销。
-        private readonly Dictionary<LooseGameplayTagSourceKey, GameplayAbilitySystemComponent> activeSources = new();
+        private readonly Dictionary<LooseGameplayTagSourceKey, GameplayAbilitySystemComponent> ascBySourceKeyMap = new();
+        private readonly HashSet<GameplayAbilitySystemComponent> runtimeClearSubscriptionSet = new();
         private IUnRegister unregister;
 
         #endregion
@@ -45,10 +46,13 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         {
             unregister?.UnRegister();
             unregister = null;
-            foreach (KeyValuePair<LooseGameplayTagSourceKey, GameplayAbilitySystemComponent> source in activeSources)
+            foreach (KeyValuePair<LooseGameplayTagSourceKey, GameplayAbilitySystemComponent> source in ascBySourceKeyMap)
                 source.Value.RemoveLooseGameplayTag(source.Key.Tag);
 
-            activeSources.Clear();
+            ascBySourceKeyMap.Clear();
+            foreach (GameplayAbilitySystemComponent asc in runtimeClearSubscriptionSet)
+                asc.RuntimeCleared -= HandleRuntimeCleared;
+            runtimeClearSubscriptionSet.Clear();
         }
 
         /// <inheritdoc />
@@ -61,14 +65,23 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             if (current == null) return;
 
             // 先从旧 ASC 对称移除，再写入新 ASC；失败来源被丢弃，避免桥接器伪造激活 Tag。
-            var sources = new List<LooseGameplayTagSourceKey>(activeSources.Keys);
+            var sources = new List<LooseGameplayTagSourceKey>(ascBySourceKeyMap.Keys);
             foreach (LooseGameplayTagSourceKey source in sources)
             {
-                GameplayAbilitySystemComponent previous = activeSources[source];
+                GameplayAbilitySystemComponent previous = ascBySourceKeyMap[source];
                 if (ReferenceEquals(previous, current)) continue;
                 previous.RemoveLooseGameplayTag(source.Tag);
-                if (current.AddLooseGameplayTag(source.Tag)) activeSources[source] = current;
-                else activeSources.Remove(source);
+                if (current.AddLooseGameplayTag(source.Tag))
+                {
+                    ascBySourceKeyMap[source] = current;
+                    SubscribeRuntimeClear(current);
+                    UnsubscribeRuntimeClearIfUnused(previous);
+                }
+                else
+                {
+                    ascBySourceKeyMap.Remove(source);
+                    UnsubscribeRuntimeClearIfUnused(previous);
+                }
             }
         }
 
@@ -87,16 +100,52 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             LooseGameplayTagSourceKey source = new LooseGameplayTagSourceKey(eventArgs.SourceId, eventArgs.Tag);
             if (eventArgs.Operation == LooseGameplayTagChangeOperation.Add)
             {
-                if (activeSources.ContainsKey(source)) return;
+                if (ascBySourceKeyMap.ContainsKey(source)) return;
                 GameplayAbilitySystemComponent abilitySystem = target.AbilitySystemComponent;
-                activeSources.Add(source, abilitySystem);
-                if (!abilitySystem.AddLooseGameplayTag(eventArgs.Tag)) activeSources.Remove(source);
+                if (!abilitySystem.AddLooseGameplayTag(eventArgs.Tag)) return;
+                ascBySourceKeyMap.Add(source, abilitySystem);
+                SubscribeRuntimeClear(abilitySystem);
                 return;
             }
 
-            if (!activeSources.TryGetValue(source, out GameplayAbilitySystemComponent sourceAbilitySystem)) return;
-            activeSources.Remove(source);
-            if (!sourceAbilitySystem.RemoveLooseGameplayTag(eventArgs.Tag)) activeSources.Add(source, sourceAbilitySystem);
+            if (!ascBySourceKeyMap.TryGetValue(source, out GameplayAbilitySystemComponent sourceAbilitySystem)) return;
+            ascBySourceKeyMap.Remove(source);
+            if (!sourceAbilitySystem.RemoveLooseGameplayTag(eventArgs.Tag))
+                ascBySourceKeyMap.Add(source, sourceAbilitySystem);
+            else
+                UnsubscribeRuntimeClearIfUnused(sourceAbilitySystem);
+        }
+
+        /// <summary>在第一次把外部 Tag 写入 ASC 后订阅其运行时清理事件。</summary>
+        /// <param name="abilitySystem">Tag 已应用到的 ASC。</param>
+        private void SubscribeRuntimeClear(GameplayAbilitySystemComponent abilitySystem)
+        {
+            if (runtimeClearSubscriptionSet.Add(abilitySystem))
+                abilitySystem.RuntimeCleared += HandleRuntimeCleared;
+        }
+
+        /// <summary>当 ASC 不再包含本桥接器来源时解除清理订阅。</summary>
+        /// <param name="abilitySystem">待检查 ASC。</param>
+        private void UnsubscribeRuntimeClearIfUnused(GameplayAbilitySystemComponent abilitySystem)
+        {
+            foreach (GameplayAbilitySystemComponent registeredAsc in ascBySourceKeyMap.Values)
+                if (ReferenceEquals(registeredAsc, abilitySystem)) return;
+            if (runtimeClearSubscriptionSet.Remove(abilitySystem))
+                abilitySystem.RuntimeCleared -= HandleRuntimeCleared;
+        }
+
+        /// <summary>ASC 清理时同步丢弃其外部 Tag 来源记录，不再对已清零容器执行 Remove。</summary>
+        /// <param name="abilitySystem">刚清除运行时的 ASC。</param>
+        private void HandleRuntimeCleared(GameplayAbilitySystemComponent abilitySystem)
+        {
+            var sourceKeys = new List<LooseGameplayTagSourceKey>();
+            foreach (KeyValuePair<LooseGameplayTagSourceKey, GameplayAbilitySystemComponent> source in ascBySourceKeyMap)
+                if (ReferenceEquals(source.Value, abilitySystem)) sourceKeys.Add(source.Key);
+            for (int index = 0; index < sourceKeys.Count; index++)
+                ascBySourceKeyMap.Remove(sourceKeys[index]);
+            if (runtimeClearSubscriptionSet.Remove(abilitySystem))
+                abilitySystem.RuntimeCleared -= HandleRuntimeCleared;
+            Debug.Log($"[LooseGameplayTagEventBridge] ASC '{abilitySystem.name}' 运行时已清理，外部 Tag 来源记录同步移除，count={sourceKeys.Count}。");
         }
 
         /// <summary>判断事件目标是否属于当前角色根对象层级。</summary>

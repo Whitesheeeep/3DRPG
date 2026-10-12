@@ -12,5 +12,8 @@ namespace WS_Modules.GAS.GameplayCue
         bool TryRemove(GameplayCueRuntime runtime);
         /// <summary>清理当前 Controller 的全部 Cue。</summary>
         void Clear();
+
+        /// <summary>清理全部 Active Cue 状态与视觉对象，但保留 Controller 请求订阅。</summary>
+        void ClearRuntime();
     }
 }

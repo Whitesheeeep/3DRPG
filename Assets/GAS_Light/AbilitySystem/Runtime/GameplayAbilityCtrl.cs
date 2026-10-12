@@ -17,11 +17,11 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         private readonly List<GameplayAbilityRuntime> activeRuntimes = new();
         // 三个 Unity 阶段复用稳定快照，避免 Runtime 在回调中结束或激活时破坏当前遍历。
         private readonly List<GameplayAbilityRuntime> runtimeSnapshot = new();
-        private readonly Dictionary<GameEffectRuntime, GameplayAbilityRuntime> cooldownOwners = new();
+        private readonly Dictionary<GameEffectRuntime, GameplayAbilityRuntime> cooldownOwnerByEffectRuntimeMap = new();
         // key：AbilityTag；value：所有 Active Runtime 对该阻断标签的引用总数。
         private readonly GameplayTagCountContainer blockedAbilityTags = new();
         // ASC 初始化时注入的统一阻断规则快照；Controller 不直接持有配置资产数组。
-        private GameplayTagQuery activationBlockedOwnerTags;
+        private readonly List<GameplayTagQuery> activationBlockedOwnerTagQueries = new();
         private int nextHandleId = 1;
         private int nextActivationId = 1;
         #endregion
@@ -61,10 +61,13 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// 初始化当前 ASC 的统一 Ability 激活阻断 Tag 快照。
         /// </summary>
         /// <param name="blockedOwnerTags">Owner 拥有任意一个即阻止新 Ability 激活的 Tag 集合。</param>
-        internal void InitializeActivationBlockedTags(GameplayTagQuery blockedOwnerTags)
+        internal void InitializeActivationBlockedTags(
+            GameplayTagQuery blockedOwnerTags,
+            GameplayTagQuery serializedOwnerTags)
         {
-            activationBlockedOwnerTags.Clear();
-            activationBlockedOwnerTags = blockedOwnerTags;
+            activationBlockedOwnerTagQueries.Clear();
+            AddActivationRuleSnapshot(blockedOwnerTags);
+            AddActivationRuleSnapshot(serializedOwnerTags);
         }
 
         /// <summary>接收 Active Runtime 的 BlockAbilityTags 差量并更新独立阻断计数。</summary>
@@ -205,6 +208,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             out GameplayAbilityRuntime runtime)
         {
             runtime = null;
+            if (Owner.IsClearingRuntime) return false;
             if (!TryGetAbilitySpec(handle, out GameplayAbilitySpec spec)) return false;
 
             WSLog.Log($"ASC {Owner.name} 尝试激活 Ability {spec.Data.name}，Handle={handle.Id}，Level={spec.Level}");
@@ -296,7 +300,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
             if (cooldownRuntime != null)
             {
                 // Cooldown Runtime 是独立于 Ability 生命周期的 GE，只保存关联关系供结束事件还原技能身份。
-                cooldownOwners.Add(cooldownRuntime, runtime);
+            cooldownOwnerByEffectRuntimeMap.Add(cooldownRuntime, runtime);
                 CooldownStarted?.Invoke(CreateCooldownEventArgs(runtime, cooldownRuntime));
             }
 
@@ -333,10 +337,18 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <inheritdoc />
         public void Clear()
         {
-            ForceCancelAll();
+            ClearRuntime();
             runtimeSnapshot.Clear();
             grantedAbilities.Clear();
-            activationBlockedOwnerTags.Clear();
+            activationBlockedOwnerTagQueries.Clear();
+            blockedAbilityTags.Reset();
+        }
+
+        /// <inheritdoc />
+        public void ClearRuntime()
+        {
+            ForceCancelAll();
+            runtimeSnapshot.Clear();
             blockedAbilityTags.Reset();
         }
 
@@ -356,7 +368,7 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <param name="effectRuntime">已经从 Owner ASC 移除的 GE Runtime。</param>
         private void OnEffectRemoved(GameEffectRuntime effectRuntime)
         {
-            if (!cooldownOwners.Remove(effectRuntime, out GameplayAbilityRuntime abilityRuntime))
+            if (!cooldownOwnerByEffectRuntimeMap.Remove(effectRuntime, out GameplayAbilityRuntime abilityRuntime))
                 return;
 
             CooldownEnded?.Invoke(CreateCooldownEventArgs(abilityRuntime, effectRuntime));
@@ -368,11 +380,35 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// 判断 Owner 是否拥有统一规则中任意一个 Ability 激活阻断 Tag。
         /// </summary>
         /// <returns>命中任意阻断 Tag 时返回 true。</returns>
-        private bool IsActivationBlockedByOwnerTags()
+        internal bool IsActivationBlockedByOwnerTags()
         {
-            // 统一阻断规则为空或无效时不阻断任何激活。
-            return activationBlockedOwnerTags is { IsEmpty: false, IsValid: true } &&
-                   activationBlockedOwnerTags.Matches(Owner.Tags);
+            for (int index = 0; index < activationBlockedOwnerTagQueries.Count; index++)
+            {
+                GameplayTagQuery query = activationBlockedOwnerTagQueries[index];
+                if (!query.IsEmpty && query.IsValid && query.Matches(Owner.Tags)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>复制并登记一份完整规则查询，多个来源按 OR 语义合并。</summary>
+        /// <param name="query">初始化参数或 ASC Inspector 提供的查询。</param>
+        private void AddActivationRuleSnapshot(GameplayTagQuery query)
+        {
+            if (query.IsEmpty) return;
+            if (!query.IsValid)
+                throw new InvalidOperationException($"[GameplayAbilityCtrl] ASC '{Owner.name}' 收到无效的全局 Ability 激活规则。");
+            activationBlockedOwnerTagQueries.Add(new GameplayTagQuery(
+                CopyTags(query.AllTags), CopyTags(query.AnyTags), CopyTags(query.BanedTags)));
+        }
+
+        /// <summary>把只读 Tag 序列复制为查询构造器所需数组。</summary>
+        /// <param name="tags">来源标签。</param>
+        /// <returns>不与 ScriptableObject 序列化数组共享的快照。</returns>
+        private static GameplayTag[] CopyTags(IReadOnlyList<GameplayTag> tags)
+        {
+            var copy = new GameplayTag[tags.Count];
+            for (int index = 0; index < tags.Count; index++) copy[index] = tags[index];
+            return copy;
         }
 
         // Cost/Cooldown 是序列化边界输入，运行时仍验证 Duration Policy。

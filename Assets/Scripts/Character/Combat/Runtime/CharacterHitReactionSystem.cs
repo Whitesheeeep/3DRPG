@@ -58,7 +58,7 @@ namespace RPG.Character
         /// <param name="result">由伤害管线按实际 Target ASC 直接路由的 Gameplay 伤害结果。</param>
         internal void ReceiveDamage(CombatDamageResult result)
         {
-            if (disposed || result?.EffectResult.Target != owner.AbilitySystemComponent ||
+            if (disposed || owner.IsDead || result?.EffectResult.Target != owner.AbilitySystemComponent ||
                 !result.HitSnapshot.HasValue || !result.HitSnapshot.Value.HasIncomingDirection ||
                 !owner.IsActiveCharacter)
                 return;

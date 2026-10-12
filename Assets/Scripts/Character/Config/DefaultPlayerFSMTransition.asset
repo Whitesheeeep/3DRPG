@@ -541,6 +541,15 @@ MonoBehaviour:
   walkReferenceSpeed: 1.287
   runReferenceSpeed: 2.8
   runFeetParameter: {fileID: 11400000, guid: 2e7a66094800e644e9d6bb724bdd7a80, type: 2}
+  deathTransition:
+    _FadeDuration: 0.15
+    _Speed: 1
+    _Events:
+      _NormalizedTimes: []
+      _Callbacks: []
+      _Names: []
+    _Clip: {fileID: 7400000, guid: 8461ff6633ba45142bc7e1e058afef3a, type: 2}
+    _NormalizedStartTime: NaN
   references:
     version: 2
     RefIds: []

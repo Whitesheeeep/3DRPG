@@ -110,6 +110,12 @@ namespace WS_Modules.GAS.GameplayCue
         /// <summary>清理全部 Active Handler 状态和仍存活的 Visual 对象。</summary>
         public void Clear()
         {
+            ClearRuntime();
+        }
+
+        /// <inheritdoc />
+        public void ClearRuntime()
+        {
             while (activeRecords.Count > 0)
                 ReleaseActiveRecord(activeRecords[activeRecords.Count - 1], false);
 

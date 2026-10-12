@@ -13,13 +13,14 @@ using UnityEngine;
 using WS_Modules.CustomEventSystem;
 using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.ResLoadModule;
+using WS_Modules.SceneModule;
 using WSEventSystem = WS_Modules.CustomEventSystem.EventSystem;
 
 namespace RPG.Character
 {
     /// <summary>管理角色配置的异步加载、原子队伍提交与当前角色阶段门禁。</summary>
     [DisallowMultipleComponent]
-    [InfoBox("CharacterConfig 指向的每个角色 Prefab 必须在根或子层级（含 inactive）中包含且仅包含一个 CharacterActor；Manager 递归查找该 Prefab 实例。运行时需由 PlayerController 注入 CharacterRoot、MotionDriver、PlayerController 和 PlayerStateBlackboard；actorContainer 可选，未绑定时挂到 CharacterRoot。角色 Prefab 地址由 CharacterConfig 提供并异步加载。")]
+    [InfoBox("CharacterConfig 指向的每个角色 Prefab 必须在根或子层级（含 inactive）中包含且仅包含一个 CharacterActor；Manager 递归查找该 Prefab 实例。运行时需由 PlayerController 注入 CharacterRoot、MotionDriver、PlayerController 和 PlayerStateBlackboard，并配置团灭恢复 SceneLoadConfig；actorContainer 可选，未绑定时挂到 CharacterRoot。角色 Prefab 地址由 CharacterConfig 提供并异步加载。")]
     public sealed class CharacterManager : MonoBehaviour, IGameplayAbilityTargetProvider
     {
         #region 配置字段
@@ -27,12 +28,14 @@ namespace RPG.Character
         [SerializeField] private Transform actorContainer;
         [SerializeField, CharacterIdDropdown] private CharacterId[] initialCharacterIds = Array.Empty<CharacterId>();
         [SerializeField, CharacterIdDropdown] private CharacterId initialCharacterId;
+        [SerializeField, Required, LabelText("团灭恢复场景")]
+        private SceneLoadConfig courtyardSceneConfig;
 
         #endregion
 
         #region 依赖字段
 
-        // 依赖字段：新入队 Actor 复用 Player 初始化时的稳定运行时依赖与业务 Manager。
+        // 依赖字段：新入队 Actor 复用 Player 初始化时的稳定运行时依赖与角色实例数据源。
         private CharacterPartyManager partyManager;
         private CharacterRosterManager rosterManager;
         private WeaponInventoryManager weaponInventoryManager;
@@ -41,6 +44,7 @@ namespace RPG.Character
         private PlayerController runtimePlayerController;
         private PlayerStateBlackboard runtimeBlackboard;
         private CancellationToken runtimeLifetimeToken;
+        private ICharacterPartyDefeatHandler partyDefeatHandler;
         #endregion
 
         #region 运行时状态
@@ -51,10 +55,15 @@ namespace RPG.Character
         private readonly List<string> loadedPrefabAddresses = new();
         // key：已准备 Actor；value：承载该 Actor 的实例化 Prefab 根对象，支持 Actor 位于子层级的 Prefab。
         private readonly Dictionary<CharacterActor, GameObject> instanceRootByCharacterActorMap = new();
+        private readonly HashSet<CharacterActor> deathCompletionSubscriptionSet = new();
+        private readonly HashSet<CharacterActor> deadActorSet = new();
+        private readonly HashSet<CharacterActor> queuedDeathCompletionSet = new();
+        private readonly Queue<CharacterActor> deathCompletionQueue = new();
         private CharacterInitializationState initializationState = CharacterInitializationState.Uninitialized;
         private bool cancellationRequested;
         // 队伍编辑事务标记，避免在异步加载期间重复发起请求。
         private bool partyEditInProgress;
+        private bool partyDefeatRecoveryInProgress;
         private IUnRegister rosterRestoredUnregister;
 
         // 固定槽位输入只在 Ready 阶段查询，不把 PlayerInputController 保存为 Manager 生命周期依赖。
@@ -102,6 +111,7 @@ namespace RPG.Character
         /// <summary>注册角色存档恢复校验事件。</summary>
         private void Awake()
         {
+            partyDefeatHandler = new CourtyardPartyDefeatHandler();
             rosterRestoredUnregister = WSEventSystem.Register_Type<CharacterRosterRestoredEvent>(
                 typeof(CharacterRosterRestoredEvent), HandleRosterRestored);
         }
@@ -138,6 +148,8 @@ namespace RPG.Character
                 runtimePlayerController = controller;
                 runtimeBlackboard = blackboard;
                 runtimeLifetimeToken = cancellationToken;
+                if (courtyardSceneConfig == null)
+                    throw new InvalidOperationException("[CharacterManager] 未配置团灭恢复使用的庭院 SceneLoadConfig。");
                 partyManager = GameArchitecture.Interface.GetManager<CharacterPartyManager>();
                 if (initialCharacterIds == null || initialCharacterIds.Length == 0)
                     throw new InvalidOperationException("[CharacterManager] 未配置初始 CharacterId。");
@@ -265,6 +277,11 @@ namespace RPG.Character
             runtimeMotionDriver = null;
             runtimePlayerController = null;
             runtimeBlackboard = null;
+            deathCompletionQueue.Clear();
+            deadActorSet.Clear();
+            queuedDeathCompletionSet.Clear();
+            deathCompletionSubscriptionSet.Clear();
+            partyDefeatHandler = null;
             initializationState = CharacterInitializationState.Destroyed;
         }
 
@@ -291,7 +308,11 @@ namespace RPG.Character
             int actorCount = instanceRootByCharacterActorMap.Count;
             foreach (KeyValuePair<CharacterActor, GameObject> actorAndRoot in instanceRootByCharacterActorMap)
             {
-                if (actorAndRoot.Key != null) actorAndRoot.Key.StopRuntime();
+                if (actorAndRoot.Key != null)
+                {
+                    UnsubscribeDeathCompletion(actorAndRoot.Key);
+                    actorAndRoot.Key.StopRuntime();
+                }
                 if (actorAndRoot.Value != null) Destroy(actorAndRoot.Value);
             }
             instanceRootByCharacterActorMap.Clear();
@@ -360,7 +381,8 @@ namespace RPG.Character
             CharacterActor target = Find(characterId);
             if (target == null) return CharacterSwitchStatus.CharacterNotFound;
             if (ReferenceEquals(target, ActiveCharacter)) return CharacterSwitchStatus.AlreadyActive;
-            if (target.IsBusy || ActiveCharacter != null && ActiveCharacter.IsBusy) return CharacterSwitchStatus.CharacterBusy;
+            if (target.IsDead || target.IsBusy || ActiveCharacter != null && ActiveCharacter.IsBusy)
+                return CharacterSwitchStatus.CharacterBusy;
             SwitchInternal(target);
             return CharacterSwitchStatus.Success;
         }
@@ -400,6 +422,11 @@ namespace RPG.Character
             {
                 Debug.LogWarning($"[CharacterManager] 队伍位置请求被拒绝，Manager 尚未 Ready，character={characterId}, slot={slotIndex}。", this);
                 return E_CharacterPartyEditStatus.NotReady;
+            }
+            if (ActiveCharacter != null && ActiveCharacter.IsDead)
+            {
+                Debug.LogWarning($"[CharacterManager] 死亡动画与团灭处理期间拒绝队伍编辑，character={ActiveCharacter.CharacterId}。", this);
+                return E_CharacterPartyEditStatus.CharacterBusy;
             }
             if (partyEditInProgress)
             {
@@ -639,6 +666,7 @@ namespace RPG.Character
                 instanceRootByCharacterActorMap.Add(actor, actorObject);
                 actor.BindRuntime(runtimeRoot, runtimeMotionDriver, runtimePlayerController, runtimeBlackboard,
                     instance, rosterManager, weaponInventoryManager);
+                SubscribeDeathCompletion(actor);
                 actor.InitializeFromInstance();
                 await actor.InitializeWeaponPresentationAsync();
                 if (this == null) throw new OperationCanceledException("CharacterManager 已销毁。");
@@ -661,6 +689,7 @@ namespace RPG.Character
         {
             if (!instanceRootByCharacterActorMap.TryGetValue(actor, out GameObject actorRoot))
                 throw new InvalidOperationException($"[CharacterManager] 缺少 Actor 根对象追踪记录：{actor.CharacterId}。");
+            UnsubscribeDeathCompletion(actor);
             actor.StopRuntime();
             instanceRootByCharacterActorMap.Remove(actor);
             if (actorRoot != null) Destroy(actorRoot);
@@ -735,6 +764,7 @@ namespace RPG.Character
         {
             if (actor != null && instanceRootByCharacterActorMap.Remove(actor))
             {
+                UnsubscribeDeathCompletion(actor);
                 actor.StopRuntime();
             }
 
@@ -779,6 +809,168 @@ namespace RPG.Character
 
         #endregion
 
+        #region 死亡切换与团灭恢复
+
+        /// <summary>订阅 Actor 死亡开始与动画完成通知，Manager 分别处理归零和交接阶段。</summary>
+        /// <param name="actor">属于当前队伍的角色 Actor。</param>
+        private void SubscribeDeathCompletion(CharacterActor actor)
+        {
+            if (!deathCompletionSubscriptionSet.Add(actor)) return;
+            actor.LifeStateChanged += HandleActorLifeStateChanged;
+            actor.DeathAnimationCompleted += HandleDeathAnimationCompleted;
+            Debug.Log($"[CharacterManager] 已订阅角色生命状态与死亡动画事件，character={actor.CharacterId}。", this);
+        }
+
+        /// <summary>角色离队、准备回滚或 Manager 销毁时解除死亡动画订阅。</summary>
+        /// <param name="actor">即将释放的角色 Actor。</param>
+        private void UnsubscribeDeathCompletion(CharacterActor actor)
+        {
+            if (!deathCompletionSubscriptionSet.Remove(actor)) return;
+            actor.LifeStateChanged -= HandleActorLifeStateChanged;
+            actor.DeathAnimationCompleted -= HandleDeathAnimationCompleted;
+            deadActorSet.Remove(actor);
+            queuedDeathCompletionSet.Remove(actor);
+            Debug.Log($"[CharacterManager] 已解除角色生命状态与死亡动画订阅，character={actor.CharacterId}。", this);
+        }
+
+        /// <summary>收到 Health 归零后的 Actor 生命状态事件，登记死亡角色并等待其表现阶段完成。</summary>
+        /// <param name="actor">状态变化的队伍角色。</param>
+        /// <param name="isDead">Actor 是否刚进入 Dead 状态。</param>
+        private void HandleActorLifeStateChanged(CharacterActor actor, bool isDead)
+        {
+            if (actor == null) return;
+            if (isDead)
+            {
+                deadActorSet.Add(actor);
+                Debug.Log($"[CharacterManager] 已收到角色生命归零事件，等待死亡动画完成后交接，character={actor.CharacterId}。", this);
+            }
+            else
+            {
+                deadActorSet.Remove(actor);
+                queuedDeathCompletionSet.Remove(actor);
+                Debug.Log($"[CharacterManager] 已收到角色复活事件，character={actor.CharacterId}。", this);
+            }
+        }
+
+        /// <summary>把自然结束的死亡动画排入 Manager 更新阶段，避免在 Animator 回调中重入队伍切换。</summary>
+        /// <param name="actor">刚完成死亡动画的角色。</param>
+        private void HandleDeathAnimationCompleted(CharacterActor actor)
+        {
+            if (actor == null || !actor.IsDead || !deadActorSet.Contains(actor) ||
+                !queuedDeathCompletionSet.Add(actor)) return;
+            deathCompletionQueue.Enqueue(actor);
+            Debug.Log($"[CharacterManager] 已排队处理死亡动画完成，character={actor.CharacterId}。", this);
+        }
+
+        /// <summary>在安全的角色输入阶段按队伍槽位顺序处理死亡动画完成。</summary>
+        private void ProcessPendingDeathCompletions()
+        {
+            if (partyDefeatRecoveryInProgress) return;
+            while (deathCompletionQueue.Count > 0)
+            {
+                CharacterActor defeatedActor = deathCompletionQueue.Dequeue();
+                queuedDeathCompletionSet.Remove(defeatedActor);
+                if (defeatedActor == null || !defeatedActor.IsDead ||
+                    !ReferenceEquals(defeatedActor, ActiveCharacter))
+                    continue;
+
+                CharacterActor nextLivingActor = FindNextLivingPartyActor(defeatedActor);
+                if (nextLivingActor != null)
+                {
+                    Debug.Log($"[CharacterManager] 死亡角色动画结束，按队伍顺序切换到下一名存活角色，" +
+                              $"previous={defeatedActor.CharacterId}, next={nextLivingActor.CharacterId}。", this);
+                    SwitchInternal(nextLivingActor);
+                    return;
+                }
+
+                partyDefeatRecoveryInProgress = true;
+                Debug.LogWarning("[CharacterManager] 队伍成员全部死亡，等待死亡动画结束后开始庭院恢复流程。", this);
+                RunPartyDefeatHandlerAsync().Forget(HandlePartyDefeatHandlerFailure);
+                return;
+            }
+        }
+
+        /// <summary>从死亡角色当前队伍槽位向后循环，取得第一名有效的存活 Actor。</summary>
+        /// <param name="defeatedActor">刚完成死亡动画的 Active Actor。</param>
+        /// <returns>找到时返回下一名存活角色，否则返回空。</returns>
+        private CharacterActor FindNextLivingPartyActor(CharacterActor defeatedActor)
+        {
+            IReadOnlyList<CharacterId> partySnapshot = partyManager.CreateSnapshot();
+            int activeSlotIndex = -1;
+            for (int slotIndex = 0; slotIndex < partySnapshot.Count; slotIndex++)
+                if (partySnapshot[slotIndex] == defeatedActor.CharacterId)
+                {
+                    activeSlotIndex = slotIndex;
+                    break;
+                }
+            if (activeSlotIndex < 0) return null;
+
+            for (int offset = 1; offset < partySnapshot.Count; offset++)
+            {
+                CharacterId candidateId = partySnapshot[(activeSlotIndex + offset) % partySnapshot.Count];
+                CharacterActor candidate = candidateId.IsValid ? Find(candidateId) : null;
+                if (candidate != null && !candidate.IsDead && !deadActorSet.Contains(candidate)) return candidate;
+            }
+            return null;
+        }
+
+        /// <summary>通过可替换接口执行团灭处理，并在恢复策略成功后重新允许后续团灭流程。</summary>
+        /// <returns>选定的团灭恢复策略完成后的异步流程。</returns>
+        private async UniTask RunPartyDefeatHandlerAsync()
+        {
+            ICharacterPartyDefeatHandler handler = partyDefeatHandler ??
+                throw new InvalidOperationException("[CharacterManager] 团灭恢复接口未配置处理器。");
+            await handler.HandlePartyDefeatedAsync(this, runtimeLifetimeToken);
+            if (this == null || runtimeLifetimeToken.IsCancellationRequested) return;
+            partyDefeatRecoveryInProgress = false;
+            Debug.Log("[CharacterManager] 团灭恢复处理完成，队伍控制流程已恢复。", this);
+        }
+
+        /// <summary>加载配置的庭院后恢复所有死亡 Actor 的装备效果与满生命值。</summary>
+        /// <param name="cancellationToken">Player 生命周期取消令牌。</param>
+        /// <returns>场景加载与队伍复活流程。</returns>
+        internal async UniTask RecoverDefeatedPartyAtCourtyardAsync(CancellationToken cancellationToken)
+        {
+            if (courtyardSceneConfig == null)
+                throw new InvalidOperationException("[CharacterManager] 团灭恢复缺少庭院 SceneLoadConfig。");
+
+            await GameArchitecture.Interface.GetSystem<SceneLoadingSystem>()
+                .LoadAsync(courtyardSceneConfig, cancellationToken);
+            if (this == null || cancellationToken.IsCancellationRequested) return;
+
+            // 装备绑定由 Actor 先恢复，随后才读取包含装备加成的最终 MaxHealth。
+            for (int index = 0; index < characterActors.Count; index++)
+                if (characterActors[index] != null && characterActors[index].IsDead)
+                    characterActors[index].LifeStateMachine.ReviveToFullHealth();
+        }
+
+        /// <summary>记录异步团灭恢复失败；不在下一帧无条件重试场景加载。</summary>
+        /// <param name="exception">场景或复活流程异常。</param>
+        private void HandlePartyDefeatHandlerFailure(Exception exception)
+        {
+            Debug.LogError($"[CharacterManager] 团灭恢复流程失败，恢复门禁保持关闭：{exception}", this);
+        }
+
+        /// <summary>由游戏流程在运行时显式替换团灭恢复策略。</summary>
+        /// <param name="handler">处理所有角色死亡后的场景和复活流程。</param>
+        public void SetPartyDefeatHandler(ICharacterPartyDefeatHandler handler)
+        {
+            partyDefeatHandler = handler ?? throw new ArgumentNullException(nameof(handler));
+            Debug.Log("[CharacterManager] 已替换团灭恢复策略。", this);
+        }
+
+        /// <summary>默认策略：返回配置庭院，并调用 Manager 按装备后的 MaxHealth 复活成员。</summary>
+        private sealed class CourtyardPartyDefeatHandler : ICharacterPartyDefeatHandler
+        {
+            /// <inheritdoc />
+            public UniTask HandlePartyDefeatedAsync(
+                CharacterManager manager,
+                CancellationToken cancellationToken) =>
+                manager.RecoverDefeatedPartyAtCourtyardAsync(cancellationToken);
+        }
+
+        #endregion
+
         #region 阶段门禁
 
         /// <summary>推进全部角色 ASC；未 Ready 时静默不推进。</summary>
@@ -789,18 +981,18 @@ namespace RPG.Character
             for (int index = 0; index < characterActors.Count; index++) characterActors[index].TickAbility(deltaTime);
         }
 
-        /// <summary>推进当前角色输入与 Locomotion；未 Ready 时不消费输入。</summary>
+        /// <summary>将当前角色普通帧交给生命状态机；未 Ready 时不消费输入。</summary>
         /// <param name="inputRequests">输入请求缓冲区。</param>
         /// <param name="deltaTime">本帧缩放时间。</param>
         internal void AdvanceActiveFrame(IPlayerInputRequestBuffer inputRequests, float deltaTime)
         {
             if (!IsReady) return;
             if (inputRequests == null) throw new ArgumentNullException(nameof(inputRequests));
+            ProcessPendingDeathCompletions();
+            if (partyDefeatRecoveryInProgress) return;
             CharacterActor active = ActiveCharacter ?? throw new InvalidOperationException("[CharacterManager] Ready 状态缺少 ActiveCharacter。");
-            if (active.IsActionPaused) return;
-            // Action Arbiter 必须先于 Locomotion Tick；Jump 取消 GA 后，本帧原有 FSM Transition 即可提交目标路径。
-            active.AdvanceActionFrame(inputRequests, deltaTime);
-            active.Locomotion.Tick(deltaTime);
+            // 生命 FSM 在 Alive 分支内先仲裁动作，再推进其 Locomotion 子状态机；Dead 分支不消费玩家输入。
+            active.LifeStateMachine.Tick(inputRequests, deltaTime);
         }
 
         /// <summary>推进当前角色物理阶段；未 Ready 时返回 false，阻止 MotionDriver 结算。</summary>
@@ -810,20 +1002,17 @@ namespace RPG.Character
         {
             if (!IsReady) return false;
             CharacterActor active = ActiveCharacter ?? throw new InvalidOperationException("[CharacterManager] Ready 状态缺少 ActiveCharacter。");
-            if (active.IsActionPaused) return false;
-            active.FixedTickAbility(fixedDeltaTime);
-            active.Locomotion.FixedTick(fixedDeltaTime);
-            return true;
+            return active.LifeStateMachine.FixedTick(fixedDeltaTime);
         }
 
-        /// <summary>推进全队 ASC 和当前 Locomotion 延迟阶段；未 Ready 时静默返回。</summary>
+        /// <summary>推进全队 ASC，并将当前角色 Late 阶段交给生命状态机；未 Ready 时静默返回。</summary>
         /// <param name="deltaTime">本帧缩放时间。</param>
         internal void AdvanceLateFrame(float deltaTime)
         {
             if (!IsReady) return;
             for (int index = 0; index < characterActors.Count; index++) characterActors[index].LateTickAbility(deltaTime);
             CharacterActor active = ActiveCharacter ?? throw new InvalidOperationException("[CharacterManager] Ready 状态缺少 ActiveCharacter。");
-            if (!active.IsActionPaused) active.Locomotion.LateTick(deltaTime);
+            active.LifeStateMachine.LateTick(deltaTime);
         }
 
         /// <summary>处理角色槽位输入；Loading/Failed 阶段不消费缓冲请求。</summary>
@@ -844,7 +1033,7 @@ namespace RPG.Character
             }
         }
 
-        /// <summary>推进当前角色 Animator 阶段；未 Ready 或来源非当前角色时返回 false。</summary>
+        /// <summary>将当前角色 Animator 阶段交给生命状态机；未 Ready 或来源非当前角色时返回 false。</summary>
         /// <param name="source">产生 AnimatorMove 的角色。</param>
         /// <param name="deltaPosition">根位移增量。</param>
         /// <param name="deltaRotation">根旋转增量。</param>
@@ -852,10 +1041,9 @@ namespace RPG.Character
         /// <returns>角色阶段实际推进时返回 true。</returns>
         internal bool TryAdvanceAnimatorStep(CharacterActor source, Vector3 deltaPosition, Quaternion deltaRotation, float evaluationDeltaTime)
         {
-            if (!IsReady || !ReferenceEquals(source, ActiveCharacter) || source.IsActionPaused) return false;
-            source.UpdateAnimationMoveAbility(deltaPosition, deltaRotation);
-            source.Locomotion.UpdateAnimationMove(deltaPosition, deltaRotation, evaluationDeltaTime);
-            return true;
+            if (!IsReady || !ReferenceEquals(source, ActiveCharacter))
+                return false;
+            return source.LifeStateMachine.UpdateAnimationMove(deltaPosition, deltaRotation, evaluationDeltaTime);
         }
 
         #endregion

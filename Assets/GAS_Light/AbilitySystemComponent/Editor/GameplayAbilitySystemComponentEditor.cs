@@ -16,7 +16,7 @@ using WS_Modules.UIModule.Editor;
 namespace WS_Modules.GAS.AbilitySystemComponent
 {
     /// <summary>
-    /// 在 ASC Inspector 中以只读方式展示当前 Gameplay Ability System 的运行时状态。
+    /// 在 ASC Inspector 中编辑激活规则，并以只读方式展示 Gameplay Ability System 的运行时状态。
     /// </summary>
     [CustomEditor(typeof(GameplayAbilitySystemComponent))]
     [CanEditMultipleObjects]
@@ -80,6 +80,7 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         {
             refreshSchedule?.Pause();
             refreshSchedule = null;
+            root?.Unbind();
             root = null;
             asc = null;
         }
@@ -95,8 +96,11 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         {
             if (root == null || asc == null) return;
 
+            // 运行时快照会定时重建；先释放旧 SerializedObject 绑定，避免旧树继续写入。
+            root.Unbind();
             root.Clear();
             root.Add(CreateHeader());
+            root.Add(CreateActivationRulesConfiguration());
 
             if (!Application.isPlaying)
             {
@@ -149,14 +153,39 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             return section;
         }
 
-        /// <summary>创建 Inspector 顶部标题和只读用途说明。</summary>
+        /// <summary>使用原生序列化字段编辑 ASC 的统一 Ability 激活阻断规则。</summary>
+        /// <returns>规则资产引用、运行时只读状态和合并语义说明。</returns>
+        private VisualElement CreateActivationRulesConfiguration()
+        {
+            var section = new VisualElement();
+            section.Add(new Label("Ability Activation Rules") { name = "gas-activation-rules-title" });
+            section.Add(new HelpBox(
+                "该规则会与初始化传入的规则共同生效；任一阻断查询匹配 Owner Tags 时都会拒绝 Ability 激活。ASC 在初始化时读取该配置，运行中修改需重新初始化后生效。",
+                HelpBoxMessageType.Info));
+
+            SerializedProperty property = serializedObject.FindProperty("activationRules");
+            if (property == null)
+            {
+                section.Add(new HelpBox("未找到 Ability Activation Rules 配置字段。", HelpBoxMessageType.Error));
+                return section;
+            }
+
+            var propertyField = new PropertyField(property, "Activation Rules");
+            // ASC 初始化后使用的是规则快照，运行中改引用不会改变当前阻断策略。
+            propertyField.SetEnabled(!Application.isPlaying);
+            section.Add(propertyField);
+            section.Bind(serializedObject);
+            return section;
+        }
+
+        /// <summary>创建 Inspector 顶部标题和配置／运行时用途说明。</summary>
         /// <returns>Inspector 标题元素。</returns>
         private VisualElement CreateHeader()
         {
             var header = new VisualElement();
             header.AddToClassList("gas-header");
             header.Add(new Label("Gameplay Ability System Component") { name = "gas-title" });
-            header.Add(new Label("Runtime snapshot · Read Only") { name = "gas-subtitle" });
+            header.Add(new Label("Activation Rules · Runtime snapshot") { name = "gas-subtitle" });
             return header;
         }
 

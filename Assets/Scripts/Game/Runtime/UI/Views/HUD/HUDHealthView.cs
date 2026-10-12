@@ -57,16 +57,18 @@ namespace RPG.Game.UI.Views.HUD
 
         #region 状态刷新
 
-        /// <summary>刷新底部 Active 角色的等级与 ASC 血量。</summary>
+        /// <summary>刷新底部 Active 角色的等级、ASC 血量及死亡状态。</summary>
         /// <param name="level">Active 角色等级。</param>
         /// <param name="health">Active ASC 当前生命值。</param>
         /// <param name="maxHealth">Active ASC 生命值上限。</param>
-        public void SetActiveCharacter(int level, float health, float maxHealth)
+        /// <param name="isDead">Active 角色是否已经死亡。</param>
+        public void SetActiveCharacter(int level, float health, float maxHealth, bool isDead)
         {
             activeRootObject.SetActive(true);
             activeLevelText.text = $"Lv.{level}";
             activeHealthFillImage.fillAmount = GetHealthRatio(health, maxHealth);
             activeHealthText.text = $"{FormatHealth(health)} / {FormatHealth(maxHealth)}";
+            activeHealthText.color = isDead ? new Color(1f, 0.35f, 0.35f, 1f) : Color.white;
         }
 
         /// <summary>将当前角色数据绑定到固定队伍槽位。</summary>
@@ -76,15 +78,17 @@ namespace RPG.Game.UI.Views.HUD
         /// <param name="health">ASC 当前生命值。</param>
         /// <param name="maxHealth">ASC 生命值上限。</param>
         /// <param name="isActive">槽位角色是否为当前 Active 角色。</param>
+        /// <param name="isDead">槽位角色是否已经死亡。</param>
         public void SetPartySlot(
             int slotIndex,
             string characterName,
             Sprite portrait,
             float health,
             float maxHealth,
-            bool isActive)
+            bool isActive,
+            bool isDead)
         {
-            partySlotViews[slotIndex].Bind(characterName, portrait, health, maxHealth, isActive);
+            partySlotViews[slotIndex].Bind(characterName, portrait, health, maxHealth, isActive, isDead);
         }
 
         /// <summary>隐藏指定空槽，清除上次绑定的名称、头像和血条填充。</summary>
@@ -99,6 +103,7 @@ namespace RPG.Game.UI.Views.HUD
         {
             activeLevelText.text = string.Empty;
             activeHealthText.text = string.Empty;
+            activeHealthText.color = Color.white;
             activeHealthFillImage.fillAmount = 0f;
             activeRootObject.SetActive(false);
             for (int slotIndex = 0; slotIndex < partySlotViews.Length; slotIndex++)

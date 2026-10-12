@@ -5,6 +5,7 @@ using System.Text;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using WS_Modules.BusinessArchitecture;
+using WS_Modules.CustomEventSystem;
 using WS_Modules.LogModule;
 using WSEventSystem = WS_Modules.CustomEventSystem.EventSystem;
 
@@ -61,6 +62,7 @@ namespace WS_Modules.BusinessArchitecture.Tests
             RunScenario("Query 读取状态", TestQueryRead, false);
             RunScenario("事件桥接", TestEventBridge, false);
             RunScenario("手动注销事件", TestManualUnregisterEvent, false);
+            RunScenario("IUnRegisterList 批量注销", TestUnRegisterList, false);
             RunScenario("Deinit 顺序与重建", TestDeinitOrder, false);
 
             LogStep($"全部测试完成：通过={passedCount}, 失败={failedCount}");
@@ -137,6 +139,15 @@ namespace WS_Modules.BusinessArchitecture.Tests
         public void RunManualUnregisterEventTest()
         {
             RunScenario("手动注销事件", TestManualUnregisterEvent, true);
+        }
+
+        /// <summary>
+        /// 验证 UnRegisterList 能批量注销订阅、重复清理并在清空后继续复用。
+        /// </summary>
+        [Button("测试：IUnRegisterList 批量注销")]
+        public void RunUnRegisterListTest()
+        {
+            RunScenario("IUnRegisterList 批量注销", TestUnRegisterList, true);
         }
 
         /// <summary>
@@ -306,6 +317,37 @@ namespace WS_Modules.BusinessArchitecture.Tests
             architecture.SendEvent<TestBusinessEvent>();
 
             Check(receivedCount == 0, "UnRegisterEvent 后 handler 没有被触发");
+        }
+
+        /// <summary>
+        /// 通过真实 IUnRegister 句柄验证批量注销容器的清理和复用行为。
+        /// </summary>
+        private void TestUnRegisterList()
+        {
+            var unregisterList = new UnRegisterListContainer();
+            int firstUnregisterCount = 0;
+            int secondUnregisterCount = 0;
+            new CustomUnRegister(() => firstUnregisterCount++)
+                .AddToUnregisterList(unregisterList);
+            new CustomUnRegister(() => secondUnregisterCount++)
+                .AddToUnregisterList(unregisterList);
+
+            unregisterList.UnRegisterAll();
+            Check(firstUnregisterCount == 1 && secondUnregisterCount == 1,
+                "一次 UnRegisterAll 会注销集合中的每个句柄");
+            Check(unregisterList.UnRegisterList.Count == 0,
+                "批量注销后集合已清空");
+
+            unregisterList.UnRegisterAll();
+            Check(firstUnregisterCount == 1 && secondUnregisterCount == 1,
+                "空集合重复批量注销无额外副作用");
+
+            int reusedUnregisterCount = 0;
+            new CustomUnRegister(() => reusedUnregisterCount++)
+                .AddToUnregisterList(unregisterList);
+            unregisterList.UnRegisterAll();
+            Check(reusedUnregisterCount == 1 && unregisterList.UnRegisterList.Count == 0,
+                "清空后的集合可以再次加入并注销新句柄");
         }
 
         private void TestDeinitOrder()

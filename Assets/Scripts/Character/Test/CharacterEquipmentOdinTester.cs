@@ -4,11 +4,12 @@ using RPG.Game;
 using RPG.ItemSystem;
 using Sirenix.OdinInspector;
 using UnityEngine;
+using WS_Modules.GAS.GameplayEffect;
 
 namespace RPG.Character
 {
-    /// <summary>通过 Odin Inspector 手动验证角色获得、角色武器保障与武器双分区容量契约。</summary>
-    [InfoBox("依赖 GameArchitectureStartup、CharacterDatabaseConfigProvider、ItemDatabaseConfigProvider 和 WeaponInventorySettingsProvider 已完成初始化；按钮只调用正式角色拥有与角色武器业务 API。")]
+    /// <summary>通过 Odin Inspector 手动验证角色获得、装备库存契约及装备 GE 的 ASC 绑定结果。</summary>
+    [InfoBox("依赖 GameArchitectureStartup、角色与装备数据库、库存配置及 PlayerController 已完成初始化；可通过按钮查看角色 ASC 实际持有的 Active GE Runtime。")]
     public sealed class CharacterEquipmentOdinTester : MonoBehaviour
     {
         #region 测试参数
@@ -156,6 +157,33 @@ namespace RPG.Character
             Debug.Log($"[CharacterEquipmentTester] equip status={result.Status}, character={targetCharacterId}, " +
                       $"instance={storedInstances[0].InstanceId}。", this);
             LogPartitionSnapshot();
+        }
+
+        /// <summary>读取目标队伍 Actor 的 ASC Active GE，验证装备效果确实进入战斗属性运行时。</summary>
+        [Button("输出目标角色 ASC Active GE")]
+        public void LogTargetActorActiveEffects()
+        {
+            PlayerController playerController = PlayerController.Instance;
+            CharacterActor actor = playerController != null
+                ? playerController.CharacterManager?.Find(targetCharacterId)
+                : null;
+            if (actor == null)
+            {
+                Debug.LogWarning(
+                    $"[CharacterEquipmentTester] 当前 Player 中未找到目标角色 Actor，character={targetCharacterId}。", this);
+                return;
+            }
+
+            IReadOnlyList<GameEffectRuntime> activeEffects = actor.AbilitySystemComponent.ActiveEffects;
+            Debug.Log($"[CharacterEquipmentTester] 角色 ASC Active GE 数量={activeEffects.Count}, " +
+                      $"character={targetCharacterId}, isDead={actor.IsDead}。", this);
+            for (int index = 0; index < activeEffects.Count; index++)
+            {
+                GameEffectRuntime runtime = activeEffects[index];
+                Debug.Log($"[CharacterEquipmentTester] ASC GE[{index}] effect={runtime.Data.name}, " +
+                          $"level={runtime.Level}, stack={runtime.StackCount}, " +
+                          $"remaining={runtime.RemainingDuration:F2}, isActive={runtime.IsActive}。", this);
+            }
         }
 
         #endregion

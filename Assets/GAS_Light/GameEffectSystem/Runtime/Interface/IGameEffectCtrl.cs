@@ -67,5 +67,8 @@ namespace WS_Modules.GAS.GameplayEffect
 
         /// <summary>移除全部 Active GE，并清理其 Modifier 与 GrantedTags。</summary>
         void Clear();
+
+        /// <summary>移除全部 Active GE Runtime，并保留 Controller 的事件订阅。</summary>
+        void ClearRuntime();
     }
 }

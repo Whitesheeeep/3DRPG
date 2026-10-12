@@ -1204,9 +1204,7 @@ namespace RPG.NPC
                 !ability.ActivationTagQuery.Matches(abilitySystemComponent.Tags))
                 return false;
 
-            GameplayTagQuery blockedOwnerTags = config.ActivationRules.ActivationBlockedOwnerTags;
-            if (blockedOwnerTags is { IsEmpty: false, IsValid: true } &&
-                blockedOwnerTags.Matches(abilitySystemComponent.Tags))
+            if (abilitySystemComponent.IsAbilityActivationBlockedByOwnerTags)
                 return false;
 
             IReadOnlyList<GameplayAbilityRuntime> activeAbilities = abilitySystemComponent.ActiveAbilities;

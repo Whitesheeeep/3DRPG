@@ -14,7 +14,7 @@ using WS_Modules.GAS.GameplayAbilitySystem;
 
 namespace RPG.Character
 {
-    /// <summary>封装一个角色独立的战斗、能力、动画、挂点和 Locomotion 状态。</summary>
+    /// <summary>封装单个角色的战斗与能力运行时，并将生命状态和 Locomotion 阶段交给生命 FSM。</summary>
     [RequireComponent(typeof(Animator))]
     [InfoBox("依赖 CharacterConfig、同节点 Humanoid Animator、AnimationController 和 WeaponRigController，以及同节点或子节点中的 ASC、MarkerProvider、SkillRuntimeHost、CharacterWeaponPresentationController；武器表现由 CharacterManager 注入 Roster/WeaponInventory，武器姿态由技能 Task 通过 Owner.WeaponSwitch 驱动；Config 提供角色属性、战斗与 Locomotion 参数，子树 Renderer 用于隐藏后台角色。")]
     public sealed class CharacterActor : CharacterAbilityActor, IGameplayAbilityTargetProvider, ICombatDamageReceiver
@@ -27,7 +27,6 @@ namespace RPG.Character
         [NonSerialized] private Transform leftFoot;
         [NonSerialized] private Transform rightFoot;
         [NonSerialized] private bool footBonesCached;
-        private CharacterLocomotionStateMachine locomotion = new();
 
         // 战斗、实例和成长运行时在 CharacterManager 绑定 CharacterInstance 后初始化。
         private readonly CharacterCombatSystem combatSystem = new();
@@ -35,6 +34,8 @@ namespace RPG.Character
         private CharacterHitReactionSystem hitReactionSystem;
         private CharacterInstance instance;
         private CharacterRuntimeAttributeBinding runtimeAttributeBinding;
+        private CharacterEquipmentEffectBinding equipmentEffectBinding;
+        private CharacterLifeStateMachine lifeStateMachine;
         private readonly CharacterAttributeProgressionResolver progressionResolver = new();
         // 该句柄让 Actor 在离队、初始化回滚或销毁时释放自己的 ASC 伤害路由。
         private IDisposable damageReceiverRegistration;
@@ -76,14 +77,21 @@ namespace RPG.Character
                        RootTransform.InverseTransformPoint(rightFoot.position).z;
             }
         }
-        /// <summary>获取当前角色 Locomotion FSM。</summary>
-        public CharacterLocomotionStateMachine Locomotion => locomotion;
+        /// <summary>获取 Alive 状态持有的 Locomotion 子状态机。</summary>
+        public CharacterLocomotionStateMachine Locomotion => LifeStateMachine.Locomotion;
+        /// <summary>获取当前 Actor 的生命状态机。</summary>
+        internal CharacterLifeStateMachine LifeStateMachine => lifeStateMachine ??
+            throw new InvalidOperationException($"角色 '{name}' 尚未初始化生命状态机。");
+        /// <summary>向 Dead 状态提供角色动画控制器，不将动画生命周期逻辑放回 Actor。</summary>
+        internal AnimationController LifeAnimationController => animationController;
         /// <summary>获取当前 Actor 是否正在场上并代表玩家接受操控。</summary>
         public bool IsActiveCharacter => isActiveCharacter;
+        /// <summary>获取当前角色是否已进入死亡层。</summary>
+        public bool IsDead => lifeStateMachine?.IsDead ?? false;
         /// <summary>获取稳定 Player 共享的输入状态黑板。</summary>
         public PlayerStateBlackboard StateBlackboard => stateBlackboard;
         /// <summary>当角色仍有活动能力时，角色切换应直接拒绝。</summary>
-        public bool IsBusy => AbilitySystemComponent.ActiveAbilities.Count > 0;
+        public bool IsBusy => IsDead || AbilitySystemComponent.ActiveAbilities.Count > 0;
         /// <inheritdoc />
         public override Transform RootTransform => characterRoot != null ? characterRoot : transform;
         /// <inheritdoc />
@@ -94,10 +102,16 @@ namespace RPG.Character
         /// <summary>获取当前 FullBody Runtime，供同步受击解析读取当前 Phase 的取消窗口。</summary>
         internal GameplayAbilityRuntime CurrentFullBodyRuntime => actionArbiter?.CurrentFullBodyRuntime;
 
+        /// <summary>当死亡状态变化后通知 HUD 和其他角色表现订阅者。</summary>
+        public event Action<CharacterActor, bool> LifeStateChanged;
+
+        /// <summary>当前 Active 角色的死亡动画播放结束后通知队伍管理器。</summary>
+        public event Action<CharacterActor> DeathAnimationCompleted;
+
         /// <inheritdoc />
         public GameplayAbilitySystemComponent TryGetTargetASC()
         {
-            if (!isActiveAndEnabled || !runtimeConfigurationInitialized || !isActiveCharacter)
+            if (!isActiveAndEnabled || !runtimeConfigurationInitialized || !isActiveCharacter || IsDead)
                 return null;
 
             return abilitySystemComponent;
@@ -170,8 +184,8 @@ namespace RPG.Character
         /// 在角色进入第一帧控制前完成 AttributeSet 导入与初始 Ability 授予。
         /// </summary>
         /// <remarks>
-        /// PlayerController 在自己的 Start 中显式调用该方法，保证所有 ASC 已完成 Awake，
-        /// 再激活可能读取 GAS Speed 的 Locomotion；CharacterActor.Start 会再次调用但不会重复授予。
+        /// PlayerController 在自己的 Start 中显式调用该方法，保证 ASC 完成初始化，
+        /// 再组装可能读取 GAS Speed 的生命与 Locomotion 状态；CharacterActor.Start 会幂等兜底。
         /// </remarks>
         internal void InitializeFromInstance()
         {
@@ -181,15 +195,18 @@ namespace RPG.Character
             InitializeAttributesFromInstance();
             runtimeAttributeBinding = new CharacterRuntimeAttributeBinding(instance, abilitySystemComponent, progressionResolver);
             combatSystem.Initialize(abilitySystemComponent, instance.Config.CombatConfig, stateBlackboard);
+            equipmentEffectBinding = new CharacterEquipmentEffectBinding(instance, abilitySystemComponent);
+            lifeStateMachine = new CharacterLifeStateMachine(this, playerController, equipmentEffectBinding);
             actionArbiter = new CharacterActionArbiter(
                 this,
                 stateBlackboard,
                 combatSystem,
                 abilitySystemComponent,
-                locomotion.GroundedJumpTransitionQueryService);
+                lifeStateMachine.Locomotion.GroundedJumpTransitionQueryService);
             hitReactionSystem = new CharacterHitReactionSystem(this, combatSystem);
             damageReceiverRegistration = CombatDamagePipeline.RegisterReceiver(abilitySystemComponent, this);
             runtimeConfigurationInitialized = true;
+            lifeStateMachine.Initialize();
         }
 
         /// <summary>注销伤害接收并释放当前 Actor 的实例绑定、战斗运行时与表现资源。</summary>
@@ -205,10 +222,15 @@ namespace RPG.Character
             if (isActiveCharacter)
                 OnExit();
 
+            lifeStateMachine?.Dispose();
+            lifeStateMachine = null;
+
             weaponPresentationController.PresentationModelChanged -= HandleWeaponPresentationModelChanged;
             weaponPresentationController.StopRuntime();
             hitReactionSystem?.Dispose();
             hitReactionSystem = null;
+            equipmentEffectBinding?.Dispose();
+            equipmentEffectBinding = null;
             runtimeAttributeBinding?.Dispose();
             runtimeAttributeBinding = null;
             actionArbiter?.Dispose();
@@ -234,7 +256,7 @@ namespace RPG.Character
             hitReactionSystem.ReceiveDamage(result);
         }
 
-        /// <summary>将该 Actor 设置为当前操控角色，并按 Player 控制门禁启动 Locomotion。</summary>
+        /// <summary>将该 Actor 设置为当前操控角色，并把进入生命周期交给生命 FSM。</summary>
         /// <exception cref="InvalidOperationException">角色运行时尚未初始化或切换顺序违反 Manager 契约时抛出。</exception>
         internal void OnEnter()
         {
@@ -243,16 +265,15 @@ namespace RPG.Character
             if (!runtimeConfigurationInitialized)
                 throw new InvalidOperationException($"CharacterActor '{name}' 尚未初始化，不能进入操控状态。");
 
-            // 先切换共享 MotionDriver 的 Owner；Locomotion.Activate 会立即申请运动控制权。
-            bool activateLocomotion = playerController.PrepareCharacterEntry(this);
+            // 先切换共享 MotionDriver Owner，再由当前生命状态决定是否启动其子状态。
+            bool allowControl = playerController.PrepareCharacterEntry(this);
             isActiveCharacter = true;
             try
             {
                 SetActivePresentation(true);
-                if (activateLocomotion)
-                    locomotion.Activate();
+                lifeStateMachine.OnActorEntered(allowControl);
                 Debug.Log(
-                    $"[CharacterActor] 角色进入操控状态，character={CharacterId}, locomotionActivated={activateLocomotion}。",
+                    $"[CharacterActor] 角色进入操控状态，character={CharacterId}, isDead={lifeStateMachine.IsDead}, controlAllowed={allowControl}。",
                     this);
             }
             catch
@@ -269,9 +290,9 @@ namespace RPG.Character
             if (!isActiveCharacter)
                 return;
 
-            // 先退出 Locomotion，再清理 Owner 的剩余运动请求，最后隐藏角色表现。
+            // 先让当前生命状态释放子状态资源，再清理 Owner 的剩余运动请求并隐藏角色表现。
+            lifeStateMachine?.OnActorExited();
             isActiveCharacter = false;
-            locomotion.Deactivate();
             if (playerController != null)
                 playerController.ReleaseCharacterControl(this);
             combatSystem.ResetCombo();
@@ -279,7 +300,7 @@ namespace RPG.Character
             Debug.Log($"[CharacterActor] 角色退出操控状态，character={CharacterId}。", this);
         }
 
-        /// <summary>把稳定角色实例、Roster/武器库存及 Player 运动依赖注入角色。</summary>
+        /// <summary>绑定角色实例和运动依赖，并初始化武器表现所需的数据源。</summary>
         /// <param name="root">所有队伍角色共享的空间根节点。</param>
         /// <param name="driver">GAS 与 Locomotion 共用的请求接口。</param>
         /// <param name="controller">负责驱动当前角色 AnimatorMove 的稳定 PlayerController。</param>
@@ -304,9 +325,9 @@ namespace RPG.Character
             instance = characterInstance ?? throw new ArgumentNullException(nameof(characterInstance));
             if (instance.Config.CharacterId != config.CharacterId)
                 throw new InvalidOperationException($"CharacterActor '{name}' 的 Prefab Config 与 CharacterInstance 不一致。");
+            if (rosterManager == null) throw new ArgumentNullException(nameof(rosterManager));
+            if (weaponInventoryManager == null) throw new ArgumentNullException(nameof(weaponInventoryManager));
             runtimeStopped = false;
-            locomotion.Configure(instance.Config.Gravity, instance.Config.LocomotionTransition);
-            locomotion.Initialize(this, driver);
             weaponPresentationController.PresentationModelChanged += HandleWeaponPresentationModelChanged;
             weaponPresentationController.BindRuntime(instance, rosterManager, weaponInventoryManager);
             SetActivePresentation(false);
@@ -336,7 +357,7 @@ namespace RPG.Character
             {
                 animator.enabled = true;
                 // 姿态预热只求值 Idle Transition，不调用 FSM Enter，因此不会建立 Locomotion 控制请求。
-                animationController.PrimeInitialPose(locomotion.IdleTransition);
+                animationController.PrimeInitialPose(LifeStateMachine.Locomotion.IdleTransition);
             }
             finally
             {
@@ -398,6 +419,17 @@ namespace RPG.Character
         /// <summary>推进 ASC 延迟阶段。</summary>
         /// <param name="deltaTime">本帧缩放时间。</param>
         internal void LateTickAbility(float deltaTime) => abilitySystemComponent.LateTick(deltaTime);
+
+        /// <summary>由生命状态机请求更新 Alive Locomotion 控制门禁。</summary>
+        /// <param name="allowControl">是否允许角色运动状态推进。</param>
+        internal void SetLifeStateControlAllowed(bool allowControl) => LifeStateMachine.SetControlAllowed(allowControl);
+
+        /// <summary>转发生命状态变化事件，不在 Actor 中实现死亡状态业务。</summary>
+        /// <param name="isDead">角色当前是否死亡。</param>
+        internal void NotifyLifeStateChanged(bool isDead) => LifeStateChanged?.Invoke(this, isDead);
+
+        /// <summary>转发死亡动画完成事件，供 CharacterManager 在安全帧阶段切换角色。</summary>
+        internal void NotifyDeathAnimationCompleted() => DeathAnimationCompleted?.Invoke(this);
 
         #endregion
     }

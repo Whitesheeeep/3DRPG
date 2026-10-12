@@ -332,6 +332,7 @@ MonoBehaviour:
   - value: character_0004
   initialCharacterId:
     value: 
+  courtyardSceneConfig: {fileID: 11400000, guid: 7f32e78d2a1a2db4d8794a42e68eb634, type: 2}
 --- !u!114 &8419130012551366636
 MonoBehaviour:
   m_ObjectHideFlags: 0

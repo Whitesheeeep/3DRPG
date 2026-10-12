@@ -52,6 +52,8 @@ namespace WS_Modules.GAS.GameplayEffect
             spec != null &&
             Owner != null &&
             spec.Source != null &&
+            !Owner.IsClearingRuntime &&
+            !spec.Source.IsClearingRuntime &&
             spec.Data != null &&
             spec.Data.TryValidateApplicationConfiguration() &&
             spec.Data.TargetTagQuery.Matches(Owner.Tags) &&
@@ -63,6 +65,8 @@ namespace WS_Modules.GAS.GameplayEffect
         /// <returns>基础配置和目标条件合法时返回 true。</returns>
         public bool CanApply(GameplayEffectData data, GameplayAbilitySystemComponent source) =>
             data != null && source != null && Owner != null &&
+            !Owner.IsClearingRuntime &&
+            !source.IsClearingRuntime &&
             data.TryValidateApplicationConfiguration() &&
             data.TargetTagQuery.Matches(Owner.Tags) &&
             data.GrantedTags.All(tag => GameplayTagManager.Instance.IsValidTag(tag));
@@ -73,6 +77,7 @@ namespace WS_Modules.GAS.GameplayEffect
             out GameplayEffectApplicationResult result)
         {
             result = null;
+            if (Owner.IsClearingRuntime) return false;
             if (spec == null || !spec.TrySeal() || !CanApply(spec)) return false;
 
             if (spec.Data.DurationType == E_GameEffectDurationType.Instant)
@@ -93,6 +98,7 @@ namespace WS_Modules.GAS.GameplayEffect
             out GameEffectRuntime activeEffect)
         {
             activeEffect = null;
+            if (Owner.IsClearingRuntime) return false;
             if (level < 1 || !CanApply(data, source)) return false;
             // 兼容入口仍由 Source ASC 统一创建 Spec，保证 Source 绑定和 SetByCaller 复制策略只有一处。
             if (!source.TryCreateOutgoingEffectSpec(
@@ -152,6 +158,12 @@ namespace WS_Modules.GAS.GameplayEffect
 
         /// <inheritdoc />
         public void Clear()
+        {
+            ClearRuntime();
+        }
+
+        /// <inheritdoc />
+        public void ClearRuntime()
         {
             for (int i = activeEffects.Count - 1; i >= 0; i--)
                 TryRemove(activeEffects[i]);

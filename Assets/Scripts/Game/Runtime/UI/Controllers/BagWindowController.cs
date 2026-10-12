@@ -37,16 +37,7 @@ namespace RPG.Game.UI.Controllers
         private readonly Dictionary<ItemCategory, IBagCategoryDataSource> dataSourceByCategoryMap = new();
         // 每个分类按钮的对应回调，便于 Dispose 时注销。
         private readonly List<UnityAction> categoryButtonActions = new();
-        private IUnRegister weaponChangedUnregister;
-        private IUnRegister weaponRestoredUnregister;
-        private IUnRegister weaponDefinitionNewChangedUnregister;
-        private IUnRegister artifactChangedUnregister;
-        private IUnRegister artifactRestoredUnregister;
-        private IUnRegister artifactDefinitionNewChangedUnregister;
-        private IUnRegister stackableChangedUnregister;
-        private IUnRegister stackableRestoredUnregister;
-        private IUnRegister characterInstanceChangedUnregister;
-        private IUnRegister characterEquipmentRestoredUnregister;
+        private readonly UnRegisterListContainer inventoryEventUnregisterList = new();
         #endregion
 
         #region 状态字段
@@ -90,26 +81,37 @@ namespace RPG.Game.UI.Controllers
             RegisterButtons();
             RefreshCategorySelectionVisuals(stateModel.CurrentCategory);
             spriteAtlasLeaseService.Released += HandleAtlasReleased;
-            weaponChangedUnregister = EventSystem.Register_Type<WeaponInstanceChangedEvent>(
-                typeof(WeaponInstanceChangedEvent), HandleWeaponChanged);
-            weaponRestoredUnregister = EventSystem.Register_Type<WeaponInventoryRestoredEvent>(
-                typeof(WeaponInventoryRestoredEvent), HandleWeaponRestored);
-            weaponDefinitionNewChangedUnregister = EventSystem.Register_Type<WeaponDefinitionNewStateChangedEvent>(
-                typeof(WeaponDefinitionNewStateChangedEvent), HandleWeaponDefinitionNewStateChanged);
-            artifactChangedUnregister = EventSystem.Register_Type<ArtifactInstanceChangedEvent>(
-                typeof(ArtifactInstanceChangedEvent), HandleArtifactChanged);
-            artifactRestoredUnregister = EventSystem.Register_Type<ArtifactInventoryRestoredEvent>(
-                typeof(ArtifactInventoryRestoredEvent), HandleArtifactRestored);
-            artifactDefinitionNewChangedUnregister = EventSystem.Register_Type<ArtifactDefinitionNewStateChangedEvent>(
-                typeof(ArtifactDefinitionNewStateChangedEvent), HandleArtifactDefinitionNewStateChanged);
-            stackableChangedUnregister = EventSystem.Register_Type<StackableItemChangedEvent>(
-                typeof(StackableItemChangedEvent), HandleStackableChanged);
-            stackableRestoredUnregister = EventSystem.Register_Type<StackableInventoryRestoredEvent>(
-                typeof(StackableInventoryRestoredEvent), HandleStackableRestored);
-            characterInstanceChangedUnregister = EventSystem.Register_Type<CharacterInstanceChangedEvent>(
-                typeof(CharacterInstanceChangedEvent), HandleCharacterInstanceChanged);
-            characterEquipmentRestoredUnregister = EventSystem.Register_Type<CharacterEquipmentRestoredEvent>(
-                typeof(CharacterEquipmentRestoredEvent), HandleCharacterEquipmentRestored);
+            EventSystem.Register_Type<WeaponInstanceChangedEvent>(
+                typeof(WeaponInstanceChangedEvent), HandleWeaponChanged)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<WeaponInventoryRestoredEvent>(
+                typeof(WeaponInventoryRestoredEvent), HandleWeaponRestored)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<WeaponDefinitionNewStateChangedEvent>(
+                typeof(WeaponDefinitionNewStateChangedEvent), HandleWeaponDefinitionNewStateChanged)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<ArtifactInstanceChangedEvent>(
+                typeof(ArtifactInstanceChangedEvent), HandleArtifactChanged)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<ArtifactInventoryRestoredEvent>(
+                typeof(ArtifactInventoryRestoredEvent), HandleArtifactRestored)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<ArtifactDefinitionNewStateChangedEvent>(
+                typeof(ArtifactDefinitionNewStateChangedEvent), HandleArtifactDefinitionNewStateChanged)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<StackableItemChangedEvent>(
+                typeof(StackableItemChangedEvent), HandleStackableChanged)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<StackableInventoryRestoredEvent>(
+                typeof(StackableInventoryRestoredEvent), HandleStackableRestored)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<CharacterInstanceChangedEvent>(
+                typeof(CharacterInstanceChangedEvent), HandleCharacterInstanceChanged)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<CharacterEquipmentRestoredEvent>(
+                typeof(CharacterEquipmentRestoredEvent), HandleCharacterEquipmentRestored)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            Debug.Log($"[BagWindowController] 已注册库存与角色装备事件，count={inventoryEventUnregisterList.UnRegisterList.Count}。", this);
             initialized = true;
         }
 
@@ -127,16 +129,8 @@ namespace RPG.Game.UI.Controllers
 
             if (spriteAtlasLeaseService != null)
                 spriteAtlasLeaseService.Released -= HandleAtlasReleased;
-            weaponChangedUnregister?.UnRegister();
-            weaponRestoredUnregister?.UnRegister();
-            weaponDefinitionNewChangedUnregister?.UnRegister();
-            artifactChangedUnregister?.UnRegister();
-            artifactRestoredUnregister?.UnRegister();
-            artifactDefinitionNewChangedUnregister?.UnRegister();
-            stackableChangedUnregister?.UnRegister();
-            stackableRestoredUnregister?.UnRegister();
-            characterInstanceChangedUnregister?.UnRegister();
-            characterEquipmentRestoredUnregister?.UnRegister();
+            inventoryEventUnregisterList.UnRegisterAll();
+            Debug.Log("[BagWindowController] 已注销库存与角色装备事件。", this);
             for (int index = 0; data != null && index < categoryButtonActions.Count; index++)
             {
                 if (index < data.CategoryButtons.Count && data.CategoryButtons[index] != null)

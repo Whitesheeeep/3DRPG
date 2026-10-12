@@ -16,13 +16,7 @@ MonoBehaviour:
   muted: 0
   displayName: "\u97F3\u9891\u8F68\u9053"
   editorLocked: 0
-  clips:
-  - id: 9c0c21058221482b98cf387a10a48e7c
-    audioClip: {fileID: 8300000, guid: fa74ec4c0ce45b141ba123657f24ec77, type: 3}
-    startFrame: 16
-    durationFrames: 23
-    volume: 1
-    pitch: 1
+  clips: []
 --- !u!114 &-414775761684800504
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -76,15 +70,15 @@ MonoBehaviour:
   clips:
   - id: 44e979f7a67647679f225f88dc3c551d
     startFrame: 0
-    durationFrames: 7
+    durationFrames: 3
     phase: 1
     isCancelable: 1
     runtimeTags: []
     blockAbilityTags:
     - id: 126
   - id: ca130896ca01443ea397816f2d229ea3
-    startFrame: 7
-    durationFrames: 20
+    startFrame: 3
+    durationFrames: 24
     phase: 2
     isCancelable: 0
     runtimeTags: []
@@ -113,7 +107,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: 11c77f7f583a4921ad1a107af6aa94d8
   frameRate: 30
-  durationFrames: 41
+  durationFrames: 69
   isRootMotion: 1
   tracks:
   - {fileID: -299868827217895477}
@@ -209,13 +203,13 @@ MonoBehaviour:
   - id: 5a0b3f7ce0fa4fd8b02b8b2fffd32e66
     animationClip: {fileID: 4960409498807354063, guid: 506e94c4333125c42aa1194fcc9a92cd, type: 3}
     startFrame: 0
-    durationFrames: 30
+    durationFrames: 31
     sourceStartFrame: 0
     playbackSpeed: 1.3
     fadeDuration: 0.1
   - id: b5de7451f0db446ab6680c8eac25a71b
     animationClip: {fileID: 7400000, guid: d408ff4b131a9c448b3ab312838279da, type: 2}
-    startFrame: 30
+    startFrame: 31
     durationFrames: 11
     sourceStartFrame: 0
     playbackSpeed: 1

@@ -283,6 +283,7 @@ namespace RPG.Game.UI.Controllers
                 Action<GameplayAttribute, float, float> handler =
                     (attribute, oldValue, newValue) => HandleActorAttributeChanged(actor, attribute);
                 actor.AbilitySystemComponent.AttributeChanged += handler;
+                actor.LifeStateChanged += HandleActorLifeStateChanged;
                 attributeChangedHandlerByActorMap.Add(actor, handler);
                 string atlasAddress = actor.Config.SideIconAddress;
                 if (!string.IsNullOrWhiteSpace(atlasAddress) && !atlasAddresses.Contains(atlasAddress))
@@ -307,7 +308,10 @@ namespace RPG.Game.UI.Controllers
             foreach (KeyValuePair<CharacterActor, Action<GameplayAttribute, float, float>> pair
                      in attributeChangedHandlerByActorMap)
                 if (pair.Key != null)
+                {
                     pair.Key.AbilitySystemComponent.AttributeChanged -= pair.Value;
+                    pair.Key.LifeStateChanged -= HandleActorLifeStateChanged;
+                }
             attributeChangedHandlerByActorMap.Clear();
             invalidHealthAttributeLoggedActors.Clear();
             Array.Clear(characterBySlot, 0, characterBySlot.Length);
@@ -336,6 +340,15 @@ namespace RPG.Game.UI.Controllers
                 (attribute != GameplayAttributes.Attribute_Health &&
                  attribute != GameplayAttributes.Attribute_MaxHealth))
                 return;
+            RefreshActor(actor);
+        }
+
+        /// <summary>Actor 进入或离开 Dead 层时同步重绘底部血条与固定 PartySlot 根 Image。</summary>
+        /// <param name="actor">发生生命状态变化的角色。</param>
+        /// <param name="isDead">新的死亡状态。</param>
+        private void HandleActorLifeStateChanged(CharacterActor actor, bool isDead)
+        {
+            if (disposed || actor == null) return;
             RefreshActor(actor);
         }
 
@@ -424,12 +437,12 @@ namespace RPG.Game.UI.Controllers
             }
 
             if (ReferenceEquals(characterManager.ActiveCharacter, actor))
-                healthView.SetActiveCharacter(actor.Instance.Level, health, maxHealth);
+                healthView.SetActiveCharacter(actor.Instance.Level, health, maxHealth, actor.IsDead);
 
             for (int slotIndex = 0; slotIndex < characterBySlot.Length; slotIndex++)
                 if (ReferenceEquals(characterBySlot[slotIndex], actor))
                     healthView.SetPartySlot(slotIndex, actor.Config.Name, GetCharacterPortrait(actor),
-                        health, maxHealth, ReferenceEquals(characterManager.ActiveCharacter, actor));
+                        health, maxHealth, ReferenceEquals(characterManager.ActiveCharacter, actor), actor.IsDead);
         }
 
         /// <summary>刷新底部 Active 角色的显示内容。</summary>
@@ -441,7 +454,7 @@ namespace RPG.Game.UI.Controllers
                 health = 0f;
                 maxHealth = 0f;
             }
-            healthView.SetActiveCharacter(actor.Instance.Level, health, maxHealth);
+            healthView.SetActiveCharacter(actor.Instance.Level, health, maxHealth, actor.IsDead);
         }
 
         /// <summary>刷新指定固定槽位的血条、名称、头像和 Active 高亮。</summary>
@@ -455,7 +468,7 @@ namespace RPG.Game.UI.Controllers
                 maxHealth = 0f;
             }
             healthView.SetPartySlot(slotIndex, actor.Config.Name, GetCharacterPortrait(actor),
-                health, maxHealth, ReferenceEquals(characterManager.ActiveCharacter, actor));
+                health, maxHealth, ReferenceEquals(characterManager.ActiveCharacter, actor), actor.IsDead);
         }
 
         /// <summary>读取角色 ASC 当前 Health 和 MaxHealth，并对缺失配置记录一次错误。</summary>

@@ -52,7 +52,8 @@ namespace RPG.Game.UI.Views.HUD
         /// <param name="health">ASC 当前生命值。</param>
         /// <param name="maxHealth">ASC 生命值上限。</param>
         /// <param name="isActive">槽位角色是否为当前 Active 角色。</param>
-        public void Bind(string characterName, Sprite portrait, float health, float maxHealth, bool isActive)
+        /// <param name="isDead">角色是否处于 Dead 生命状态。</param>
+        public void Bind(string characterName, Sprite portrait, float health, float maxHealth, bool isActive, bool isDead)
         {
             gameObject.SetActive(true);
             characterNameText.text = characterName;
@@ -60,9 +61,11 @@ namespace RPG.Game.UI.Views.HUD
             portraitImage.sprite = portrait;
             portraitImage.enabled = portrait != null;
             healthFillImage.fillAmount = GetHealthRatio(health, maxHealth);
-            gradientBackgroundImage.color = isActive
-                ? new Color(0.16f, 0.18f, 0.16f, 0.42f)
-                : new Color(0.035f, 0.055f, 0.07f, 0.25f);
+            gradientBackgroundImage.color = isDead
+                ? new Color(0.68f, 0.045f, 0.055f, 0.72f)
+                : isActive
+                    ? new Color(0.16f, 0.18f, 0.16f, 0.42f)
+                    : new Color(0.035f, 0.055f, 0.07f, 0.25f);
         }
 
         /// <summary>隐藏空槽并清除之前绑定的角色名称、头像和血量。</summary>

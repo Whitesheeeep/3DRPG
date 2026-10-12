@@ -45,17 +45,7 @@ namespace RPG.Game.UI.Controllers
         private CharacterDevelopmentService characterDevelopmentService;
         private CharacterDevelopmentPresentationBuilder characterDevelopmentPresentationBuilder;
         private ItemSelectionPanelView selectionPanel;
-        private IUnRegister characterInstanceChangedUnregister;
-        private IUnRegister characterRosterRestoredUnregister;
-        private IUnRegister characterEquipmentRestoredUnregister;
-        private IUnRegister weaponChangedUnregister;
-        private IUnRegister weaponRestoredUnregister;
-        private IUnRegister artifactChangedUnregister;
-        private IUnRegister artifactRestoredUnregister;
-        private IUnRegister stackableChangedUnregister;
-        private IUnRegister stackableRestoredUnregister;
-        private IUnRegister currencyChangedUnregister;
-        private IUnRegister currencyRestoredUnregister;
+        private readonly UnRegisterListContainer inventoryEventUnregisterList = new();
 
         #endregion
 
@@ -146,28 +136,40 @@ namespace RPG.Game.UI.Controllers
             selectionPanel.SetSortControl(false, selectionSortMode, selectionSortDirection, "等级");
             spriteAtlasLeaseService.Released += HandleAtlasReleased;
 
-            characterInstanceChangedUnregister = EventSystem.Register_Type<CharacterInstanceChangedEvent>(
-                typeof(CharacterInstanceChangedEvent), HandleCharacterInstanceChanged);
-            characterRosterRestoredUnregister = EventSystem.Register_Type<CharacterRosterRestoredEvent>(
-                typeof(CharacterRosterRestoredEvent), HandleCharacterRosterRestored);
-            characterEquipmentRestoredUnregister = EventSystem.Register_Type<CharacterEquipmentRestoredEvent>(
-                typeof(CharacterEquipmentRestoredEvent), HandleCharacterEquipmentRestored);
-            weaponChangedUnregister = EventSystem.Register_Type<WeaponInstanceChangedEvent>(
-                typeof(WeaponInstanceChangedEvent), HandleWeaponChanged);
-            weaponRestoredUnregister = EventSystem.Register_Type<WeaponInventoryRestoredEvent>(
-                typeof(WeaponInventoryRestoredEvent), HandleWeaponRestored);
-            artifactChangedUnregister = EventSystem.Register_Type<ArtifactInstanceChangedEvent>(
-                typeof(ArtifactInstanceChangedEvent), HandleArtifactChanged);
-            artifactRestoredUnregister = EventSystem.Register_Type<ArtifactInventoryRestoredEvent>(
-                typeof(ArtifactInventoryRestoredEvent), HandleArtifactRestored);
-            stackableChangedUnregister = EventSystem.Register_Type<StackableItemChangedEvent>(
-                typeof(StackableItemChangedEvent), HandleStackableChanged);
-            stackableRestoredUnregister = EventSystem.Register_Type<StackableInventoryRestoredEvent>(
-                typeof(StackableInventoryRestoredEvent), HandleStackableRestored);
-            currencyChangedUnregister = EventSystem.Register_Type<CurrencyBalanceChangedEvent>(
-                typeof(CurrencyBalanceChangedEvent), HandleCurrencyBalanceChanged);
-            currencyRestoredUnregister = EventSystem.Register_Type<CurrencyWalletRestoredEvent>(
-                typeof(CurrencyWalletRestoredEvent), HandleCurrencyWalletRestored);
+            EventSystem.Register_Type<CharacterInstanceChangedEvent>(
+                typeof(CharacterInstanceChangedEvent), HandleCharacterInstanceChanged)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<CharacterRosterRestoredEvent>(
+                typeof(CharacterRosterRestoredEvent), HandleCharacterRosterRestored)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<CharacterEquipmentRestoredEvent>(
+                typeof(CharacterEquipmentRestoredEvent), HandleCharacterEquipmentRestored)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<WeaponInstanceChangedEvent>(
+                typeof(WeaponInstanceChangedEvent), HandleWeaponChanged)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<WeaponInventoryRestoredEvent>(
+                typeof(WeaponInventoryRestoredEvent), HandleWeaponRestored)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<ArtifactInstanceChangedEvent>(
+                typeof(ArtifactInstanceChangedEvent), HandleArtifactChanged)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<ArtifactInventoryRestoredEvent>(
+                typeof(ArtifactInventoryRestoredEvent), HandleArtifactRestored)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<StackableItemChangedEvent>(
+                typeof(StackableItemChangedEvent), HandleStackableChanged)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<StackableInventoryRestoredEvent>(
+                typeof(StackableInventoryRestoredEvent), HandleStackableRestored)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<CurrencyBalanceChangedEvent>(
+                typeof(CurrencyBalanceChangedEvent), HandleCurrencyBalanceChanged)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            EventSystem.Register_Type<CurrencyWalletRestoredEvent>(
+                typeof(CurrencyWalletRestoredEvent), HandleCurrencyWalletRestored)
+                .AddToUnregisterList(inventoryEventUnregisterList);
+            WSLog.Log($"[CharacterWindowController] 已注册角色与库存事件，count={inventoryEventUnregisterList.UnRegisterList.Count}。");
             partyManager.Changed += HandlePartyChanged;
             initialized = true;
             WSLog.Log("[CharacterWindowController] CharacterWindow MVC 初始化完成。");
@@ -227,29 +229,9 @@ namespace RPG.Game.UI.Controllers
                 selectionPanel.HideImmediateAndReset();
             }
             spriteAtlasLeaseService.Released -= HandleAtlasReleased;
-            characterInstanceChangedUnregister?.UnRegister();
-            characterRosterRestoredUnregister?.UnRegister();
-            characterEquipmentRestoredUnregister?.UnRegister();
-            weaponChangedUnregister?.UnRegister();
-            weaponRestoredUnregister?.UnRegister();
-            artifactChangedUnregister?.UnRegister();
-            artifactRestoredUnregister?.UnRegister();
-            stackableChangedUnregister?.UnRegister();
-            stackableRestoredUnregister?.UnRegister();
-            currencyChangedUnregister?.UnRegister();
-            currencyRestoredUnregister?.UnRegister();
+            inventoryEventUnregisterList.UnRegisterAll();
+            WSLog.Log("[CharacterWindowController] 已注销角色与库存事件。");
             if (partyManager != null) partyManager.Changed -= HandlePartyChanged;
-            characterInstanceChangedUnregister = null;
-            characterRosterRestoredUnregister = null;
-            characterEquipmentRestoredUnregister = null;
-            weaponChangedUnregister = null;
-            weaponRestoredUnregister = null;
-            artifactChangedUnregister = null;
-            artifactRestoredUnregister = null;
-            stackableChangedUnregister = null;
-            stackableRestoredUnregister = null;
-            currencyChangedUnregister = null;
-            currencyRestoredUnregister = null;
             spriteAtlasLeaseService?.Dispose();
             spriteAtlasLeaseService = null;
             presentationBuilder = null;

@@ -316,17 +316,23 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
                 animationState = null;
             }
 
-            bool appliedFacing = ApplyFinalInputFacing();
+            // ASC.ClearRuntime 在死亡入口同步取消 QuickShift；死亡交接不得重新写回角色朝向或 Run 状态。
+            bool actorCanHandoff = character != null && !character.IsDead;
+            bool appliedFacing = actorCanHandoff && stateBlackboard != null && ApplyFinalInputFacing();
             motionHandle?.Dispose();
             motionHandle = null;
             motionDriver = null;
             fullBodyHandle?.Dispose();
             fullBodyHandle = null;
             // 先归还技能运动通道，再切入 Locomotion，避免 Run/Walk 在同一帧被技能优先级压住。
-            CharacterLocomotionStateId handoffState = TryHandoffToLocomotion();
-            string handoffSummary = handoffState == CharacterLocomotionStateId.Disable
-                ? "跳过"
-                : handoffState.ToString();
+            CharacterLocomotionStateId handoffState = actorCanHandoff && stateBlackboard != null
+                ? TryHandoffToLocomotion()
+                : CharacterLocomotionStateId.Disable;
+            string handoffSummary = !actorCanHandoff
+                ? "角色死亡或未初始化，跳过"
+                : handoffState == CharacterLocomotionStateId.Disable
+                    ? "跳过"
+                    : handoffState.ToString();
             character = null;
             stateBlackboard = null;
             movementEnabled = false;
@@ -343,6 +349,9 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <returns>本次确实应用了输入朝向时返回 true；输入无效时保持原朝向并返回 false。</returns>
         private bool ApplyFinalInputFacing()
         {
+            if (character == null || character.IsDead || stateBlackboard == null)
+                return false;
+
             Vector3 inputDirection = Vector3.ProjectOnPlane(stateBlackboard.MoveWorldInput, Vector3.up);
             if (inputDirection.sqrMagnitude <= 0.0001f)
                 return false;
@@ -357,7 +366,8 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <returns>交接到 Run 时返回 Run；不满足条件或状态机拒绝时返回 Disable。</returns>
         private CharacterLocomotionStateId TryHandoffToLocomotion()
         {
-            if (!stateBlackboard.HasMovement || !stateBlackboard.IsGrounded ||
+            if (character == null || character.IsDead || stateBlackboard == null ||
+                !stateBlackboard.HasMovement || !stateBlackboard.IsGrounded ||
                 character.Locomotion.CurrentRootState != CharacterLocomotionStateId.Grounded)
                 return CharacterLocomotionStateId.Disable;
 

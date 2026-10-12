@@ -80,6 +80,8 @@ namespace RPG.Character
         public CharacterManager CharacterManager => characterManager;
         /// <summary>获取队伍共用的角色根节点，作为镜头跟随位置和锁定构图基准。</summary>
         public Transform CharacterRoot => characterRoot;
+        /// <summary>获取共享 CharacterController 最近一次物理结算后的接地状态。</summary>
+        internal bool IsCharacterGrounded => characterController != null && characterController.isGrounded;
         /// <summary>获取当前缓存摄像机上的 Camera 组件，用于锁定候选屏幕排序。</summary>
         public Camera GameplayCamera => gameplayCamera;
         /// <summary>向 GAS 与 Locomotion 暴露同一个运动请求接口。</summary>
@@ -197,14 +199,14 @@ namespace RPG.Character
                 runtimeStarted = true;
                 if (scenePreparationActive || !isActiveAndEnabled)
                 {
-                    // 场景准备或 Player 禁用期间允许完成数据初始化，但运动请求保持暂停。
-                    activeActor.Locomotion.Deactivate();
+                    // 场景准备或 Player 禁用期间允许完成数据初始化，但由生命 FSM 保持 Alive 子状态暂停。
+                    activeActor.SetLifeStateControlAllowed(false);
                     motionDriver.Suspend();
                 }
                 else
                 {
                     motionDriver.Resume();
-                    activeActor.Locomotion.Activate();
+                    activeActor.SetLifeStateControlAllowed(true);
                 }
                 dialogueParticipant?.SetAnimationPlayer(activeActor.AnimationPlayer);
                 Initialized?.Invoke();
@@ -258,7 +260,7 @@ namespace RPG.Character
             if (characterManager.IsReady && !scenePreparationActive)
                 motionDriver.Resume();
             if (runtimeStarted && characterManager.IsReady && !scenePreparationActive)
-                characterManager.ActiveCharacter?.Locomotion.Activate();
+                characterManager.ActiveCharacter?.SetLifeStateControlAllowed(true);
             StateBlackboard.IntentSourceConsumed += OnIntentSourceConsumed;
             frameIntentCleanupCoroutine = StartCoroutine(ClearFrameIntentsAtFrameEnd());
         }
@@ -280,7 +282,7 @@ namespace RPG.Character
             frameIntentCleanupCoroutine = null;
             StateBlackboard?.ClearMoveInput();
             StateBlackboard?.ClearFrameIntents();
-            characterManager?.ActiveCharacter?.Locomotion.Deactivate();
+            characterManager?.ActiveCharacter?.SetLifeStateControlAllowed(false);
             motionDriver.Suspend();
         }
 
@@ -371,7 +373,7 @@ namespace RPG.Character
             }
             try
             {
-                // Manager 只收集当前角色 GAS 与 Locomotion 请求，不执行最终 CharacterController.Move。
+                // Manager 将本物理阶段交给当前生命状态，由 MotionDriver 执行最终 CharacterController.Move。
                 if (!characterManager.AdvanceFixedStep(Time.fixedDeltaTime)) return;
                 // 所有候选请求在同一物理边界统一仲裁；Resolve 自己清空瞬时提交，不跨步复用。
                 motionDriver.ResolveFixedMotion();
@@ -402,7 +404,7 @@ namespace RPG.Character
             inputController.ClearMoveInput();
             StateBlackboard?.ClearMoveInput();
             StateBlackboard?.ClearFrameIntents();
-            characterManager.ActiveCharacter?.Locomotion.Deactivate();
+            characterManager.ActiveCharacter?.SetLifeStateControlAllowed(false);
             motionDriver.Suspend();
             Debug.Log($"[PlayerController] 已进入场景准备状态，player={name}。", this);
         }
@@ -442,11 +444,11 @@ namespace RPG.Character
 
             environmentDetector.ResetAfterTeleport(StateBlackboard);
             CharacterActor active = characterManager.ActiveCharacter;
-            active.Locomotion.Deactivate();
+            active.SetLifeStateControlAllowed(false);
             if (!scenePreparationActive && isActiveAndEnabled)
             {
                 motionDriver.Resume();
-                active.Locomotion.Activate();
+                active.SetLifeStateControlAllowed(true);
             }
             motionDriver.ClearTransientRequests();
             Debug.Log($"[PlayerController] 已应用场景出生点，player={name}，position={worldPosition}，forward={horizontalForward.normalized}。", this);
@@ -460,7 +462,7 @@ namespace RPG.Character
             if (runtimeStarted && characterManager.IsReady && isActiveAndEnabled)
             {
                 motionDriver.Resume();
-                characterManager.ActiveCharacter?.Locomotion.Activate();
+                characterManager.ActiveCharacter?.SetLifeStateControlAllowed(true);
             }
             inputController.ClearMoveInput();
             StateBlackboard?.ClearMoveInput();
@@ -646,7 +648,7 @@ namespace RPG.Character
 
         #region Actor 上场协调
 
-        /// <summary>在 Actor 激活 Locomotion 前切换共享 MotionDriver Owner 并检查玩家控制门禁。</summary>
+        /// <summary>在 Actor 进入生命状态前切换共享 MotionDriver Owner 并检查玩家控制门禁。</summary>
         /// <param name="actor">Manager 已设为 ActiveCharacter 的目标 Actor。</param>
         /// <returns>Player 已就绪、启用且不处于场景准备时返回 true。</returns>
         /// <exception cref="ArgumentNullException">目标 Actor 为空时抛出。</exception>
@@ -660,12 +662,12 @@ namespace RPG.Character
                     $"[PlayerController] Actor '{actor.name}' 进入操控前必须先成为 CharacterManager.ActiveCharacter。");
 
             motionDriver.SetActiveOwner(actor, actor.AbilitySystemComponent);
-            bool canActivateLocomotion = runtimeStarted && isActiveAndEnabled && !scenePreparationActive;
+            bool canControlActor = runtimeStarted && isActiveAndEnabled && !scenePreparationActive;
             Debug.Log(
                 $"[PlayerController] 已准备 Actor 上场，character={actor.CharacterId}, " +
-                $"locomotionAllowed={canActivateLocomotion}, scenePreparation={scenePreparationActive}。",
+                $"controlAllowed={canControlActor}, scenePreparation={scenePreparationActive}。",
                 this);
-            return canActivateLocomotion;
+            return canControlActor;
         }
 
         /// <summary>释放指定 Actor 留在共享 MotionDriver 中的控制请求。</summary>

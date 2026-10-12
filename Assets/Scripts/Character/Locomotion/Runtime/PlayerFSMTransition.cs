@@ -219,6 +219,8 @@ namespace RPG.Character
         private float runReferenceSpeed = 3f;
         [FoldoutGroup("动画速度匹配"), SerializeField, LabelText("RunFeet 参数")]
         private StringAsset runFeetParameter;
+        [FoldoutGroup("生命状态动画"), SerializeField, Required, LabelText("死亡动画")]
+        private ClipTransition deathTransition;
 
         #endregion
 
@@ -349,6 +351,8 @@ namespace RPG.Character
         public float WalkReferenceSpeed => walkReferenceSpeed;
         /// <summary>获取 RunAsset 使用的左右脚循环参数。</summary>
         public StringAsset RunFeetParameter => runFeetParameter;
+        /// <summary>获取生命状态层播放的一次性死亡动画。</summary>
+        public ClipTransition DeathTransition => deathTransition;
         /// <summary>获取 1 米落地动画的输入开放归一化时间。</summary>
         public float Landing1InputNormalizedTime => landing1InputNormalizedTime;
         /// <summary>获取 2 米落地动画的输入开放归一化时间。</summary>
@@ -478,6 +482,7 @@ namespace RPG.Character
             if (runFeetParameter == null)
                 throw new System.InvalidOperationException(
                     $"PlayerFSMTransition '{name}' 未配置 RunFeet 参数。 ");
+            ValidateTransition(deathTransition, "死亡动画");
 
             ValidateTransition(forwardStart, "Walk 起步/前向");
             ValidateTransition(left45Start, "Walk 起步/左转 45°");

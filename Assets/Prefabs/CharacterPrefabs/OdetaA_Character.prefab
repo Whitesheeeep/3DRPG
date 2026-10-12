@@ -4520,6 +4520,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   localCueHandlers: []
+  activationRules: {fileID: 11400000, guid: 6aef4de02d8d4b9aa6f1e0c4e305f1d2, type: 2}
   references:
     version: 2
     RefIds: []

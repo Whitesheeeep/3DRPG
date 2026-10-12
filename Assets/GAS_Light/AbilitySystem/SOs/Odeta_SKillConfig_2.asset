@@ -50,23 +50,23 @@ MonoBehaviour:
   clips:
   - id: 5b4958d40f4b49929d413a6b192b090c
     startFrame: 0
-    durationFrames: 2
+    durationFrames: 5
     phase: 1
     isCancelable: 1
     runtimeTags: []
     blockAbilityTags:
     - id: 126
   - id: 166fd2aa91dd41a5aed8f1d0e0092f70
-    startFrame: 2
-    durationFrames: 17
+    startFrame: 5
+    durationFrames: 8
     phase: 2
     isCancelable: 0
     runtimeTags: []
     blockAbilityTags:
     - id: 126
   - id: fa23cb2edbeb4737b9abd5901e14b2e4
-    startFrame: 19
-    durationFrames: 2
+    startFrame: 13
+    durationFrames: 8
     phase: 3
     isCancelable: 1
     runtimeTags: []
@@ -130,7 +130,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: 3fdf06c5f1124ce49114e27b44409db2
   frameRate: 30
-  durationFrames: 31
+  durationFrames: 67
   isRootMotion: 1
   tracks:
   - {fileID: -8001245120463325863}

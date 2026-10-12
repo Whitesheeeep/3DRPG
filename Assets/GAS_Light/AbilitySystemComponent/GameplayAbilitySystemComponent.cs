@@ -29,10 +29,13 @@ namespace WS_Modules.GAS.AbilitySystemComponent
 
         // 状态
         private bool initialized;
+        private bool clearingRuntime;
 
         // ASC 本地 Handler 配置
         [SerializeReference, Tooltip("仅由当前 ASC 实例拥有的 Cue Handler，可按 CueTag 精确处理本地响应。")]
         private List<ASCGameplayCueHandler> localCueHandlers = new();
+        [SerializeField, Tooltip("本 ASC 的额外全局 Ability 阻断查询；会与角色或 NPC 初始化规则按 OR 合并。")]
+        private GameplayAbilityActivationRules activationRules;
         #endregion
 
         #region 属性
@@ -41,6 +44,13 @@ namespace WS_Modules.GAS.AbilitySystemComponent
 
         /// <summary>获取 ASC 是否已经成功导入 AttributeSet。</summary>
         public bool IsInitialized => initialized;
+
+        /// <summary>获取 ASC 是否正处于同步清理运行时事务。</summary>
+        public bool IsClearingRuntime => clearingRuntime;
+
+        /// <summary>判断 ASC 的初始化规则与 Inspector 规则是否阻断当前 Owner。</summary>
+        public bool IsAbilityActivationBlockedByOwnerTags =>
+            abilityController != null && abilityController.IsActivationBlockedByOwnerTags();
 
         /// <summary>获取当前 Owner 的只读 GameplayTag 容器。</summary>
         public IReadOnlyGameplayTagContainer Tags { get; private set; }
@@ -107,6 +117,9 @@ namespace WS_Modules.GAS.AbilitySystemComponent
 
         /// <summary>转发 AttributeContainer 的 CurrentValue 实际变化。</summary>
         public event Action<GameplayAttribute, float, float> AttributeChanged;
+
+        /// <summary>全部 GA、GE、Cue 与运行时 Tag 清理完成后同步发送一次。</summary>
+        public event Action<GameplayAbilitySystemComponent> RuntimeCleared;
 
         /// <summary>接收 GE/GA 提交成功后的局部 Cue 请求。</summary>
         internal event Action<GameplayCueRequest> CueRequested;
@@ -218,7 +231,10 @@ namespace WS_Modules.GAS.AbilitySystemComponent
                 return false;
             }
 
-            abilityController.InitializeActivationBlockedTags(blockedOwnerTags);
+            GameplayTagQuery serializedRule = activationRules != null
+                ? activationRules.ActivationBlockedOwnerTags
+                : default;
+            abilityController.InitializeActivationBlockedTags(blockedOwnerTags, serializedRule);
             initialized = true;
             try
             {
@@ -264,13 +280,32 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         /// </summary>
         public void Clear()
         {
+            ClearRuntime();
             abilityController.Clear();
-            GameEffectCtrl.Clear();
-            cueController.Clear();
             cueController.UnbindLocalHandlers();
-            MutableTags.Reset();
             MutableAttributes.Clear();
             initialized = false;
+        }
+
+        /// <summary>清除所有 GA、GE、Cue 与运行时 Tag，保留属性、授予列表和初始化规则。</summary>
+        public void ClearRuntime()
+        {
+            if (clearingRuntime) return;
+            clearingRuntime = true;
+            try
+            {
+                // 先停掉 GA，再移除其拥有的 GE，最后清理退出回调留下的 Cue 与标签。
+                abilityController.ClearRuntime();
+                GameEffectCtrl.ClearRuntime();
+                cueController.ClearRuntime();
+                MutableTags.Reset();
+                RuntimeCleared?.Invoke(this);
+                Debug.Log($"[ASC] '{name}' 已清除全部运行时；属性与授予配置保留。", this);
+            }
+            finally
+            {
+                clearingRuntime = false;
+            }
         }
 
         /// <summary>
@@ -323,7 +358,8 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         /// </summary>
         /// <param name="tag">待增加的有效 GameplayTag。</param>
         /// <returns>Tag 计数成功更新时返回 true。</returns>
-        public bool AddLooseGameplayTag(GameplayTag tag) => UpdateRuntimeTagCount(tag, 1);
+        public bool AddLooseGameplayTag(GameplayTag tag) =>
+            !clearingRuntime && UpdateRuntimeTagCount(tag, 1);
 
         /// <summary>
         /// 为当前 ASC 移除一份 Loose GameplayTag 引用。
@@ -371,8 +407,16 @@ namespace WS_Modules.GAS.AbilitySystemComponent
         /// <returns>Spec 计算和原子提交成功时返回 true。</returns>
         public bool TryApplyEffect(
             GameplayEffectSpec spec,
-            out GameplayEffectApplicationResult result) =>
-            GameEffectCtrl.TryApply(spec, out result);
+            out GameplayEffectApplicationResult result)
+        {
+            if (clearingRuntime || spec == null || spec.Source.IsClearingRuntime)
+            {
+                result = null;
+                return false;
+            }
+
+            return GameEffectCtrl.TryApply(spec, out result);
+        }
 
         /// <summary>将 Gameplay Effect 应用到当前 ASC；当前 ASC 作为 Target，Source 由参数指定。</summary>
         /// <param name="data">要应用的 Gameplay Effect 配置。</param>
@@ -386,8 +430,16 @@ namespace WS_Modules.GAS.AbilitySystemComponent
             GameplayAbilitySystemComponent source,
             int level,
             IReadOnlyDictionary<GameplayTag, float> setByCaller,
-            out GameEffectRuntime runtime) =>
-            GameEffectCtrl.TryApply(data, source, level, setByCaller, out runtime);
+            out GameEffectRuntime runtime)
+        {
+            if (clearingRuntime || source == null || source.IsClearingRuntime)
+            {
+                runtime = null;
+                return false;
+            }
+
+            return GameEffectCtrl.TryApply(data, source, level, setByCaller, out runtime);
+        }
 
         /// <summary>使用默认等级 1 且不携带 SetByCaller 数据应用 Gameplay Effect。</summary>
         /// <param name="data">要应用的 Gameplay Effect 配置。</param>

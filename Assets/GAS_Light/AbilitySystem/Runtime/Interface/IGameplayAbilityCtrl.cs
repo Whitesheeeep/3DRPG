@@ -95,6 +95,9 @@ namespace WS_Modules.GAS.GameplayAbilitySystem
         /// <returns>本次取消的 Runtime 数量。</returns>
         int ForceCancelAll();
 
+        /// <summary>清除当前 GA Runtime 并保留已授予 Ability 与初始化规则。</summary>
+        void ClearRuntime();
+
         /// <summary>逐个取消 Active Runtime 并清除所有 Spec。</summary>
         void Clear();
     }

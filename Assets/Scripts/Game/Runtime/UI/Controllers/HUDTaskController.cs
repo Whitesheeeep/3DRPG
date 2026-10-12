@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using RPG.Character;
 using RPG.Game;
 using RPG.Game.UI.Views.HUD;
@@ -25,7 +24,7 @@ namespace RPG.Game.UI.Controllers
         private PlayerController playerController;
         private CharacterManager characterManager;
         private Camera gameplayCamera;
-        private readonly List<IUnRegister> taskEventUnregisterList = new List<IUnRegister>();
+        private readonly UnRegisterListContainer taskEventUnregisterList = new();
         #endregion
 
         #region HUD 与导航状态
@@ -123,30 +122,36 @@ namespace RPG.Game.UI.Controllers
         /// <summary>订阅所有会改变摘要事实的任务事件。</summary>
         private void RegisterTaskEvents()
         {
-            taskEventUnregisterList.Add(EventSystem.Register_Type<TaskAcceptedEventArgs>(
-                typeof(TaskAcceptedEventArgs), HandleTaskChanged));
-            taskEventUnregisterList.Add(EventSystem.Register_Type<TaskObjectiveProgressChangedEventArgs>(
-                typeof(TaskObjectiveProgressChangedEventArgs), HandleTaskChanged));
-            taskEventUnregisterList.Add(EventSystem.Register_Type<TaskStageChangedEventArgs>(
-                typeof(TaskStageChangedEventArgs), HandleTaskChanged));
-            taskEventUnregisterList.Add(EventSystem.Register_Type<TaskStateChangedEventArgs>(
-                typeof(TaskStateChangedEventArgs), HandleTaskChanged));
-            taskEventUnregisterList.Add(EventSystem.Register_Type<TaskRewardClaimableEventArgs>(
-                typeof(TaskRewardClaimableEventArgs), HandleTaskChanged));
-            taskEventUnregisterList.Add(EventSystem.Register_Type<TaskCompletedEventArgs>(
-                typeof(TaskCompletedEventArgs), HandleTaskChanged));
-            taskEventUnregisterList.Add(EventSystem.Register_Type<TaskTrackedChangedEventArgs>(
-                typeof(TaskTrackedChangedEventArgs), HandleTaskChanged));
-            WSLog.Log("[HUDTaskController] 已订阅接取、进度、阶段、状态、领奖资格、完成和追踪任务事件。");
+            EventSystem.Register_Type<TaskAcceptedEventArgs>(
+                typeof(TaskAcceptedEventArgs), HandleTaskChanged)
+                .AddToUnregisterList(taskEventUnregisterList);
+            EventSystem.Register_Type<TaskObjectiveProgressChangedEventArgs>(
+                typeof(TaskObjectiveProgressChangedEventArgs), HandleTaskChanged)
+                .AddToUnregisterList(taskEventUnregisterList);
+            EventSystem.Register_Type<TaskStageChangedEventArgs>(
+                typeof(TaskStageChangedEventArgs), HandleTaskChanged)
+                .AddToUnregisterList(taskEventUnregisterList);
+            EventSystem.Register_Type<TaskStateChangedEventArgs>(
+                typeof(TaskStateChangedEventArgs), HandleTaskChanged)
+                .AddToUnregisterList(taskEventUnregisterList);
+            EventSystem.Register_Type<TaskRewardClaimableEventArgs>(
+                typeof(TaskRewardClaimableEventArgs), HandleTaskChanged)
+                .AddToUnregisterList(taskEventUnregisterList);
+            EventSystem.Register_Type<TaskCompletedEventArgs>(
+                typeof(TaskCompletedEventArgs), HandleTaskChanged)
+                .AddToUnregisterList(taskEventUnregisterList);
+            EventSystem.Register_Type<TaskTrackedChangedEventArgs>(
+                typeof(TaskTrackedChangedEventArgs), HandleTaskChanged)
+                .AddToUnregisterList(taskEventUnregisterList);
+            WSLog.Log($"[HUDTaskController] 已订阅接取、进度、阶段、状态、领奖资格、完成和追踪任务事件，count={taskEventUnregisterList.UnRegisterList.Count}。");
         }
 
         /// <summary>注销 HUD 显示期间登记的所有任务事件。</summary>
         private void UnregisterTaskEvents()
         {
-            for (int index = 0; index < taskEventUnregisterList.Count; index++)
-                taskEventUnregisterList[index]?.UnRegister();
-            taskEventUnregisterList.Clear();
-            WSLog.Log("[HUDTaskController] 已解除全部任务事实事件订阅。");
+            int registrationCount = taskEventUnregisterList.UnRegisterList.Count;
+            taskEventUnregisterList.UnRegisterAll();
+            WSLog.Log($"[HUDTaskController] 已解除全部任务事实事件订阅，count={registrationCount}。");
         }
 
         /// <summary>任务变化只安排刷新，由 HUD 晚帧统一重读完整事实。</summary>
