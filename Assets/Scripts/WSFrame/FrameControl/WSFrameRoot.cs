@@ -17,8 +17,15 @@ namespace WS_Modules
     [DefaultExecutionOrder(-1000)] // 确保这个组件在其他组件之前执行
     public class WSFrameRoot : SingletonMonoBase<WSFrameRoot>
     {
+        #region 依赖字段
+
+        // 依赖字段：框架配置与资源加载器决定 WSFrameRoot 初始化时使用的服务和资源来源。
         [SerializeField]
         private WSFrameSetting frameSetting;
+        private IResLoad<string> _resLoader;
+
+        #endregion
+
         public WSFrameSetting FrameSetting => frameSetting;
 
         #region 音频系统管理
@@ -71,8 +78,11 @@ namespace WS_Modules
         }
         #endregion
 
-        private IResLoad<string> _resLoader;
+        #region 运行状态
+
         private bool applicationQuitting;
+
+        #endregion
 
         /// <summary>
         /// 注册 WSFrame 单例并初始化框架核心系统。
@@ -100,6 +110,22 @@ namespace WS_Modules
             AudioManager.Instance.Initialize(frameSetting.audioSystemSetting, this.transform, _resLoader);
             UIManager.Instance.Initialize(frameSetting.uiManagerSetting);
             WSLog.Log("[WSFrameRoot] 框架核心系统初始化完成。");
+        }
+
+        /// <summary>
+        /// 在 Awake 初始化结束后应用音频 Mixer 参数，遵守 AudioMixer 的生命周期约束。
+        /// </summary>
+        private void Start()
+        {
+            AudioManager.Instance.ApplyMixerSettings();
+        }
+
+        /// <summary>
+        /// 驱动统一音频模块回收自然结束的直接 AudioClip Voice。
+        /// </summary>
+        private void Update()
+        {
+            AudioManager.Instance.Tick();
         }
 
         /// <summary>
@@ -141,6 +167,11 @@ namespace WS_Modules
             if (isCurrentInstance && !applicationQuitting)
             {
                 UIManager.Instance.Shutdown();
+            }
+
+            if (isCurrentInstance)
+            {
+                AudioManager.Instance.Dispose();
             }
 
             base.OnDestroy();

@@ -32,6 +32,12 @@ MonoBehaviour:
   audioSystemSetting:
     audioSourceInitCount: 5
     audioSourcePrefabPath: AudioSourcePrefab
+    audioMixer: {fileID: 24100000, guid: 76acaa351b2b4fc08b807cff81b25c56, type: 2}
+    bgmMixerGroup: {fileID: 3187632991000000001, guid: 76acaa351b2b4fc08b807cff81b25c56, type: 2}
+    effectMixerGroup: {fileID: 7053371031126030321, guid: 76acaa351b2b4fc08b807cff81b25c56, type: 2}
+    globalVolumeParameterName: MasterVolume
+    bgVolumeParameterName: BGMVolume
+    effectVolumeParameterName: EffectVolume
   uiManagerSetting:
     uiRootPath: UIRoot
     uiCameraPrefabPath: UICamera
