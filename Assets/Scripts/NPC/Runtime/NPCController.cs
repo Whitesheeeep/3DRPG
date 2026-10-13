@@ -154,6 +154,13 @@ namespace RPG.NPC
 
         #endregion
 
+        #region 初始化事件
+
+        /// <summary>等级属性、资源、技能及运行系统全部初始化后同步发送。</summary>
+        public event Action<NPCController> Initialized;
+
+        #endregion
+
         #region Unity 生命周期与初始化
 
         // Unity 生命周期：NPC Controller 先建立运行依赖，再在 Start 导入资产配置。
@@ -353,6 +360,8 @@ namespace RPG.NPC
                 $"[NPCController] NPC '{name}' 初始化完成，AttributeSets={config.InitialAttributeSets.Count}，" +
                 $"Abilities={config.GrantedAbilities.Count}，State={locomotion.CurrentState}。",
                 this);
+            // UI 绑定者可能比 NPC 晚启用；事件只在所有 ASC、技能与运行系统就绪后发布。
+            Initialized?.Invoke(this);
         }
 
         /// <summary>在等级 BaseValue 应用后按资源规则设置全部 Resource CurrentValue。</summary>

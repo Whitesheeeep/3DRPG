@@ -22885,6 +22885,7 @@ GameObject:
   - component: {fileID: 7139285610234567812}
   - component: {fileID: 3506830368931034654}
   - component: {fileID: 4406536873432819135}
+  - component: {fileID: 3180008897628422916}
   m_Layer: 7
   m_Name: Boss_Odetta
   m_TagString: Untagged
@@ -27503,6 +27504,20 @@ MonoBehaviour:
       Version: 1.7.13
   gizmoViewMode: 2
   showBehaviorDesignerGizmo: 1
+--- !u!114 &3180008897628422916
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5422017710913169865}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 948a95958b47ed84d91d3393b027b466, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  abilitySystemComponent: {fileID: 5765679626625110927}
+  npcController: {fileID: 135778691529142037}
 --- !u!1 &5451128041443257534
 GameObject:
   m_ObjectHideFlags: 0

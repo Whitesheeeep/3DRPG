@@ -88,6 +88,42 @@ namespace WS_Modules.UIModule
 
 		#region API
 
+		/// <summary>将顶部 Boss 血条绑定到指定 ASC 和等级快照。</summary>
+		/// <param name="source">Boss 的 ASC 来源。</param>
+		/// <param name="level">NPCController 中的实际等级。</param>
+		/// <param name="health">当前 Health。</param>
+		/// <param name="maxHealth">当前 MaxHealth。</param>
+		public void BindBossHealth(
+			WS_Modules.GAS.AbilitySystemComponent.GameplayAbilitySystemComponent source,
+			int level,
+			float health,
+			float maxHealth)
+		{
+			controller.BindBossHealth(source, level, health, maxHealth);
+		}
+
+		/// <summary>刷新当前来源拥有的 Boss Health 比例。</summary>
+		/// <param name="source">产生变化的 Boss ASC。</param>
+		/// <param name="health">最新 Health。</param>
+		/// <param name="maxHealth">最新 MaxHealth。</param>
+		/// <returns>该 ASC 仍拥有当前 HUD 血条时返回 true。</returns>
+		public bool RefreshBossHealth(
+			WS_Modules.GAS.AbilitySystemComponent.GameplayAbilitySystemComponent source,
+			float health,
+			float maxHealth)
+		{
+			return controller.RefreshBossHealth(source, health, maxHealth);
+		}
+
+		/// <summary>清除仍由指定 ASC 拥有的 Boss 血条。</summary>
+		/// <param name="source">请求清除的 Boss ASC。</param>
+		/// <returns>该 ASC 仍拥有当前血条并已清除时返回 true。</returns>
+		public bool ClearBossHealth(
+			WS_Modules.GAS.AbilitySystemComponent.GameplayAbilitySystemComponent source)
+		{
+			return controller.ClearBossHealth(source);
+		}
+
 		#endregion
 
 		#region UI 组件事件

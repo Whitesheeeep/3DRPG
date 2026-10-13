@@ -14,6 +14,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using WS_Modules.BusinessArchitecture;
 using WS_Modules.CustomEventSystem;
+using WS_Modules.GAS.AbilitySystemComponent;
 using WS_Modules.GAS.AttributeSystem;
 using WS_Modules.GAS.Generated;
 using WS_Modules.GAS.GameplayAbilitySystem;
@@ -26,13 +27,14 @@ namespace RPG.Game.UI.Controllers
 {
     /// <summary>把 HUD 展示与当前队伍各角色的 ASC 属性及切换生命周期连接起来。</summary>
     [DisallowMultipleComponent]
-    [InfoBox("依赖 HUD 根节点的 HUDWindowDataComponent、HUDTaskController、HUDLockTargetController，Prefab 内静态血量、技能格和锁定标记 View，以及 PlayerController.Instance。TaskButton 红点由 Prefab 中 RedDotUGUIBadge 直接显示。")]
+    [InfoBox("依赖 HUD 根节点的 HUDWindowDataComponent、HUDTaskController、HUDLockTargetController，Prefab 内静态血量、Boss 血条、技能格和锁定标记 View，以及 PlayerController.Instance。TaskButton 红点由 Prefab 中 RedDotUGUIBadge 直接显示。")]
     public sealed class HUDWindowController : MonoBehaviour
     {
         #region 配置与依赖字段
 
         // Inspector 显式绑定的 Prefab View，以及角色业务数据源。
         [SerializeField, Required] private HUDHealthView healthView;
+        [SerializeField, Required] private HUDBossHealthView bossHealthView;
         [SerializeField, Required] private HUDSkillSlotView[] skillSlotViews = new HUDSkillSlotView[4];
         [SerializeField, Required, LabelText("GE 图标映射")]
         private HUDGEIconConfig geIconConfig;
@@ -50,6 +52,8 @@ namespace RPG.Game.UI.Controllers
         private Button characterButton;
         private CharacterActor cooldownBoundActor;
         private IGameplayAbilityCtrl cooldownAbilityController;
+        // Boss ASC 是顶部血条的唯一写入来源标识，旧来源不能覆盖或清除新来源。
+        private GameplayAbilitySystemComponent bossHealthSource;
         // 固定四格分别对应 Sprint Click 与 Skill2-4；不使用旧的 Skill1 输入类型。
         private static readonly E_PlayerInputType[] SkillSlotInputTypes =
         {
@@ -90,6 +94,9 @@ namespace RPG.Game.UI.Controllers
             if (healthView == null)
                 throw new InvalidOperationException("[HUDWindowController] HUDWindow Prefab 未绑定静态 HUDHealthView。");
             healthView.ValidateConfiguration();
+            if (bossHealthView == null)
+                throw new InvalidOperationException("[HUDWindowController] HUDWindow Prefab 未绑定静态 HUDBossHealthView。");
+            bossHealthView.ValidateConfiguration();
             ValidateSkillSlotViews();
             ValidateEffectViews();
             if (taskController == null)
@@ -97,6 +104,7 @@ namespace RPG.Game.UI.Controllers
             if (lockTargetController == null)
                 throw new InvalidOperationException("[HUDWindowController] HUDWindow Prefab 未绑定 HUDLockTargetController。");
             healthView.Clear();
+            bossHealthView.Clear();
             ClearSkillSlots();
             ClearEffectViews();
             taskController.Initialize();
@@ -159,17 +167,76 @@ namespace RPG.Game.UI.Controllers
             ClearEffectViews();
             UnbindActiveCharacterCooldowns();
             ClearSkillSlots();
+            bossHealthView?.Clear();
+            bossHealthSource = null;
             if (spriteAtlasLeaseService != null)
                 spriteAtlasLeaseService.Released -= HandleAtlasesReleased;
             spriteAtlasLeaseService?.Dispose();
             spriteAtlasLeaseService = null;
             healthView = null;
+            bossHealthView = null;
             characterManager = null;
             partyManager = null;
             playerController = null;
             taskController = null;
             lockTargetController = null;
             WSLog.Log("[HUDWindowController] HUD 血量绑定与图集租约已释放。");
+        }
+
+        #endregion
+
+        #region Boss 血条展示
+
+        /// <summary>将 HUD 顶部 Boss 血条绑定到指定 ASC，并显示实际等级与初始属性快照。</summary>
+        /// <param name="source">拥有当前 Boss 血量的 ASC，也是后续更新与清除的所有权标识。</param>
+        /// <param name="level">NPCController 已确定的实际等级。</param>
+        /// <param name="health">ASC 当前 Health。</param>
+        /// <param name="maxHealth">ASC 当前 MaxHealth。</param>
+        public void BindBossHealth(
+            GameplayAbilitySystemComponent source,
+            int level,
+            float health,
+            float maxHealth)
+        {
+            if (!initialized || disposed)
+                throw new InvalidOperationException("[HUDWindowController] HUD 尚未初始化或已经释放，不能绑定 Boss 血条。");
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            bossHealthSource = source;
+            bossHealthView.Show(level, health, maxHealth);
+            WSLog.Log($"[HUDWindowController] Boss 血条已绑定，source={source.name}, level={level}。");
+        }
+
+        /// <summary>只在调用来源仍拥有当前血条时刷新 Health 与 MaxHealth。</summary>
+        /// <param name="source">产生属性变化的 ASC。</param>
+        /// <param name="health">ASC 最新 Health。</param>
+        /// <param name="maxHealth">ASC 最新 MaxHealth。</param>
+        /// <returns>来源拥有当前血条并已完成刷新时返回 true。</returns>
+        public bool RefreshBossHealth(
+            GameplayAbilitySystemComponent source,
+            float health,
+            float maxHealth)
+        {
+            if (!initialized || disposed || source == null || !ReferenceEquals(bossHealthSource, source))
+                return false;
+
+            bossHealthView.RefreshHealth(health, maxHealth);
+            return true;
+        }
+
+        /// <summary>只允许当前 ASC 所有者清除 HUD 顶部 Boss 血条。</summary>
+        /// <param name="source">请求清除显示的 ASC。</param>
+        /// <returns>来源拥有当前血条并已清除时返回 true。</returns>
+        public bool ClearBossHealth(GameplayAbilitySystemComponent source)
+        {
+            if (source == null || !ReferenceEquals(bossHealthSource, source))
+                return false;
+
+            bossHealthSource = null;
+            bossHealthView?.Clear();
+            WSLog.Log($"[HUDWindowController] Boss 血条已清除，source={source.name}。");
+            return true;
         }
 
         #endregion
