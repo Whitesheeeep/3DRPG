@@ -5,9 +5,9 @@ using UnityEngine;
 
 namespace RPG.NPC.BehaviourTree
 {
-    /// <summary>首次在配置 Layer 与半径内寻找玩家，并把稳定角色根写入共享黑板。</summary>
+    /// <summary>首次在配置 Layer 与半径内寻找可攻击玩家，并把共享 CharacterRoot 写入黑板。</summary>
     [TaskCategory("RPG/NPC")]
-    [TaskDescription("保留仍有效的已有目标；否则仅在首次发现范围内查找玩家 CharacterActor。")]
+    [TaskDescription("保留仍有效的 CharacterRoot；否则仅在首次发现范围内查找由 CharacterManager 提供有效 Active 角色的目标。")]
     public sealed class FindPlayerByLayer : Action
     {
         #region 黑板与查询缓冲
@@ -59,7 +59,7 @@ namespace RPG.NPC.BehaviourTree
                 return TaskStatus.Failure;
 
             target.Value = foundTarget;
-            Debug.Log($"[FindPlayerByLayer] Boss '{controller.name}' 首次发现玩家 '{foundTarget.name}'。", controller);
+            Debug.Log($"[FindPlayerByLayer] Boss '{controller.name}' 首次发现可攻击玩家 CharacterRoot '{foundTarget.name}'。", controller);
             return TaskStatus.Success;
         }
 
@@ -76,9 +76,9 @@ namespace RPG.NPC.BehaviourTree
 
         #region 玩家目标搜索
 
-        /// <summary>按节点配置的玩家 Layer 与首次发现半径选择最近有效 CharacterActor。</summary>
-        /// <param name="nearestTarget">找到时返回玩家 Actor 的稳定根节点。</param>
-        /// <returns>范围内存在有效玩家时返回 true。</returns>
+        /// <summary>按节点配置的 Layer 与首次发现半径选择最近的有效玩家 CharacterRoot。</summary>
+        /// <param name="nearestTarget">找到时返回目标队伍共用的空间根节点。</param>
+        /// <returns>范围内存在提供有效 Active ASC 的 CharacterManager 时返回 true。</returns>
         private bool TryFindNearestPlayer(out Transform nearestTarget)
         {
             nearestTarget = null;
@@ -97,7 +97,7 @@ namespace RPG.NPC.BehaviourTree
             }
 
             float nearestDistanceSquared = searchRadius * searchRadius;
-            var visitedActorIds = new System.Collections.Generic.HashSet<int>();
+            var visitedManagerIds = new System.Collections.Generic.HashSet<int>();
             try
             {
                 for (int index = 0; index < colliderCount; index++)
@@ -105,14 +105,13 @@ namespace RPG.NPC.BehaviourTree
                     Collider collider = playerColliderBuffer[index];
                     if (collider == null)
                         continue;
-                    CharacterActor playerActor = collider.GetComponentInParent<CharacterActor>();
-                    if (playerActor == null)
-                        playerActor = collider.GetComponentInChildren<CharacterActor>();
-                    if (playerActor == null || !playerActor.gameObject.activeInHierarchy ||
-                        !visitedActorIds.Add(playerActor.GetInstanceID()))
+                    // 同一队伍的多个身体 Collider 只解析一次，存活身份由 Manager 的当前 Active 决定。
+                    CharacterManager playerManager = collider.GetComponentInParent<CharacterManager>();
+                    if (playerManager == null || !visitedManagerIds.Add(playerManager.GetInstanceID()))
                         continue;
 
-                    Transform playerRoot = playerActor.RootTransform;
+                    CharacterActor activeActor = playerManager.ActiveCharacter;
+                    Transform playerRoot = activeActor != null ? activeActor.RootTransform : null;
                     if (playerRoot == null || !controller.IsValidPlayerTarget(playerRoot))
                         continue;
                     float distanceSquared = (playerRoot.position - controller.transform.position).sqrMagnitude;

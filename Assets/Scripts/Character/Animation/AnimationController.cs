@@ -23,6 +23,7 @@ namespace RPG.Character.Animation
         [SerializeField] private AnimationLayerProfile profile;
 
         private bool initialized;
+        private bool runtimeReleased;
         private bool hitStopPaused;
         private float speedBeforeHitStop = 1f;
 
@@ -36,6 +37,12 @@ namespace RPG.Character.Animation
         private void Awake()
         {
             InitializeIfNeeded();
+        }
+
+        /// <summary>销毁时释放本组件曾创建的 PlayableGraph，避免非激活对象绕过 Animancer 清理。</summary>
+        private void OnDestroy()
+        {
+            ReleaseRuntime();
         }
 
         /// <summary>在 Inspector 新增组件时自动填充同节点 Animancer 引用。</summary>
@@ -127,6 +134,7 @@ namespace RPG.Character.Animation
         public void SetFloatParameter(StringAsset parameter, float value)
         {
             if (parameter == null) throw new ArgumentNullException(nameof(parameter));
+            InitializeIfNeeded();
             animancer.Parameters.SetValue(parameter, value);
         }
 
@@ -138,19 +146,28 @@ namespace RPG.Character.Animation
         /// <param name="paused">是否局部暂停本角色全部动画层。</param>
         public void SetHitStopPaused(bool paused)
         {
-            InitializeIfNeeded();
-            if (hitStopPaused == paused) return;
-
             if (paused)
             {
+                InitializeIfNeeded();
+                if (hitStopPaused) return;
+
                 speedBeforeHitStop = animancer.Graph.Speed;
                 animancer.Graph.Speed = 0f;
+                hitStopPaused = true;
             }
             else
             {
+                if (!hitStopPaused) return;
+                if (runtimeReleased || animancer == null || !animancer.IsGraphInitialized)
+                {
+                    // 销毁顺序可能先释放 Graph；只清除暂停标记，不为恢复操作重建 Graph。
+                    hitStopPaused = false;
+                    return;
+                }
+
                 animancer.Graph.Speed = speedBeforeHitStop;
+                hitStopPaused = false;
             }
-            hitStopPaused = paused;
             Debug.Log($"[AnimationController] 角色 '{name}' {(paused ? "暂停" : "恢复")}动画图，graphSpeed={animancer.Graph.Speed:F2}。", this);
         }
 
@@ -162,6 +179,9 @@ namespace RPG.Character.Animation
         /// <param name="duration">权重过渡秒数；零表示立即设置。</param>
         public void FadeLayer(AnimationLayerType layer, float targetWeight, float duration)
         {
+            if (runtimeReleased || animancer == null || !animancer.IsGraphInitialized)
+                return;
+
             AnimancerLayer animancerLayer = GetLayer(layer);
             float clampedWeight = Mathf.Clamp01(targetWeight);
             if (duration <= 0f)
@@ -179,6 +199,9 @@ namespace RPG.Character.Animation
         /// <param name="layer">目标固定动画层。</param>
         public void StopLayer(AnimationLayerType layer)
         {
+            if (runtimeReleased || animancer == null || !animancer.IsGraphInitialized)
+                return;
+
             AnimancerLayer animancerLayer = GetLayer(layer);
             animancerLayer.Stop();
             animancerLayer.Weight = 0f;
@@ -187,6 +210,28 @@ namespace RPG.Character.Animation
         #endregion
 
         #region 初始化与查询
+
+        /// <summary>
+        /// 释放 AnimationController 所拥有的 Animancer Graph；重复调用不会访问或重建已释放的图。
+        /// </summary>
+        internal void ReleaseRuntime()
+        {
+            if (runtimeReleased)
+                return;
+
+            runtimeReleased = true;
+            initialized = false;
+            hitStopPaused = false;
+
+            // IsGraphInitialized 不会惰性创建 Graph，因此可安全清理从未激活过的 Animancer 子对象。
+            bool hadInitializedGraph = animancer != null && animancer.IsGraphInitialized;
+            if (hadInitializedGraph)
+                animancer.Graph.Destroy();
+
+            Debug.Log(
+                $"[AnimationController] 角色 '{name}' 已释放动画运行时，graphDestroyed={hadInitializedGraph}。",
+                this);
+        }
 
         /// <summary>
         /// 使用 Animancer TransitionLibrary 播放已注册的组合过渡；未注册的内嵌 Transition
@@ -211,6 +256,9 @@ namespace RPG.Character.Animation
         /// <exception cref="InvalidOperationException">角色未配置 AnimationLayerProfile。</exception>
         private void InitializeIfNeeded()
         {
+            if (runtimeReleased)
+                throw new ObjectDisposedException(
+                    nameof(AnimationController), $"角色 '{name}' 的动画运行时已经释放，不能重新初始化。");
             if (initialized) return;
             if (profile == null)
                 throw new InvalidOperationException($"角色 {name} 未配置 AnimationLayerProfile。");

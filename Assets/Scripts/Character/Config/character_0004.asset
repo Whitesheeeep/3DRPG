@@ -122,6 +122,8 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 4bf9da2dc0946ae46a3f2e89ef0e8d4d, type: 2}
     - {fileID: 11400000, guid: bc9a07b3c7cc272498bf2514468cc80d, type: 2}
     skillInputBindings:
+    - inputType: 3
+      ability: {fileID: 11400000, guid: 0f3e634a85694f8c9584c77992040203, type: 2}
     - inputType: 15
       ability: {fileID: 11400000, guid: 8dd9cbf03c2d4dcf8b0b9276fb7fc9b1, type: 2}
     hitReactionBindings:

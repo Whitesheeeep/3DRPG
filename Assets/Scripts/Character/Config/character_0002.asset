@@ -124,10 +124,7 @@ MonoBehaviour:
     skillInputBindings:
     - inputType: 15
       ability: {fileID: 11400000, guid: 8dd9cbf03c2d4dcf8b0b9276fb7fc9b1, type: 2}
-    hitReactionBindings:
-    - effectTag:
-        id: 217
-      ability: {fileID: 11400000, guid: 14be1011bee50a04387e5678433a79a9, type: 2}
+    hitReactionBindings: []
   locomotion:
     gravity: 9.81
     locomotionTransition: {fileID: 11400000, guid: 8b2e9e80cfd84d94b68a1f7f15d89b21, type: 2}

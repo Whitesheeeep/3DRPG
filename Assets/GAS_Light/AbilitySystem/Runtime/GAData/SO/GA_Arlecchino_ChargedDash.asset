@@ -1,0 +1,85 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 234d1fa455a5428696c332fdb20e580f, type: 3}
+  m_Name: GA_Arlecchino_ChargedDash
+  m_EditorClassIdentifier: 
+  abilityId: 24
+  abilityName: "\u963F\u857E\u5947\u8BFA\u84C4\u529B\u51B2\u523A"
+  icon: {fileID: 21300000, guid: aa465fb16cbb3dd4abf3d64dc3b975b5, type: 3}
+  description: Prepare with Skill_01, charge while held, then dash using Scythe_Xuli_Skill.
+  abilityTags:
+  - id: 165
+  cancelTags:
+  - id: 164
+  - id: 218
+  blockAbilityTags:
+  - id: 164
+  - id: 221
+  - id: 218
+  isCancelable: 1
+  activationTagQuery:
+    allTags: []
+    anyTags: []
+    banedTags:
+    - id: 161
+    - id: 162
+    - id: 163
+    - id: 154
+    - id: 156
+  costEffect: {fileID: 0}
+  cooldownEffect: {fileID: 0}
+  effects:
+  - {fileID: 11400000, guid: ac1400d654b74efea7ec44749b545969, type: 2}
+  cueTags:
+  - id: 187
+  damageMultiplier:
+    baseValue: 1
+    levelCurve:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  rootTask:
+    rid: 702000000000000001
+  references:
+    version: 2
+    RefIds:
+    - rid: 702000000000000001
+      type: {class: SequenceGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
+      data:
+        children:
+        - rid: 702000000000000002
+        - rid: 1466742237868326912
+        - rid: 702000000000000004
+    - rid: 702000000000000002
+      type: {class: ChargePreparationGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
+      data:
+        preparationTransition: {fileID: 11400000, guid: 3ede2079d6aa4599b93b4800ee38ae4e, type: 2}
+    - rid: 702000000000000004
+      type: {class: ChargedDashReleaseGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
+      data:
+        skillConfig: {fileID: 11400000, guid: c76b23fa1db480940a66a8a551625c89, type: 2}
+        maximumChargeDuration: 3
+        minimumDamageMultiplier: 1
+        maximumDamageMultiplier: 2
+        releaseAudioKey: 
+        releaseAudioIs3D: 1
+        releaseAudioVolumeScale: 1
+        rightHandMarkerKey: {fileID: 11400000, guid: 0eb3ef8ce14e44847be619f8ff168f28, type: 2}
+        releaseVfxPrefab: {fileID: 0}
+        releaseVfxLocalPosition: {x: 0, y: 0, z: 0}
+        releaseVfxLocalEulerAngles: {x: 0, y: 0, z: 0}
+        releaseVfxScale: 1
+    - rid: 1466742237868326912
+      type: {class: ChargeHoldGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
+      data: {}

@@ -24,8 +24,7 @@ MonoBehaviour:
   grantedTags:
   - id: 217
   cueTags: []
-  modifiers:
-  - rid: 1466742145039204365
+  modifiers: []
   executions:
   - rid: 731600000000000001
   validationSets:
@@ -320,38 +319,3 @@ MonoBehaviour:
     - rid: 731600000000000001
       type: {class: BasicDamageGameplayEffectExecution, ns: WS_Modules.GAS.GameplayEffect, asm: Assembly-CSharp}
       data: 
-    - rid: 1466742145039204365
-      type: {class: CurveGameplayEffectModifier, ns: WS_Modules.GAS.GameplayEffect, asm: Assembly-CSharp}
-      data:
-        attribute:
-          id: 0
-          name: Health
-          displayName: "\u5F53\u524D\u751F\u547D\u503C"
-        type: 0
-        priority: 0
-        baseMagnitude: -100
-        levelCurve:
-          serializedVersion: 2
-          m_Curve:
-          - serializedVersion: 3
-            time: 1
-            value: 1
-            inSlope: 0.2
-            outSlope: 0.2
-            tangentMode: 34
-            weightedMode: 0
-            inWeight: 0
-            outWeight: 0.33333334
-          - serializedVersion: 3
-            time: 6
-            value: 2
-            inSlope: 0.2
-            outSlope: 0.2
-            tangentMode: 34
-            weightedMode: 0
-            inWeight: 0.33333334
-            outWeight: 0
-          m_PreInfinity: 2
-          m_PostInfinity: 2
-          m_RotationOrder: 4
-        bakedResultLabel: "\u6269\u9664\u8840\u91CF"

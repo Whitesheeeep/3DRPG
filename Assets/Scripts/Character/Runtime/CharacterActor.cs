@@ -17,7 +17,8 @@ namespace RPG.Character
     /// <summary>封装单个角色的战斗与能力运行时，并将生命状态和 Locomotion 阶段交给生命 FSM。</summary>
     [RequireComponent(typeof(Animator))]
     [InfoBox("依赖 CharacterConfig、同节点 Humanoid Animator、AnimationController 和 WeaponRigController，以及同节点或子节点中的 ASC、MarkerProvider、SkillRuntimeHost、CharacterWeaponPresentationController；武器表现由 CharacterManager 注入 Roster/WeaponInventory，武器姿态由技能 Task 通过 Owner.WeaponSwitch 驱动；Config 提供角色属性、战斗与 Locomotion 参数，子树 Renderer 用于隐藏后台角色。")]
-    public sealed class CharacterActor : CharacterAbilityActor, IGameplayAbilityTargetProvider, ICombatDamageReceiver
+    public sealed class CharacterActor : CharacterAbilityActor, IGameplayAbilityTargetProvider,
+        ICombatDamageReceiver, IPlayerGameplayAbilitySystemOwner
     {
         #region 配置与运行时状态
 
@@ -90,6 +91,22 @@ namespace RPG.Character
         public bool IsDead => lifeStateMachine?.IsDead ?? false;
         /// <summary>获取稳定 Player 共享的输入状态黑板。</summary>
         public PlayerStateBlackboard StateBlackboard => stateBlackboard;
+        /// <inheritdoc />
+        public IPlayerInputRequestBuffer InputRequestBuffer => PlayerInputController.Instance;
+        /// <inheritdoc />
+        public Vector3 MoveWorldInput => StateBlackboard.MoveWorldInput;
+        /// <summary>按当前角色战斗配置查找技能输入对应的 GA Handle。</summary>
+        /// <param name="inputType">玩家技能输入类型。</param>
+        /// <param name="handle">找到时返回 ASC 授予的 Handle。</param>
+        /// <returns>当前角色配置了该输入槽位时返回 true。</returns>
+        public bool TryGetGameplayAbilityHandle(
+            E_PlayerInputType inputType,
+            out GameplayAbilityHandle handle) => combatSystem.TryGetSkillAbilityHandle(inputType, out handle);
+        /// <inheritdoc />
+        public bool TryGetCurrentAbilityInputSource(
+            out E_PlayerInputType inputType,
+            out InputRequestHandle inputHandle) =>
+            combatSystem.TryGetCurrentAbilityInputSource(out inputType, out inputHandle);
         /// <summary>当角色仍有活动能力时，角色切换应直接拒绝。</summary>
         public bool IsBusy => IsDead || AbilitySystemComponent.ActiveAbilities.Count > 0;
         /// <inheritdoc />

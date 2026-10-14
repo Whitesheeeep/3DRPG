@@ -1,10 +1,16 @@
 using System.Collections.Generic;
+using System;
 
 namespace RPG.PlayerInputSystem
 {
     /// <summary>定义业务消费者、仲裁者与输入请求缓冲区之间的稳定契约。</summary>
     public interface IPlayerInputRequestBuffer
     {
+        /// <summary>当某个手势收到物理松开事件时发送真实按下时长。</summary>
+        event Action<InputRequestHandle, float> RequestReleased;
+        /// <summary>当业务主动清空整个请求缓冲区时发送。</summary>
+        event Action RequestsCleared;
+
         /// <summary>获取当前所有请求的只读顺序视图。</summary>
         IReadOnlyList<IReadOnlyPlayerInputRequest> Requests { get; }
         /// <summary>按输入类型查询当前请求，供业务或仲裁者在不遍历列表的情况下读取。</summary>

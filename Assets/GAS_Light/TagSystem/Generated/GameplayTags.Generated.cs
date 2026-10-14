@@ -28,8 +28,10 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_Cue_Combat = new GameplayTag(186);
         /// <summary>Cue.Combat.HitSound</summary>
         public static readonly GameplayTag Tag_Cue_Combat_HitSound = new GameplayTag(188);
-        /// <summary>Cue.Combat.HitStop</summary>
-        public static readonly GameplayTag Tag_Cue_Combat_HitStop = new GameplayTag(187);
+        /// <summary>Cue.Combat.HitStop100</summary>
+        public static readonly GameplayTag Tag_Cue_Combat_HitStop100 = new GameplayTag(187);
+        /// <summary>Cue.Combat.HitStopHeavy</summary>
+        public static readonly GameplayTag Tag_Cue_Combat_HitStopHeavy = new GameplayTag(223);
         /// <summary>Cue.Cue_Follow</summary>
         public static readonly GameplayTag Tag_Cue_Cue_Follow = new GameplayTag(116);
         /// <summary>Cue.Cue_Source</summary>
@@ -60,6 +62,8 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_Data = new GameplayTag(178);
         /// <summary>Data.Damage</summary>
         public static readonly GameplayTag Tag_Data_Damage = new GameplayTag(179);
+        /// <summary>Data.Damage.ChargeMultiplier</summary>
+        public static readonly GameplayTag Tag_Data_Damage_ChargeMultiplier = new GameplayTag(222);
         /// <summary>Data.Damage.Multiplier</summary>
         public static readonly GameplayTag Tag_Data_Damage_Multiplier = new GameplayTag(180);
         /// <summary>Debuff</summary>

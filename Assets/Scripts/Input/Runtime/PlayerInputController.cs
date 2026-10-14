@@ -59,6 +59,10 @@ namespace RPG.PlayerInputSystem
 
         /// <summary>当配置为即时交付的 InputAction 发生 performed 时通知订阅者。</summary>
         public event Action<E_PlayerInputType> ImmediateInputPerformed;
+        /// <summary>当某个手势收到物理松开事件时发送真实按下时长。</summary>
+        public event Action<InputRequestHandle, float> RequestReleased;
+        /// <summary>当业务主动清空整个请求缓冲区时发送。</summary>
+        public event Action RequestsCleared;
 
         /// <summary>通过输入类型从内部索引查询请求，供 Arbiter 在不扫描列表的情况下读取输入阶段。</summary>
         /// <param name="inputType">需要查询的输入类型。</param>
@@ -351,7 +355,11 @@ namespace RPG.PlayerInputSystem
         {
             if (gameplayInputBlocked) return false;
             if (!requestsByType.TryGetValue(inputType, out PlayerInputRequest request)) return false;
-            return request.Release(Time.realtimeSinceStartupAsDouble);
+            if (!request.Release(Time.realtimeSinceStartupAsDouble)) return false;
+
+            // 先锁定请求中的 Release 句柄和真实按住时长，再同步通知正在等待该手势的 Ability。
+            RequestReleased?.Invoke(request.ReleaseHandle, request.HeldDuration);
+            return true;
         }
 
         // 消费 Handle 方法
@@ -370,6 +378,8 @@ namespace RPG.PlayerInputSystem
         public void Clear()
         {
             int requestCount = requests.Count;
+            // 清理通知先于移除快照发送，使等待中的 Ability 能同步取消并解除自己的订阅。
+            RequestsCleared?.Invoke();
             requestsByType.Clear();
             requests.Clear();
             if (requestCount > 0)

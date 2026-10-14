@@ -407,7 +407,7 @@ namespace RPG.Game.UI.Controllers
                 (attribute != GameplayAttributes.Attribute_Health &&
                  attribute != GameplayAttributes.Attribute_MaxHealth))
                 return;
-            RefreshActor(actor);
+            RefreshActor(actor, actor.IsDead);
         }
 
         /// <summary>Actor 进入或离开 Dead 层时同步重绘底部血条与固定 PartySlot 根 Image。</summary>
@@ -416,7 +416,8 @@ namespace RPG.Game.UI.Controllers
         private void HandleActorLifeStateChanged(CharacterActor actor, bool isDead)
         {
             if (disposed || actor == null) return;
-            RefreshActor(actor);
+            // 使用事件携带的新状态；状态退出回调期间 Actor 查询值可能仍处于旧状态。
+            RefreshActor(actor, isDead);
         }
 
         /// <summary>处理头像 Atlas 实际释放后清空视图中的 Sprite 引用。</summary>
@@ -495,7 +496,8 @@ namespace RPG.Game.UI.Controllers
 
         /// <summary>刷新指定角色涉及的底部主血条和对应队伍槽位。</summary>
         /// <param name="actor">需要刷新的角色。</param>
-        private void RefreshActor(CharacterActor actor)
+        /// <param name="isDead">本次刷新采用的死亡状态快照。</param>
+        private void RefreshActor(CharacterActor actor, bool isDead)
         {
             if (!TryReadHealth(actor, out float health, out float maxHealth))
             {
@@ -504,12 +506,12 @@ namespace RPG.Game.UI.Controllers
             }
 
             if (ReferenceEquals(characterManager.ActiveCharacter, actor))
-                healthView.SetActiveCharacter(actor.Instance.Level, health, maxHealth, actor.IsDead);
+                healthView.SetActiveCharacter(actor.Instance.Level, health, maxHealth, isDead);
 
             for (int slotIndex = 0; slotIndex < characterBySlot.Length; slotIndex++)
                 if (ReferenceEquals(characterBySlot[slotIndex], actor))
                     healthView.SetPartySlot(slotIndex, actor.Config.Name, GetCharacterPortrait(actor),
-                        health, maxHealth, ReferenceEquals(characterManager.ActiveCharacter, actor), actor.IsDead);
+                        health, maxHealth, ReferenceEquals(characterManager.ActiveCharacter, actor), isDead);
         }
 
         /// <summary>刷新底部 Active 角色的显示内容。</summary>

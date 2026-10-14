@@ -77,9 +77,11 @@ namespace RPG.Character.State
         private void HandleStateEntered()
         {
             ApplyControlPermission();
-            if (lifeStateMachine.Actor.IsActiveCharacter && lifeStateMachine.IsControlAllowed)
-                Debug.Log($"[AliveCharacterState] 存活状态进入并启用 Locomotion，character={lifeStateMachine.Actor.CharacterId}。",
-                    lifeStateMachine.Actor);
+            // 状态机此时已将 Alive 设为当前状态；订阅者可以安全读取 Actor.IsDead 并恢复存活外观。
+            lifeStateMachine.Actor.NotifyLifeStateChanged(false);
+            Debug.Log(
+                $"[AliveCharacterState] 已进入 Alive 并发布存活状态，character={lifeStateMachine.Actor.CharacterId}, active={lifeStateMachine.Actor.IsActiveCharacter}, controlAllowed={lifeStateMachine.IsControlAllowed}。",
+                lifeStateMachine.Actor);
         }
 
         /// <summary>死亡转场前保存垂直速度，再退出 Locomotion 并释放重力请求。</summary>

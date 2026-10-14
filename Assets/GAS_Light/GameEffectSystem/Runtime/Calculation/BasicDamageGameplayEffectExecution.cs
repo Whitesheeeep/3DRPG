@@ -9,7 +9,7 @@ namespace WS_Modules.GAS.GameplayEffect
 {
     /// <summary>按攻击力、技能倍率、暴击和防御计算一次基础伤害。</summary>
     [Serializable]
-    public sealed class BasicDamageGameplayEffectExecution : GameplayEffectExecution
+    public class BasicDamageGameplayEffectExecution : GameplayEffectExecution
     {
         #region 运行时计算
 
@@ -26,22 +26,22 @@ namespace WS_Modules.GAS.GameplayEffect
                 !context.TryGetSourceAttribute(GameplayAttributes.Attribute_CriticalChance, out float criticalChance) ||
                 !context.TryGetSourceAttribute(GameplayAttributes.Attribute_CriticalDamage, out float criticalDamage) ||
                 !context.TryGetTargetAttribute(GameplayAttributes.Attribute_Armor, out float armor) ||
-                !context.TryGetTargetAttribute(GameplayAttributes.Attribute_Health, out float targetHealth) ||
-                !context.TryGetSetByCaller(
-                    GameplayTags.Tag_Data_Damage_Multiplier,
-                    out float skillMultiplier))
+                !context.TryGetTargetAttribute(GameplayAttributes.Attribute_Health, out float targetHealth))
+                return null;
+
+            if (!TryGetDamageMultiplier(context, out float damageMultiplier))
                 return null;
 
             if (!IsFinite(attack) || !IsFinite(criticalChance) ||
                 !IsFinite(criticalDamage) || !IsFinite(armor) ||
-                !IsFinite(targetHealth) || !IsFinite(skillMultiplier))
+                !IsFinite(targetHealth) || !IsFinite(damageMultiplier))
                 return null;
 
             float clampedArmor = Mathf.Max(0f, armor);
             float clampedCriticalChance = Mathf.Clamp01(criticalChance);
             float clampedCriticalDamage = Mathf.Max(0f, criticalDamage);
             bool isCritical = UnityEngine.Random.value < clampedCriticalChance;
-            float damageBeforeDefense = Mathf.Max(0f, attack * skillMultiplier);
+            float damageBeforeDefense = Mathf.Max(0f, attack * damageMultiplier);
             if (isCritical)
                 damageBeforeDefense *= 1f + clampedCriticalDamage;
 
@@ -60,6 +60,17 @@ namespace WS_Modules.GAS.GameplayEffect
                 finalDamage);
             return new GameplayEffectExecutionOutput(new[] { modifier }, result);
         }
+
+        /// <summary>读取本次 Execution 使用的伤害倍率，供专用伤害类型扩展倍率来源。</summary>
+        /// <param name="context">本次 GE 应用的实时上下文。</param>
+        /// <param name="damageMultiplier">成功时返回有限性将在主计算流程校验的组合倍率。</param>
+        /// <returns>基础伤害倍率存在时返回 true。</returns>
+        protected virtual bool TryGetDamageMultiplier(
+            GameplayEffectCalculationContext context,
+            out float damageMultiplier) =>
+            context.TryGetSetByCaller(
+                GameplayTags.Tag_Data_Damage_Multiplier,
+                out damageMultiplier);
 
         #endregion
 

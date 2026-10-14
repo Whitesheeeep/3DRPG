@@ -128,6 +128,17 @@ namespace RPG.Character
         protected virtual void OnDestroy()
         {
             hitStopState?.Clear();
+            hitStopState = null;
+            ReleaseAnimationRuntime();
+        }
+
+        /// <summary>通过缓存的动画控制器释放 Graph，供派生控制器在子层级先失活时提前调用。</summary>
+        internal void ReleaseAnimationRuntime()
+        {
+            if (animationController == null)
+                return;
+
+            animationController.ReleaseRuntime();
         }
 
         #endregion

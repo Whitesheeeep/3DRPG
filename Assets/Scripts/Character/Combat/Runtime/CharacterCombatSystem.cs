@@ -24,6 +24,9 @@ namespace RPG.Character
         private CharacterCombatConfig combatConfig;
         private PlayerStateBlackboard stateBlackboard;
         private bool initialized;
+        private bool hasCurrentAbilityInputSource;
+        private E_PlayerInputType currentAbilityInputType;
+        private InputRequestHandle currentAbilityInputHandle;
 
         #endregion
 
@@ -175,13 +178,49 @@ namespace RPG.Character
                 GameplayAbilityHandle handle = skillAbilityHandleByInputMap[binding.InputType];
                 IReadOnlyDictionary<GameplayTag, float> setByCallerValueByTagMap =
                     TryBuildQuickShiftDirection(binding.Ability);
-                if (abilitySystemComponent.TryActivateAbility(handle, setByCallerValueByTagMap, out _))
+                // TryActivateAbility 会同步创建并启动 Runtime；在这段调用期间公开实际触发它的输入手势。
+                hasCurrentAbilityInputSource = true;
+                currentAbilityInputType = binding.InputType;
+                currentAbilityInputHandle = request.PressHandle;
+                bool activated;
+                try
+                {
+                    activated = abilitySystemComponent.TryActivateAbility(handle, setByCallerValueByTagMap, out _);
+                }
+                finally
+                {
+                    hasCurrentAbilityInputSource = false;
+                    currentAbilityInputType = default;
+                    currentAbilityInputHandle = default;
+                }
+
+                if (activated)
                 {
                     inputRequests.TryConfirmConsumed(stageHandle);
                     return true;
                 }
             }
             return false;
+        }
+
+        /// <summary>按玩家输入类型查询已授予的 GA Handle。</summary>
+        /// <param name="inputType">需要查询的玩家技能输入类型。</param>
+        /// <param name="handle">找到时返回对应的 ASC Ability Handle。</param>
+        /// <returns>当前角色配置了该输入槽位时返回 true。</returns>
+        internal bool TryGetSkillAbilityHandle(E_PlayerInputType inputType, out GameplayAbilityHandle handle) =>
+            skillAbilityHandleByInputMap.TryGetValue(inputType, out handle);
+
+        /// <summary>读取当前同步激活调用所携带的输入来源手势。</summary>
+        /// <param name="inputType">找到时返回本次技能槽位。</param>
+        /// <param name="inputHandle">找到时返回本次 Press 手势句柄。</param>
+        /// <returns>当前正处于技能输入激活调用中时返回 true。</returns>
+        internal bool TryGetCurrentAbilityInputSource(
+            out E_PlayerInputType inputType,
+            out InputRequestHandle inputHandle)
+        {
+            inputType = currentAbilityInputType;
+            inputHandle = currentAbilityInputHandle;
+            return hasCurrentAbilityInputSource;
         }
 
         /// <summary>为 QuickShift 冻结当前摄像机相对的世界水平移动方向。</summary>

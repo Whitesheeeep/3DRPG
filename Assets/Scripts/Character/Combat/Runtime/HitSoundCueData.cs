@@ -1,5 +1,6 @@
 using Sirenix.OdinInspector;
 using UnityEngine;
+using WS_Modules;
 using WS_Modules.GAS.GameplayCue;
 
 namespace RPG.Character.Combat
@@ -12,7 +13,7 @@ namespace RPG.Character.Combat
     {
         #region 配置字段
 
-        [SerializeField, Tooltip("通过项目资源加载器解析的音频资源 Key。")]
+        [SerializeField, WSAddressableKey(),Tooltip("通过项目资源加载器解析的音频资源 Key。")]
         private string audioKey;
         [SerializeField, MinValue(0f), Tooltip("命中音效音量倍率。")]
         private float volume = 1f;

@@ -18,8 +18,8 @@ MonoBehaviour:
   editorLocked: 0
   clips:
   - id: cac61638f72246ddaf473b7db973bc86
-    startFrame: 20
-    durationFrames: 15
+    startFrame: 0
+    durationFrames: 13
     sampleIntervalFrames: 1
     detectionId: 0
     markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
@@ -57,7 +57,7 @@ MonoBehaviour:
   editorLocked: 0
   clips:
   - id: 99b7969a0b2f46bab7bad8ed4a486791
-    startFrame: 22
+    startFrame: 2
     durationFrames: 1
     sampleIntervalFrames: 1
     detectionId: 0
@@ -95,17 +95,17 @@ MonoBehaviour:
   displayName: "\u7279\u6548\u8F68\u9053"
   editorLocked: 0
   clips:
-  - id: cb581bcc25ca40d49035b1ffd9e30a24
+  - id: 244b5dd0e8a04afca48c283fb6940bea
     prefab: {fileID: 1294101409476956, guid: ff839c5a711056d4b88479da2d57aaf6, type: 3}
     markerKey: {fileID: 0}
-    startFrame: 17
-    durationFrames: 16
-    localPosition: {x: 0, y: 0.96, z: 0}
+    startFrame: 0
+    durationFrames: 15
+    localPosition: {x: 0, y: 0.91, z: 0}
     localEulerAngles: {x: 0, y: 0, z: 0}
-    localScale: {x: 0.8, y: 0.8, z: 0.8}
-    playbackSpeed: 0.31
+    localScale: {x: 1, y: 1, z: 1}
+    playbackSpeed: 1
     followMode: 0
-    stopMode: 1
+    stopMode: 0
 --- !u!114 &-6273153368874944291
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -172,10 +172,17 @@ MonoBehaviour:
   - id: 500d36415c524bd1bb94ddad023290d3
     animationClip: {fileID: 7400000, guid: 88d4cc5c65d0da0418f8dac0180bcd31, type: 2}
     startFrame: 0
-    durationFrames: 71
-    sourceStartFrame: 0
+    durationFrames: 34
+    sourceStartFrame: 40
     playbackSpeed: 1
     fadeDuration: 0.1
+  - id: a3c1e0d3e81342a6b23ed71349baf4a8
+    animationClip: {fileID: 7400000, guid: d408ff4b131a9c448b3ab312838279da, type: 2}
+    startFrame: 34
+    durationFrames: 17
+    sourceStartFrame: 0
+    playbackSpeed: 1
+    fadeDuration: 0.2
 --- !u!114 &-1760592265493178816
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -193,26 +200,28 @@ MonoBehaviour:
   displayName: "\u52A8\u4F5C\u9636\u6BB5\u8F68\u9053"
   editorLocked: 0
   clips:
-  - id: cde28f9201304c76bfd2349b3267ad17
-    startFrame: 0
-    durationFrames: 20
-    phase: 1
-    isCancelable: 0
-    runtimeTags: []
-    blockAbilityTags: []
   - id: f9d05e9a558c4fe0b4859dfa34e77ad0
-    startFrame: 20
-    durationFrames: 15
+    startFrame: 0
+    durationFrames: 10
     phase: 2
     isCancelable: 0
     runtimeTags: []
     blockAbilityTags: []
   - id: c2bcf5c073514ac19a6f403829d7b6e6
-    startFrame: 35
-    durationFrames: 36
+    startFrame: 10
+    durationFrames: 20
     phase: 3
-    isCancelable: 0
+    isCancelable: 1
     runtimeTags: []
+    blockAbilityTags: []
+  - id: 27aee78412dc4bc7a03c0e42348feba7
+    startFrame: 30
+    durationFrames: 21
+    phase: 3
+    isCancelable: 1
+    runtimeTags:
+    - id: 171
+    - id: 172
     blockAbilityTags: []
 --- !u!114 &11400000
 MonoBehaviour:
@@ -228,7 +237,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: 06b5b0373eb34364b405c9f4412421ff
   frameRate: 30
-  durationFrames: 71
+  durationFrames: 51
   isRootMotion: 1
   tracks:
   - {fileID: -1760592265493178816}

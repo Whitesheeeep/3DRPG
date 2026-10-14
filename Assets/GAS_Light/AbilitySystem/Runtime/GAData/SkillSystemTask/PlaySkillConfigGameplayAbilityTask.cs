@@ -19,6 +19,8 @@ namespace RPG.SkillSystem
 
         private readonly SkillConfig skillConfig;
         private readonly SkillStartMode startMode;
+        private readonly SkillAbilityControlLease sharedControlLease;
+        private readonly IReadOnlyList<GameplayEffectSpec> presealedEffectSpecs;
         private IReadOnlyList<GameplayEffectSpec> effectSpecs;
         private bool suppressNextAnimatorMotion;
         // 依赖字段：Owner 提供可选武器姿态能力，Skill 与动作仲裁服务由激活流程提供。
@@ -28,6 +30,8 @@ namespace RPG.SkillSystem
         private IFullBodyActionArbiter fullBodyActionArbiter;
 
         private bool ownsWeaponSwitch;
+        private bool ownsMotionHandle;
+        private bool ownsFullBodyActionHandle;
         private bool subscribed;
         private MotionControlHandle motionHandle;
         private FullBodyActionHandle fullBodyActionHandle;
@@ -62,6 +66,24 @@ namespace RPG.SkillSystem
             startMode = requestedStartMode;
         }
 
+        /// <summary>创建借用蓄力 Runtime 控制权并使用预先封存 GE Specs 的释放播放 Task。</summary>
+        /// <param name="runtime">拥有该 Task 的异步 Runtime。</param>
+        /// <param name="config">释放阶段需要播放的 SkillConfig。</param>
+        /// <param name="requestedStartMode">释放时间轴入口模式。</param>
+        /// <param name="controlLease">准备阶段已取得并由 Runtime 持有的共享控制权。</param>
+        /// <param name="sealedSpecs">在 SkillConfig 启动前创建并封存的命中效果 Specs。</param>
+        public PlaySkillConfigGameplayAbilityTask(
+            AsynchronousGameplayAbilityRuntime runtime,
+            SkillConfig config,
+            SkillStartMode requestedStartMode,
+            SkillAbilityControlLease controlLease,
+            IReadOnlyList<GameplayEffectSpec> sealedSpecs)
+            : this(runtime, config, requestedStartMode)
+        {
+            sharedControlLease = controlLease ?? throw new ArgumentNullException(nameof(controlLease));
+            presealedEffectSpecs = sealedSpecs ?? throw new ArgumentNullException(nameof(sealedSpecs));
+        }
+
         #endregion
 
         #region 生命周期
@@ -70,11 +92,15 @@ namespace RPG.SkillSystem
         protected override void OnStart()
         {
             // Runtime 只负责创建封存的 GE Specs，SkillRuntimeHost 才是实际应用者；因此不在 Task 内部直接 Apply。
-            if (!GARuntime.Data.TryCreateConfiguredEffectSpecs(
-                    GARuntime.SourceASC,
-                    GARuntime.Level,
-                    GARuntime.SetByCaller,
-                    out effectSpecs))
+            if (presealedEffectSpecs != null)
+            {
+                effectSpecs = presealedEffectSpecs;
+            }
+            else if (!GARuntime.Data.TryCreateConfiguredEffectSpecs(
+                         GARuntime.SourceASC,
+                         GARuntime.Level,
+                         GARuntime.SetByCaller,
+                         out effectSpecs))
             {
                 Debug.LogError(
                     $"Ability '{GARuntime.Data.name}' ActivationId={GARuntime.ActivationId} 无法创建封存的 GE Specs。",
@@ -96,7 +122,7 @@ namespace RPG.SkillSystem
             weaponSwitch = skillOwner.WeaponSwitch;
 
             // ASC 已经缓存宿主，Task 只取得接口能力，不再依赖角色具体组件类型。
-            host = skillOwner.SkillRuntimeHost;
+            host = sharedControlLease?.Host ?? skillOwner.SkillRuntimeHost;
             if (host == null)
             {
                 Debug.LogError(
@@ -113,10 +139,19 @@ namespace RPG.SkillSystem
             MotionChannels motionChannels = MotionChannels.Horizontal | MotionChannels.Rotation;
             if (skillConfig.IsRootMotion)
                 motionChannels |= MotionChannels.Vertical;
-            motionHandle = motionDriver.RequestControl(new MotionControlRequest(
-                skillOwner,
-                MotionPriority.Skill,
-                motionChannels));
+            if (sharedControlLease != null)
+            {
+                // 蓄力 Runtime 已持有跨阶段控制权；释放播放只借用句柄，不参与归还。
+                motionHandle = sharedControlLease.MotionHandle;
+            }
+            else
+            {
+                motionHandle = motionDriver.RequestControl(new MotionControlRequest(
+                    skillOwner,
+                    MotionPriority.Skill,
+                    motionChannels));
+                ownsMotionHandle = true;
+            }
 
             Subscribe();
             try
@@ -130,7 +165,8 @@ namespace RPG.SkillSystem
                 if (result.Succeeded)
                 {
                     // 只有时间轴实际占用 Host 且当前 Task 仍运行时才接管姿态，避免失败启动改变已有表现。
-                    if (State == GameplayAbilityTaskState.Running && host.IsPlaying && weaponSwitch != null)
+                    if (sharedControlLease == null && State == GameplayAbilityTaskState.Running &&
+                        host.IsPlaying && weaponSwitch != null)
                     {
                         weaponSwitch.HoldWeapon();
                         ownsWeaponSwitch = true;
@@ -139,11 +175,14 @@ namespace RPG.SkillSystem
                     suppressNextAnimatorMotion = startMode == SkillStartMode.FirstActivePhase &&
                                                   host.CurrentFrame > 0 && skillConfig.IsRootMotion;
                     // SkillRuntimeHost 已经成功取得表现层后再发布占据，避免播放失败留下虚假的 FullBody 状态。
-                    fullBodyActionArbiter = skillOwner.FullBodyActionArbiter ??
-                        throw new InvalidOperationException(
-                            $"Ability '{GARuntime.Data.name}' 的角色未绑定 FullBody Action Arbiter。");
-                    fullBodyActionHandle = fullBodyActionArbiter.RegisterFullBodyAction(
-                        GARuntime);
+                    if (sharedControlLease == null)
+                    {
+                        fullBodyActionArbiter = skillOwner.FullBodyActionArbiter ??
+                            throw new InvalidOperationException(
+                                $"Ability '{GARuntime.Data.name}' 的角色未绑定 FullBody Action Arbiter。");
+                        fullBodyActionHandle = fullBodyActionArbiter.RegisterFullBodyAction(GARuntime);
+                        ownsFullBodyActionHandle = true;
+                    }
                     // TryPlay 可能没有 ActionPhase Clip；注册后再次读取 Host 快照，确保初始策略一致。
                     ApplyPhasePolicy(
                         host.CurrentPhase,
@@ -412,7 +451,9 @@ namespace RPG.SkillSystem
         /// <summary>对称释放技能占用的运动控制权。</summary>
         private void ReleaseMotion()
         {
-            motionHandle?.Dispose();
+            if (ownsMotionHandle)
+                motionHandle?.Dispose();
+            ownsMotionHandle = false;
             motionHandle = null;
             motionDriver = null;
         }
@@ -420,7 +461,9 @@ namespace RPG.SkillSystem
         /// <summary>幂等注销当前 Skill 的 FullBody 执行并归还共享 Blackboard 占据。</summary>
         private void ReleaseFullBodyAction()
         {
-            fullBodyActionHandle?.Dispose();
+            if (ownsFullBodyActionHandle)
+                fullBodyActionHandle?.Dispose();
+            ownsFullBodyActionHandle = false;
             fullBodyActionHandle = null;
             fullBodyActionArbiter = null;
         }

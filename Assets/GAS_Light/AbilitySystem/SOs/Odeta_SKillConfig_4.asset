@@ -22,15 +22,16 @@ MonoBehaviour:
     durationFrames: 10
     sampleIntervalFrames: 1
     detectionId: 7
-    markerKey: {fileID: 0}
+    markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
     followMode: 1
-    cueTags: []
+    cueTags:
+    - id: 223
     detectionData:
-      rid: 2645455169077903436
+      rid: 1466742219033280513
   references:
     version: 2
     RefIds:
-    - rid: 2645455169077903436
+    - rid: 1466742219033280513
       type: {class: BoxAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
         localPosition: {x: 0, y: 0.23415422, z: 1.8762481}
@@ -179,53 +180,38 @@ MonoBehaviour:
     durationFrames: 5
     sampleIntervalFrames: 1
     detectionId: 0
-    markerKey: {fileID: 0}
+    markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
     followMode: 0
-    cueTags: []
+    cueTags:
+    - id: 187
     detectionData:
-      rid: 2645455169077903392
+      rid: 1466742219033280519
   - id: 9b0b95ae357846c586e2ddef1273c912
     startFrame: 8
     durationFrames: 6
     sampleIntervalFrames: 1
     detectionId: 3
-    markerKey: {fileID: 0}
+    markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
     followMode: 0
-    cueTags: []
+    cueTags:
+    - id: 187
     detectionData:
-      rid: 2645455169077903407
+      rid: 1466742219033280522
   - id: 47e27b550def4220ad1ada788ec82b5b
     startFrame: 14
     durationFrames: 10
     sampleIntervalFrames: 1
     detectionId: 7
-    markerKey: {fileID: 0}
+    markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
     followMode: 0
-    cueTags: []
+    cueTags:
+    - id: 223
     detectionData:
-      rid: 2645455169077903425
+      rid: 1466742219033280512
   references:
     version: 2
     RefIds:
-    - rid: 2645455169077903392
-      type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
-      data:
-        localPosition: {x: 0, y: 0.63261086, z: 0}
-        localEulerAngles: {x: 6.1190014, y: 0, z: 0}
-        innerRadius: 0.3
-        outerRadius: 2
-        angle: 360
-        height: 1
-    - rid: 2645455169077903407
-      type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
-      data:
-        localPosition: {x: 0, y: 0.63261086, z: 0}
-        localEulerAngles: {x: 6.1190014, y: 0, z: 0}
-        innerRadius: 0.3
-        outerRadius: 2
-        angle: 360
-        height: 1
-    - rid: 2645455169077903425
+    - rid: 1466742219033280512
       type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
         localPosition: {x: 0, y: 0.64018023, z: 0}
@@ -234,6 +220,18 @@ MonoBehaviour:
         outerRadius: 2
         angle: 216.5
         height: 1
+    - rid: 1466742219033280519
+      type: {class: SphereAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        localPosition: {x: 0, y: 0.8053448, z: 0}
+        localEulerAngles: {x: 0, y: 0, z: 0}
+        radius: 1.92
+    - rid: 1466742219033280522
+      type: {class: SphereAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        localPosition: {x: 0, y: 0.646421, z: 0}
+        localEulerAngles: {x: 0, y: 0, z: 0}
+        radius: 1.92
 --- !u!114 &6778808100899152749
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -278,7 +276,7 @@ MonoBehaviour:
     markerKey: {fileID: 0}
     startFrame: 14
     durationFrames: 46
-    localPosition: {x: 0, y: 0.52, z: 0}
+    localPosition: {x: 0, y: 0.51, z: 0}
     localEulerAngles: {x: 0, y: 268.02783, z: 0}
     localScale: {x: 1, y: 1, z: 1}
     playbackSpeed: 1

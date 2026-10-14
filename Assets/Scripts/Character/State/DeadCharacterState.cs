@@ -101,7 +101,7 @@ namespace RPG.Character.State
                 lifeStateMachine.Actor);
         }
 
-        /// <summary>退出时释放死亡资源；只有真实复活转场才移除 State.Dead 并发送 Alive 事件。</summary>
+        /// <summary>退出时释放死亡资源并移除 State.Dead，存活通知由 Alive 状态进入时发送。</summary>
         private void HandleStateExited()
         {
             ClearDeathAnimationCallback();
@@ -115,11 +115,10 @@ namespace RPG.Character.State
                 throw new System.InvalidOperationException(
                     $"角色 {lifeStateMachine.Actor.CharacterId} 的 State.Dead Tag 未能对称移除。");
 
-            if (lifeStateMachine.Actor.IsActiveCharacter)
-                lifeStateMachine.Actor.LifeAnimationController.FadeLayer(AnimationLayerType.Action, 0f, 0.2f);
-            lifeStateMachine.Actor.NotifyLifeStateChanged(false);
+            // Action 层可能在 Actor 退到后台后仍保留死亡动画；复活时无论当前槽位都清除该层。
+            lifeStateMachine.Actor.LifeAnimationController.StopLayer(AnimationLayerType.Action);
             Debug.Log(
-                $"[DeadCharacterState] 角色离开死亡状态并恢复 Alive，character={lifeStateMachine.Actor.CharacterId}, active={lifeStateMachine.Actor.IsActiveCharacter}。",
+                $"[DeadCharacterState] 已清理角色死亡状态表现，等待 Alive 状态发布存活通知，character={lifeStateMachine.Actor.CharacterId}, active={lifeStateMachine.Actor.IsActiveCharacter}。",
                 lifeStateMachine.Actor);
         }
 
@@ -156,9 +155,11 @@ namespace RPG.Character.State
             if (!lifeStateMachine.IsDead || !lifeStateMachine.Actor.IsActiveCharacter || deathAnimationCompletionRaised)
                 return;
 
+            // 先移除已经播放完毕的 Action 状态，再通知 Manager 切人，避免结束帧残留死亡覆盖层。
+            lifeStateMachine.Actor.LifeAnimationController.StopLayer(AnimationLayerType.Action);
             deathAnimationCompletionRaised = true;
             lifeStateMachine.Actor.NotifyDeathAnimationCompleted();
-            Debug.Log($"[DeadCharacterState] 死亡动画播放完成，character={lifeStateMachine.Actor.CharacterId}。",
+            Debug.Log($"[DeadCharacterState] 死亡动画播放完成并停止 Action 层，character={lifeStateMachine.Actor.CharacterId}。",
                 lifeStateMachine.Actor);
         }
 

@@ -72,6 +72,7 @@ namespace RPG.NPC
         private int currentRegistrationId;
         private bool initialized;
         private bool disposed;
+        private bool destroying;
         private int lastAnimatorMoveFrame = -1;
         private bool deathEventPublished;
         private bool deathCompletionProcessed;
@@ -287,9 +288,10 @@ namespace RPG.NPC
                 locomotion.LateTick();
         }
 
-        /// <summary>释放动作占据与仍属于 NPC 的运动控制权。</summary>
+        /// <summary>释放动作占据、导航控制权和可能位于未激活子层级中的动画 Graph。</summary>
         private void OnDestroy()
         {
+            destroying = true;
             locomotion?.Deactivate();
             if (abilitySystemComponent != null)
                 abilitySystemComponent.AttributeChanged -= OnAttributeChanged;
@@ -297,7 +299,10 @@ namespace RPG.NPC
             StopMove();
             Dispose();
             if (actor != null)
+            {
                 motionDriver.ReleaseAll(actor);
+                actor.ReleaseAnimationRuntime();
+            }
             motionDriver.Suspend();
             Debug.Log($"[NPCController] NPC '{name}' 已释放控制器运行时资源。", this);
         }
@@ -986,21 +991,22 @@ namespace RPG.NPC
             Debug.LogWarning($"[NPCController] Boss '{name}' 普攻激活受阻，{block}。", this);
         }
 
-        /// <summary>验证目标仍是启用且未死亡的角色空间根，允许目标离开首次发现半径后继续追击。</summary>
+        /// <summary>通过目标根所属的 CharacterManager 验证当前 Active 角色仍可被攻击。</summary>
         /// <param name="target">当前树黑板保存的目标根。</param>
-        /// <returns>目标仍具有活动 CharacterActor 与有效 ASC 时返回 true。</returns>
+        /// <returns>目标是 Manager 当前 Active 角色的共享 Root，且 Manager 提供有效 ASC 时返回 true。</returns>
         public bool IsValidPlayerTarget(Transform target)
         {
             if (target == null || !target.gameObject.activeInHierarchy)
                 return false;
-            CharacterActor playerActor = target.GetComponent<CharacterActor>();
-            if (playerActor == null)
-                playerActor = target.GetComponentInParent<CharacterActor>();
-            if (playerActor == null)
-                playerActor = target.GetComponentInChildren<CharacterActor>();
-            if (playerActor == null || !playerActor.gameObject.activeInHierarchy)
+
+            // CharacterRoot 在切人期间保持不变；角色身份和死亡状态由其所属 Manager 解析。
+            CharacterManager playerManager = target.GetComponentInParent<CharacterManager>();
+            if (playerManager == null || !playerManager.isActiveAndEnabled || !playerManager.IsReady)
                 return false;
-            return !playerActor.AbilitySystemComponent.HasTag(GameplayTags.Tag_State_Dead);
+
+            CharacterActor activeActor = playerManager.ActiveCharacter;
+            return activeActor != null && activeActor.isActiveAndEnabled &&
+                   ReferenceEquals(activeActor.RootTransform, target) && playerManager.TryGetTargetASC() != null;
         }
 
         /// <summary>获取目标在三段攻击列表中的稳定 Spec Handle。</summary>
@@ -1627,9 +1633,13 @@ namespace RPG.NPC
                 navigationMotionHandle?.Dispose();
                 navigationMotionHandle = null;
             }
-            SetMoveBlend(Vector3.zero);
-            if (!IsDead && locomotion.CurrentState == E_NPCStateId.Move)
-                locomotion.TryChangeState(E_NPCStateId.Idle);
+            // 结束或销毁时只释放导航控制权；动画子对象可能从未激活，写参数会惰性创建新 Graph。
+            if (initialized && !disposed && !destroying && isActiveAndEnabled && gameObject.activeInHierarchy)
+            {
+                SetMoveBlend(Vector3.zero);
+                if (!IsDead && locomotion.CurrentState == E_NPCStateId.Move)
+                    locomotion.TryChangeState(E_NPCStateId.Idle);
+            }
         }
 
         /// <summary>判断导航是否被死亡、HitStop、FullBody、停用或 GAS 移动阻断条件暂停。</summary>

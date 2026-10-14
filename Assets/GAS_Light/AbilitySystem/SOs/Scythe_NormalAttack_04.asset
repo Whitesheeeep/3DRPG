@@ -195,7 +195,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: bf0bd6fc4975473c991bdbd5bb181bfd
   frameRate: 30
-  durationFrames: 80
+  durationFrames: 67
   isRootMotion: 1
   tracks:
   - {fileID: -346817133221019337}
