@@ -7,23 +7,21 @@ using WS_Modules.Singleton;
 
 namespace RPG.PlayerInputSystem
 {
-    /// <summary>统一管理离散 InputAction、输入 Request 及其真实时间缓冲生命周期。</summary>
+    /// <summary>管理输入 Request、即时通知和 Pointer 玩法门禁，保留已有手势的真实时间生命周期。</summary>
     [DefaultExecutionOrder(-900)]
     public sealed class PlayerInputController : SingletonMonoBase<PlayerInputController>, IPlayerInputRequestBuffer
     {
         #region 常量与依赖字段
-
-        // 输入 Map 名称
-        private const string PlayerActionMapName = "Player";
-        private const string UiActionMapName = "UI";
-        private const string LookActionName = "Look";
 
         // Inspector 配置字段
         [SerializeField, LabelText("Input Actions Asset")]
         private InputActionAsset inputActionAsset;
         [SerializeField] private List<PlayerInputBinding> bindings = new();
         // 连续移动输入仅由本组件采样，离散 Request 的缓冲与消费不共用该状态。
-        [SerializeField] private InputActionReference moveAction;
+        [SerializeField, Required, LabelText("移动 Action")]
+        private InputActionReference moveAction;
+        [SerializeField, Required, LabelText("镜头观察 Action")]
+        private InputActionReference lookAction;
         [SerializeField, MinValue(0f), MaxValue(1f)] private float moveDeadzone = 0.1f;
 
         #endregion
@@ -35,6 +33,8 @@ namespace RPG.PlayerInputSystem
         private readonly Dictionary<E_PlayerInputType, PlayerInputRequest> requestsByType = new();
         // key：InputAction；value：该动作唯一对应的输入绑定资产。
         private readonly Dictionary<InputAction, ResolvedBinding> bindingsByAction = new();
+        // key：E_PlayerInputType；value：通过该业务类型取得的已校验 InputAction。
+        private readonly Dictionary<E_PlayerInputType, InputAction> actionByInputTypeMap = new();
         private readonly List<PlayerInputRequest> requests = new();
 
         // 依赖映射
@@ -42,8 +42,11 @@ namespace RPG.PlayerInputSystem
         private InputAction resolvedLookAction;
         private InputActionMap playerActionMap;
         private InputActionMap uiActionMap;
-        private InputAction taskWindowAction;
+        // 只记录已交付的手势，UI 中被忽略的鼠标按下不得在抬起时结束旧 Request。
+        private readonly HashSet<InputAction> deliveredBufferedActions = new();
+        private readonly HashSet<InputAction> deliveredImmediateActions = new();
         private bool gameplayInputBlocked;
+        private bool pointerGameplayInputBlocked;
         private bool discardNextPointerLookDelta;
         private bool applicationHasFocus = true;
 
@@ -59,6 +62,10 @@ namespace RPG.PlayerInputSystem
 
         /// <summary>当配置为即时交付的 InputAction 发生 performed 时通知订阅者。</summary>
         public event Action<E_PlayerInputType> ImmediateInputPerformed;
+        /// <summary>即时交付的动作结束时通知订阅者；不生成 Release Request。</summary>
+        public event Action<E_PlayerInputType> ImmediateInputCanceled;
+        /// <summary>输入监听与 Action 启停完成后通知依赖组件。</summary>
+        public event Action<bool> InputAvailabilityChanged;
         /// <summary>当某个手势收到物理松开事件时发送真实按下时长。</summary>
         public event Action<InputRequestHandle, float> RequestReleased;
         /// <summary>当业务主动清空整个请求缓冲区时发送。</summary>
@@ -108,39 +115,40 @@ namespace RPG.PlayerInputSystem
                 return;
             }
 
-            // 资源是 Map 的唯一来源，避免从某个 Action 反向推导控制器配置。
+            // 显式动作引用同时锚定 Map；运行时仍验证它们来自 Inspector 指定的唯一资源。
             if (inputActionAsset == null)
                 throw CreateConfigurationException(
                     $"[PlayerInputController] '{name}' 未配置有效的 InputActionAsset。");
 
-            playerActionMap = inputActionAsset.FindActionMap(PlayerActionMapName, false);
-            if (playerActionMap == null)
-                throw CreateConfigurationException(
-                    $"[PlayerInputController] '{name}' 指定的 InputActionAsset 缺少 {PlayerActionMapName} Map。");
-
-            uiActionMap = inputActionAsset.FindActionMap(UiActionMapName, false);
-            if (uiActionMap == null)
-                throw CreateConfigurationException(
-                    $"[PlayerInputController] '{name}' 指定的 InputActionAsset 缺少 {UiActionMapName} Map。");
-            taskWindowAction = uiActionMap.FindAction("TaskWindow", false);
-            if (taskWindowAction == null)
-                throw CreateConfigurationException($"[PlayerInputController] '{name}' 的 UI Map 缺少 TaskWindow Action。");
-
-            // 移动引用只声明具体 Action；所有权通过已指定的资源和 Player Map 进行校验。
+            // Move 引用提供 Player Map，Look 必须指向同一 Map；不以 Map 或 Action 名称重新查找。
             resolvedMoveAction = ResolveAndValidateActionReference(
-                moveAction, playerActionMap, "移动输入 moveAction");
+                moveAction, null, "移动输入 moveAction");
+            playerActionMap = resolvedMoveAction.actionMap;
             if (resolvedMoveAction.type != InputActionType.Value ||
                 !string.Equals(resolvedMoveAction.expectedControlType, "Vector2", StringComparison.Ordinal))
                 throw CreateConfigurationException(
                     $"[PlayerInputController] '{name}' 的 moveAction 必须是 Value/Vector2 Action。");
 
-            resolvedLookAction = playerActionMap.FindAction(LookActionName, false);
-            if (resolvedLookAction == null || resolvedLookAction.type != InputActionType.Value ||
+            resolvedLookAction = ResolveAndValidateActionReference(
+                lookAction, playerActionMap, "镜头观察输入 lookAction");
+            if (resolvedLookAction.type != InputActionType.Value ||
                 !string.Equals(resolvedLookAction.expectedControlType, "Vector2", StringComparison.Ordinal))
                 throw CreateConfigurationException(
-                    $"[PlayerInputController] '{name}' 的 Player Map 必须包含 Value/Vector2 {LookActionName} Action。");
+                    $"[PlayerInputController] '{name}' 的 lookAction 必须是 Value/Vector2 Action。");
+
+            // ShowCursor 的显式绑定 Action 提供 UI Map；所有其它 Action 都校验属于这两个 Map 之一。
+            PlayerInputBinding cursorBinding = GetRequiredBinding(
+                E_PlayerInputType.ShowCursor, "临时显示光标");
+            InputAction showCursorAction = ResolveAndValidateActionReference(
+                cursorBinding.Action, null, "临时显示光标绑定");
+            uiActionMap = showCursorAction.actionMap;
+            if (uiActionMap == playerActionMap)
+                throw CreateConfigurationException(
+                    $"[PlayerInputController] '{name}' 的 ShowCursor 引用必须属于独立 UI Map。");
 
             BuildBindingLookup();
+            ValidateImmediateButtonBinding(E_PlayerInputType.ShowCursor, "临时显示光标");
+            ValidateImmediateButtonBinding(E_PlayerInputType.TaskWindow, "任务窗口快捷键");
 
             // 单例注册和 DontDestroyOnLoad 由基类统一负责，放在所有输入校验之后。
             base.Awake();
@@ -160,14 +168,13 @@ namespace RPG.PlayerInputSystem
                 action.canceled += OnCanceled;
             }
 
-            taskWindowAction.performed += OnTaskWindowShortcutPerformed;
-
             SetUiShortcutActionsEnabled(true);
             if (!gameplayInputBlocked)
                 playerActionMap.Enable();
             Debug.Log(
                 $"[PlayerInputController] 已启用输入监听，bindingCount={bindings.Count}，" +
                 $"playerMapEnabled={playerActionMap.enabled}。", this);
+            InputAvailabilityChanged?.Invoke(true);
         }
 
         /// <summary>在 Intent 仲裁前按真实时间推进全部输入 Request。</summary>
@@ -191,6 +198,8 @@ namespace RPG.PlayerInputSystem
             LookInput = !applicationHasFocus || resolvedLookAction == null
                 ? Vector2.zero
                 : resolvedLookAction.ReadValue<Vector2>();
+            if (pointerGameplayInputBlocked && !LookInputIsRate)
+                LookInput = Vector2.zero;
             if (discardNextPointerLookDelta && resolvedLookAction?.activeControl?.device is Pointer)
             {
                 // 锁输入或窗口恢复后的首个 Pointer delta 常包含光标跳转，只丢弃这一帧。
@@ -211,16 +220,16 @@ namespace RPG.PlayerInputSystem
                 action.canceled -= OnCanceled;
             }
 
-            taskWindowAction.performed -= OnTaskWindowShortcutPerformed;
-
             playerActionMap?.Disable();
             SetUiShortcutActionsEnabled(false);
+            deliveredImmediateActions.Clear();
             MoveInput = Vector2.zero;
             LookInput = Vector2.zero;
             discardNextPointerLookDelta = true;
 
             Clear();
             Debug.Log($"[PlayerInputController] 已停用输入监听并清空 Request。", this);
+            InputAvailabilityChanged?.Invoke(false);
         }
 
         /// <summary>记录唯一输入控制器注销，并由基类清除静态实例引用。</summary>
@@ -236,6 +245,42 @@ namespace RPG.PlayerInputSystem
 
         /// <summary>清除连续输入，使失焦、停用和场景迁移不会复用旧摇杆状态。</summary>
         public void ClearMoveInput() => MoveInput = Vector2.zero;
+
+        /// <summary>光标实际重新锁定后丢弃下一次 Pointer 采样；不影响摇杆和已有玩法 Request。</summary>
+        public void DiscardNextPointerLookDelta()
+        {
+            if (!LookInputIsRate) LookInput = Vector2.zero;
+            discardNextPointerLookDelta = true;
+        }
+
+        /// <summary>读取 Awake 已校验并缓存的 Action，供对应输入协调器绑定事件。</summary>
+        /// <param name="inputType">绑定中的唯一业务输入类型。</param>
+        /// <returns>属于指定 InputActionAsset 和 Map 的已验证 Action。</returns>
+        /// <exception cref="InvalidOperationException">输入类型没有通过配置校验时抛出。</exception>
+        public InputAction GetInputAction(E_PlayerInputType inputType)
+        {
+            if (actionByInputTypeMap.TryGetValue(inputType, out InputAction action))
+                return action;
+
+            throw CreateConfigurationException(
+                $"[PlayerInputController] '{name}' 没有已校验的 {inputType} Action。");
+        }
+
+        /// <summary>控制新 Pointer 玩法输入和鼠标 Look 的通用门禁，不修改现有 Request。</summary>
+        /// <param name="blocked">是否忽略后续 Pointer 玩法输入。</param>
+        public void SetPointerGameplayInputBlocked(bool blocked)
+        {
+            if (Instance != this || pointerGameplayInputBlocked == blocked)
+                return;
+
+            pointerGameplayInputBlocked = blocked;
+            if (blocked && resolvedLookAction?.activeControl?.device is Pointer)
+                LookInput = Vector2.zero;
+
+            Debug.Log(
+                $"[PlayerInputController] Pointer 玩法输入门禁已{(blocked ? "开启" : "关闭")}，" +
+                "已有 Request 保持原状态。", this);
+        }
 
         /// <summary>
         /// 按窗口状态暂停或恢复 Player Map，并丢弃锁定前尚未消费的玩法请求。
@@ -285,6 +330,10 @@ namespace RPG.PlayerInputSystem
             ResolvedBinding binding = bindingsByAction[context.action];
             if (gameplayInputBlocked && context.action.actionMap == playerActionMap)
                 return;
+            // 仅停止产生新的鼠标玩法输入；已存在的 Request 和帧快照完全保留。
+            if (pointerGameplayInputBlocked && context.action.actionMap == playerActionMap &&
+                context.control.device is Pointer)
+                return;
 
             if (binding.DeliveryMode == PlayerInputDeliveryMode.ImmediateNotification)
             {
@@ -297,23 +346,31 @@ namespace RPG.PlayerInputSystem
                 }
 
                 // 即时输入不进入玩法 Request 生命周期；Player Map 锁定动作另受 UI 门禁控制。
+                deliveredImmediateActions.Add(context.action);
                 Debug.Log($"[PlayerInputController] 即时转发 {binding.InputType}。", this);
                 ImmediateInputPerformed?.Invoke(binding.InputType);
                 return;
             }
 
             // 每次开始新手势都从 SO 复制时长；进行中的 request 随后不再依赖可编辑资产。
+            deliveredBufferedActions.Add(context.action);
             NotifyPerformed(binding.InputType, binding.Binding.PressBufferDuration,
                 binding.Binding.ReleaseBufferDuration, binding.Binding.ClickMaxHeldDuration,
                 binding.Binding.ClickBufferDuration);
         }
 
-        /// <summary>把缓冲输入的真实 canceled 回调转换为 Release Request。</summary>
+        /// <summary>即时转发动作结束，或结束真正交付过的缓冲手势；跨 Alt 的旧手势仍正常释放。</summary>
         /// <param name="context">新输入系统提供的动作回调上下文。</param>
         private void OnCanceled(InputAction.CallbackContext context)
         {
             ResolvedBinding binding = bindingsByAction[context.action];
-            if (binding.DeliveryMode == PlayerInputDeliveryMode.ImmediateNotification || gameplayInputBlocked)
+            if (binding.DeliveryMode == PlayerInputDeliveryMode.ImmediateNotification)
+            {
+                if (deliveredImmediateActions.Remove(context.action))
+                    ImmediateInputCanceled?.Invoke(binding.InputType);
+                return;
+            }
+            if (!deliveredBufferedActions.Remove(context.action) || gameplayInputBlocked)
                 return;
             bool released = NotifyCanceled(binding.InputType);
             if (released && TryGetRequest(binding.InputType, out IReadOnlyPlayerInputRequest request))
@@ -382,6 +439,7 @@ namespace RPG.PlayerInputSystem
             RequestsCleared?.Invoke();
             requestsByType.Clear();
             requests.Clear();
+            deliveredBufferedActions.Clear();
             if (requestCount > 0)
                 Debug.Log($"[PlayerInputController] 已清除 {requestCount} 个输入 Request。", this);
         }
@@ -412,11 +470,12 @@ namespace RPG.PlayerInputSystem
         #endregion
 
         #region 配置校验
-        /// <summary>建立动作映射，并拒绝错 Map、缺失引用、重复动作或重复输入类型。</summary>
+        /// <summary>从绑定 SO 建立动作映射，并拒绝错 Map、缺失引用、重复动作或重复输入类型。</summary>
         /// <exception cref="InvalidOperationException">任一序列化绑定不符合指定资源及 Map 约束时抛出。</exception>
         private void BuildBindingLookup()
         {
             bindingsByAction.Clear();
+            actionByInputTypeMap.Clear();
             if (playerActionMap == null || uiActionMap == null)
                 throw CreateConfigurationException(
                     $"[PlayerInputController] '{name}' 的 Player/UI Map 尚未解析。");
@@ -424,7 +483,6 @@ namespace RPG.PlayerInputSystem
                 throw CreateConfigurationException(
                     "[PlayerInputController] 至少需要一个显式 PlayerInputBinding。");
 
-            var inputTypes = new HashSet<E_PlayerInputType>();
             for (int i = 0; i < bindings.Count; i++)
             {
                 PlayerInputBinding binding = bindings[i] ??
@@ -452,13 +510,13 @@ namespace RPG.PlayerInputSystem
                 if (!bindingsByAction.TryAdd(action, resolved))
                     throw CreateConfigurationException(
                         $"[PlayerInputController] Input Action {action.name} 被重复绑定。");
-                if (!inputTypes.Add(binding.InputType))
+                if (!actionByInputTypeMap.TryAdd(binding.InputType, action))
                     throw CreateConfigurationException(
                         $"[PlayerInputController] 输入类型 {binding.InputType} 被重复绑定。");
             }
         }
 
-        /// <summary>解析 Inspector 中现有 ActionReference，并校验它属于指定资源和预期 Map。</summary>
+        /// <summary>解析已序列化的 ActionReference，并校验它属于指定资源及可选的预期 Map。</summary>
         /// <param name="actionReference">由 Inspector 序列化的具体 Action 引用。</param>
         /// <param name="expectedMap">该引用必须所属的 Map。</param>
         /// <param name="configurationName">用于异常定位的配置字段或绑定索引。</param>
@@ -473,10 +531,13 @@ namespace RPG.PlayerInputSystem
                     $"[PlayerInputController] '{name}' 的 {configurationName} 未配置有效 InputActionReference。");
 
             InputActionMap actionMap = action.actionMap;
-            if (actionMap != expectedMap || actionMap.asset != inputActionAsset)
+            if (actionMap == null || actionMap.asset != inputActionAsset ||
+                (expectedMap != null && actionMap != expectedMap))
                 throw CreateConfigurationException(
-                    $"[PlayerInputController] '{name}' 的 {configurationName} 必须引用指定 InputActionAsset " +
-                    $"中的 {expectedMap.name} Map Action。");
+                    expectedMap == null
+                        ? $"[PlayerInputController] '{name}' 的 {configurationName} 必须引用指定 InputActionAsset 中的有效 Map Action。"
+                        : $"[PlayerInputController] '{name}' 的 {configurationName} 必须引用指定 InputActionAsset " +
+                          $"中 {expectedMap.name} Map 的 Action。");
 
             return action;
         }
@@ -498,19 +559,49 @@ namespace RPG.PlayerInputSystem
                     bindingEntry.Key.Disable();
             }
 
-            // TaskWindow 是独立即时 UI Action；与序列化快捷键共享同一即时通知通道。
-            if (taskWindowAction != null)
-            {
-                if (enabled) taskWindowAction.Enable();
-                else taskWindowAction.Disable();
-            }
         }
 
-        /// <summary>把 UI Map 的 TaskWindow Action 转发到即时输入通知。</summary>
-        /// <param name="context">触发任务窗口快捷键的 Input System 回调上下文。</param>
-        private void OnTaskWindowShortcutPerformed(InputAction.CallbackContext context)
+        /// <summary>从绑定列表取得某个必需的唯一输入类型。</summary>
+        /// <param name="inputType">需要查找的业务输入类型。</param>
+        /// <param name="configurationName">用于报告配置问题的输入名称。</param>
+        /// <returns>配置完成的绑定资产。</returns>
+        private PlayerInputBinding GetRequiredBinding(E_PlayerInputType inputType, string configurationName)
         {
-            ImmediateInputPerformed?.Invoke(E_PlayerInputType.TaskWindow);
+            if (bindings == null)
+                throw CreateConfigurationException(
+                    $"[PlayerInputController] '{name}' 的输入绑定列表未配置，无法解析 {configurationName}。");
+
+            PlayerInputBinding result = null;
+            for (int index = 0; index < bindings.Count; index++)
+            {
+                PlayerInputBinding candidate = bindings[index];
+                if (candidate == null || candidate.InputType != inputType)
+                    continue;
+                if (result != null)
+                    throw CreateConfigurationException(
+                        $"[PlayerInputController] '{name}' 的 {configurationName} 输入类型重复配置。");
+                result = candidate;
+            }
+
+            return result ?? throw CreateConfigurationException(
+                $"[PlayerInputController] '{name}' 缺少 {configurationName} 输入绑定。");
+        }
+
+        /// <summary>验证指定即时绑定是 Button 且使用即时通知交付。</summary>
+        /// <param name="inputType">被校验的输入类型。</param>
+        /// <param name="configurationName">用于错误消息的输入名称。</param>
+        private void ValidateImmediateButtonBinding(E_PlayerInputType inputType, string configurationName)
+        {
+            PlayerInputBinding configuredBinding = GetRequiredBinding(inputType, configurationName);
+            InputAction configuredAction = configuredBinding.Action?.action;
+            if (configuredAction == null ||
+                !bindingsByAction.TryGetValue(configuredAction, out ResolvedBinding binding) ||
+                binding.Binding != configuredBinding ||
+                binding.InputType != inputType ||
+                binding.DeliveryMode != PlayerInputDeliveryMode.ImmediateNotification ||
+                configuredAction.type != InputActionType.Button)
+                throw CreateConfigurationException(
+                    $"[PlayerInputController] '{name}' 的 {configurationName} 必须配置为 Button/ImmediateNotification。");
         }
 
         /// <summary>记录配置边界校验失败并返回附带业务上下文的异常。</summary>

@@ -64,6 +64,8 @@ namespace RPG.CameraSystem
         private PlayerController boundPlayer;
         private Transform boundPlayerRoot;
         private PlayerInputController boundInputController;
+        private PlayerMouseModeController boundMouseModeController;
+        private E_PlayerMouseMode mouseMode = E_PlayerMouseMode.Gameplay;
         private LockTargetSystem lockTargetSystem;
         private GameplayAbilitySystemComponent lockedTarget;
         private Transform lockedTargetRoot;
@@ -159,7 +161,7 @@ namespace RPG.CameraSystem
                 EnterPresentationMode();
         }
 
-        /// <summary>确认唯一镜头实例后订阅目标与输入实例变化，并绑定或异步等待 Player。</summary>
+        /// <summary>确认唯一镜头实例后订阅目标、输入和鼠标模式变化，并绑定或异步等待 Player。</summary>
         private void OnEnable()
         {
             if (cameraManager != CinemachineManager.Instance)
@@ -173,9 +175,11 @@ namespace RPG.CameraSystem
             if (lockTargetSystem != null)
                 lockTargetSystem.LockTargetChanged += HandleLockTargetChanged;
             PlayerInputController.InstanceChanged += HandleInputControllerInstanceChanged;
+            PlayerMouseModeController.InstanceChanged += HandleMouseModeControllerInstanceChanged;
+            SynchronizeMouseModeController(PlayerMouseModeController.Instance);
             if (currentMode != E_GameplayCameraMode.Presentation && !TryBindPlayer())
                 StartPlayerBindingWait();
-            Debug.Log($"[GameplayCameraController] 已订阅锁定与输入实例变化，playerBound={boundPlayer != null}。", this);
+            Debug.Log($"[GameplayCameraController] 已订阅锁定、输入与鼠标模式变化，playerBound={boundPlayer != null}。", this);
         }
 
         /// <summary>在 Brain 更新前同步代理、目标组、输入视角和锁定观察方向。</summary>
@@ -194,7 +198,7 @@ namespace RPG.CameraSystem
 
             PlayerInputController input = boundInputController;
             bool inputAvailable = input != null && input.isActiveAndEnabled && !input.IsGameplayInputBlocked;
-            UpdateCursorOwnership(applicationHasFocus && inputAvailable);
+            UpdateCursorOwnership(ShouldOwnCursor());
 
             // 先按固定世界轴偏移抬高 Follow 起点，使第三人称避障从身体上方开始检测。
             cameraPivot.position = boundPlayerRoot.position + cameraPivotWorldOffset;
@@ -229,9 +233,7 @@ namespace RPG.CameraSystem
         {
             if (applicationHasFocus == hasFocus) return;
             applicationHasFocus = hasFocus;
-            UpdateCursorOwnership(currentMode != E_GameplayCameraMode.Presentation && hasFocus &&
-                                  boundPlayer != null && boundInputController != null &&
-                                  !boundInputController.IsGameplayInputBlocked);
+            UpdateCursorOwnership(ShouldOwnCursor());
             Debug.Log($"[GameplayCameraController] 应用焦点变化，hasFocus={hasFocus}。", this);
         }
 
@@ -241,8 +243,10 @@ namespace RPG.CameraSystem
             if (lockTargetSystem != null)
                 lockTargetSystem.LockTargetChanged -= HandleLockTargetChanged;
             PlayerInputController.InstanceChanged -= HandleInputControllerInstanceChanged;
+            PlayerMouseModeController.InstanceChanged -= HandleMouseModeControllerInstanceChanged;
             CancelPlayerBindingWait();
             UnbindInputController();
+            UnbindMouseModeController();
             boundPlayer = null;
             boundPlayerRoot = null;
             ClearCameraTargetState(true);
@@ -353,6 +357,7 @@ namespace RPG.CameraSystem
             cameraPivot.position = boundPlayerRoot.position + cameraPivotWorldOffset;
             playerFramingTarget.position = boundPlayerRoot.position + playerFramingWorldOffset;
             SynchronizeInputController(PlayerInputController.Instance);
+            SynchronizeMouseModeController(PlayerMouseModeController.Instance);
             ApplyLockSystemTarget(lockTargetSystem.CurrentTarget);
             Debug.Log($"[GameplayCameraController] 已绑定 Player，player={player.name}。", this);
             return true;
@@ -370,6 +375,7 @@ namespace RPG.CameraSystem
             if (hadPlayerBinding)
             {
                 UnbindInputController();
+                UnbindMouseModeController();
                 boundPlayer = null;
                 boundPlayerRoot = null;
                 ClearCameraTargetState(true);
@@ -406,6 +412,7 @@ namespace RPG.CameraSystem
         private void HandleInputControllerInstanceChanged(PlayerInputController currentInput)
         {
             SynchronizeInputController(currentInput);
+            UpdateCursorOwnership(ShouldOwnCursor());
         }
 
         /// <summary>注销当前输入实例，避免 Player 或控制器重建后重复处理滚轮。</summary>
@@ -417,16 +424,80 @@ namespace RPG.CameraSystem
             Debug.Log("[GameplayCameraController] 已注销 Player Map 的镜头滚轮事件。", this);
         }
 
+        /// <summary>将鼠标模式事件订阅同步到当前全局组件，并读取绑定时的完整模式快照。</summary>
+        /// <param name="currentController">当前鼠标模式单例，可能为空或暂时未启用。</param>
+        private void SynchronizeMouseModeController(PlayerMouseModeController currentController)
+        {
+            if (ReferenceEquals(boundMouseModeController, currentController) && currentController != null)
+                return;
+
+            UnbindMouseModeController();
+            if (currentController == null)
+                return;
+
+            boundMouseModeController = currentController;
+            currentController.MouseModeChanged += HandleMouseModeChanged;
+            mouseMode = currentController.MouseMode;
+            Debug.Log($"[GameplayCameraController] 已绑定鼠标模式事件，mode={mouseMode}。", this);
+            UpdateCursorOwnership(ShouldOwnCursor());
+        }
+
+        /// <summary>鼠标模式单例建立或销毁时刷新相机侧事件订阅。</summary>
+        /// <param name="currentController">新建或销毁后的鼠标模式单例。</param>
+        private void HandleMouseModeControllerInstanceChanged(PlayerMouseModeController currentController)
+        {
+            SynchronizeMouseModeController(currentController);
+            UpdateCursorOwnership(ShouldOwnCursor());
+        }
+
+        /// <summary>缓存鼠标模式快照并即时更新光标，不轮询输入组件状态。</summary>
+        /// <param name="nextMode">鼠标模式控制器已进入的模式。</param>
+        private void HandleMouseModeChanged(E_PlayerMouseMode nextMode)
+        {
+            if (mouseMode == nextMode)
+                return;
+
+            mouseMode = nextMode;
+            UpdateCursorOwnership(ShouldOwnCursor());
+            Debug.Log($"[GameplayCameraController] 收到鼠标模式变化，mode={mouseMode}。", this);
+        }
+
+        /// <summary>注销鼠标模式实例，避免重建 Player 后保留旧事件源。</summary>
+        private void UnbindMouseModeController()
+        {
+            if (!ReferenceEquals(boundMouseModeController, null))
+                boundMouseModeController.MouseModeChanged -= HandleMouseModeChanged;
+
+            bool hadBinding = !ReferenceEquals(boundMouseModeController, null);
+            boundMouseModeController = null;
+            mouseMode = E_PlayerMouseMode.Gameplay;
+            if (hadBinding)
+                Debug.Log("[GameplayCameraController] 已注销鼠标模式事件。", this);
+        }
+
+        /// <summary>确认当前镜头上下文允许接管光标和控制 Pointer Look。</summary>
+        /// <returns>玩法镜头、Player、输入和焦点均可用时返回 true。</returns>
+        private bool ShouldOwnCursor()
+        {
+            return currentMode != E_GameplayCameraMode.Presentation &&
+                   applicationHasFocus &&
+                   boundPlayer != null && boundPlayer.isActiveAndEnabled &&
+                   boundPlayerRoot != null &&
+                   boundInputController != null && boundInputController.isActiveAndEnabled &&
+                   !boundInputController.IsGameplayInputBlocked;
+        }
+
         #endregion
 
         #region 自由观察与滚轮缩放
 
         // 自由观察：Pointer Delta 按像素转换，手柄值按时间积分。
-        /// <summary>按 Pointer 像素增量或手柄角速度推进自由观察方向。</summary>
+        /// <summary>按鼠标模式推进观察方向；临时 UI 只暂停 Pointer 转向，已有距离平滑继续执行。</summary>
         /// <param name="input">已经由现有 Player Map 门禁采样的输入。</param>
         private void UpdateFreeOrientation(PlayerInputController input)
         {
-            Vector2 look = discardNextLookSample ? Vector2.zero : input.LookInput;
+            bool pointerBlocked = mouseMode == E_PlayerMouseMode.UI && !input.LookInputIsRate;
+            Vector2 look = discardNextLookSample || pointerBlocked ? Vector2.zero : input.LookInput;
             discardNextLookSample = false;
             float scale = input.LookInputIsRate
                 ? stickDegreesPerSecond * Time.deltaTime
@@ -867,7 +938,7 @@ namespace RPG.CameraSystem
 
         #region 光标生命周期
 
-        /// <summary>玩法输入有效时锁定并隐藏光标；窗口、失焦和停用时恢复接管前状态。</summary>
+        /// <summary>按缓存的鼠标模式显示或锁定光标；Alt 切换保留原快照，窗口、失焦和停用才释放所有权。</summary>
         /// <param name="shouldOwnCursor">当前是否应该接管光标。</param>
         private void UpdateCursorOwnership(bool shouldOwnCursor)
         {
@@ -884,8 +955,14 @@ namespace RPG.CameraSystem
                         $"previousVisible={previousCursorVisible}。", this);
                 }
 
-                Cursor.lockState = CursorLockMode.Locked;
-                Cursor.visible = false;
+                // 临时 UI 仍属于本次玩法接管，不能覆盖进入玩法之前的恢复快照。
+                bool uiMouse = mouseMode == E_PlayerMouseMode.UI;
+                CursorLockMode nextLockState = uiMouse ? CursorLockMode.None : CursorLockMode.Locked;
+                if ((Cursor.lockState != nextLockState || Cursor.visible != uiMouse) &&
+                    boundInputController != null)
+                    boundInputController.DiscardNextPointerLookDelta();
+                Cursor.lockState = nextLockState;
+                Cursor.visible = uiMouse;
                 return;
             }
 

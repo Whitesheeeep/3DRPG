@@ -5,6 +5,7 @@
 ```mermaid
 flowchart TD
     Input["PlayerInputController<br/>Look、滚轮及窗口门禁"]
+    MouseMode["PlayerMouseModeController<br/>Gameplay／UI 与 Alt 校准"]
     Player["PlayerController<br/>CharacterRoot"]
     Lock["LockTargetSystem<br/>当前目标"]
     Controller["GameplayCameraController<br/>输入、朝向和模式"]
@@ -16,6 +17,7 @@ flowchart TD
     Mods["FOV、Noise、Impulse 修饰"]
 
     Input --> Controller
+    MouseMode -->|MouseModeChanged| Controller
     Player --> Controller
     Lock --> Controller
     PivotConfig["Prefab 局部位置<br/>默认 0, 1.14, 0"] -->|Awake 缓存| Controller
@@ -40,11 +42,27 @@ flowchart TD
 - 锁定朝向从玩家构图中心指向目标 Bounds 中心。俯仰限制为 `-30..60°`，角度平滑 `0.15s`；Cinemachine 负责目标组距离与位置阻尼。
 - 锁定 VCam 的 `CinemachineCollider` 负责避障，Radius 为 `0.2m`、策略为 `Pull Camera Forward`，环境层沿用 `Default / TransparentFX / Water` 并忽略 Player Tag。
 - 两台 VCam 优先级随锁定状态切换，Brain 使用专属 `GameplayCameraBlends` 资产执行 `0.25s Ease In Out` 过渡。技能编辑器从 Controller 的自由 VCam 引用读取参考 FOV；旧的单 VCam Prefab 仍可作为技能编辑器预览源。
-- 输入实例通过 `PlayerInputController.InstanceChanged` 事件更新订阅，不在逐帧路径轮询单例。持久化镜头通过可取消的 UniTask 每 `0.25s` 等待 Player，使用实时延时，因此游戏暂停时仍可完成绑定；镜头停用会取消等待。
+- 输入实例通过 `PlayerInputController.InstanceChanged` 事件更新滚轮订阅；鼠标模式通过 `PlayerMouseModeController.InstanceChanged` 建立订阅，并用 `MouseModeChanged` 推送实际变化。相机只在绑定时读取一次模式，不在逐帧路径轮询鼠标模式单例。持久化镜头通过可取消的 UniTask 每 `0.25s` 等待 Player，使用实时延时，因此游戏暂停时仍可完成绑定；镜头停用会取消等待。
 - 锁定、切换和解锁通过 `LockTargetSystem.LockTargetChanged` 驱动。Player 初次绑定或重建时同步一次系统当前目标；逐帧更新只刷新构图位置与朝向，不自行更改锁定业务状态。Player 丢失时只清理相机侧缓存，重新绑定后再同步目标系统。
 - 窗口打开时 Player Map 按现有逻辑停用，因此 Look 和滚轮不再发送；目标组及锁定 VCam 继续自动跟踪。失焦、输入阻断和相机停用时光标恢复原状态。
 
 ## 场景使用
+
+### Alt 临时光标
+
+`PlayerMouseModeController` 用 Alt 即时按下／抬起事件维护鼠标 FSM，并通过 `MouseModeChanged` 通知业务。相机绑定时读取一次当前模式，后续只响应事件：Gameplay 锁定隐藏，UI 解锁显示；临时模式保留最初接管前的光标快照，窗口或停用才释放所有权。
+
+```mermaid
+flowchart LR
+    Alt[ShowCursor 即时输入] --> Mode[PlayerMouseModeController FSM]
+    Mode -->|MouseModeChanged| Cursor[GameplayCameraController 光标表现]
+    Mode --> InputGate[PlayerInputController Pointer 玩法门禁]
+    Mode --> Look[相机暂停 Pointer Look]
+```
+
+临时光标期间相机继续跟随，锁定镜头继续自动构图，已有 Request 保留。输入恢复或焦点恢复后，鼠标模式控制器在 Input System 更新完成时校准左右 Alt；松开最后一个 Alt 后切回 Gameplay，并通知输入层丢弃下一次 Pointer Delta，避免视角跳动。
+
+## 场景配置步骤
 
 1. 将 `Assets/Scripts/CameraSystem/Prefabs/GameplayCamera.prefab` 放入 Gameplay 场景，每个运行时只放一个实例。
 2. 按需在自由 VCam 调整第三人称偏移、距离、阻尼和碰撞；按需在锁定 VCam 调整 Group Framing、Dolly 距离和构图阻尼。

@@ -1,6 +1,6 @@
 namespace RPG.PlayerInputSystem
 {
-    /// <summary>表示会进入游戏输入请求缓冲区的离散输入类型。</summary>
+    /// <summary>表示由输入绑定交付的缓冲输入和即时输入类型。</summary>
     public enum E_PlayerInputType
     {
         Primary = 0,
@@ -37,7 +37,9 @@ namespace RPG.PlayerInputSystem
         /// <summary>向屏幕右侧切换锁定候选；由滚轮向上操作触发。</summary>
         LockNext = 21,
         /// <summary>请求打开角色窗口；该输入由 UI Map 即时转发。</summary>
-        CharacterWindow = 22
+        CharacterWindow = 22,
+        /// <summary>按住时将鼠标交给 UI；通过即时按下和抬起通知切换模式。</summary>
+        ShowCursor = 23
     }
 
     /// <summary>表示一次输入手势当前的物理阶段。</summary>

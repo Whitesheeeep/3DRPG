@@ -30,6 +30,7 @@ flowchart LR
 玩家对象需要位于同一节点的组件：
 
 - `PlayerInputController`：监听 Input Action，管理 Request。
+- `PlayerMouseModeController`：订阅 `ShowCursor` 即时事件，维护 Gameplay／UI 鼠标模式；不拥有 Request。
 - `PlayerController`：创建 `PlayerStateBlackboard` 和 `GameplayInputIntentArbiterManager`，执行仲裁及帧末清理。
 - `CharacterManager` 与角色 Actor：提供当前角色配置；角色 ASC 仍由角色自身持有。
 
@@ -62,6 +63,8 @@ flowchart LR
 - 每个 `BufferedRequest` 都可以产生 Click，不另设短按/长按开关；业务消费者决定是否使用 Click 阶段。
 - Sprint 的 `ClickMaxHeldDuration` 为 `0.20s`：小于阈值松开会生成冲刺 Click；按住达到阈值后仍保持按下则进入奔跑，之后松开不再生成 Click。
 - `ImmediateNotification` 不创建 Request，因此不会产生 Press、Release 或 Click Handle；SO 上的时长只为配置结构保持一致，不参与即时转发。
+
+连续输入 `Move` 与 `Look` 使用 Controller 上显式配置的 `InputActionReference`；离散输入（包括 `TaskWindow` 与 `ShowCursor`）均由各自绑定 SO 提供 Action 引用。Controller 从 Move 与 ShowCursor 引用取得 Player/UI Map，并校验所有引用属于同一个 `InputActionAsset`。不要在运行时代码中通过 Action 或 Map 名称补找遗漏引用。
 
 对于需要从按下瞬间开始累计 `HeldDuration` 的技能，建议使用普通 Button Action。若给 Action 配置 Input System 的 `Hold` Interaction，`performed` 可能到达阈值后才触发，此时系统记录的起点将不再是物理按下瞬间。
 
@@ -335,6 +338,7 @@ sequenceDiagram
 | --- | --- | --- |
 | Input Action 身份与时间配置 | 每项 `PlayerInputBinding` SO | 资产生命周期；时长在每次按下时快照 |
 | Input Action 监听映射 | `PlayerInputController` | 组件生命周期 |
+| Gameplay／UI 鼠标模式 | `PlayerMouseModeController` | FSM 状态；由按键事件及生命周期校准驱动 |
 | Request 与 Buffer | `PlayerInputController` | 一次物理手势及其待消费阶段 |
 | 仲裁器顺序 | `GameplayInputIntentArbiterManager` | PlayerController 生命周期 |
 | Intent Tags | `PlayerStateBlackboard` | 当前帧 |
@@ -367,3 +371,17 @@ Held 是物理状态的持续变化，不是第二次输入。Pressed 转 Held �
 锁定状态由纯 C# `LockTargetSystem` 单例持有。Player Map 的 `LockToggle` 中键切换锁定／解锁；`LockPrevious` 与 `LockNext` 绑定同一滚轮 Y 轴，通过反向 Axis 处理器区分向下与向上滚动。三个绑定均为 `ImmediateNotification`，窗口阻断玩法输入时 Player Map 会停用，因此不会在 UI 窗口期间改变锁定目标。
 
 锁定候选为 15 米内、位于当前摄像机视口中的 Enemy。切换先按屏幕 X 坐标排序，屏幕位置相同再按与玩家 Root 的距离排序，滚轮越过边缘时循环。此输入不建立 Press/Release/Click Request。
+
+## Alt 临时鼠标模式
+
+UI Map 的 `ShowCursor` 通过独立 SO 绑定左右 Alt，使用 `ImmediateNotification`。`PlayerInputController` 只转发按下／抬起并提供通用 Pointer 玩法输入门禁；`PlayerMouseModeController` 独立持有 UnifiedFSM，发布 `MouseModeChanged`。不在 Update 中轮询 Alt。输入重新启用或应用恢复焦点后，在下一次 Input System 更新完成时校准一次，左右 Alt 最后一个松开才恢复玩法。
+
+```mermaid
+stateDiagram-v2
+    Gameplay --> UI: PlayerMouseModeController 收到 Alt 按下
+    UI --> Gameplay: 最后一个 Alt 抬起／失焦／输入停用
+```
+
+UI 鼠标模式下，输入控制器只阻断新的 Pointer 玩法按下、中键和滚轮通知，并将 Pointer Look 置零；UI Map 保持有效，键盘与手柄正常。已有 Request、Handle 和帧快照不清理、不主动消费；旧手势仍可正常释放，新 UI 手势不补发玩法 Press。相机订阅鼠标模式事件，临时模式只暂停 Pointer Look；恢复 Gameplay 时输入层丢弃首笔鼠标增量。
+
+即时绑定通过 `ImmediateInputPerformed` 和 `ImmediateInputCanceled` 成对通知；它们不使用 Press／Release／Click 缓冲。

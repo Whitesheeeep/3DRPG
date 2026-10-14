@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 6089726963410338055}
   - component: {fileID: 4099463995280340719}
   - component: {fileID: 7100000000000000001}
+  - component: {fileID: 7526153119773345892}
   m_Layer: 6
   m_Name: Player
   m_TagString: Untagged
@@ -165,7 +166,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 60af83b1acf922e4781446bc7a1d1b53, type: 2}
   - {fileID: 11400000, guid: 4c8066cd14bab4d48afc00e70f177780, type: 2}
   - {fileID: 11400000, guid: b9d49be6b63c97844b36d76ca438b37b, type: 2}
+  - {fileID: 11400000, guid: d60cd0b14b884ea995eef37c7c919224, type: 2}
+  - {fileID: 11400000, guid: c60ac0de197d4983a247bb72a287eb15, type: 2}
   moveAction: {fileID: -6439902812146969066, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
+  lookAction: {fileID: -5630151704836100654, guid: 819c2d604b43f994498ebf47d39dcd43, type: 3}
   moveDeadzone: 0.1
 --- !u!114 &6089726963410338055
 MonoBehaviour:
@@ -251,6 +255,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe6f29de2f174726b82de06d19265c7b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  inputController: {fileID: 3408626327944978715}
+--- !u!114 &7526153119773345892
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5482557129118236183}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c411057fd0b40c180caaa8e733066eb, type: 3}
+  m_Name: ''
+  m_EditorClassIdentifier: ''
   inputController: {fileID: 3408626327944978715}
 --- !u!1 &8060642726113311870
 GameObject:

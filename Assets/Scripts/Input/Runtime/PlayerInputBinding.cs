@@ -11,13 +11,13 @@ namespace RPG.PlayerInputSystem
     {
         /// <summary>创建可被玩法查询和消费的输入 Request。</summary>
         BufferedRequest = 0,
-        /// <summary>在 performed 回调中立即通知订阅者，不创建输入 Request。</summary>
+        /// <summary>即时通知 performed 与 canceled，不创建输入 Request。</summary>
         ImmediateNotification = 1
     }
 
     #endregion
 
-    /// <summary>保存一个 InputAction 到离散 Request 的完整缓冲配置。</summary>
+    /// <summary>保存一个 InputAction 的交付身份与缓冲配置；即时交付不使用缓冲时长。</summary>
     [CreateAssetMenu(fileName = "PlayerInputBinding", menuName = "RPG/Input/Player Input Binding")]
     public sealed class PlayerInputBinding : ScriptableObject
     {

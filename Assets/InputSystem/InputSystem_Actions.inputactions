@@ -768,6 +768,15 @@
           "processors": "",
           "interactions": "",
           "initialStateCheck": false
+        },
+        {
+          "name": "ShowCursor",
+          "type": "Button",
+          "id": "1731d541-1f72-4b5c-a190-d3d41ee9f1dc",
+          "expectedControlType": "Button",
+          "processors": "",
+          "interactions": "",
+          "initialStateCheck": true
         }
       ],
       "bindings": [
@@ -1395,6 +1404,28 @@
           "processors": "",
           "groups": "Keyboard&Mouse",
           "action": "CharacterWindow",
+          "isComposite": false,
+          "isPartOfComposite": false
+        },
+        {
+          "name": "",
+          "id": "bc4bef3f-755f-41ef-95de-2e123671e182",
+          "path": "<Keyboard>/leftAlt",
+          "interactions": "",
+          "processors": "",
+          "groups": "Keyboard&Mouse",
+          "action": "ShowCursor",
+          "isComposite": false,
+          "isPartOfComposite": false
+        },
+        {
+          "name": "",
+          "id": "dd8d3936-d9ce-48dc-b282-7d438bd1f2b7",
+          "path": "<Keyboard>/rightAlt",
+          "interactions": "",
+          "processors": "",
+          "groups": "Keyboard&Mouse",
+          "action": "ShowCursor",
           "isComposite": false,
           "isPartOfComposite": false
         }
