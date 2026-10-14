@@ -11417,6 +11417,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 8903362713436510211}
     m_Modifications:
+    - target: {fileID: 212977423174232082, guid: 986fc3a7495467940a4fe7ef7d67700d, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 10
+      objectReference: {fileID: 0}
     - target: {fileID: 668829960471242536, guid: 986fc3a7495467940a4fe7ef7d67700d, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
