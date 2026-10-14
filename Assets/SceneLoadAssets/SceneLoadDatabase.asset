@@ -15,3 +15,4 @@ MonoBehaviour:
   sceneConfigs:
   - {fileID: 11400000, guid: 7f32e78d2a1a2db4d8794a42e68eb634, type: 2}
   - {fileID: 11400000, guid: 9605552e9c31d434bba98c2181c34d06, type: 2}
+  - {fileID: 11400000, guid: 467cd37bbcb2b1244af42e452727d7d3, type: 2}

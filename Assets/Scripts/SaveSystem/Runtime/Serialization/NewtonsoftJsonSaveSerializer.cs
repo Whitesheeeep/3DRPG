@@ -37,6 +37,7 @@ namespace RPG.SaveSystem
         /// </summary>
         /// <param name="envelope">待序列化的存档容器。</param>
         /// <param name="destination">从当前 Position 开始写入的可写流。</param>
+        /// <param name="summaryCodec">Manager 持有的对称业务摘要转换器。</param>
         /// <param name="cancellationToken">在 JSON 转换边界传播取消的令牌。</param>
         /// <returns>序列化结果。</returns>
         /// <exception cref="ArgumentNullException">存档容器或目标流为空时抛出。</exception>
@@ -45,6 +46,7 @@ namespace RPG.SaveSystem
         public UniTask<SaveResult> SerializeAsync(
             SaveEnvelope envelope,
             Stream destination,
+            ISaveBusinessSummaryCodec summaryCodec,
             CancellationToken cancellationToken)
         {
             if (envelope == null)
@@ -57,7 +59,7 @@ namespace RPG.SaveSystem
 
             try
             {
-                JsonSerializer serializer = CreateSerializer(null);
+                JsonSerializer serializer = CreateSerializer(null, summaryCodec);
                 // StreamWriter 仅拥有文本缓冲区，leaveOpen 保证调用方继续拥有 Payload Stream。
                 using (var textWriter = new StreamWriter(destination, Utf8Encoding, 1024, true))
                 using (var jsonWriter = new JsonTextWriter(textWriter) { CloseOutput = false })
@@ -85,6 +87,7 @@ namespace RPG.SaveSystem
         /// </summary>
         /// <param name="source">从当前 Position 开始读取的可读流。</param>
         /// <param name="snapshotTypeResolver">按模块标识和版本解析快照类型的服务。</param>
+        /// <param name="summaryCodec">完整与摘要读取共用的转换器。</param>
         /// <param name="cancellationToken">在 JSON 转换边界传播取消的令牌。</param>
         /// <returns>恢复后的存档容器或结构化失败。</returns>
         /// <exception cref="ArgumentNullException">源流或快照类型解析器为空时抛出。</exception>
@@ -93,6 +96,7 @@ namespace RPG.SaveSystem
         public UniTask<SaveResult<SaveEnvelope>> DeserializeAsync(
             Stream source,
             ISaveSnapshotTypeResolver snapshotTypeResolver,
+            ISaveBusinessSummaryCodec summaryCodec,
             CancellationToken cancellationToken)
         {
             RequireReadableStream(source, nameof(source));
@@ -105,7 +109,7 @@ namespace RPG.SaveSystem
 
             try
             {
-                JsonSerializer serializer = CreateSerializer(snapshotTypeResolver);
+                JsonSerializer serializer = CreateSerializer(snapshotTypeResolver, summaryCodec);
                 SaveEnvelope envelope;
                 using (var textReader = new StreamReader(source, Utf8Encoding, true, 1024, true))
                 using (var jsonReader = new JsonTextReader(textReader) { CloseInput = false })
@@ -149,12 +153,58 @@ namespace RPG.SaveSystem
 
         #region 配置与边界校验
 
+        /// <summary>扫描根对象，只实例化 summary；模块内容通过读取器跳过，不触发类型解析和恢复。</summary>
+        /// <param name="source">调用方拥有的 Payload。</param>
+        /// <param name="summaryCodec">Manager 创建的同一业务 Codec。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>摘要或 JSON 边界错误。</returns>
+        public UniTask<SaveResult<SaveSlotSummary>> ReadSummaryAsync(Stream source,
+            ISaveBusinessSummaryCodec summaryCodec, CancellationToken cancellationToken)
+        {
+            RequireReadableStream(source, nameof(source));
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                SaveSlotSummary summary = null;
+                JsonSerializer serializer = CreateSerializer(null, summaryCodec);
+                using (var textReader = new StreamReader(source, Utf8Encoding, true, 1024, true))
+                using (var reader = new JsonTextReader(textReader) { CloseInput = false })
+                {
+                    if (!reader.Read() || reader.TokenType != JsonToken.StartObject)
+                        throw new JsonSerializationException("[SaveManager] Payload 必须为 JSON 根对象。");
+                    while (reader.Read() && reader.TokenType != JsonToken.EndObject)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        if (reader.TokenType != JsonToken.PropertyName)
+                            throw new JsonSerializationException("[SaveManager] Payload 根结构无效。");
+                        string property = (string)reader.Value;
+                        if (!reader.Read()) throw new JsonSerializationException("[SaveManager] Payload 意外结束。");
+                        if (property == "summary")
+                        {
+                            if (summary != null) throw new JsonSerializationException("[SaveManager] Payload 存在重复摘要。");
+                            summary = serializer.Deserialize<SaveSlotSummary>(reader);
+                        }
+                        else reader.Skip();
+                    }
+                    if (reader.TokenType != JsonToken.EndObject || summary == null || reader.Read())
+                        throw new JsonSerializationException("[SaveManager] Payload 摘要缺失或根对象未完整结束。");
+                }
+                return UniTask.FromResult(SaveResult<SaveSlotSummary>.Success(summary));
+            }
+            catch (Exception exception) when (IsSerializationBoundaryException(exception))
+            {
+                return UniTask.FromResult(SaveResult<SaveSlotSummary>.Failure(
+                    SaveErrorCode.DeserializationFailed, "[SaveManager] 摘要解析失败：" + exception.Message, exception));
+            }
+        }
+
         /// <summary>
         /// 为单次读写创建隔离的 Json.NET 配置，避免受全局 JsonMgr 设置影响。
         /// </summary>
         /// <param name="snapshotTypeResolver">读取时的快照类型解析器；写入时为空。</param>
+        /// <param name="summaryCodec">Manager 创建的摘要转换器。</param>
         /// <returns>使用稳定 JSON 线格式的序列化器。</returns>
-        private static JsonSerializer CreateSerializer(ISaveSnapshotTypeResolver snapshotTypeResolver)
+        private static JsonSerializer CreateSerializer(ISaveSnapshotTypeResolver snapshotTypeResolver, ISaveBusinessSummaryCodec summaryCodec)
         {
             var settings = new JsonSerializerSettings
             {
@@ -163,11 +213,14 @@ namespace RPG.SaveSystem
                 Formatting = Formatting.Indented,
                 MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
                 NullValueHandling = NullValueHandling.Include,
+                // 快照构造函数可能预置四个队伍空槽；读取必须替换集合，禁止把文件条目追加成八槽。
+                ObjectCreationHandling = ObjectCreationHandling.Replace,
                 TypeNameHandling = TypeNameHandling.None
             };
             settings.Converters.Add(new SaveSlotIdJsonConverter());
             settings.Converters.Add(new SaveModuleIdJsonConverter());
             settings.Converters.Add(new SaveModuleDataJsonConverter(snapshotTypeResolver));
+            settings.Converters.Add(new SaveBusinessSummaryJsonConverter(summaryCodec));
             return JsonSerializer.Create(settings);
         }
 

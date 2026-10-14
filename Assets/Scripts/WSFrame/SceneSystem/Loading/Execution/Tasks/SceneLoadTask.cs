@@ -22,6 +22,9 @@ namespace WS_Modules.SceneModule
         /// <summary>获取此节点能否在目标场景激活前执行。</summary>
         public virtual bool RequiresTargetSceneReady => false;
 
+        /// <summary>获取此节点是否负责加载并公开目标场景，供组合依赖校验使用。</summary>
+        public virtual bool ProvidesTargetScene => false;
+
         #endregion
 
         #region 执行

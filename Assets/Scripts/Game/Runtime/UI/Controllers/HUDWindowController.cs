@@ -89,7 +89,8 @@ namespace RPG.Game.UI.Controllers
                 throw new InvalidOperationException("[HUDWindowController] HUD 根节点缺少 HUDWindowDataComponent。");
             if (windowData.BagButton == null || windowData.DocumentUIPanelDocumentUIPanel == null ||
                 windowData.DocumentUIPanelDocumentUIPanel.CharacterButton == null ||
-                windowData.DocumentUIPanelDocumentUIPanel.TaskButton == null)
+                windowData.DocumentUIPanelDocumentUIPanel.TaskButton == null ||
+                windowData.DocumentUIPanelDocumentUIPanel.SettingButton == null)
                 throw new InvalidOperationException("[HUDWindowController] HUDWindowDataComponent 未绑定 BagButton、CharacterButton 或 TaskButton。");
             if (healthView == null)
                 throw new InvalidOperationException("[HUDWindowController] HUDWindow Prefab 未绑定静态 HUDHealthView。");
@@ -112,6 +113,7 @@ namespace RPG.Game.UI.Controllers
             characterButton = windowData.DocumentUIPanelDocumentUIPanel.CharacterButton;
             characterButton.onClick.AddListener(HandleCharacterButtonClicked);
             windowData.DocumentUIPanelDocumentUIPanel.TaskButton.onClick.AddListener(HandleTaskButtonClicked);
+            windowData.DocumentUIPanelDocumentUIPanel.SettingButton.onClick.AddListener(HandleSettingButtonClicked);
             initialized = true;
             TryBindRuntimeSources();
             WSLog.Log("[HUDWindowController] HUD 血量视图初始化完成。");
@@ -162,6 +164,8 @@ namespace RPG.Game.UI.Controllers
             if (windowData != null && windowData.DocumentUIPanelDocumentUIPanel != null &&
                 windowData.DocumentUIPanelDocumentUIPanel.TaskButton != null)
                 windowData.DocumentUIPanelDocumentUIPanel.TaskButton.onClick.RemoveListener(HandleTaskButtonClicked);
+            if (windowData != null && windowData.DocumentUIPanelDocumentUIPanel != null)
+                windowData.DocumentUIPanelDocumentUIPanel.SettingButton.onClick.RemoveListener(HandleSettingButtonClicked);
             UnbindCharacterAttributes();
             UnbindPartyEffectEvents();
             ClearEffectViews();
@@ -281,6 +285,14 @@ namespace RPG.Game.UI.Controllers
         #endregion
 
         #region 运行时数据绑定
+
+        /// <summary>将现有 HUD Setting 按钮转换为设定打开意图。</summary>
+        private void HandleSettingButtonClicked()
+        {
+            EventSystem.EventTrigger_Type(typeof(RPG.Game.UI.Settings.SettingsWindowOpenRequestedEventArgs),
+                new RPG.Game.UI.Settings.SettingsWindowOpenRequestedEventArgs());
+            WSLog.Log("[HUDWindowController] 已提交设定打开意图。");
+        }
 
         /// <summary>绑定当前场景的 PlayerController、队伍管理器及角色生命周期事件。</summary>
         /// <returns>找到并绑定 PlayerController 时返回 true。</returns>

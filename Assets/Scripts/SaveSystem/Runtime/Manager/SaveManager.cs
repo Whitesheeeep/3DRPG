@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using WS_Modules.BusinessArchitecture;
+using WS_Modules.LogModule;
 
 namespace RPG.SaveSystem
 {
@@ -18,6 +19,9 @@ namespace RPG.SaveSystem
         private readonly ISaveStorage storage;
         private readonly SaveSerializerRegistry serializerRegistry;
         private readonly SaveSnapshotTypeRegistry snapshotTypeRegistry;
+        private readonly ISaveBusinessSummaryCodec businessSummaryCodec;
+        private readonly SaveSlotSummaryReader summaryReader;
+        private readonly List<SaveModuleData> initialModules = new List<SaveModuleData>();
         private readonly object lifecycleGate = new object();
         private readonly List<ISaveModule> registeredModules = new List<ISaveModule>();
         private readonly List<ISaveMigration> registeredMigrations = new List<ISaveMigration>();
@@ -49,6 +53,9 @@ namespace RPG.SaveSystem
                                       throw new ArgumentNullException(nameof(serializerRegistry));
             this.snapshotTypeRegistry = snapshotTypeRegistry ??
                                         throw new ArgumentNullException(nameof(snapshotTypeRegistry));
+            // Manager 是摘要转换规则的唯一创建者；底层共享同一个实例。
+            businessSummaryCodec = new SaveBusinessSummaryCodec(options.BusinessSummaryType);
+            summaryReader = new SaveSlotSummaryReader(storage, serializerRegistry, businessSummaryCodec);
             moduleRegistry = new SaveModuleRegistry(Array.Empty<ISaveModule>());
             migrationRegistry = new SaveMigrationRegistry(Array.Empty<ISaveMigration>());
         }
@@ -76,6 +83,7 @@ namespace RPG.SaveSystem
                 lifetimeCancellation = new CancellationTokenSource();
                 moduleRegistry = new SaveModuleRegistry(registeredModules);
                 migrationRegistry = new SaveMigrationRegistry(registeredMigrations);
+                WSLog.Log("[SaveManager] 初始化完成，摘要 Codec 已创建并由完整读写和摘要读取共享。");
             }
         }
 
@@ -101,6 +109,8 @@ namespace RPG.SaveSystem
                 OperationCompleted = null;
                 registeredModules.Clear();
                 registeredMigrations.Clear();
+                initialModules.Clear();
+                WSLog.Log("[SaveManager] 已注销并取消未完成存档操作。");
             }
         }
 
@@ -209,8 +219,9 @@ namespace RPG.SaveSystem
         /// 采集全部模块快照并保存到指定槽位。
         /// </summary>
         /// <param name="request">保存请求。</param>
+        /// <param name="cancellationToken">与管理器生命周期关联，实际保存完成前不会只取消外层等待。</param>
         /// <returns>保存结果。</returns>
-        public async UniTask<SaveResult> SaveAsync(SaveRequest request)
+        public async UniTask<SaveResult> SaveAsync(SaveRequest request, CancellationToken cancellationToken = default)
         {
             EnsureNotDisposed();
             if (request == null)
@@ -219,7 +230,7 @@ namespace RPG.SaveSystem
             }
 
             if (!TryBeginOperation(
-                    out CancellationToken cancellationToken,
+                    out CancellationToken lifetimeToken,
                     out SaveModuleRegistry operationModuleRegistry,
                     out _,
                     out _))
@@ -229,12 +240,14 @@ namespace RPG.SaveSystem
 
             try
             {
-                SaveResult result = await SaveCoreAsync(
-                    request,
-                    cancellationToken,
-                    operationModuleRegistry);
-                Publish(SaveOperationKind.Save, request.SlotId, result);
-                return result;
+                using (var linked = CancellationTokenSource.CreateLinkedTokenSource(lifetimeToken, cancellationToken))
+                {
+                    WSLog.Log($"[SaveManager] 开始保存，slot={request.SlotId}。");
+                    SaveResult result = await SaveCoreAsync(request, linked.Token, operationModuleRegistry);
+                    Publish(SaveOperationKind.Save, request.SlotId, result);
+                    WSLog.Log($"[SaveManager] 保存完成，slot={request.SlotId}, success={result.IsSuccess}。");
+                    return result;
+                }
             }
             finally
             {
@@ -311,6 +324,62 @@ namespace RPG.SaveSystem
 
         #region 保存编排
 
+        /// <summary>枚举并读取摘要；单档损坏保留为条目，不影响其他卡位。</summary>
+        /// <returns>带摘要读取结果的文件列表。</returns>
+        public async UniTask<SaveResult<IReadOnlyList<SaveSlotDetails>>> ListSlotDetailsAsync()
+        {
+            EnsureNotDisposed();
+            if (!TryBeginOperation(out CancellationToken token, out _, out _, out _))
+                return SaveResult<IReadOnlyList<SaveSlotDetails>>.Failure(SaveErrorCode.OperationBusy, "[SaveManager] 已有操作正在执行。");
+            try
+            {
+                SaveResult<IReadOnlyList<SaveStorageEntry>> listed = await storage.ListEntriesAsync(token);
+                if (!listed.IsSuccess)
+                    return SaveResult<IReadOnlyList<SaveSlotDetails>>.Failure(listed.ErrorCode, listed.Message, listed.Exception);
+                var details = new List<SaveSlotDetails>(listed.Value.Count);
+                foreach (SaveStorageEntry entry in listed.Value)
+                {
+                    SaveResult<SaveSlotSummary> summary = entry.IsAvailable
+                        ? await summaryReader.ReadAsync(entry.SlotId, token)
+                        : SaveResult<SaveSlotSummary>.Failure(entry.ErrorCode, entry.Message);
+                    details.Add(new SaveSlotDetails(entry, summary));
+                }
+                WSLog.Log($"[SaveManager] 摘要列表读取完成，count={details.Count}。");
+                return SaveResult<IReadOnlyList<SaveSlotDetails>>.Success(details.AsReadOnly());
+            }
+            finally { EndOperation(); }
+        }
+
+        /// <summary>在全部业务初始化后、玩家生成前采集一次独立初始快照。</summary>
+        public void CaptureInitialState()
+        {
+            EnsureNotDisposed();
+            if (initialModules.Count != 0) throw new InvalidOperationException("[SaveManager] 初始状态不能重复采集。");
+            foreach (ISaveModule module in moduleRegistry.RestoreOrder)
+                initialModules.Add(new SaveModuleData(module.ModuleId, module.CurrentVersion, module.CaptureSnapshot()));
+            WSLog.Log($"[SaveManager] 初始业务状态已采集，moduleCount={initialModules.Count}。");
+        }
+
+        /// <summary>在玩家和旧监听释放后按依赖顺序恢复初始状态，不发送磁盘读档完成事件。</summary>
+        public void RestoreInitialState()
+        {
+            EnsureNotDisposed();
+            if (initialModules.Count == 0) throw new InvalidOperationException("[SaveManager] 尚未采集初始状态。");
+            if (!TryBeginOperation(out _, out SaveModuleRegistry registry, out _, out _))
+                throw new InvalidOperationException("[SaveManager] 存档操作中不能重置业务状态。");
+            try
+            {
+                // 初始快照本身不被修改，模块恢复负责创建新的业务实例及索引。
+                foreach (SaveModuleData data in initialModules)
+                {
+                    registry.TryGet(data.ModuleId, out ISaveModule module);
+                    module.RestoreSnapshot(data.Snapshot);
+                }
+                WSLog.Log($"[SaveManager] 已恢复初始业务状态，moduleCount={initialModules.Count}。");
+            }
+            finally { EndOperation(); }
+        }
+
         /// <summary>
         /// 在主线程采集快照、序列化完整 Envelope，并提交 Payload 到存储层。
         /// </summary>
@@ -354,6 +423,7 @@ namespace RPG.SaveSystem
                 SaveResult serializeResult = await serializerResult.Value.SerializeAsync(
                     envelopeResult.Value,
                     payload,
+                    businessSummaryCodec,
                     cancellationToken);
                 if (!serializeResult.IsSuccess)
                 {
@@ -414,7 +484,7 @@ namespace RPG.SaveSystem
 
             var summary = new SaveSlotSummary(
                 request.SlotId,
-                request.CharacterName,
+                request.BusinessSummary,
                 DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 options.CurrentSaveFormatVersion);
             return SaveResult<SaveEnvelope>.Success(new SaveEnvelope(summary, moduleData));
@@ -461,6 +531,7 @@ namespace RPG.SaveSystem
                 SaveResult<SaveEnvelope> envelopeResult = await serializerResult.Value.DeserializeAsync(
                     handle.Content,
                     operationSnapshotTypeRegistry,
+                    businessSummaryCodec,
                     cancellationToken);
                 if (!envelopeResult.IsSuccess)
                 {

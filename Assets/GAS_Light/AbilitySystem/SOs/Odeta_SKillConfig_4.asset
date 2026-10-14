@@ -134,7 +134,19 @@ MonoBehaviour:
   muted: 0
   displayName: "\u97F3\u9891\u8F68\u9053"
   editorLocked: 0
-  clips: []
+  clips:
+  - id: c1814eb1c0f94c28869da33692d69b5e
+    audioClip: {fileID: 8300000, guid: 813fc03e3562686478e12d7ca386fc73, type: 3}
+    startFrame: 3
+    durationFrames: 5
+    volume: 1
+    pitch: 1
+  - id: 546ed9ae55f0435f94baa8ff0c630bed
+    audioClip: {fileID: 8300000, guid: 813fc03e3562686478e12d7ca386fc73, type: 3}
+    startFrame: 8
+    durationFrames: 6
+    volume: 1
+    pitch: 1
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0

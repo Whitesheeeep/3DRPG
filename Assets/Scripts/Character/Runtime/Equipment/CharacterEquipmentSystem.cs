@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using RPG.ItemSystem;
 using RPG.SaveSystem;
 using UnityEngine;
@@ -35,7 +36,7 @@ namespace RPG.Character
             artifactInventoryManager = this.GetManager<ArtifactInventoryManager>();
             SaveManager saveManager = this.GetManager<SaveManager>();
             saveManager.RegisterModule(new CharacterEquipmentSaveModule(
-                characterRosterManager, weaponInventoryManager, artifactInventoryManager, this));
+                characterRosterManager, this));
             characterOwnershipChangedUnregister =
                 this.RegisterEvent<CharacterOwnershipChangedEvent>(HandleCharacterOwnershipChanged);
             Debug.Log("[CharacterEquipmentSystem] 角色装备事务已初始化并注册独立装备关系存档。");
@@ -204,12 +205,52 @@ namespace RPG.Character
 
         #region 存档恢复
 
-        /// <summary>将所有角色装备关系提交到角色状态并发布一次完成事件。</summary>
-        /// <param name="equipmentByCharacterIdMap">已校验装备关系。</param>
+        /// <summary>依赖模块恢复后，检查完整候选关系，再提交并发布一次完成事件。</summary>
+        /// <param name="equipmentByCharacterIdMap">由存档适配器转换的候选装备关系。</param>
         internal void RestoreEquipmentState(System.Collections.Generic.IReadOnlyDictionary<CharacterId, CharacterEquipmentState> equipmentByCharacterIdMap)
         {
+            ValidateRestoredEquipment(equipmentByCharacterIdMap);
             characterRosterManager.RestoreEquipmentState(equipmentByCharacterIdMap);
             WSEventSystem.EventTrigger_Type(typeof(CharacterEquipmentRestoredEvent), new CharacterEquipmentRestoredEvent());
+            Debug.Log($"[CharacterEquipmentSystem] 装备关系校验与恢复完成，characterCount={equipmentByCharacterIdMap.Count}。");
+        }
+
+        /// <summary>查询已恢复的名册与库存，校验所有权、部位、重复占用及容量，检查过程不修改状态。</summary>
+        /// <param name="equipmentByCharacterIdMap">候选装备关系。</param>
+        private void ValidateRestoredEquipment(IReadOnlyDictionary<CharacterId, CharacterEquipmentState> equipmentByCharacterIdMap)
+        {
+            var usedInstanceIds = new HashSet<EquipmentInstanceId>();
+            int equippedWeaponCount = 0;
+            foreach (KeyValuePair<CharacterId, CharacterEquipmentState> pair in equipmentByCharacterIdMap)
+            {
+                if (!characterRosterManager.IsOwned(pair.Key))
+                    throw new InvalidOperationException($"[CharacterEquipmentSystem] 恢复引用了未拥有角色：{pair.Key}。");
+                EquipmentInstanceId weaponId = pair.Value.EquippedWeaponInstanceId;
+                if (weaponId.IsValid)
+                {
+                    if (!weaponInventoryManager.TryGetInstance(weaponId, out WeaponInstance weapon) ||
+                        !ItemManager.Instance.TryGetDefinition(weapon.DefinitionId, out ItemDefinition definition) ||
+                        !(definition is WeaponDefinition weaponDefinition) ||
+                        !CharacterConfigManager.Instance.GetRequiredConfig(pair.Key).AllowsWeaponType(weaponDefinition.WeaponType))
+                        throw new InvalidOperationException($"[CharacterEquipmentSystem] 武器引用或类型无效：character={pair.Key}, weapon={weaponId}。");
+                    if (!usedInstanceIds.Add(weaponId)) throw new InvalidOperationException("[CharacterEquipmentSystem] 装备实例被重复占用。");
+                    equippedWeaponCount++;
+                }
+                foreach (ArtifactSlot slot in Enum.GetValues(typeof(ArtifactSlot)))
+                {
+                    if (!pair.Value.TryGetArtifactInstanceId(slot, out EquipmentInstanceId artifactId)) continue;
+                    if (!artifactInventoryManager.TryGetInstance(artifactId, out ArtifactInstance artifact) ||
+                        !ItemManager.Instance.TryGetDefinition(artifact.DefinitionId, out ItemDefinition definition) ||
+                        !(definition is ArtifactDefinition artifactDefinition) || artifactDefinition.Slot != slot)
+                        throw new InvalidOperationException($"[CharacterEquipmentSystem] 圣遗物引用或部位无效：artifact={artifactId}, slot={slot}。");
+                    if (!usedInstanceIds.Add(artifactId)) throw new InvalidOperationException("[CharacterEquipmentSystem] 装备实例被重复占用。");
+                }
+            }
+            foreach (CharacterInstance instance in characterRosterManager.GetInstances())
+                if (!equipmentByCharacterIdMap.ContainsKey(instance.CharacterId))
+                    throw new InvalidOperationException($"[CharacterEquipmentSystem] 装备恢复缺少角色：{instance.CharacterId}。");
+            if (weaponInventoryManager.Count - equippedWeaponCount > weaponInventoryManager.Capacity)
+                throw new InvalidOperationException("[CharacterEquipmentSystem] 恢复后的未装备武器超过背包容量。");
         }
 
         #endregion

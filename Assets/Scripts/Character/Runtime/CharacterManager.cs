@@ -12,6 +12,8 @@ using Sirenix.OdinInspector;
 using UnityEngine;
 using WS_Modules.CustomEventSystem;
 using WS_Modules.GAS.AbilitySystemComponent;
+using WS_Modules.GAS.AttributeSystem;
+using WS_Modules.GAS.Generated;
 using WS_Modules.ResLoadModule;
 using WS_Modules.SceneModule;
 using WSEventSystem = WS_Modules.CustomEventSystem.EventSystem;
@@ -406,6 +408,60 @@ namespace RPG.Character
             ActiveCharacter = target;
             target.OnEnter();
             ActiveCharacterChanged?.Invoke(previous, target);
+        }
+
+        #endregion
+
+        #region 队伍生命恢复
+
+        /// <summary>将当前队伍中场上与后台角色的 Health 恢复至最终 MaxHealth，并复活死亡成员。</summary>
+        /// <exception cref="InvalidOperationException">队伍未就绪、队伍正编辑或任何角色无法提交生命值时抛出。</exception>
+        public void RestorePartyToFullHealth()
+        {
+            if (!IsReady)
+                throw new InvalidOperationException("[CharacterManager] 队伍尚未 Ready，不能执行全队生命恢复。");
+            if (partyEditInProgress || partyDefeatRecoveryInProgress)
+                throw new InvalidOperationException(
+                    $"[CharacterManager] 队伍当前不可执行全队生命恢复，partyEditInProgress={partyEditInProgress}, " +
+                    $"partyDefeatRecoveryInProgress={partyDefeatRecoveryInProgress}。");
+
+            int healedActorCount = 0;
+            int revivedActorCount = 0;
+            for (int index = 0; index < characterActors.Count; index++)
+            {
+                CharacterActor actor = characterActors[index];
+                if (actor.IsDead)
+                {
+                    // 现有复活流程先恢复装备贡献，再读取最终 MaxHealth，并由生命 FSM 清理死亡登记。
+                    actor.LifeStateMachine.ReviveToFullHealth();
+                    revivedActorCount++;
+                    continue;
+                }
+
+                if (!actor.AbilitySystemComponent.TryGetCurrentValue(GameplayAttributes.Attribute_MaxHealth, out float maxHealth))
+                    throw new InvalidOperationException(
+                        $"[CharacterManager] 全队恢复时角色缺少 MaxHealth，character={actor.CharacterId}。");
+                if (!actor.AbilitySystemComponent.TryGetCurrentValue(GameplayAttributes.Attribute_Health, out float currentHealth))
+                    throw new InvalidOperationException(
+                        $"[CharacterManager] 全队恢复时角色缺少 Health，character={actor.CharacterId}。");
+                if (Mathf.Approximately(currentHealth, maxHealth)) continue;
+
+                // ASC 仍负责 Health 的边界校验和 AttributeChanged 广播，现有绑定会同步实例快照与 HUD。
+                if (!actor.AbilitySystemComponent.TrySetResourceCurrentValues(new[]
+                    {
+                        new GameplayAttributeValue(GameplayAttributes.Attribute_Health, maxHealth)
+                    }))
+                {
+                    throw new InvalidOperationException(
+                        $"[CharacterManager] 全队恢复无法提交 Health，character={actor.CharacterId}, maxHealth={maxHealth:F1}。");
+                }
+                healedActorCount++;
+            }
+
+            Debug.Log(
+                $"[CharacterManager] 全队生命恢复完成，partyCount={characterActors.Count}, healedCount={healedActorCount}, " +
+                $"revivedCount={revivedActorCount}；操控角色、位置和其他 Resource 均保持不变。",
+                this);
         }
 
         #endregion

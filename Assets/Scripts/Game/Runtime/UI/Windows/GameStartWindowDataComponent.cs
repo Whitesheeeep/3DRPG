@@ -1,5 +1,6 @@
 using System;
 using RPG.Game.Loading;
+using RPG.Game.UI.Views.Save;
 using Sirenix.OdinInspector;
 using TMPro;
 using UnityEngine;
@@ -11,7 +12,7 @@ namespace RPG.Game.UI
 {
     /// <summary>保存开始游戏窗口的显式控件引用和目标场景配置。</summary>
     [DisallowMultipleComponent]
-    [InfoBox("必须绑定标题、开始按钮、按钮文字、状态文字及庭院 SceneLoadConfig；这些引用对应 TemplateWindow 的 UIContent 内节点。")]
+    [InfoBox("必须绑定标题、开始按钮、状态文字、十档列表、选档提示、删除确认控件及庭院 SceneLoadConfig；所有引用对应 Prefab 中显式配置的 UIContent 节点。")]
     public sealed class GameStartWindowDataComponent : MonoBehaviour
     {
         #region 依赖字段
@@ -26,6 +27,13 @@ namespace RPG.Game.UI
         private TextMeshProUGUI statusText;
         [SerializeField, Required, LabelText("目标场景配置")]
         private SceneLoadConfig targetSceneConfig;
+
+        [SerializeField, Required] private SaveSlotListView slotList;
+        [SerializeField, Required] private TMP_Text selectionText;
+        [SerializeField, Required] private GameObject deletePanel;
+        [SerializeField, Required] private TMP_Text deletePrompt;
+        [SerializeField, Required] private Button confirmDeleteButton;
+        [SerializeField, Required] private Button cancelDeleteButton;
 
         #endregion
 
@@ -45,6 +53,18 @@ namespace RPG.Game.UI
         public TextMeshProUGUI StatusText => statusText;
         /// <summary>获取开始游戏请求使用的场景配置。</summary>
         public SceneLoadConfig TargetSceneConfig => targetSceneConfig;
+        /// <summary>十档横向列表。</summary>
+        public SaveSlotListView SlotList => slotList;
+        /// <summary>当前选档说明。</summary>
+        public TMP_Text SelectionText => selectionText;
+        /// <summary>删除确认区域。</summary>
+        public GameObject DeletePanel => deletePanel;
+        /// <summary>删除卡位提示。</summary>
+        public TMP_Text DeletePrompt => deletePrompt;
+        /// <summary>确认删除按钮。</summary>
+        public Button ConfirmDeleteButton => confirmDeleteButton;
+        /// <summary>取消删除按钮。</summary>
+        public Button CancelDeleteButton => cancelDeleteButton;
 
         #endregion
 
@@ -55,7 +75,8 @@ namespace RPG.Game.UI
         public void ValidateConfiguration()
         {
             if (titleText == null || startButton == null || startButtonText == null ||
-                statusText == null || targetSceneConfig == null)
+                statusText == null || targetSceneConfig == null || slotList == null || selectionText == null ||
+                deletePanel == null || deletePrompt == null || confirmDeleteButton == null || cancelDeleteButton == null)
             {
                 WSLog.LogError($"[GameStartWindowDataComponent] '{name}' 缺少窗口控件或目标 SceneLoadConfig 引用。");
                 throw new InvalidOperationException($"[GameStartWindowDataComponent] '{name}' 缺少窗口控件或目标 SceneLoadConfig 引用。");

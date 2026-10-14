@@ -4,6 +4,65 @@ using Newtonsoft.Json.Linq;
 
 namespace RPG.SaveSystem
 {
+    /// <summary>在框架摘要边界显式调用同一个业务 Codec，避免接口属性绕过写入契约。</summary>
+    internal sealed class SaveBusinessSummaryJsonConverter : JsonConverter
+    {
+        #region 依赖字段
+        private readonly ISaveBusinessSummaryCodec codec;
+        #endregion
+
+        #region 转换
+        /// <summary>接收 Manager 创建的业务摘要转换器。</summary>
+        /// <param name="codec">完整读写和只读摘要共用的实例。</param>
+        public SaveBusinessSummaryJsonConverter(ISaveBusinessSummaryCodec codec) => this.codec = codec;
+
+        /// <summary>仅接管框架摘要，不接管业务具体 DTO，防止递归。</summary>
+        /// <param name="objectType">待转换类型。</param>
+        /// <returns>是否为框架摘要。</returns>
+        public override bool CanConvert(Type objectType) => objectType == typeof(SaveSlotSummary);
+
+        /// <summary>写入框架元数据，再交给 Codec 写入组合业务摘要。</summary>
+        /// <param name="writer">JSON 写入器。</param>
+        /// <param name="value">框架摘要。</param>
+        /// <param name="serializer">本次配置。</param>
+        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        {
+            var summary = (SaveSlotSummary)value;
+            writer.WriteStartObject();
+            writer.WritePropertyName("slotId");
+            serializer.Serialize(writer, summary.SlotId);
+            writer.WritePropertyName("savedAtUtcUnixMilliseconds");
+            writer.WriteValue(summary.SavedAtUtcUnixMilliseconds);
+            writer.WritePropertyName("formatVersion");
+            writer.WriteValue(summary.FormatVersion);
+            writer.WritePropertyName("businessSummary");
+            codec.WriteBusinessSummary(writer, summary.BusinessSummary, serializer);
+            writer.WriteEndObject();
+        }
+
+        /// <summary>读取框架字段，通过 Codec 恢复业务摘要，不解析任意文件类型名。</summary>
+        /// <param name="reader">JSON 读取器。</param>
+        /// <param name="objectType">目标类型。</param>
+        /// <param name="existingValue">未使用的已有值。</param>
+        /// <param name="serializer">本次配置。</param>
+        /// <returns>组合摘要。</returns>
+        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        {
+            JObject data = JObject.Load(reader);
+            if (data["slotId"] == null || data["savedAtUtcUnixMilliseconds"]?.Type != JTokenType.Integer ||
+                data["formatVersion"]?.Type != JTokenType.Integer || data["businessSummary"]?.Type != JTokenType.Object)
+                throw new JsonSerializationException("[SaveManager] 存档缺少有效框架摘要或业务摘要。");
+            SaveSlotId slotId = data["slotId"].ToObject<SaveSlotId>(serializer);
+            long savedAt = data["savedAtUtcUnixMilliseconds"].Value<long>();
+            int version = data["formatVersion"].Value<int>();
+            if (savedAt < 0 || savedAt > 253402300799999L || version <= 0)
+                throw new JsonSerializationException("[SaveManager] 摘要时间或版本无效。");
+            using (JsonReader businessReader = data["businessSummary"].CreateReader())
+                return new SaveSlotSummary(slotId, codec.ReadBusinessSummary(businessReader, serializer), savedAt, version);
+        }
+        #endregion
+    }
+
     #region 标识符转换器
 
     /// <summary>

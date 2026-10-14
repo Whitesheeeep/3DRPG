@@ -50,6 +50,16 @@ namespace RPG.Game.UI.Escape
         }
     }
 
+    /// <summary>将 Esc 交给设定窗口统一的隐藏后销毁流程。</summary>
+    public sealed class CloseSettingsWindowCommand : AbstractCommand
+    {
+        /// <summary>请求关闭当前设定窗口。</summary>
+        protected override void OnExecute()
+        {
+            if (UIManager.Instance.TryGetWindow<RPG.Game.UI.SettingsWindow>(out var window)) window.RequestClose();
+        }
+    }
+
     /// <summary>请求通过 UIManager 关闭 BagWindow。</summary>
     public sealed class CloseBagWindowCommand : AbstractCommand
     {

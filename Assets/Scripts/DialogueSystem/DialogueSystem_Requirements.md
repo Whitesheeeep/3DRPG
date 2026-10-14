@@ -973,3 +973,41 @@ Toggle 使用场景 `NPCIdentityDefinition` 解析出的稳定 NPCId 与条目�
 旧场景若仍只配置隐藏的单个 `dialogueAsset` 字段，会继续贡献原有 Repeatable“对话”
 选项；新配置使用列表，且列表非空时优先采用列表内容。Editor Play Mode 可使用
 `DialogueInteractionOdinTester` 验证 Toggle 完成记录、存档快照恢复与空快照整体替换。
+
+### 13.6 DialogueNPC 资源领取与全队生命恢复 Demo
+
+庭院场景的 `DialogueNPC` 保留已有对话条目，并追加 Repeatable 交互“Demo：获取资源”。
+对话首句为“你想要什么？”，六个选项分别发放当前数据库中的资源或恢复当前队伍生命值。
+
+```mermaid
+flowchart LR
+    Interact["Demo：获取资源"] --> Speech["你想要什么？"]
+    Speech --> Choice["六个 Choice"]
+    Choice --> Package["按当前 ItemDatabase 生成奖励"]
+    Choice --> Health["当前队伍全员回满并复活"]
+    Package --> Reward["RewardSystem.TryGrant 单批次提交"]
+    Reward --> End["共享 EndNode"]
+    Health --> End
+```
+
+资源包选择与数量如下：
+
+| Choice | 发放内容 |
+| --- | --- |
+| 全部资源 | 10000 摩拉；每种武器、圣遗物各 1 件；每种养成经验道具、养成道具和食物各 10 个 |
+| 摩拉 * 10000 | 10000 摩拉 |
+| 全部武器 | 当前 ItemDatabase 中每种武器各 1 件 |
+| 全部圣遗物 | 当前 ItemDatabase 中每种圣遗物各 1 件 |
+| 全部升级材料 * 10 | 当前 ItemDatabase 中每种养成经验道具、养成道具各 10 个 |
+| 恢复全部角色生命值 | 当前队伍的场上与后台成员回满 Health，死亡成员按装备后的最终 MaxHealth 复活 |
+
+资源命令在每次选择时读取 `ItemManager.Instance.Database.Definitions`，保留数据库顺序，
+因此以后加入相应分类的定义会自动进入 Demo 奖励。所有摩拉与物品通过同一次
+`RewardSystem.TryGrant` 预检和提交；库存容量或钱包拒绝会令当前对话失败，不会绕过上限
+或出现部分发放。重复选择会重复领取。
+
+全队生命恢复命令由 Dialogue Initiator 的 Participant 对象向父级取得 `PlayerController`，
+再调用 `CharacterManager.RestorePartyToFullHealth()`。CharacterManager 只处理已经 Ready 的
+当前队伍，遍历场上与后台角色；存活成员通过 ASC 写入 Health，死亡成员复用现有复活状态机，
+先恢复装备属性再按最终 MaxHealth 回满。ASC 的 `AttributeChanged` 绑定继续同步角色 Resource
+快照与 HUD。操作不切换角色、不改变位置、不补充其他 Resource，也不清除持续效果。

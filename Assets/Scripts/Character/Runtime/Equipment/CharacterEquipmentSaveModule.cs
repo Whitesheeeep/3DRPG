@@ -70,27 +70,19 @@ namespace RPG.Character
         #region 依赖字段
 
         private readonly CharacterRosterManager characterRosterManager;
-        private readonly WeaponInventoryManager weaponInventoryManager;
-        private readonly ArtifactInventoryManager artifactInventoryManager;
         private readonly CharacterEquipmentSystem characterEquipmentSystem;
 
         #endregion
 
         /// <summary>创建角色装备关系存档模块。</summary>
         /// <param name="characterRosterManager">角色实例 Manager。</param>
-        /// <param name="weaponInventoryManager">武器实例 Manager。</param>
-        /// <param name="artifactInventoryManager">圣遗物实例 Manager。</param>
         /// <param name="characterEquipmentSystem">装备事务 System。</param>
         /// <exception cref="ArgumentNullException">任一业务依赖为空时抛出。</exception>
-        public CharacterEquipmentSaveModule(CharacterRosterManager characterRosterManager,
-            WeaponInventoryManager weaponInventoryManager, ArtifactInventoryManager artifactInventoryManager,
-            CharacterEquipmentSystem characterEquipmentSystem)
+        public CharacterEquipmentSaveModule(CharacterRosterManager characterRosterManager, CharacterEquipmentSystem characterEquipmentSystem)
             : base(StableModuleId, 1, SaveMissingModulePolicy.Required,
                 new[] { CharacterRosterSaveModule.StableModuleId, WeaponInventorySaveModule.StableModuleId, ArtifactInventorySaveModule.StableModuleId })
         {
             this.characterRosterManager = characterRosterManager ?? throw new ArgumentNullException(nameof(characterRosterManager));
-            this.weaponInventoryManager = weaponInventoryManager ?? throw new ArgumentNullException(nameof(weaponInventoryManager));
-            this.artifactInventoryManager = artifactInventoryManager ?? throw new ArgumentNullException(nameof(artifactInventoryManager));
             this.characterEquipmentSystem = characterEquipmentSystem ?? throw new ArgumentNullException(nameof(characterEquipmentSystem));
         }
 
@@ -140,78 +132,18 @@ namespace RPG.Character
             Debug.Log($"[CharacterEquipmentSaveModule] 已恢复角色装备关系，characterCount={equipmentByCharacterIdMap.Count}。");
         }
 
-        /// <summary>校验角色、装备实例、部位和重复引用。</summary>
+        /// <summary>仅校验快照结构；跨业务引用由装备运行时在依赖恢复后检查。</summary>
         /// <param name="snapshot">待验证快照。</param>
         protected override void ValidateTypedSnapshot(CharacterEquipmentSaveSnapshot snapshot)
         {
             if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
             snapshot.ValidateShape();
-            var referencedInstanceIds = new HashSet<EquipmentInstanceId>();
-            var snapshotCharacterIdSet = new HashSet<CharacterId>();
-            int equippedWeaponCount = 0;
-            for (int index = 0; index < snapshot.Characters.Count; index++)
-            {
-                CharacterEquipmentSaveEntry entry = snapshot.Characters[index];
-                CharacterId characterId = new CharacterId(entry.CharacterId);
-                if (!characterId.IsValid || !characterRosterManager.IsOwned(characterId))
-                    throw new InvalidOperationException($"角色装备快照引用了未拥有角色：{entry.CharacterId}。");
-                snapshotCharacterIdSet.Add(characterId);
-
-                ValidateWeapon(entry.WeaponInstanceId, characterId, referencedInstanceIds, ref equippedWeaponCount);
-                ValidateArtifact(entry.FlowerOfLifeInstanceId, ArtifactSlot.FlowerOfLife, referencedInstanceIds);
-                ValidateArtifact(entry.PlumeOfDeathInstanceId, ArtifactSlot.PlumeOfDeath, referencedInstanceIds);
-                ValidateArtifact(entry.SandsOfEonInstanceId, ArtifactSlot.SandsOfEon, referencedInstanceIds);
-                ValidateArtifact(entry.GobletOfEonothemInstanceId, ArtifactSlot.GobletOfEonothem, referencedInstanceIds);
-                ValidateArtifact(entry.CircletOfLogosInstanceId, ArtifactSlot.CircletOfLogos, referencedInstanceIds);
-            }
-
-            // 装备关系快照必须覆盖当前全部角色；遗漏角色会在恢复时被错误清空装备。
-            IReadOnlyList<CharacterInstance> ownedInstances = characterRosterManager.GetInstances();
-            for (int index = 0; index < ownedInstances.Count; index++)
-                if (!snapshotCharacterIdSet.Contains(ownedInstances[index].CharacterId))
-                    throw new InvalidOperationException($"角色装备快照缺少已拥有角色：{ownedInstances[index].CharacterId}。");
-
-            int unEquippedWeaponCount = weaponInventoryManager.Count - equippedWeaponCount;
-            if (unEquippedWeaponCount > weaponInventoryManager.Capacity)
-                throw new InvalidOperationException($"角色装备快照恢复后武器容纳区超过容量：{unEquippedWeaponCount}/{weaponInventoryManager.Capacity}。");
         }
 
         /// <summary>为缺少模块的新档创建所有角色空装备关系。</summary>
         protected override CharacterEquipmentSaveSnapshot CreateDefaultTypedSnapshot() => new CharacterEquipmentSaveSnapshot();
 
         #region 校验辅助
-
-        /// <summary>校验武器引用、角色类型规则和重复引用。</summary>
-        private void ValidateWeapon(string value, CharacterId characterId, HashSet<EquipmentInstanceId> referencedInstanceIds,
-            ref int equippedWeaponCount)
-        {
-            if (string.IsNullOrEmpty(value)) return;
-            EquipmentInstanceId instanceId = ParseRequiredId(value);
-            if (!weaponInventoryManager.TryGetInstance(instanceId, out WeaponInstance weapon))
-                throw new InvalidOperationException($"角色 {characterId} 装备关系引用了不存在的武器：{value}。");
-            if (!ItemManager.Instance.TryGetDefinition(weapon.DefinitionId, out ItemDefinition definition) ||
-                !(definition is WeaponDefinition weaponDefinition) ||
-                !CharacterConfigManager.Instance.GetRequiredConfig(characterId).AllowsWeaponType(weaponDefinition.WeaponType))
-                throw new InvalidOperationException($"角色 {characterId} 的武器装备规则不匹配：{value}。");
-            if (!referencedInstanceIds.Add(instanceId)) throw new InvalidOperationException($"装备实例重复引用：{value}。");
-            equippedWeaponCount++;
-        }
-
-        /// <summary>校验圣遗物实例与保存槽位部位一致。</summary>
-        private void ValidateArtifact(string value, ArtifactSlot slot, HashSet<EquipmentInstanceId> referencedInstanceIds)
-        {
-            if (string.IsNullOrEmpty(value)) return;
-            EquipmentInstanceId instanceId = ParseRequiredId(value);
-            if (!artifactInventoryManager.TryGetInstance(instanceId, out ArtifactInstance artifact))
-                throw new InvalidOperationException($"角色装备关系引用了不存在的圣遗物：{value}。");
-            if (!ItemManager.Instance.TryGetDefinition(artifact.DefinitionId, out ItemDefinition definition) ||
-                !(definition is ArtifactDefinition artifactDefinition) || artifactDefinition.Slot != slot)
-                throw new InvalidOperationException($"圣遗物实例 {value} 与保存部位 {slot} 不匹配。");
-            if (!referencedInstanceIds.Add(instanceId)) throw new InvalidOperationException($"装备实例重复引用：{value}。");
-        }
-
-        /// <summary>解析必需的实例标识。</summary>
-        private static EquipmentInstanceId ParseRequiredId(string value) => new EquipmentInstanceId(value);
 
         /// <summary>解析允许为空的装备实例标识。</summary>
         /// <param name="value">快照中的实例标识文本。</param>

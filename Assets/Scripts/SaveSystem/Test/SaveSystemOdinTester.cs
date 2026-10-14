@@ -12,6 +12,13 @@ using WS_Modules.BusinessArchitecture;
 
 namespace RPG.SaveSystem.Tests
 {
+    /// <summary>用于独立验证框架摘要组合与读写对称性的业务 DTO。</summary>
+    public sealed class SaveTestBusinessSummary : ISaveBusinessSummary
+    {
+        /// <summary>测试用业务名称。</summary>
+        public string CharacterName { get; set; }
+    }
+
     /// <summary>
     /// 通过 Odin Inspector 手动驱动 SaveManager 的 JSON、本地容器和模块恢复测试组件。
     /// </summary>
@@ -163,7 +170,7 @@ namespace RPG.SaveSystem.Tests
 
                 phase = "通过 SaveManager 保存测试槽位";
                 SaveResult saveResult = await manager.SaveAsync(
-                    new SaveRequest(TestSlotId, "[SaveTest] Odin RoundTrip"));
+                    new SaveRequest(TestSlotId, new SaveTestBusinessSummary { CharacterName = "[SaveTest] Odin RoundTrip" }));
                 EnsureSuccess(saveResult, phase);
 
                 phase = "通过 SaveManager 列举并校验测试槽位";
@@ -189,7 +196,7 @@ namespace RPG.SaveSystem.Tests
                 SaveResult<SaveLoadResult> loadResult = await manager.LoadAsync(TestSlotId);
                 EnsureSuccess(loadResult, phase);
                 Ensure(loadResult.Value.Summary.SlotId == TestSlotId, phase, "加载摘要 SlotId 不一致。");
-                Ensure(loadResult.Value.Summary.CharacterName == "[SaveTest] Odin RoundTrip",
+                Ensure(((SaveTestBusinessSummary)loadResult.Value.Summary.BusinessSummary).CharacterName == "[SaveTest] Odin RoundTrip",
                     phase,
                     "加载摘要 CharacterName 不一致。");
                 Ensure(loadResult.Value.Summary.FormatVersion == 1,
@@ -624,7 +631,7 @@ namespace RPG.SaveSystem.Tests
                     TestModuleVersion);
 
                 RegisterManager(new SaveManager(
-                    new SaveManagerOptions(serializer.FormatId, 1),
+                    new SaveManagerOptions(serializer.FormatId, 1, typeof(SaveTestBusinessSummary)),
                     Storage,
                     serializerRegistry,
                     snapshotTypeRegistry));

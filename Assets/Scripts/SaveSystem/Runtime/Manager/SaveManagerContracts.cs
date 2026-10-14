@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using Cysharp.Threading.Tasks;
 
 namespace RPG.SaveSystem
@@ -31,8 +32,13 @@ namespace RPG.SaveSystem
         /// 采集全部模块快照并保存到指定槽位。
         /// </summary>
         /// <param name="request">保存请求。</param>
+        /// <param name="cancellationToken">与管理器生命周期关联的调用方取消令牌。</param>
         /// <returns>保存结果。</returns>
-        UniTask<SaveResult> SaveAsync(SaveRequest request);
+        UniTask<SaveResult> SaveAsync(SaveRequest request, CancellationToken cancellationToken = default);
+
+        /// <summary>读取可识别文件及其组合摘要，不恢复业务数据。</summary>
+        /// <returns>包含损坏条目的槽位列表。</returns>
+        UniTask<SaveResult<IReadOnlyList<SaveSlotDetails>>> ListSlotDetailsAsync();
 
         /// <summary>
         /// 读取、迁移、校验并恢复指定槽位。
@@ -71,9 +77,10 @@ namespace RPG.SaveSystem
         /// </summary>
         /// <param name="defaultFormatId">新存档使用的序列化格式标识。</param>
         /// <param name="currentSaveFormatVersion">当前完整存档格式版本。</param>
+        /// <param name="businessSummaryType">业务摘要实际 DTO 类型，交由 Manager 创建 Codec。</param>
         /// <exception cref="ArgumentException">格式标识无效时抛出。</exception>
         /// <exception cref="ArgumentOutOfRangeException">存档格式版本不是正整数时抛出。</exception>
-        public SaveManagerOptions(string defaultFormatId, int currentSaveFormatVersion)
+        public SaveManagerOptions(string defaultFormatId, int currentSaveFormatVersion, Type businessSummaryType)
         {
             SaveContainerFormat.GetValidatedFormatIdByteCount(defaultFormatId);
             if (currentSaveFormatVersion <= 0)
@@ -85,6 +92,7 @@ namespace RPG.SaveSystem
 
             DefaultFormatId = defaultFormatId;
             CurrentSaveFormatVersion = currentSaveFormatVersion;
+            BusinessSummaryType = businessSummaryType;
         }
 
         /// <summary>
@@ -96,6 +104,9 @@ namespace RPG.SaveSystem
         /// 获取当前完整存档格式版本。
         /// </summary>
         public int CurrentSaveFormatVersion { get; }
+
+        /// <summary>获取用于创建业务摘要读写接口的具体类型。</summary>
+        public Type BusinessSummaryType { get; }
     }
 
     #endregion
@@ -111,9 +122,9 @@ namespace RPG.SaveSystem
         /// 创建保存请求。
         /// </summary>
         /// <param name="slotId">目标槽位。</param>
-        /// <param name="characterName">写入槽位摘要的角色展示名称。</param>
+        /// <param name="businessSummary">与框架摘要组合的业务 DTO。</param>
         /// <exception cref="ArgumentException">槽位标识无效时抛出。</exception>
-        public SaveRequest(SaveSlotId slotId, string characterName)
+        public SaveRequest(SaveSlotId slotId, ISaveBusinessSummary businessSummary)
         {
             if (!slotId.IsValid)
             {
@@ -121,7 +132,7 @@ namespace RPG.SaveSystem
             }
 
             SlotId = slotId;
-            CharacterName = characterName ?? string.Empty;
+            BusinessSummary = businessSummary ?? throw new ArgumentNullException(nameof(businessSummary));
         }
 
         /// <summary>
@@ -130,9 +141,9 @@ namespace RPG.SaveSystem
         public SaveSlotId SlotId { get; }
 
         /// <summary>
-        /// 获取角色展示名称。
+        /// 获取业务摘要。
         /// </summary>
-        public string CharacterName { get; }
+        public ISaveBusinessSummary BusinessSummary { get; }
     }
 
     /// <summary>

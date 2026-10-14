@@ -31,3 +31,5 @@ MonoBehaviour:
     windowPrefabPath: LoadingWindow
   - windowName: GameStartWindow
     windowPrefabPath: GameStartWindow
+  - windowName: SettingsWindow
+    windowPrefabPath: SettingsWindow

@@ -19,6 +19,8 @@ namespace RPG.Game
         protected override void Awake()
         {
             base.Awake();
+            // 返回 GameStart 会产生重复 Prefab；被销毁的副本不能取得架构生命周期所有权。
+            if (Instance != this) return;
 
             // DefaultExecutionOrder 确保 WSFrameRoot 已先完成基础设施初始化。
             GameArchitecture.InitArchitecture();

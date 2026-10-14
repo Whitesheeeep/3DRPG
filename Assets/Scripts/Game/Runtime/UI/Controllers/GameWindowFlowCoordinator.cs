@@ -16,6 +16,8 @@ namespace RPG.Game.UI.Controllers
         // 子协调器按固定顺序注册，并在销毁时按反向顺序释放。
         private IGameWindowSubCoordinator[] subCoordinators;
         private bool disposed;
+        // 依赖字段：会话边界通知确保窗口销毁期间不会自动恢复 HUD。
+        private RPG.Game.Saving.GameSaveSystem saves;
 
         #endregion
 
@@ -23,6 +25,15 @@ namespace RPG.Game.UI.Controllers
 
         /// <summary>创建并注册 HUD、Gameplay 输入、Bag 和 Character 窗口子协调器。</summary>
         private void Awake()
+        {
+            saves = GameArchitecture.Interface.GetSystem<RPG.Game.Saving.GameSaveSystem>();
+            saves.SessionEnding += ReleaseSubCoordinators;
+            saves.SessionEnded += RegisterSubCoordinators;
+            RegisterSubCoordinators();
+        }
+
+        /// <summary>每个会话创建新的协调器实例，不复用已经释放的订阅状态。</summary>
+        private void RegisterSubCoordinators()
         {
             if (subCoordinators != null) return;
 
@@ -32,7 +43,8 @@ namespace RPG.Game.UI.Controllers
                 new PlayerGameplayInputWindowLockCoordinator(),
                 new BagWindowFlowCoordinator(),
                 new CharacterWindowFlowCoordinator(),
-                new TaskWindowFlowCoordinator()
+                new TaskWindowFlowCoordinator(),
+                new SettingsWindowFlowCoordinator()
             };
             for (int index = 0; index < subCoordinators.Length; index++)
                 subCoordinators[index].Register();
@@ -45,6 +57,14 @@ namespace RPG.Game.UI.Controllers
         {
             if (disposed) return;
             disposed = true;
+            saves.SessionEnding -= ReleaseSubCoordinators;
+            saves.SessionEnded -= RegisterSubCoordinators;
+            ReleaseSubCoordinators();
+        }
+
+        /// <summary>逆序解除窗口事件，清理期间禁止由窗口隐藏事件重新打开 HUD。</summary>
+        private void ReleaseSubCoordinators()
+        {
             if (subCoordinators == null) return;
 
             for (int index = subCoordinators.Length - 1; index >= 0; index--)

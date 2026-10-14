@@ -17,9 +17,9 @@ namespace RPG.SaveSystem
         public SaveSlotId SlotId { get; set; }
 
         /// <summary>
-        /// 获取或设置角色展示名称。
+        /// 获取或设置由业务定义的摘要，与框架元数据组合保存。
         /// </summary>
-        public string CharacterName { get; set; }
+        public ISaveBusinessSummary BusinessSummary { get; set; }
 
         /// <summary>
         /// 获取或设置保存时刻的 UTC Unix 毫秒数。
@@ -42,17 +42,17 @@ namespace RPG.SaveSystem
         /// 创建完整槽位摘要。
         /// </summary>
         /// <param name="slotId">槽位标识。</param>
-        /// <param name="characterName">角色展示名称。</param>
+        /// <param name="businessSummary">业务摘要。</param>
         /// <param name="savedAtUtcUnixMilliseconds">UTC Unix 毫秒保存时间。</param>
         /// <param name="formatVersion">正整数总存档格式版本。</param>
         public SaveSlotSummary(
             SaveSlotId slotId,
-            string characterName,
+            ISaveBusinessSummary businessSummary,
             long savedAtUtcUnixMilliseconds,
             int formatVersion)
         {
             SlotId = slotId;
-            CharacterName = characterName;
+            BusinessSummary = businessSummary;
             SavedAtUtcUnixMilliseconds = savedAtUtcUnixMilliseconds;
             FormatVersion = formatVersion;
         }

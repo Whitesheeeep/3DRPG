@@ -130,7 +130,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: 3fdf06c5f1124ce49114e27b44409db2
   frameRate: 30
-  durationFrames: 67
+  durationFrames: 31
   isRootMotion: 1
   tracks:
   - {fileID: -8001245120463325863}
@@ -229,9 +229,9 @@ MonoBehaviour:
   displayName: "\u97F3\u9891\u8F68\u9053"
   editorLocked: 0
   clips:
-  - id: e7ce4b5aeb0043f5934bb908a02ec5ff
-    audioClip: {fileID: 0}
-    startFrame: 2
-    durationFrames: 23
+  - id: ad228437472943a787bfcc20ada184a6
+    audioClip: {fileID: 8300000, guid: 813fc03e3562686478e12d7ca386fc73, type: 3}
+    startFrame: 5
+    durationFrames: 5
     volume: 1
     pitch: 1

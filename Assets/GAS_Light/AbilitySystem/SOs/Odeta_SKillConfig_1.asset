@@ -20,11 +20,11 @@ MonoBehaviour:
   - id: 4d1f62ac3e87430ea58286a878193bf2
     prefab: {fileID: 43362610964436467, guid: d7870df6d8473e544a4e4429bf82f49d, type: 3}
     markerKey: {fileID: 0}
-    startFrame: 3
+    startFrame: 6
     durationFrames: 12
     localPosition: {x: 0, y: 0.85, z: -0.009812593}
-    localEulerAngles: {x: 0.17345399, y: 352.64563, z: 237.50528}
-    localScale: {x: 0.68999994, y: 0.69, z: 0.68999994}
+    localEulerAngles: {x: 332.6741, y: 11.971006, z: 232.7929}
+    localScale: {x: 0.69000006, y: 0.6900001, z: 0.68999994}
     playbackSpeed: 0.5
     followMode: 0
     stopMode: 1
@@ -73,7 +73,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: 16e9183cc33e4e159dd57494adb84649
   frameRate: 30
-  durationFrames: 29
+  durationFrames: 27
   isRootMotion: 1
   tracks:
   - {fileID: 7164354311166982050}
@@ -138,10 +138,10 @@ MonoBehaviour:
   displayName: "\u97F3\u9891\u8F68\u9053"
   editorLocked: 0
   clips:
-  - id: 4dbdea33d8574081a35e088ca0fff750
-    audioClip: {fileID: 8300000, guid: 371525b3acdd9774f962d57c3e63c5e6, type: 3}
-    startFrame: 4
-    durationFrames: 12
+  - id: 56141c41b3134ea580d081e22e96c273
+    audioClip: {fileID: 8300000, guid: 813fc03e3562686478e12d7ca386fc73, type: 3}
+    startFrame: 6
+    durationFrames: 5
     volume: 1
     pitch: 1
 --- !u!114 &5758986295678147905

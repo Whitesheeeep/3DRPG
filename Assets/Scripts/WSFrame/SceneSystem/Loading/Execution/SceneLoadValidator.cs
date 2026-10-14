@@ -51,7 +51,7 @@ namespace WS_Modules.SceneModule
             int sceneLoadCount = 0;
             Visit(config.RootTask, initializesCurrentScene, true, config, ancestorSet, "Root", issues, ref sceneLoadCount);
             if (sceneLoadCount != 1)
-                issues.Add($"场景切换配置必须恰好包含一个 Addressables 场景加载任务，当前数量为 {sceneLoadCount}。");
+                issues.Add($"场景切换配置必须恰好包含一个提供目标场景的加载任务，当前数量为 {sceneLoadCount}。");
             return new SceneLoadValidationResult(issues);
         }
 
@@ -97,7 +97,7 @@ namespace WS_Modules.SceneModule
                 issues.Add($"{path}：叶子任务进度权重必须是有限的正数。");
 
             bool result = sceneReady;
-            if (task is AddressableSceneLoadTask)
+            if (task.ProvidesTargetScene)
             {
                 sceneLoadCount++;
                 if (config.SceneReference == null || string.IsNullOrWhiteSpace(config.SceneReference.AssetGUID))

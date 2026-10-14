@@ -22,11 +22,13 @@ namespace RPG.SaveSystem
         /// </summary>
         /// <param name="envelope">待序列化的完整存档容器。</param>
         /// <param name="destination">调用方拥有的可写目标 Stream。</param>
+        /// <param name="summaryCodec">由 SaveManager 创建并共享的业务摘要读写接口。</param>
         /// <param name="cancellationToken">取消异步序列化的令牌。</param>
         /// <returns>序列化结果。</returns>
         UniTask<SaveResult> SerializeAsync(
             SaveEnvelope envelope,
             Stream destination,
+            ISaveBusinessSummaryCodec summaryCodec,
             CancellationToken cancellationToken);
 
         /// <summary>
@@ -34,11 +36,21 @@ namespace RPG.SaveSystem
         /// </summary>
         /// <param name="source">调用方拥有的可读源 Stream。</param>
         /// <param name="snapshotTypeResolver">按模块 ID 和版本解析快照实际类型的服务。</param>
+        /// <param name="summaryCodec">与保存和只读摘要共用的接口实例。</param>
         /// <param name="cancellationToken">取消异步反序列化的令牌。</param>
         /// <returns>完整存档容器或结构化失败。</returns>
         UniTask<SaveResult<SaveEnvelope>> DeserializeAsync(
             Stream source,
             ISaveSnapshotTypeResolver snapshotTypeResolver,
+            ISaveBusinessSummaryCodec summaryCodec,
+            CancellationToken cancellationToken);
+
+        /// <summary>仅解析摘要，跳过业务模块并保持调用方拥有源流。</summary>
+        /// <param name="source">容器 Payload 流。</param>
+        /// <param name="summaryCodec">Manager 持有的对称转换器。</param>
+        /// <param name="cancellationToken">操作取消令牌。</param>
+        /// <returns>框架与业务组合摘要。</returns>
+        UniTask<SaveResult<SaveSlotSummary>> ReadSummaryAsync(Stream source, ISaveBusinessSummaryCodec summaryCodec,
             CancellationToken cancellationToken);
     }
 

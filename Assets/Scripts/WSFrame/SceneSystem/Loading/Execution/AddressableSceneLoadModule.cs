@@ -147,6 +147,13 @@ namespace WS_Modules.SceneModule
 
         #region 句柄生命周期
 
+        /// <summary>内置 Single 场景加载完成后，释放已被 Unity 替换的 Addressables 场景句柄。</summary>
+        public void ReleaseReplacedSceneHandles()
+        {
+            ReleaseUnloadedSingleSceneHandles();
+            WSLog.Log("[AddressableSceneLoadModule] 内置场景已完成替换，旧场景句柄已释放。");
+        }
+
         /// <summary>按 Unity 场景实例定位其唯一 Addressables 所有权记录。</summary>
         /// <param name="scene">待查找的场景。</param>
         /// <returns>记录索引；无记录时返回负一。</returns>

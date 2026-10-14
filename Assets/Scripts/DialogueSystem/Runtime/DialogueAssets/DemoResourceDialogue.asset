@@ -1,0 +1,245 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-7973896056672689899
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8553e8b9ae924407be47d6c9292d2d05, type: 3}
+  m_Name: End
+  m_EditorClassIdentifier: 
+  nodeId: 7efde474-d2c8-477e-9758-e504fb993e62
+  editorPosition: {x: 1000, y: 0}
+--- !u!114 &-5939900181494272844
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17fb169762ea4f91bd4b4851eb8c50e2, type: 3}
+  m_Name: Choice_005
+  m_EditorClassIdentifier: 
+  nodeId: 7a53491b-1a10-44ad-86d3-ec951f6ade35
+  editorPosition: {x: 500, y: 190}
+  nodeName: Choice 005
+  text: "\u5168\u90E8\u5347\u7EA7\u6750\u6599 * 10"
+  conditions: []
+  actions:
+  - rid: 1466742241867333636
+  targetNode: {fileID: -7973896056672689899}
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742241867333636
+      type: {class: DialogueDemoResourceExecution, ns: RPG.DialogueSystemModule, asm: Assembly-CSharp}
+      data:
+        resourceType: 4
+--- !u!114 &-3660875014885817010
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43893bc859cd4e6086ef32b05a8d47f9, type: 3}
+  m_Name: Entry
+  m_EditorClassIdentifier: 
+  nodeId: efea0b51-805f-48a1-b640-3169739182d7
+  editorPosition: {x: -400, y: 0}
+  firstSpeechNode: {fileID: 7536793656860662564}
+--- !u!114 &-2786095094526068533
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17fb169762ea4f91bd4b4851eb8c50e2, type: 3}
+  m_Name: Choice_001
+  m_EditorClassIdentifier: 
+  nodeId: b37207a4-3e4f-446f-8f75-a8185989d921
+  editorPosition: {x: 500, y: -250}
+  nodeName: Choice 001
+  text: "\u5168\u90E8\u8D44\u6E90"
+  conditions: []
+  actions:
+  - rid: 1466742241867333632
+  targetNode: {fileID: -7973896056672689899}
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742241867333632
+      type: {class: DialogueDemoResourceExecution, ns: RPG.DialogueSystemModule, asm: Assembly-CSharp}
+      data:
+        resourceType: 0
+--- !u!114 &-2174790217441436810
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17fb169762ea4f91bd4b4851eb8c50e2, type: 3}
+  m_Name: Choice_006
+  m_EditorClassIdentifier: 
+  nodeId: 9453ea15-12ad-455a-8042-f678d730c8fa
+  editorPosition: {x: 500, y: 300}
+  nodeName: Choice 006
+  text: "\u6062\u590D\u5168\u90E8\u89D2\u8272\u751F\u547D\u503C"
+  conditions: []
+  actions:
+  - rid: 1466742241867333637
+  targetNode: {fileID: -7973896056672689899}
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742241867333637
+      type: {class: DialogueRestorePartyHealthExecution, ns: RPG.DialogueSystemModule, asm: Assembly-CSharp}
+      data: 
+--- !u!114 &-179638409130821700
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17fb169762ea4f91bd4b4851eb8c50e2, type: 3}
+  m_Name: Choice_002
+  m_EditorClassIdentifier: 
+  nodeId: 8c2e2c81-ccd4-4457-9fd2-85e380e92c54
+  editorPosition: {x: 500, y: -140}
+  nodeName: Choice 002
+  text: "\u6469\u62C9 * 10000"
+  conditions: []
+  actions:
+  - rid: 1466742241867333633
+  targetNode: {fileID: -7973896056672689899}
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742241867333633
+      type: {class: DialogueDemoResourceExecution, ns: RPG.DialogueSystemModule, asm: Assembly-CSharp}
+      data:
+        resourceType: 1
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8fc6020cc6de497bb9a10045174cd476, type: 3}
+  m_Name: DemoResourceDialogue
+  m_EditorClassIdentifier: 
+  dialogueId: 2c660ca8-66e0-4d53-b7c3-3f955b2b6c5e
+  entryNode: {fileID: -3660875014885817010}
+  nodes:
+  - {fileID: -3660875014885817010}
+  - {fileID: 7536793656860662564}
+  - {fileID: -2786095094526068533}
+  - {fileID: -179638409130821700}
+  - {fileID: 7096225379404260799}
+  - {fileID: 8597004082675725398}
+  - {fileID: -5939900181494272844}
+  - {fileID: -2174790217441436810}
+  - {fileID: -7973896056672689899}
+--- !u!114 &7096225379404260799
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17fb169762ea4f91bd4b4851eb8c50e2, type: 3}
+  m_Name: Choice_003
+  m_EditorClassIdentifier: 
+  nodeId: 9c2b4ff3-f71e-4c33-892f-a603013b38e4
+  editorPosition: {x: 500, y: -30}
+  nodeName: Choice 003
+  text: "\u5168\u90E8\u6B66\u5668"
+  conditions: []
+  actions:
+  - rid: 1466742241867333634
+  targetNode: {fileID: -7973896056672689899}
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742241867333634
+      type: {class: DialogueDemoResourceExecution, ns: RPG.DialogueSystemModule, asm: Assembly-CSharp}
+      data:
+        resourceType: 2
+--- !u!114 &7536793656860662564
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afa82bc2ce69471a8fbb64b182a292ad, type: 3}
+  m_Name: Speech_AskResource
+  m_EditorClassIdentifier: 
+  nodeId: 1ebbb721-900f-4583-8ecd-ddf4dda1e831
+  editorPosition: {x: 0, y: 0}
+  nodeName: "\u8BE2\u95EE\u9700\u8981\u4EC0\u4E48"
+  speaker: {fileID: 11400000, guid: 4663cf08600c8fb4682d10fa508a0b57, type: 2}
+  dialogueName: 
+  text: "\u4F60\u60F3\u8981\u4EC0\u4E48\uFF1F"
+  animationClip: {fileID: 0}
+  voiceClip: {fileID: 0}
+  animationFadeDuration: 0
+  nextNode: {fileID: 0}
+  choices:
+  - {fileID: -2786095094526068533}
+  - {fileID: -179638409130821700}
+  - {fileID: 7096225379404260799}
+  - {fileID: 8597004082675725398}
+  - {fileID: -5939900181494272844}
+  - {fileID: -2174790217441436810}
+--- !u!114 &8597004082675725398
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17fb169762ea4f91bd4b4851eb8c50e2, type: 3}
+  m_Name: Choice_004
+  m_EditorClassIdentifier: 
+  nodeId: 6b09846c-8c19-4834-bcd4-6986d5b94e03
+  editorPosition: {x: 500, y: 80}
+  nodeName: Choice 004
+  text: "\u5168\u90E8\u5723\u9057\u7269"
+  conditions: []
+  actions:
+  - rid: 1466742241867333635
+  targetNode: {fileID: -7973896056672689899}
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742241867333635
+      type: {class: DialogueDemoResourceExecution, ns: RPG.DialogueSystemModule, asm: Assembly-CSharp}
+      data:
+        resourceType: 3

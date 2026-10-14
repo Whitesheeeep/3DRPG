@@ -91,6 +91,13 @@ namespace WS_Modules
         {
             base.Awake();
 
+            // 返回启动场景会实例化同一个框架 Prefab；副本只能等待销毁，不能重置常驻 UI/资源/音频服务。
+            if (Instance != this)
+            {
+                WSLog.Log("[WSFrameRoot] 检测到重复框架根，跳过服务初始化并复用常驻实例。");
+                return;
+            }
+
             InitWSFrameRoot();
         }
 

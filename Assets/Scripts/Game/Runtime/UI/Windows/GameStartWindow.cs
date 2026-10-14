@@ -44,6 +44,13 @@ namespace RPG.Game.UI
             controller?.ResetForOpen();
         }
 
+        /// <summary>隐藏时释放图集并阻止迟到头像回写。</summary>
+        public override void OnHide()
+        {
+            controller?.HandleHidden();
+            base.OnHide();
+        }
+
         /// <summary>释放按钮回调和 Controller 对 DataComponent 的引用。</summary>
         public override void OnDestroy()
         {

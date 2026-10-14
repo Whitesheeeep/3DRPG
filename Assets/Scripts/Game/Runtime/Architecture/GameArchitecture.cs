@@ -41,11 +41,12 @@ namespace RPG.Game
 
             // SaveManager 作为同一业务架构中的 Manager 注册，后续 System 可通过 GetManager 获取。
             SaveManager saveManager = new SaveManager(
-                new SaveManagerOptions(serializer.FormatId, 1),
+                new SaveManagerOptions(serializer.FormatId, 1, typeof(RPG.Game.Saving.GameSaveSummary)),
                 storage,
                 serializerRegistry,
                 snapshotTypeRegistry);
             RegisterManager(saveManager);
+            RegisterManager(new RPG.Game.Settings.GameSettingsManager());
 
             // 对话 Toggle 的跨场景完成事实由状态 Manager 持有，并在其 OnInit 注册 SaveModule。
             RegisterManager(new DialogueInteractionManager(saveManager));
@@ -119,6 +120,8 @@ namespace RPG.Game
             RegisterSystem(new SceneLoadingSystem(new GameSceneLoadingPresentation()));
             RegisterSystem(new GameSceneFlowSystem());
             RegisterManager(new EscCommandManager());
+            // 最后初始化，确保所有业务存档模块都已完成注册再采集初始状态。
+            RegisterSystem(new RPG.Game.Saving.GameSaveSystem());
 
             // 角色、背包等跨业务模块在这里继续注册；各 Manager 在自身 OnInit 中注册 SaveModule。
             snapshotTypeRegistry.Register<TaskSaveSnapshot>(TaskSaveModule.StableModuleId, 2);

@@ -97,7 +97,12 @@ namespace RPG.Game.UI.Controllers
         private static void DispatchCancelCommand()
         {
             Debug.Log("[GameUIShortcutController] 转发 Esc 快捷键。");
-            GameArchitecture.Interface.SendCommand(new DispatchEscCommand());
+            if (GameArchitecture.Interface.SendCommand(new DispatchEscCommand())) return;
+            var saves = GameArchitecture.Interface.GetSystem<RPG.Game.Saving.GameSaveSystem>();
+            var scenes = GameArchitecture.Interface.GetSystem<WS_Modules.SceneModule.SceneLoadingSystem>();
+            if (saves.State != RPG.Game.Saving.E_GameSaveSessionState.Playing || scenes.IsLoading) return;
+            EventSystem.EventTrigger_Type(typeof(RPG.Game.UI.Settings.SettingsWindowOpenRequestedEventArgs),
+                new RPG.Game.UI.Settings.SettingsWindowOpenRequestedEventArgs());
         }
 
         /// <summary>将任务面板快捷键转换为统一的窗口打开或切换意图。</summary>

@@ -15,6 +15,9 @@ namespace WS_Modules.SceneModule
         /// <summary>场景节点通过上下文切换地址；运行时组合树只需保存此类型资产。</summary>
         public override bool RequiresTargetSceneReady => false;
 
+        /// <summary>此节点完成后目标场景已经激活。</summary>
+        public override bool ProvidesTargetScene => true;
+
         #endregion
 
         #region 执行

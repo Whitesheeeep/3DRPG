@@ -20630,6 +20630,10 @@ MonoBehaviour:
     displayName: "\u5BF9\u8BDD\u4EFB\u52A1"
     dialogueAsset: {fileID: 11400000, guid: a6facc7ee928c34479e3deb05348d837, type: 2}
     interactionType: 1
+  - optionId: 943ff7b6566d4b3f8b081d8be428ee26
+    displayName: "Demo\uFF1A\u83B7\u53D6\u8D44\u6E90"
+    dialogueAsset: {fileID: 11400000, guid: 961d65e1763215a4ea9049287af2a2fe, type: 2}
+    interactionType: 0
   dialogueAsset: {fileID: 11400000, guid: a6facc7ee928c34479e3deb05348d837, type: 2}
   participantRoot: {fileID: 1451605701}
   npcIdentity: {fileID: 1451605708}
@@ -28456,7 +28460,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7165159751675038286, guid: dfbe87c8501dde749a4d2dab8be69ca5, type: 3}
       propertyPath: dialogueEntries.Array.data[1].dialogueAsset
-      value:
+      value: 
       objectReference: {fileID: 11400000, guid: f9d2608339344de9ba3f25e42b28c9bf, type: 2}
     - target: {fileID: 7165159751675038286, guid: dfbe87c8501dde749a4d2dab8be69ca5, type: 3}
       propertyPath: dialogueEntries.Array.data[1].interactionType

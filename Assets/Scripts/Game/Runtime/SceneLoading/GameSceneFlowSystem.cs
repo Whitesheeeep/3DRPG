@@ -4,6 +4,7 @@ using RPG.CameraSystem;
 using RPG.Character;
 using RPG.Game;
 using RPG.Game.UI;
+using RPG.Game.Saving;
 using UnityEngine.SceneManagement;
 using WS_Modules.BusinessArchitecture;
 using WS_Modules.CustomEventSystem;
@@ -95,6 +96,15 @@ namespace RPG.Game.Loading
         /// <returns>RPG 场景收尾与 HUD 显示请求提交完成后的异步任务。</returns>
         private async UniTask CompleteGameplayAsync(SceneLoadExecutionSnapshot snapshot)
         {
+            if (snapshot.SceneId == GameSaveSystem.TitleSceneId)
+            {
+                CinemachineManager.Instance.GetComponent<GameplayCameraController>().EnterPresentationMode();
+                await UIManager.Instance.PopUpWindowAsync<GameStartWindow>();
+                WSLog.Log("[GameSceneFlowSystem] 主界面清理完成，选档窗口已打开。");
+                return;
+            }
+            GameSaveSystem saves = GameArchitecture.Interface.GetSystem<GameSaveSystem>();
+            saves.ConfirmGameplayReady();
             if (UIManager.Instance.TryGetWindow<GameStartWindow>(out GameStartWindow startWindow) && startWindow.Visible)
                 await UIManager.Instance.HideWindowAsync<GameStartWindow>();
 
@@ -112,6 +122,10 @@ namespace RPG.Game.Loading
             cameraController.AlignToPlayerAndEnterGameplayMode();
 
             await UIManager.Instance.PopUpWindowAsync<HUDWindow>();
+            if (saves.HasSaveFailure)
+                WS_Modules.CustomEventSystem.EventSystem.EventTrigger_Type(
+                    typeof(RPG.Game.UI.Settings.SettingsWindowOpenRequestedEventArgs),
+                    new RPG.Game.UI.Settings.SettingsWindowOpenRequestedEventArgs());
             WSLog.Log($"[GameSceneFlowSystem] 正式游戏状态已恢复并显示 HUD，sceneId={snapshot.SceneId}。");
         }
 
@@ -148,6 +162,33 @@ namespace RPG.Game.Loading
             preparedPlayer = null;
         }
 
+        #endregion
+
+        #region 会话结束
+        /// <summary>在 GameStart 已加载后停止旧窗口协调，销毁业务表现，再恢复初始数据。</summary>
+        /// <returns>所有跨场景表现对象销毁和数据重置完成。</returns>
+        public async UniTask EndSessionForTitleAsync()
+        {
+            GameSaveSystem saves = GameArchitecture.Interface.GetSystem<GameSaveSystem>();
+            saves.BeginSessionCleanup();
+            UIManager ui = UIManager.Instance;
+            // 快照独立于注册表，关闭过程中窗口会从注册表移除。
+            var snapshots = ui.GetWindowSnapshots();
+            foreach (UIWindowSnapshot window in snapshots)
+            {
+                if (window.WindowName == nameof(LoadingWindow) || window.WindowName == nameof(GameStartWindow)) continue;
+                await ui.HideWindowAsync(window.WindowName);
+                ui.DestroyWindow(window.WindowName);
+            }
+            PlayerController player = PlayerController.Instance;
+            if (player != null) UnityEngine.Object.Destroy(player.gameObject);
+            // Unity 延迟到帧末销毁；必须跨帧等待 CharacterManager.OnDestroy 完成资源与事件释放。
+            await UniTask.NextFrame();
+            if (PlayerController.Instance != null)
+                throw new InvalidOperationException("[GameSceneFlowSystem] 旧 Player 未完成销毁，不能重置会话。");
+            saves.CompleteSessionCleanup();
+            WSLog.Log("[GameSceneFlowSystem] 已清理旧 Player、窗口和业务会话。");
+        }
         #endregion
     }
 }

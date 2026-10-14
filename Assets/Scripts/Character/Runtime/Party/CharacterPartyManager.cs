@@ -43,11 +43,14 @@ namespace RPG.Character
             rosterManager = rosterManagerValue ?? throw new ArgumentNullException(nameof(rosterManagerValue));
         }
 
-        /// <summary>初始化当前唯一队伍；重复配置会立即失败。</summary>
+        /// <summary>为尚未配置或从初始快照恢复的空队伍设置初始角色，拒绝覆盖已有有效成员。</summary>
         /// <param name="initialCharacterIds">按槽位顺序提供的初始角色。</param>
         public void ConfigureInitialParty(IReadOnlyList<CharacterId> initialCharacterIds)
         {
-            if (party != null) throw new InvalidOperationException("[CharacterPartyManager] 唯一队伍已初始化，不能重复配置。");
+            if (party != null)
+                for (int index = 0; index < CharacterParty.SlotCount; index++)
+                    if (party.GetCharacterIdAtSlot(index).IsValid)
+                        throw new InvalidOperationException("[CharacterPartyManager] 唯一队伍已有有效成员，不能重复配置。");
             party = new CharacterParty(initialCharacterIds);
             Debug.Log($"[CharacterPartyManager] 唯一队伍初始化完成，slotCount={CharacterParty.SlotCount}。", null);
             Changed?.Invoke();
@@ -149,7 +152,7 @@ namespace RPG.Character
         public void RestoreSnapshot(CharacterPartySaveSnapshot snapshot)
         {
             if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
-            if (party != null) throw new InvalidOperationException("[CharacterPartyManager] 队伍已初始化，不能恢复第二份快照。");
+            // 先检查本次候选队伍，允许标题界面清理及重新选档时整体替换旧队伍。
             for (int index = 0; index < snapshot.CharacterIds.Count; index++)
             {
                 string characterIdText = snapshot.CharacterIds[index];

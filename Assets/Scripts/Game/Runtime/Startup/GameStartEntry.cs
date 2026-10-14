@@ -10,7 +10,7 @@ namespace RPG.Game.Startup
 {
     /// <summary>等待 UIManager 就绪后显示开始窗口，并使常驻相机进入界面模式。</summary>
     [DisallowMultipleComponent]
-    [InfoBox("依赖 GameStart 场景中显式绑定的 GameplayCameraController；UIRoot、UICamera 与 UIEventSystem 必须以原名放在同一场景供 UIManager 复用。")]
+    [InfoBox("依赖已注册 CinemachineManager 根节点上的 GameplayCameraController；UIRoot、UICamera 与 UIEventSystem 必须以原名放在同一场景供 UIManager 复用。")]
     public sealed class GameStartEntry : MonoBehaviour
     {
         #region 依赖字段
@@ -25,6 +25,12 @@ namespace RPG.Game.Startup
         /// <summary>开始等待 UI 服务，成功后由 UIManager 创建并显示游戏开始窗口。</summary>
         private void Start()
         {
+            var loading = GameArchitecture.Interface.GetSystem<WS_Modules.SceneModule.SceneLoadingSystem>();
+            if (loading.IsSceneJoiningCurrentFlow(RPG.Game.Saving.GameSaveSystem.TitleSceneId, gameObject.scene))
+            {
+                WSLog.Log("[GameStartEntry] 加入返回主界面流程，等待旧会话清理后再显示选档。");
+                return;
+            }
             OpenStartWindowAsync().Forget(HandleStartupException);
         }
 
@@ -36,7 +42,8 @@ namespace RPG.Game.Startup
         /// <returns>开始窗口完成显示后的异步任务。</returns>
         private async UniTask OpenStartWindowAsync()
         {
-            gameplayCameraController.EnterPresentationMode();
+            // 返回主界面时相机 Prefab 副本会被销毁，始终使用已注册的常驻相机。
+            CinemachineManager.Instance.GetComponent<GameplayCameraController>().EnterPresentationMode();
             await UniTask.WaitUntil(() => UIManager.Instance != null && UIManager.Instance.IsInitialized);
             GameStartWindow startWindow = await UIManager.Instance.PopUpWindowAsync<GameStartWindow>();
             if (startWindow == null)
