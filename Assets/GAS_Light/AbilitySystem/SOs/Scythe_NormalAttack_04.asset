@@ -56,6 +56,8 @@ MonoBehaviour:
     cueTags:
     - id: 226
     - id: 223
+    - id: 230
+    - id: 231
     detectionData:
       rid: 1466742129534435362
   - id: 56f51e03840a4382b962d3384310a74b
@@ -68,6 +70,8 @@ MonoBehaviour:
     cueTags:
     - id: 226
     - id: 223
+    - id: 230
+    - id: 231
     detectionData:
       rid: 1466742257238933504
   references:

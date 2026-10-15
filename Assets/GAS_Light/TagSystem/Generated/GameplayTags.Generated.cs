@@ -38,6 +38,10 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_Cue_Combat_ScytheHit_HitSound_Heavy = new GameplayTag(226);
         /// <summary>Cue.Combat.ScytheHit.HitSound_light</summary>
         public static readonly GameplayTag Tag_Cue_Combat_ScytheHit_HitSound_light = new GameplayTag(225);
+        /// <summary>Cue.Combat.ScytheHit.HitVFX_Heavy</summary>
+        public static readonly GameplayTag Tag_Cue_Combat_ScytheHit_HitVFX_Heavy = new GameplayTag(231);
+        /// <summary>Cue.Combat.ScytheHit.HitVFX_Light</summary>
+        public static readonly GameplayTag Tag_Cue_Combat_ScytheHit_HitVFX_Light = new GameplayTag(230);
         /// <summary>Cue.Combat.SwordHit</summary>
         public static readonly GameplayTag Tag_Cue_Combat_SwordHit = new GameplayTag(227);
         /// <summary>Cue.Combat.SwordHit.HitVFX_Heavy</summary>

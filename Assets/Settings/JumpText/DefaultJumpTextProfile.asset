@@ -16,10 +16,10 @@ MonoBehaviour:
   instancedShader: {fileID: 4800000, guid: 9477e09e3a8a4b5f8613d79cb817283d, type: 3}
   maxGlyphCount: 4096
   lifetimeSeconds: 0.95
-  basePixelHeight: 42
+  basePixelHeight: 22
   letterSpacingPixels: -1
   viewportMarginPixels: 128
-  verticalRisePixels: 34
+  verticalRisePixels: 100
   horizontalSpreadPixels: 10
   initialHorizontalOffsetRange: {x: -10, y: 10}
   scaleCurve:

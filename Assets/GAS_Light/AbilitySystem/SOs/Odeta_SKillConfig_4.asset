@@ -27,6 +27,8 @@ MonoBehaviour:
     cueTags:
     - id: 223
     - id: 188
+    - id: 228
+    - id: 229
     detectionData:
       rid: 1466742219033280513
   references:
@@ -204,6 +206,8 @@ MonoBehaviour:
     cueTags:
     - id: 188
     - id: 187
+    - id: 228
+    - id: 229
     detectionData:
       rid: 1466742219033280519
   - id: 9b0b95ae357846c586e2ddef1273c912
@@ -216,6 +220,8 @@ MonoBehaviour:
     cueTags:
     - id: 188
     - id: 187
+    - id: 228
+    - id: 229
     detectionData:
       rid: 1466742219033280522
   - id: 47e27b550def4220ad1ada788ec82b5b
@@ -228,6 +234,8 @@ MonoBehaviour:
     cueTags:
     - id: 223
     - id: 188
+    - id: 228
+    - id: 229
     detectionData:
       rid: 1466742219033280512
   references:

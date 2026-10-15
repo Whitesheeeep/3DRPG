@@ -24,7 +24,9 @@ MonoBehaviour:
     detectionId: 0
     markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
     followMode: 0
-    cueTags: []
+    cueTags:
+    - id: 231
+    - id: 230
     detectionData:
       rid: 1466742192962011152
   references:
@@ -63,7 +65,9 @@ MonoBehaviour:
     detectionId: 0
     markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
     followMode: 0
-    cueTags: []
+    cueTags:
+    - id: 231
+    - id: 230
     detectionData:
       rid: 1466742192962011159
   references:
@@ -151,7 +155,13 @@ MonoBehaviour:
   muted: 0
   displayName: "\u97F3\u9891\u8F68\u9053"
   editorLocked: 0
-  clips: []
+  clips:
+  - id: 6acf64bfedc3420d9df0ac79cf5993a4
+    audioClip: {fileID: 8300000, guid: dc4acfa00362e8842a6bc4e905a19640, type: 3}
+    startFrame: 0
+    durationFrames: 34
+    volume: 1
+    pitch: 1
 --- !u!114 &-4067711710006500110
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -223,6 +233,34 @@ MonoBehaviour:
     - id: 171
     - id: 172
     blockAbilityTags: []
+--- !u!114 &-18555827166297747
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 166f8d5d2c664f2799bda1e1c4d8a430, type: 3}
+  m_Name: "\u7279\u6548\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 76c014830ea94c23a5cb8fbe4e86d67b
+  muted: 0
+  displayName: "\u7279\u6548\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: 12b2ae9ebb06439c959361cd25c3b496
+    prefab: {fileID: 8207353584553781835, guid: b70bba4282470524fb3ee2a4a6bda368, type: 3}
+    markerKey: {fileID: 0}
+    startFrame: 0
+    durationFrames: 30
+    localPosition: {x: 0, y: 0, z: -1.9602537}
+    localEulerAngles: {x: 0, y: 0, z: 0}
+    localScale: {x: 1, y: 1, z: 1}
+    playbackSpeed: 1
+    followMode: 0
+    stopMode: 0
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -245,5 +283,6 @@ MonoBehaviour:
   - {fileID: -9009185183091441944}
   - {fileID: -7917668527887659479}
   - {fileID: -7512937293066702952}
+  - {fileID: -18555827166297747}
   - {fileID: -5788776629049603891}
   - {fileID: -6273153368874944291}

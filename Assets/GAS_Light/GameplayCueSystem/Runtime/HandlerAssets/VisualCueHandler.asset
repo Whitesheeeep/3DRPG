@@ -12,3 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 251f778be26e4a4d9198bd83a88ea50a, type: 3}
   m_Name: VisualCueHandler
   m_EditorClassIdentifier: 
+  drawPlacementInEditor: 1
+  drawPlacementDuration: 5

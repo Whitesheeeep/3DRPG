@@ -50,6 +50,8 @@ MonoBehaviour:
     cueTags:
     - id: 188
     - id: 187
+    - id: 228
+    - id: 229
     detectionData:
       rid: 2645455055986360320
   references:
@@ -151,6 +153,8 @@ MonoBehaviour:
     cueTags:
     - id: 188
     - id: 187
+    - id: 228
+    - id: 229
     detectionData:
       rid: 2645455169077903382
   references:

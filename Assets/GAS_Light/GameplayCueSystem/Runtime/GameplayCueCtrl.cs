@@ -310,6 +310,7 @@ namespace WS_Modules.GAS.GameplayCue
             }
 
             ApplyPlacement(data, request, cueObject.transform);
+            ApplyProvidedDirection(data, request, behaviour, cueObject.transform);
             var runtime = new GameplayCueRuntime(this, data, request, cueObject, behaviour);
             liveVisualCues.Add(runtime);
             return runtime;
@@ -318,6 +319,21 @@ namespace WS_Modules.GAS.GameplayCue
         /// <summary>将新建的 Visual Runtime 计入 Active 查询列表。</summary>
         /// <param name="runtime">已成功创建的 Active 视觉句柄。</param>
         internal void RegisterActiveVisual(GameplayCueRuntime runtime) => activeVisualCues.Add(runtime);
+
+        /// <summary>在位置与父节点摆放完成后，让表现行为覆盖初始世界朝向；资源旋转偏移只应用一次。</summary>
+        /// <param name="data">提供视觉资源局部旋转偏移的配置。</param>
+        /// <param name="request">本次 Cue 的来源、目标和空间请求。</param>
+        /// <param name="behaviour">当前对象池实例的表现行为，可选实现方向接口。</param>
+        /// <param name="cueTransform">已完成通用摆放的视觉对象；保持其位置和父节点不变。</param>
+        private static void ApplyProvidedDirection(VisualGameplayCueData data, GameplayCueRequest request,
+            GameplayCueBehaviour behaviour, Transform cueTransform)
+        {
+            if (behaviour is not IGameplayCueDirectionProvider provider ||
+                !provider.TryGetWorldDirection(request, out Vector3 direction)) return;
+
+            // 直接替换基础旋转，避免把 Marker 或请求的旋转再次乘入；后续绘制与播放读取同一结果。
+            cueTransform.rotation = Quaternion.LookRotation(direction, Vector3.up) * data.LocalRotation;
+        }
 
         /// <summary>以数据库的 Source/Target/World 规则摆放视觉对象。</summary>
         /// <param name="data">视觉资产提供的默认空间配置。</param>

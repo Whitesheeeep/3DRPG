@@ -17,6 +17,21 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: 5e2b8cf990885b04fb60aae0d93aff9c
   m_SerializeEntries:
+  - m_GUID: 44535cc08f0c84746a5b3afc30600656
+    m_Address: GameplayCue/Sword_HitHeavy
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7756fba58927ef0429d4c3ea36cbdf83
+    m_Address: GameplayCue/Sword_HitLight
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b70bba4282470524fb3ee2a4a6bda368
+    m_Address: VFX/VFX_Prick1
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: d7870df6d8473e544a4e4429bf82f49d
     m_Address: VFX/Sword_Slash_1
     m_ReadOnly: 0

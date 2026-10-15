@@ -14,10 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cueTag:
     id: 228
-  markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
-  addressableKey: VFX/Sword_Slash_1
-  fallbackPrefab: {fileID: 0}
-  defaultAnchor: 1
+  markerKey: {fileID: 0}
+  addressableKey: GameplayCue/Sword_HitLight
+  fallbackPrefab: {fileID: 7618395944107619337, guid: 7756fba58927ef0429d4c3ea36cbdf83, type: 3}
+  defaultAnchor: 2
   localPosition: {x: 0, y: 0, z: 0}
   localEulerAngles: {x: 0, y: 0, z: 0}
-  followAnchor: 1
+  followAnchor: 0

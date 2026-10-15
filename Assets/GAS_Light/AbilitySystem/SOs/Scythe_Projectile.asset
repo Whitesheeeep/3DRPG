@@ -1,0 +1,124 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-7076994715096338090
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b7edf08181143d342b9c4e9e3e3e114c, type: 3}
+  m_Name: "\u52A8\u4F5C\u9636\u6BB5\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 399be0c5d4c746ceb4942c97d70ec997
+  muted: 0
+  displayName: "\u52A8\u4F5C\u9636\u6BB5\u8F68\u9053"
+  editorLocked: 0
+  clips: []
+--- !u!114 &-4506896046114417993
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e7d25faf1df4c8a8d184c88fdcb89d8, type: 3}
+  m_Name: "\u52A8\u753B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: ae90af23b5a24abe8904e140c2d1404a
+  muted: 0
+  displayName: "\u52A8\u753B\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: c30327101b5f4c47b5a8845e1ed5b235
+    animationClip: {fileID: 7400000, guid: 8581768a9fc9b844398adc1669671f13, type: 2}
+    startFrame: 0
+    durationFrames: 9
+    sourceStartFrame: 0
+    playbackSpeed: 1
+    fadeDuration: 0.1
+  - id: a9e525bea8a34da19baff2c4e4fc68f5
+    animationClip: {fileID: 7400000, guid: f94b1eb7b57e4a5479238eda42a2f717, type: 2}
+    startFrame: 9
+    durationFrames: 15
+    sourceStartFrame: 0
+    playbackSpeed: 1
+    fadeDuration: 0.1
+  - id: 4ff9d37eb4ae44b4b1d7c5b6a5ae63bf
+    animationClip: {fileID: 7400000, guid: 7feb38d7371fc844a88e91b8267e1bcf, type: 2}
+    startFrame: 24
+    durationFrames: 43
+    sourceStartFrame: 0
+    playbackSpeed: 1
+    fadeDuration: 0.1
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf2d0fbc1a23bf1499d50e84ac66304b, type: 3}
+  m_Name: Scythe_Projectile
+  m_EditorClassIdentifier: 
+  id: ac12d181fa4a42dcb864c97fddd12f67
+  frameRate: 30
+  durationFrames: 67
+  isRootMotion: 1
+  tracks:
+  - {fileID: -7076994715096338090}
+  - {fileID: -4506896046114417993}
+  - {fileID: 3401498810415579659}
+--- !u!114 &3401498810415579659
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 30d5d03f169278740a3e4112ca04b14e, type: 3}
+  m_Name: "\u6295\u5C04\u7269\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 5b004d9489794dfa8d8a00bfd9b59f09
+  muted: 0
+  displayName: "\u6295\u5C04\u7269\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: ba372f500aa145108257267950c5c391
+    startFrame: 11
+    spawnConfig:
+      addressableKey: 
+      fallbackPrefab: {fileID: 0}
+      markerKey: {fileID: 0}
+      localPosition: {x: 0, y: 0, z: 0}
+      localEulerAngles: {x: 0, y: 0, z: 0}
+      spreadAngle: 0
+      projectileCount: 1
+      speed: 10
+      lifetime: 3
+      targetLayerMask:
+        serializedVersion: 2
+        m_Bits: 4294967295
+  - id: 6db82291241341198d02ac8e18e10e23
+    startFrame: 20
+    spawnConfig:
+      addressableKey: 
+      fallbackPrefab: {fileID: 0}
+      markerKey: {fileID: 0}
+      localPosition: {x: 0, y: 0, z: 0}
+      localEulerAngles: {x: 0, y: 0, z: 0}
+      spreadAngle: 0
+      projectileCount: 1
+      speed: 10
+      lifetime: 3
+      targetLayerMask:
+        serializedVersion: 2
+        m_Bits: 4294967295

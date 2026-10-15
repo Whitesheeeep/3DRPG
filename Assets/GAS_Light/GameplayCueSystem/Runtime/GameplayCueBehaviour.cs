@@ -7,6 +7,12 @@ namespace WS_Modules.GAS.GameplayCue
     /// <summary>挂在 Cue 预制体上的表现行为基类，具体效果通过重写生命周期方法实现。</summary>
     public abstract class GameplayCueBehaviour : PoolObjectIdentity
     {
+        #region 执行表现释放策略
+        /// <summary>获取 Execute 表现回调完成后是否立即归还对象池。</summary>
+        /// <remarks>默认保持一次性表现的原有行为；需要跨帧播放的表现可自行结束并释放 Runtime。</remarks>
+        public virtual bool ReleaseAfterExecute => true;
+        #endregion
+
         #region 表现生命周期
         /// <summary>对象从对象池取出并完成位置设置后调用。</summary>
         protected virtual void OnCueSpawn(GameplayCueRuntime runtime) { }
