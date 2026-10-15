@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c207a3c4376e36418e7c35d34013a6b, type: 3}
+  m_Name: main_002_dialogue
+  m_EditorClassIdentifier: 
+  taskId: main_002_dialogue
+  categoryId: main
+  title: "\u7B2C\u4E00\u6B21"
+  description: "\u548C NPC \u6C9F\u901A"
+  unlockConditions: []
+  stages:
+  - stageId: stage_001
+    title: "\u7B2C\u4E00\u9636\u6BB5"
+    description: "\u9636\u6BB5\u89E3\u9501\u4EFB\u52A1\uFF0C\u53BB\u8FDB\u884C NPC
+      \u6D4B\u8BD5\u5BF9\u8BDD"
+    objectives:
+    - rid: 1466742257238933510
+  rewards:
+  - rid: 1466742257238933509
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742257238933509
+      type: {class: CurrencyRewardDefinition, ns: RPG.RewardSystemNS, asm: Assembly-CSharp}
+      data:
+        amounts:
+        - currencyId: 1
+          amount: 1
+    - rid: 1466742257238933510
+      type: {class: TaskDialogueCompletedObjectiveDefinition, ns: RPG.TaskSystemNS, asm: Assembly-CSharp}
+      data:
+        objectiveId: dialogue1
+        displayDescription: "\u548C NPC \u5BF9\u8BDD"
+        required: 1
+        dialogueAsset: {fileID: 11400000, guid: 072c16729a3ddef409a6f41f71f8a09a, type: 2}
+        npcIdentity: {fileID: 11400000, guid: ae8da4ba2e0840adbbc01259421b9ea2, type: 2}
+        speechNode: {fileID: 0}

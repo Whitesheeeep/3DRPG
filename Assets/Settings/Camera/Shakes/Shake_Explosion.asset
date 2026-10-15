@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Shake_Explosion
   m_EditorClassIdentifier: 
   channel: 1
-  shape: 3
+  shape: 1
   customCurve:
     serializedVersion: 2
     m_Curve:

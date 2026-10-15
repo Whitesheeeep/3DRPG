@@ -23,7 +23,7 @@ MonoBehaviour:
       displayName: "\u5BF9\u8BDD"
   sequencesByCategory:
   - categoryId: main
-    nextNumber: 2
+    nextNumber: 3
   - categoryId: side
     nextNumber: 2
   definitionFolder: Assets/Scripts/TaskSystem/Runtime/Config/Assets/Definitions

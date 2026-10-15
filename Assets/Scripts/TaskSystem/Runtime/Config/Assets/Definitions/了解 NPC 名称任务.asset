@@ -23,6 +23,7 @@ MonoBehaviour:
     description: "\u53BB\u4E86\u89E3 Rusk \u5427\uFF01"
     objectives:
     - rid: 1466742107628896260
+    - rid: 1466742257238933507
   - stageId: stage_002
     title: "\u8BA4\u8BC6\u963F\u857E\u5947\u8BFA"
     description: "\u53BB\u548C\u963F\u857E\u5947\u8BFA\u5BF9\u8BDD\u5427\uFF0C\u4E86\u89E3\u5176\u540D\u5B57"
@@ -48,6 +49,7 @@ MonoBehaviour:
         required: 1
         dialogueAsset: {fileID: 11400000, guid: c9d0e00cfeb6fab45badae0c4d39d646, type: 2}
         npcIdentity: {fileID: 11400000, guid: c7da8000000000000000000000000001, type: 2}
+        speechNode: {fileID: 0}
     - rid: 1466742107628896262
       type: {class: ItemRewardDefinition, ns: RPG.RewardSystemNS, asm: Assembly-CSharp}
       data:
@@ -63,3 +65,11 @@ MonoBehaviour:
         required: 1
         dialogueAsset: {fileID: 11400000, guid: e89169adb2259904f8b60c37d576e71e, type: 2}
         npcIdentity: {fileID: 11400000, guid: f2a38000000000000000000000000002, type: 2}
+        speechNode: {fileID: 0}
+    - rid: 1466742257238933507
+      type: {class: TaskWeaponUpgradeObjectiveDefinition, ns: RPG.TaskSystemNS, asm: Assembly-CSharp}
+      data:
+        objectiveId: UpgradeWeapon
+        displayDescription: "\u5347\u7EA7\u4E00\u4E2A\u6B66\u5668"
+        required: 1
+        weaponDefinition: {fileID: 0}
