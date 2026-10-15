@@ -13,13 +13,6 @@ MonoBehaviour:
   m_Name: GameplayCueDatabase
   m_EditorClassIdentifier: 
   cues:
-  - {fileID: 11400000, guid: 3e59f730c9f055442b5d0c9dd0462a9e, type: 2}
-  - {fileID: 11400000, guid: fbea61e22904e134e93232441063669b, type: 2}
-  - {fileID: 11400000, guid: e8d62cb59ae359140841a79e3c437428, type: 2}
-  - {fileID: 11400000, guid: a228bea99139ca94dabc34752aaa114d, type: 2}
-  - {fileID: 11400000, guid: 424ec61087a9955478c597471910623a, type: 2}
-  - {fileID: 11400000, guid: f45f0ad3e5874334da346b07cbde67f7, type: 2}
-  - {fileID: 11400000, guid: 3ab0f6e6b3ea20648bd2f1814145326e, type: 2}
   - {fileID: 11400000, guid: 34c1adafc32128e4b9c3f688b8ffcd42, type: 2}
   - {fileID: 11400000, guid: a60dc236be98ecd47b748bfc3c30b43a, type: 2}
   - {fileID: 11400000, guid: 28c98dd5a9174ea4ea735bdf3fe39fca, type: 2}
@@ -27,6 +20,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b570ff170b6e9f04e890c999dfdb4300, type: 2}
   - {fileID: 11400000, guid: fa93aab208257394caba2fb393686a4a, type: 2}
   - {fileID: 11400000, guid: 57514f16c8f896c4fbb9cfb563a5933e, type: 2}
+  - {fileID: 11400000, guid: aa2a073fc886d16409389e7349aaaab4, type: 2}
+  - {fileID: 11400000, guid: 3c90b0e05297cc94db0247ad3a0c2305, type: 2}
+  - {fileID: 11400000, guid: cc6bc26ea40826e46b09e3781799a540, type: 2}
   handlers:
   - {fileID: 11400000, guid: 369ce37921eeb3d4b82dc929b6ac7089, type: 2}
   - {fileID: 11400000, guid: ba0d51331846b634e83d3eedc14b2186, type: 2}

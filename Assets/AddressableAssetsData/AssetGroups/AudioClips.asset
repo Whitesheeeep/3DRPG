@@ -28,11 +28,23 @@ MonoBehaviour:
     m_SerializedLabels:
     - SFX
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9cd099ed19046764aa5384fb90b446e8
+    m_Address: Combat/Hit/AW_Sword_HIT_light_01
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SFX
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: aded8780929c51b4981d9fceb7c0ed86
     m_Address: UI/BagBtnClick
     m_ReadOnly: 0
     m_SerializedLabels:
     - UI
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f17c990f7cd20494bab708cad46885fd
+    m_Address: Combat/Hit/SyctheLight
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - SFX
     FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: cf483ba42ae65ea478a5243d9f39d4df, type: 2}

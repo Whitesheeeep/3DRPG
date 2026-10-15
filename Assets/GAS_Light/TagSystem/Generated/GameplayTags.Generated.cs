@@ -26,12 +26,24 @@ namespace WS_Modules.GAS.Generated
         public static readonly GameplayTag Tag_Cue = new GameplayTag(112);
         /// <summary>Cue.Combat</summary>
         public static readonly GameplayTag Tag_Cue_Combat = new GameplayTag(186);
-        /// <summary>Cue.Combat.HitSound</summary>
-        public static readonly GameplayTag Tag_Cue_Combat_HitSound = new GameplayTag(188);
+        /// <summary>Cue.Combat.HitSoundSword</summary>
+        public static readonly GameplayTag Tag_Cue_Combat_HitSoundSword = new GameplayTag(188);
         /// <summary>Cue.Combat.HitStop100</summary>
         public static readonly GameplayTag Tag_Cue_Combat_HitStop100 = new GameplayTag(187);
         /// <summary>Cue.Combat.HitStopHeavy</summary>
         public static readonly GameplayTag Tag_Cue_Combat_HitStopHeavy = new GameplayTag(223);
+        /// <summary>Cue.Combat.ScytheHit</summary>
+        public static readonly GameplayTag Tag_Cue_Combat_ScytheHit = new GameplayTag(224);
+        /// <summary>Cue.Combat.ScytheHit.HitSound_Heavy</summary>
+        public static readonly GameplayTag Tag_Cue_Combat_ScytheHit_HitSound_Heavy = new GameplayTag(226);
+        /// <summary>Cue.Combat.ScytheHit.HitSound_light</summary>
+        public static readonly GameplayTag Tag_Cue_Combat_ScytheHit_HitSound_light = new GameplayTag(225);
+        /// <summary>Cue.Combat.SwordHit</summary>
+        public static readonly GameplayTag Tag_Cue_Combat_SwordHit = new GameplayTag(227);
+        /// <summary>Cue.Combat.SwordHit.HitVFX_Heavy</summary>
+        public static readonly GameplayTag Tag_Cue_Combat_SwordHit_HitVFX_Heavy = new GameplayTag(229);
+        /// <summary>Cue.Combat.SwordHit.HitVFX_Light</summary>
+        public static readonly GameplayTag Tag_Cue_Combat_SwordHit_HitVFX_Light = new GameplayTag(228);
         /// <summary>Cue.Cue_Follow</summary>
         public static readonly GameplayTag Tag_Cue_Cue_Follow = new GameplayTag(116);
         /// <summary>Cue.Cue_Source</summary>

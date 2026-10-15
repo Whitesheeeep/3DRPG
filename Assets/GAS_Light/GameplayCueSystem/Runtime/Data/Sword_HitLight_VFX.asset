@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 65b5cbbbe6e0472388bc2e9bc958597f, type: 3}
-  m_Name: CueTest_Ge_Infinite
+  m_Name: Sword_HitLight_VFX
   m_EditorClassIdentifier: 
   cueTag:
-    id: 18
-  markerKey: {fileID: 0}
-  addressableKey: Cube
+    id: 228
+  markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
+  addressableKey: VFX/Sword_Slash_1
   fallbackPrefab: {fileID: 0}
   defaultAnchor: 1
   localPosition: {x: 0, y: 0, z: 0}

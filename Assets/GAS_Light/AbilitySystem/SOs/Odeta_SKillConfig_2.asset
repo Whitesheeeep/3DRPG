@@ -163,7 +163,9 @@ MonoBehaviour:
     detectionId: 0
     markerKey: {fileID: 0}
     followMode: 1
-    cueTags: []
+    cueTags:
+    - id: 188
+    - id: 187
     detectionData:
       rid: 2645455169077903367
   references:
@@ -197,20 +199,22 @@ MonoBehaviour:
     detectionId: 0
     markerKey: {fileID: 0}
     followMode: 1
-    cueTags: []
+    cueTags:
+    - id: 188
+    - id: 187
     detectionData:
-      rid: 2645455169077903373
+      rid: 1466742257238933506
   references:
     version: 2
     RefIds:
-    - rid: 2645455169077903373
+    - rid: 1466742257238933506
       type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
         localPosition: {x: 0, y: 0.54516995, z: 0}
         localEulerAngles: {x: 0, y: 0, z: 0}
         innerRadius: 0.74
         outerRadius: 1.87
-        angle: 90
+        angle: 180
         height: 1
 --- !u!114 &4915892064011505429
 MonoBehaviour:

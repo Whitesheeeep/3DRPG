@@ -28,6 +28,29 @@ MonoBehaviour:
     playbackSpeed: 1
     followMode: 0
     stopMode: 0
+--- !u!114 &-5524067893814833067
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70c14c030bc1459e93e059a6774ab2a6, type: 3}
+  m_Name: "\u97F3\u9891\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: eff5056ce8904b8c8c5b2d34949230a0
+  muted: 0
+  displayName: "\u97F3\u9891\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: 75a03658a1e74360ab644a19303c9296
+    audioClip: {fileID: 8300000, guid: 557f3f763e3d25f4f93f15ac9f196e13, type: 3}
+    startFrame: 5
+    durationFrames: 20
+    volume: 1
+    pitch: 1
 --- !u!114 &-3889212057403980132
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -53,6 +76,7 @@ MonoBehaviour:
     markerKey: {fileID: 0}
     followMode: 0
     cueTags:
+    - id: 225
     - id: 187
     detectionData:
       rid: 1466742125148766227
@@ -85,6 +109,7 @@ MonoBehaviour:
   - {fileID: -3889212057403980132}
   - {fileID: 3901410611143909678}
   - {fileID: -6172320092360565827}
+  - {fileID: -5524067893814833067}
 --- !u!114 &3901410611143909678
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -110,6 +135,7 @@ MonoBehaviour:
     markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
     followMode: 0
     cueTags:
+    - id: 225
     - id: 187
     detectionData:
       rid: 1466742125148766223

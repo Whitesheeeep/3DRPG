@@ -52,7 +52,9 @@ MonoBehaviour:
     detectionId: 0
     markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
     followMode: 0
-    cueTags: []
+    cueTags:
+    - id: 225
+    - id: 187
     detectionData:
       rid: 1466742129534435338
   references:
@@ -91,7 +93,9 @@ MonoBehaviour:
     detectionId: 0
     markerKey: {fileID: 0}
     followMode: 0
-    cueTags: []
+    cueTags:
+    - id: 225
+    - id: 187
     detectionData:
       rid: 1466742129534435329
   references:
@@ -161,6 +165,30 @@ MonoBehaviour:
   - {fileID: -2582442917103081266}
   - {fileID: -4643024058910902468}
   - {fileID: -6660636623682137849}
+  - {fileID: 5707817316297627060}
+--- !u!114 &5707817316297627060
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70c14c030bc1459e93e059a6774ab2a6, type: 3}
+  m_Name: "\u97F3\u9891\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 096827ee233c4c178884a5d891eef32c
+  muted: 0
+  displayName: "\u97F3\u9891\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: 5c93ec7b9a3d4cbfb16675dae83d59b1
+    audioClip: {fileID: 8300000, guid: 557f3f763e3d25f4f93f15ac9f196e13, type: 3}
+    startFrame: 11
+    durationFrames: 20
+    volume: 1
+    pitch: 1
 --- !u!114 &7551312098964813157
 MonoBehaviour:
   m_ObjectHideFlags: 1

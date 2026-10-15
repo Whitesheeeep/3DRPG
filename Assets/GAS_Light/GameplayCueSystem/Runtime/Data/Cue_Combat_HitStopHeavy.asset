@@ -9,15 +9,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 65b5cbbbe6e0472388bc2e9bc958597f, type: 3}
-  m_Name: Target
+  m_Script: {fileID: 11500000, guid: 1f7b68e10d74418b94530bfff242ffdc, type: 3}
+  m_Name: Cue_Combat_HitStopHeavy
   m_EditorClassIdentifier: 
   cueTag:
-    id: 9
-  markerKey: {fileID: 0}
-  addressableKey: Cube
-  fallbackPrefab: {fileID: 0}
-  defaultAnchor: 1
-  localPosition: {x: 0, y: 0, z: 0}
-  localEulerAngles: {x: 0, y: 0, z: 0}
-  followAnchor: 0
+    id: 223
+  durationMilliseconds: 300

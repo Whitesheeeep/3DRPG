@@ -1,5 +1,34 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-8397614725150933720
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70c14c030bc1459e93e059a6774ab2a6, type: 3}
+  m_Name: "\u97F3\u9891\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 1d5a19d782284840818a9f2fef07167f
+  muted: 0
+  displayName: "\u97F3\u9891\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: 0d6ce74ce78e4399b4884f257127a7f5
+    audioClip: {fileID: 8300000, guid: 557f3f763e3d25f4f93f15ac9f196e13, type: 3}
+    startFrame: 6
+    durationFrames: 8
+    volume: 1
+    pitch: 1
+  - id: 2a4e2b7c14854f5ab28e3ca7a8cb4741
+    audioClip: {fileID: 8300000, guid: 557f3f763e3d25f4f93f15ac9f196e13, type: 3}
+    startFrame: 14
+    durationFrames: 20
+    volume: 1
+    pitch: 1
 --- !u!114 &-6869264632058962657
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -24,19 +53,23 @@ MonoBehaviour:
     detectionId: 0
     markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
     followMode: 0
-    cueTags: []
+    cueTags:
+    - id: 226
+    - id: 223
     detectionData:
       rid: 1466742129534435362
   - id: 56f51e03840a4382b962d3384310a74b
     startFrame: 14
     durationFrames: 11
     sampleIntervalFrames: 1
-    detectionId: 0
+    detectionId: 1
     markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
     followMode: 0
-    cueTags: []
+    cueTags:
+    - id: 226
+    - id: 223
     detectionData:
-      rid: 1466742129534435367
+      rid: 1466742257238933504
   references:
     version: 2
     RefIds:
@@ -49,7 +82,7 @@ MonoBehaviour:
         outerRadius: 2
         angle: 360
         height: 1.87
-    - rid: 1466742129534435367
+    - rid: 1466742257238933504
       type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
         localPosition: {x: -0.18578674, y: 0.85796213, z: 0.34638643}
@@ -203,3 +236,4 @@ MonoBehaviour:
   - {fileID: -6869264632058962657}
   - {fileID: -4866872975724483892}
   - {fileID: -1526643621540621253}
+  - {fileID: -8397614725150933720}

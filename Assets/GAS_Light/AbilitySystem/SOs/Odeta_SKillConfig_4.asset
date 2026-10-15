@@ -26,6 +26,7 @@ MonoBehaviour:
     followMode: 1
     cueTags:
     - id: 223
+    - id: 188
     detectionData:
       rid: 1466742219033280513
   references:
@@ -147,6 +148,12 @@ MonoBehaviour:
     durationFrames: 6
     volume: 1
     pitch: 1
+  - id: a8771d5a523544d792bc056a04890388
+    audioClip: {fileID: 8300000, guid: 813fc03e3562686478e12d7ca386fc73, type: 3}
+    startFrame: 15
+    durationFrames: 5
+    volume: 1
+    pitch: 1
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -195,6 +202,7 @@ MonoBehaviour:
     markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
     followMode: 0
     cueTags:
+    - id: 188
     - id: 187
     detectionData:
       rid: 1466742219033280519
@@ -206,6 +214,7 @@ MonoBehaviour:
     markerKey: {fileID: 11400000, guid: f10366ac570da864282f63919fdd7b49, type: 2}
     followMode: 0
     cueTags:
+    - id: 188
     - id: 187
     detectionData:
       rid: 1466742219033280522
@@ -218,6 +227,7 @@ MonoBehaviour:
     followMode: 0
     cueTags:
     - id: 223
+    - id: 188
     detectionData:
       rid: 1466742219033280512
   references:
