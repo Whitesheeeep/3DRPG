@@ -318,4 +318,5 @@ MonoBehaviour:
     RefIds:
     - rid: 731600000000000001
       type: {class: BasicDamageGameplayEffectExecution, ns: WS_Modules.GAS.GameplayEffect, asm: Assembly-CSharp}
-      data: 
+      data:
+        enableCalculationDebug: 1

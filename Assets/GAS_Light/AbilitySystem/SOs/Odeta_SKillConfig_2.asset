@@ -207,16 +207,16 @@ MonoBehaviour:
     - id: 228
     - id: 229
     detectionData:
-      rid: 1466742257238933506
+      rid: 1466742284284067840
   references:
     version: 2
     RefIds:
-    - rid: 1466742257238933506
+    - rid: 1466742284284067840
       type: {class: SectorAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
       data:
         localPosition: {x: 0, y: 0.54516995, z: 0}
         localEulerAngles: {x: 0, y: 0, z: 0}
-        innerRadius: 0.74
+        innerRadius: 0.23
         outerRadius: 1.87
         angle: 180
         height: 1
