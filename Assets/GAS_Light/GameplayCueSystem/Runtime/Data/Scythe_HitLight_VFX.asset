@@ -15,7 +15,7 @@ MonoBehaviour:
   cueTag:
     id: 230
   markerKey: {fileID: 0}
-  addressableKey: 
+  addressableKey: GameplayCue/Scythe_HitLight
   fallbackPrefab: {fileID: 1112522908072999771, guid: fe67ca854546f2a4993f2049dc0ebe51, type: 3}
   defaultAnchor: 2
   localPosition: {x: 0, y: 0, z: 0}

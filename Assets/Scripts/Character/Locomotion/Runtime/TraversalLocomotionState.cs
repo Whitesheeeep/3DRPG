@@ -14,6 +14,7 @@ namespace RPG.Character
         private TraversalAnimationSettings animationSettings;
         private float previousEntryCorrectionWeight;
         private float previousTargetCorrectionWeight;
+        private float previousLandingHeightCorrectionWeight;
 
         #endregion
 
@@ -62,10 +63,16 @@ namespace RPG.Character
                 throw new System.InvalidOperationException(
                     $"角色 '{Character.name}' 的 Traversal 状态 '{StateId}' 没有匹配的动画设置。 ");
             animationSettings.Validate(StateId.ToString());
+            if (CandidateKind == TraversalCandidateKind.Vault)
+                animationSettings.ValidateLandingHeightCorrection(StateId.ToString());
             previousEntryCorrectionWeight = 0f;
             previousTargetCorrectionWeight = 0f;
+            previousLandingHeightCorrectionWeight = 0f;
             ApplyAnimationOffsets();
             base.OnEnter(suppressDefaultState);
+            Debug.Log($"[Traversal] 角色 '{Character.name}' 进入 {StateId}，" +
+                      $"目标 Root={candidate.FinalPosition:F3}，目标修正区间={animationSettings.TargetCorrectionNormalizedRange}，" +
+                      $"Vault 落地高度区间={animationSettings.LandingHeightCorrectionNormalizedRange}。", Character);
         }
 
         /// <inheritdoc />
@@ -91,7 +98,7 @@ namespace RPG.Character
             SubmitTraversalAnimatorMotion();
         }
 
-        /// <summary>退出 Traversal 时清理冻结候选与两个修正窗口的累计进度。</summary>
+        /// <summary>退出 Traversal 时清理冻结候选与入口、目标、Vault 落地高度修正的累计进度。</summary>
         public override void OnExit()
         {
             base.OnExit();
@@ -99,6 +106,7 @@ namespace RPG.Character
             animationSettings = null;
             previousEntryCorrectionWeight = 0f;
             previousTargetCorrectionWeight = 0f;
+            previousLandingHeightCorrectionWeight = 0f;
         }
 
         /// <summary>重新激活角色时清理 Traversal 候选和位置修正进度。</summary>
@@ -109,6 +117,7 @@ namespace RPG.Character
             animationSettings = null;
             previousEntryCorrectionWeight = 0f;
             previousTargetCorrectionWeight = 0f;
+            previousLandingHeightCorrectionWeight = 0f;
         }
 
         /// <summary>按当前动画修正窗口提交根位移和目标旋转。</summary>
@@ -141,35 +150,64 @@ namespace RPG.Character
 
         /// <summary>
         /// 按当前修正窗口的曲线增量消费位置误差；入口阶段只修正水平位置，
-        /// 目标阶段修正完整世界位置，避免把同一累计权重在每帧重复应用。
+        /// Vault 的目标阶段只修正水平位置并独立叠加后段 Y 修正；Mantle 保持完整位置修正。
         /// </summary>
+        /// <param name="normalizedTime">最近一次 Animator 求值后的动画归一化时间。</param>
+        /// <param name="predictedPosition">应用本次原始根位移后预测的世界 Root 位置。</param>
+        /// <returns>提交到 MotionDriver 的附加世界位移，不直接修改 Transform。</returns>
         private Vector3 CalculatePositionCorrection(
             float normalizedTime,
             Vector3 predictedPosition)
         {
+            Vector3 correction = Vector3.zero;
             if (IsInCorrectionRange(normalizedTime, animationSettings.EntryCorrectionNormalizedRange))
             {
                 Vector3 error = Vector3.ProjectOnPlane(
                     candidate.EntryPosition - predictedPosition,
                     Vector3.up);
-                return ConsumeCorrectionError(
+                correction = ConsumeCorrectionError(
                     normalizedTime,
                     animationSettings.EntryCorrectionNormalizedRange,
                     error,
                     ref previousEntryCorrectionWeight);
             }
 
-            if (IsInCorrectionRange(normalizedTime, animationSettings.TargetCorrectionNormalizedRange))
+            else if (IsInCorrectionRange(normalizedTime, animationSettings.TargetCorrectionNormalizedRange))
             {
                 Vector3 error = candidate.FinalPosition - predictedPosition;
-                return ConsumeCorrectionError(
+                if (CandidateKind == TraversalCandidateKind.Vault)
+                    error = Vector3.ProjectOnPlane(error, Vector3.up);
+                correction = ConsumeCorrectionError(
                     normalizedTime,
                     animationSettings.TargetCorrectionNormalizedRange,
                     error,
                     ref previousTargetCorrectionWeight);
             }
 
-            return Vector3.zero;
+            // 高度独立于水平窗口，避免入口或目标分支提前返回而跳过 Vault 后段落地。
+            if (CandidateKind == TraversalCandidateKind.Vault)
+                correction += CalculateLandingHeightCorrection(normalizedTime, predictedPosition + correction);
+            return correction;
+        }
+
+        /// <summary>按 Vault 后段曲线收敛 Y；跨过结束边界或完全收敛后保持目标高度，抵消尾段根位移漂移。</summary>
+        /// <param name="normalizedTime">当前动画归一化时间，可在低帧率下直接跨过整个窗口。</param>
+        /// <param name="predictedPosition">原始根运动与水平修正之后预测的世界 Root 位置。</param>
+        /// <returns>仅包含世界 Y 分量的附加位移。</returns>
+        private Vector3 CalculateLandingHeightCorrection(float normalizedTime, Vector3 predictedPosition)
+        {
+            Vector2 range = animationSettings.LandingHeightCorrectionNormalizedRange;
+            if (normalizedTime < range.x) return Vector3.zero;
+
+            Vector3 error = Vector3.up * (candidate.FinalPosition.y - predictedPosition.y);
+            // 不依赖某帧恰好处于区间内；完成后仍结算本帧误差，防止剩余动画把脚底再次抬高。
+            if (normalizedTime >= range.y || previousLandingHeightCorrectionWeight >= 1f)
+            {
+                previousLandingHeightCorrectionWeight = 1f;
+                return error;
+            }
+            return ConsumeCorrectionError(normalizedTime, range, error,
+                ref previousLandingHeightCorrectionWeight);
         }
 
         /// <summary>按曲线本帧新增的累计比例消费指定位置误差。</summary>

@@ -154,21 +154,29 @@ namespace RPG.Character
             Vector3 targetFootPoint;
             Vector3 mantlePreferredPoint = Vector3.zero;
             TraversalCandidateKind kind;
-            // 如果是翻越则进行胶囊体的空间检查和支撑检查，确保目标点是安全的；如果是攀爬则在顶部范围内解析一个安全的目标点。
+            // Vault 先解析远侧真实支撑脚点，再验证该位置的空间；Mantle 在顶部范围内解析安全目标。
             if (isVault)
             {
-                // Vault 使用真实后沿，而不是角色半径或固定距离推算的近似点。
-                targetFootPoint = farEdgePoint + characterForward * settings.VaultTargetForwardClearance;
+                // 后沿只决定落点的水平位置；高度必须使用远侧地面命中，不能沿用障碍顶部高度。
+                Vector3 expectedFootPoint = farEdgePoint +
+                    characterForward * settings.VaultTargetForwardClearance;
                 kind = TraversalCandidateKind.Vault;
 
-                bool capsuleClear = IsCapsuleSpaceClear(targetFootPoint, up,
-                    out Collider blockingCollider);
-                bool hasSupport = HasSurfaceSupport(targetFootPoint, up, out _);
-                if (!capsuleClear || !hasSupport)
+                if (!HasSurfaceSupport(expectedFootPoint, up, out RaycastHit supportHit))
                 {
                     WSLog.LogWarning($"角色 '{character.name}' 的 Vault 目标检测失败：" +
-                                     $"胶囊空间={(capsuleClear ? "通过" : "被阻挡")}, " +
-                                     $"支撑={(hasSupport ? "通过" : "缺失或坡度无效")}, " +
+                                     $"远侧预期脚点={expectedFootPoint:F3}，支撑缺失或坡度无效。");
+                    candidate = default;
+                    return false;
+                }
+
+                targetFootPoint = supportHit.point;
+                DrawLine(expectedFootPoint, targetFootPoint, TargetColor);
+                DrawCross(targetFootPoint, TargetColor, up);
+                if (!IsCapsuleSpaceClear(targetFootPoint, up, out Collider blockingCollider))
+                {
+                    WSLog.LogWarning($"角色 '{character.name}' 的 Vault 目标检测失败：" +
+                                     $"真实支撑脚点={targetFootPoint:F3}，胶囊空间被阻挡，" +
                                      $"阻挡体={blockingCollider?.name ?? "无"}。");
                     candidate = default;
                     return false;

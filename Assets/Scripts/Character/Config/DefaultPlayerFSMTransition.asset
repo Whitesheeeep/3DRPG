@@ -271,7 +271,7 @@ MonoBehaviour:
     depthProbeHeight: 0.08
     depthProbeDistance: 0.3
     farEdgeRefinementIterations: 5
-    vaultTargetForwardClearance: 0.2
+    vaultTargetForwardClearance: 0.3
     mantleStandingInset: 0.2
     mantleTargetSearchStep: 0.025
     mantleFarEdgeClearance: 0.02
@@ -294,8 +294,9 @@ MonoBehaviour:
     authoredHeight: 1
     entryCorrectionNormalizedRange: {x: 0, y: 0.12}
     targetCorrectionNormalizedRange: {x: 0.12, y: 0.32}
+    landingHeightCorrectionNormalizedRange: {x: 0.65, y: 0.9}
     entryDistanceOffset: 0
-    targetHeightOffset: -0.2
+    targetHeightOffset: 0
     positionCorrectionWeightCurve:
       serializedVersion: 2
       m_Curve:
@@ -335,6 +336,7 @@ MonoBehaviour:
     authoredHeight: 1
     entryCorrectionNormalizedRange: {x: 0, y: 0.2}
     targetCorrectionNormalizedRange: {x: 0.2, y: 0.43}
+    landingHeightCorrectionNormalizedRange: {x: 0.65, y: 0.9}
     entryDistanceOffset: 0
     targetHeightOffset: 0
     positionCorrectionWeightCurve:
@@ -376,6 +378,7 @@ MonoBehaviour:
     authoredHeight: 1.5
     entryCorrectionNormalizedRange: {x: 0, y: 0.05}
     targetCorrectionNormalizedRange: {x: 0.05, y: 0.63}
+    landingHeightCorrectionNormalizedRange: {x: 0.65, y: 0.9}
     entryDistanceOffset: 0
     targetHeightOffset: 0
     positionCorrectionWeightCurve:
@@ -417,6 +420,7 @@ MonoBehaviour:
     authoredHeight: 2
     entryCorrectionNormalizedRange: {x: 0, y: 0.01}
     targetCorrectionNormalizedRange: {x: 0.01, y: 0.71}
+    landingHeightCorrectionNormalizedRange: {x: 0.65, y: 0.9}
     entryDistanceOffset: 0
     targetHeightOffset: 0
     positionCorrectionWeightCurve:

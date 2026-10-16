@@ -15,7 +15,7 @@ MonoBehaviour:
   cueTag:
     id: 231
   markerKey: {fileID: 0}
-  addressableKey: 
+  addressableKey: GameplayCue/Scythe_HitHeavy
   fallbackPrefab: {fileID: 5078208483921023146, guid: 6143ae6effce0e543a06e9fd52b78b4a, type: 3}
   defaultAnchor: 2
   localPosition: {x: 0, y: 0, z: 0}

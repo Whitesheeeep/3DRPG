@@ -16,8 +16,12 @@ namespace RPG.Character
         private float authoredHeight;
         [SerializeField, LabelText("入口修正归一化区间")]
         private Vector2 entryCorrectionNormalizedRange;
-        [SerializeField, LabelText("目标修正归一化区间")]
+        [SerializeField, LabelText("目标修正归一化区间"),
+         Tooltip("Vault 在该区间只修正水平位置，Y 使用独立落地窗口；Mantle 仍修正完整世界位置。")]
         private Vector2 targetCorrectionNormalizedRange;
+        [SerializeField, LabelText("Vault 落地高度修正归一化区间"),
+         Tooltip("仅 Vault 使用：在动画后段逐步修正 Y 到真实落点高度；结束后保持该高度直到退出。结束不得晚于输入与下落检测开放时间。")]
+        private Vector2 landingHeightCorrectionNormalizedRange = new(0.65f, 0.90f);
         [SerializeField, LabelText("入口距离偏移（米）")]
         [Tooltip("入口位置在动画作者位置基础上增加该偏移后，才允许进入翻越。")]
         private float entryDistanceOffset;
@@ -45,8 +49,10 @@ namespace RPG.Character
         public float AuthoredHeight => authoredHeight;
         /// <summary>获取入口方向修正归一化区间。</summary>
         public Vector2 EntryCorrectionNormalizedRange => entryCorrectionNormalizedRange;
-        /// <summary>获取目标位置修正归一化区间。</summary>
+        /// <summary>获取 Vault 水平目标或 Mantle 完整目标位置的修正归一化区间。</summary>
         public Vector2 TargetCorrectionNormalizedRange => targetCorrectionNormalizedRange;
+        /// <summary>获取仅供 Vault 后段收敛世界 Y 高度的归一化区间。</summary>
+        public Vector2 LandingHeightCorrectionNormalizedRange => landingHeightCorrectionNormalizedRange;
         /// <summary>获取入口距离偏移。</summary>
         public float EntryDistanceOffset => entryDistanceOffset;
         /// <summary>获取目标高度偏移。</summary>
@@ -61,6 +67,22 @@ namespace RPG.Character
         #endregion
 
         #region 校验
+
+        /// <summary>在 Vault 取得运动控制权前校验落地高度窗口，确保开放退出前已经完成落地修正。</summary>
+        /// <param name="fieldName">用于异常上下文的动画槽位名称。</param>
+        /// <exception cref="System.InvalidOperationException">区间非有限、顺序无效或结束晚于退出门禁时抛出。</exception>
+        public void ValidateLandingHeightCorrection(string fieldName)
+        {
+            Vector2 range = landingHeightCorrectionNormalizedRange;
+            if (float.IsNaN(range.x) || float.IsInfinity(range.x) ||
+                float.IsNaN(range.y) || float.IsInfinity(range.y) ||
+                range.x < 0f || range.y > 1f || range.x >= range.y)
+                throw new System.InvalidOperationException(
+                    $"PlayerFSMTransition 的 Traversal 动画槽位 '{fieldName}' 落地高度修正区间必须满足 0 <= 开始 < 结束 <= 1，且数值有限。");
+            if (!(range.y <= inputOpenNormalizedTime) || !(range.y <= fallDetectionNormalizedTime))
+                throw new System.InvalidOperationException(
+                    $"PlayerFSMTransition 的 Traversal 动画槽位 '{fieldName}' 落地高度修正必须不晚于输入与下落检测开放时间结束。");
+        }
 
         /// <summary>校验该动画配置在序列化边界上可以参与 Traversal。</summary>
         /// <param name="fieldName">配置槽位名称。</param>

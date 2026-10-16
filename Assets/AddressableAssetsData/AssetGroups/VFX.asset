@@ -22,6 +22,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6143ae6effce0e543a06e9fd52b78b4a
+    m_Address: GameplayCue/Scythe_HitHeavy
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 7756fba58927ef0429d4c3ea36cbdf83
     m_Address: GameplayCue/Sword_HitLight
     m_ReadOnly: 0
@@ -34,6 +39,11 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: d7870df6d8473e544a4e4429bf82f49d
     m_Address: VFX/Sword_Slash_1
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: fe67ca854546f2a4993f2049dc0ebe51
+    m_Address: GameplayCue/Scythe_HitLight
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
