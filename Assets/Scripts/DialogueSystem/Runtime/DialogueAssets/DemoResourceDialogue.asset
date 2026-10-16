@@ -27,7 +27,7 @@ MonoBehaviour:
   m_Name: Choice_005
   m_EditorClassIdentifier: 
   nodeId: 7a53491b-1a10-44ad-86d3-ec951f6ade35
-  editorPosition: {x: 500, y: 190}
+  editorPosition: {x: 524, y: 76}
   nodeName: Choice 005
   text: "\u5168\u90E8\u5347\u7EA7\u6750\u6599 * 10"
   conditions: []
@@ -69,7 +69,7 @@ MonoBehaviour:
   m_Name: Choice_001
   m_EditorClassIdentifier: 
   nodeId: b37207a4-3e4f-446f-8f75-a8185989d921
-  editorPosition: {x: 500, y: -250}
+  editorPosition: {x: 524, y: -603.6}
   nodeName: Choice 001
   text: "\u5168\u90E8\u8D44\u6E90"
   conditions: []
@@ -96,7 +96,7 @@ MonoBehaviour:
   m_Name: Choice_006
   m_EditorClassIdentifier: 
   nodeId: 9453ea15-12ad-455a-8042-f678d730c8fa
-  editorPosition: {x: 500, y: 300}
+  editorPosition: {x: 524.00006, y: 424.80005}
   nodeName: Choice 006
   text: "\u6062\u590D\u5168\u90E8\u89D2\u8272\u751F\u547D\u503C"
   conditions: []
@@ -122,7 +122,7 @@ MonoBehaviour:
   m_Name: Choice_002
   m_EditorClassIdentifier: 
   nodeId: 8c2e2c81-ccd4-4457-9fd2-85e380e92c54
-  editorPosition: {x: 500, y: -140}
+  editorPosition: {x: 524, y: -253.59999}
   nodeName: Choice 002
   text: "\u6469\u62C9 * 10000"
   conditions: []
@@ -173,7 +173,7 @@ MonoBehaviour:
   m_Name: Choice_003
   m_EditorClassIdentifier: 
   nodeId: 9c2b4ff3-f71e-4c33-892f-a603013b38e4
-  editorPosition: {x: 500, y: -30}
+  editorPosition: {x: 524, y: -144}
   nodeName: Choice 003
   text: "\u5168\u90E8\u6B66\u5668"
   conditions: []
@@ -229,7 +229,7 @@ MonoBehaviour:
   m_Name: Choice_004
   m_EditorClassIdentifier: 
   nodeId: 6b09846c-8c19-4834-bcd4-6986d5b94e03
-  editorPosition: {x: 500, y: 80}
+  editorPosition: {x: 524, y: -37.599995}
   nodeName: Choice 004
   text: "\u5168\u90E8\u5723\u9057\u7269"
   conditions: []

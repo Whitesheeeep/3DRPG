@@ -294,7 +294,7 @@ MonoBehaviour:
     authoredHeight: 1
     entryCorrectionNormalizedRange: {x: 0, y: 0.12}
     targetCorrectionNormalizedRange: {x: 0.12, y: 0.32}
-    landingHeightCorrectionNormalizedRange: {x: 0.65, y: 0.9}
+    landingHeightCorrectionNormalizedRange: {x: 0.36, y: 0.5}
     entryDistanceOffset: 0
     targetHeightOffset: 0
     positionCorrectionWeightCurve:

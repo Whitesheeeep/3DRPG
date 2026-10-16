@@ -120,19 +120,19 @@ namespace RPG.DialogueSystemModule
                 case E_DialogueDemoResourceType.AllResources:
                     if (category == ItemCategory.Weapon || category == ItemCategory.Artifact)
                     {
-                        quantity = 1;
+                        quantity = 5;
                         return true;
                     }
                     if (category == ItemCategory.DevelopmentExperienceItem ||
                         category == ItemCategory.DevelopmentItem || category == ItemCategory.Food)
                     {
-                        quantity = 10;
+                        quantity = 20;
                         return true;
                     }
                     break;
                 case E_DialogueDemoResourceType.Weapons when category == ItemCategory.Weapon:
                 case E_DialogueDemoResourceType.Artifacts when category == ItemCategory.Artifact:
-                    quantity = 1;
+                    quantity = 5;
                     return true;
                 case E_DialogueDemoResourceType.UpgradeMaterials
                     when category == ItemCategory.DevelopmentExperienceItem || category == ItemCategory.DevelopmentItem:
