@@ -21,6 +21,7 @@ namespace RPG.ItemSystem.Editor
         private readonly VisualElement artifactGrowthProfileContent;
         private readonly VisualElement missingGrowthProfileWarning;
         private readonly PropertyField levelEffectsField;
+        private readonly PropertyField levelOverridesField;
         private readonly string levelEffectsHeader;
         private readonly HashSet<ListView> expandedEffectListViewSet = new();
         private readonly PropertyField growthProfileMaxLevelField;
@@ -73,6 +74,7 @@ namespace RPG.ItemSystem.Editor
             artifactGrowthProfileContent = Require<VisualElement>("ArtifactGrowthProfileContent");
             missingGrowthProfileWarning = Require<VisualElement>("MissingArtifactGrowthProfileWarning");
             levelEffectsField = Require<PropertyField>("ArtifactLevelEffectsField");
+            levelOverridesField = Require<PropertyField>("ArtifactLevelOverridesField");
             levelEffectsHeader = levelEffectsField.label;
             growthProfileMaxLevelField = Require<PropertyField>("ArtifactGrowthProfileMaxLevelField");
             growthProfileMaxLevelField.SetEnabled(false);
@@ -182,6 +184,8 @@ namespace RPG.ItemSystem.Editor
                     levelEffectsField,
                     levelEffectsHeader,
                     expandedEffectListViewSet);
+                ItemConfigEditorPresentation.ConfigureNativeCollectionHeader(
+                    levelOverridesField, levelOverridesField.label, expandedEffectListViewSet);
                 // 动态字段标签只更新当前已生成节点，数组元素标题与空状态保留 Unity 默认值。
                 VisibleSerializedFieldLabelLocalizer.Apply(pageRoot);
             });

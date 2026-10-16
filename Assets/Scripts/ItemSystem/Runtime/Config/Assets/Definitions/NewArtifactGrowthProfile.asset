@@ -19,20 +19,20 @@ MonoBehaviour:
     - serializedVersion: 3
       time: 0
       value: 0
-      inSlope: 526.3158
-      outSlope: 526.3158
-      tangentMode: 34
+      inSlope: 0
+      outSlope: 500
+      tangentMode: 0
       weightedMode: 0
       inWeight: 0
-      outWeight: 0.33333334
+      outWeight: 0
     - serializedVersion: 3
       time: 20
       value: 10000
-      inSlope: 526.3158
-      outSlope: 526.3158
-      tangentMode: 34
+      inSlope: 500
+      outSlope: 0
+      tangentMode: 0
       weightedMode: 0
-      inWeight: 0.33333334
+      inWeight: 0
       outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
@@ -42,7 +42,7 @@ MonoBehaviour:
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 0
+      value: 10
       inSlope: 0
       outSlope: 0
       tangentMode: 0
@@ -51,7 +51,7 @@ MonoBehaviour:
       outWeight: 0
     - serializedVersion: 3
       time: 20
-      value: 1000
+      value: 10
       inSlope: 0
       outSlope: 0
       tangentMode: 0
@@ -65,84 +65,84 @@ MonoBehaviour:
   bakedProgressions:
   - level: 0
     cumulativeExperience: 0
-    nextExperience: 522
-    currencyCost: 0
+    nextExperience: 500
+    currencyCost: 10
   - level: 1
-    cumulativeExperience: 522
-    nextExperience: 516
-    currencyCost: 7
+    cumulativeExperience: 500
+    nextExperience: 500
+    currencyCost: 10
   - level: 2
-    cumulativeExperience: 1038
-    nextExperience: 509
-    currencyCost: 28
+    cumulativeExperience: 1000
+    nextExperience: 500
+    currencyCost: 10
   - level: 3
-    cumulativeExperience: 1547
-    nextExperience: 504
-    currencyCost: 61
+    cumulativeExperience: 1500
+    nextExperience: 500
+    currencyCost: 10
   - level: 4
-    cumulativeExperience: 2051
-    nextExperience: 498
-    currencyCost: 104
+    cumulativeExperience: 2000
+    nextExperience: 500
+    currencyCost: 10
   - level: 5
-    cumulativeExperience: 2549
-    nextExperience: 495
-    currencyCost: 156
+    cumulativeExperience: 2500
+    nextExperience: 500
+    currencyCost: 10
   - level: 6
-    cumulativeExperience: 3044
-    nextExperience: 492
-    currencyCost: 216
+    cumulativeExperience: 3000
+    nextExperience: 500
+    currencyCost: 10
   - level: 7
-    cumulativeExperience: 3536
-    nextExperience: 489
-    currencyCost: 282
+    cumulativeExperience: 3500
+    nextExperience: 500
+    currencyCost: 10
   - level: 8
-    cumulativeExperience: 4025
-    nextExperience: 488
-    currencyCost: 352
+    cumulativeExperience: 4000
+    nextExperience: 500
+    currencyCost: 10
   - level: 9
-    cumulativeExperience: 4513
-    nextExperience: 487
-    currencyCost: 425
+    cumulativeExperience: 4500
+    nextExperience: 500
+    currencyCost: 10
   - level: 10
     cumulativeExperience: 5000
-    nextExperience: 487
-    currencyCost: 500
+    nextExperience: 500
+    currencyCost: 10
   - level: 11
-    cumulativeExperience: 5487
-    nextExperience: 488
-    currencyCost: 575
+    cumulativeExperience: 5500
+    nextExperience: 500
+    currencyCost: 10
   - level: 12
-    cumulativeExperience: 5975
-    nextExperience: 489
-    currencyCost: 648
+    cumulativeExperience: 6000
+    nextExperience: 500
+    currencyCost: 10
   - level: 13
-    cumulativeExperience: 6464
-    nextExperience: 492
-    currencyCost: 718
+    cumulativeExperience: 6500
+    nextExperience: 500
+    currencyCost: 10
   - level: 14
-    cumulativeExperience: 6956
-    nextExperience: 495
-    currencyCost: 784
+    cumulativeExperience: 7000
+    nextExperience: 500
+    currencyCost: 10
   - level: 15
-    cumulativeExperience: 7451
-    nextExperience: 498
-    currencyCost: 844
+    cumulativeExperience: 7500
+    nextExperience: 500
+    currencyCost: 10
   - level: 16
-    cumulativeExperience: 7949
-    nextExperience: 504
-    currencyCost: 896
+    cumulativeExperience: 8000
+    nextExperience: 500
+    currencyCost: 10
   - level: 17
-    cumulativeExperience: 8453
-    nextExperience: 509
-    currencyCost: 939
+    cumulativeExperience: 8500
+    nextExperience: 500
+    currencyCost: 10
   - level: 18
-    cumulativeExperience: 8962
-    nextExperience: 516
-    currencyCost: 972
+    cumulativeExperience: 9000
+    nextExperience: 500
+    currencyCost: 10
   - level: 19
-    cumulativeExperience: 9478
-    nextExperience: 522
-    currencyCost: 993
+    cumulativeExperience: 9500
+    nextExperience: 500
+    currencyCost: 10
   - level: 20
     cumulativeExperience: 10000
     nextExperience: 0

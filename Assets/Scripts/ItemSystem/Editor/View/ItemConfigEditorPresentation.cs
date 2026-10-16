@@ -161,26 +161,29 @@ namespace RPG.ItemSystem.Editor
         {
             if (propertyField == null || string.IsNullOrEmpty(headerText)) return;
 
-            propertyField.Query<ListView>().ForEach(listView =>
+            // 首个 ListView 属于当前字段；不要递归改写阶段元素内的物品、货币消耗集合。
+            ListView listView = propertyField.Q<ListView>();
+            if (listView == null) return;
+
+            // 只调整呈现选项，集合创建、绑定和虚拟化仍由 Unity 原生序列化系统管理。
+            if (listView.showBoundCollectionSize) listView.showBoundCollectionSize = false;
+            if (!listView.showFoldoutHeader) listView.showFoldoutHeader = true;
+            if (!listView.showAddRemoveFooter) listView.showAddRemoveFooter = true;
+            if (!listView.reorderable) listView.reorderable = true;
+            if (listView.reorderMode != ListViewReorderMode.Simple)
+                listView.reorderMode = ListViewReorderMode.Simple;
+
+            Foldout foldout = listView.Q<Foldout>();
+            if (foldout == null) return;
+            if (!string.Equals(foldout.text, headerText, StringComparison.Ordinal))
+                foldout.text = headerText;
+
+            // 首次展开需通知 ListView 更新内容可见性；后续刷新保留用户折叠状态。
+            if (expandedListViewSet.Add(listView))
             {
-                // 只调整 Unity 公开的列表呈现选项，集合创建、绑定和虚拟化仍由原生序列化系统管理。
-                if (listView.showBoundCollectionSize) listView.showBoundCollectionSize = false;
-                if (!listView.showFoldoutHeader) listView.showFoldoutHeader = true;
-                if (!listView.showAddRemoveFooter) listView.showAddRemoveFooter = true;
-                if (!listView.reorderable) listView.reorderable = true;
-                if (listView.reorderMode != ListViewReorderMode.Simple)
-                    listView.reorderMode = ListViewReorderMode.Simple;
-
-                Foldout foldout = listView.Q<Foldout>();
-                if (foldout == null) return;
-
-                if (!string.Equals(foldout.text, headerText, StringComparison.Ordinal))
-                    foldout.text = headerText;
-
-                // 只在每个新生成的 ListView 首次出现标题时展开；重绑定和布局刷新保留用户选择。
-                if (expandedListViewSet.Add(listView))
-                    foldout.SetValueWithoutNotify(true);
-            });
+                foldout.value = true;
+                Debug.Log($"[ItemConfigEditorPresentation] 初始化集合展示：{propertyField.bindingPath}，标题={headerText}。");
+            }
         }
     }
 }

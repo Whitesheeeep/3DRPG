@@ -36,107 +36,89 @@ MonoBehaviour:
   - requiredLevel: 20
     maxLevelAfter: 40
     cost:
-      itemCosts: []
+      itemCosts:
+      - itemId:
+          value: material_0017
+        quantity: 1
       currencyCosts:
       - currencyId: 1
-        amount: 45000
+        amount: 100
   - requiredLevel: 40
     maxLevelAfter: 50
     cost:
-      itemCosts: []
+      itemCosts:
+      - itemId:
+          value: material_0017
+        quantity: 2
       currencyCosts:
       - currencyId: 1
-        amount: 45000
+        amount: 200
   - requiredLevel: 50
     maxLevelAfter: 60
     cost:
       itemCosts:
       - itemId:
-          value: 
+          value: material_0018
         quantity: 1
       currencyCosts:
-      - currencyId: 0
-        amount: 45000
+      - currencyId: 1
+        amount: 300
   - requiredLevel: 60
     maxLevelAfter: 70
     cost:
       itemCosts:
       - itemId:
-          value: material_0010
-        quantity: 1
+          value: material_0018
+        quantity: 2
       currencyCosts:
-      - currencyId: 0
-        amount: 45000
+      - currencyId: 1
+        amount: 400
   - requiredLevel: 70
     maxLevelAfter: 80
     cost:
       itemCosts:
       - itemId:
-          value: material_0010
+          value: material_0019
         quantity: 1
       currencyCosts:
-      - currencyId: 0
-        amount: 45000
+      - currencyId: 1
+        amount: 500
   - requiredLevel: 80
     maxLevelAfter: 90
     cost:
       itemCosts:
       - itemId:
-          value: material_0010
-        quantity: 1
+          value: material_0019
+        quantity: 2
       currencyCosts:
-      - currencyId: 0
-        amount: 45000
-      - currencyId: 0
-        amount: 45000
+      - currencyId: 1
+        amount: 600
   refinementStages:
   - rank: 2
     requiredDuplicateCount: 1
     cost:
-      itemCosts:
-      - itemId:
-          value: 
-        quantity: 0
+      itemCosts: []
       currencyCosts:
       - currencyId: 1
-        amount: 10
+        amount: 100
   - rank: 3
     requiredDuplicateCount: 1
     cost:
-      itemCosts:
-      - itemId:
-          value: 
-        quantity: 0
+      itemCosts: []
       currencyCosts:
       - currencyId: 1
-        amount: 50
+        amount: 200
   - rank: 4
     requiredDuplicateCount: 1
     cost:
-      itemCosts:
-      - itemId:
-          value: 
-        quantity: 0
+      itemCosts: []
       currencyCosts:
-      - currencyId: 0
-        amount: 0
+      - currencyId: 1
+        amount: 300
   - rank: 5
     requiredDuplicateCount: 1
     cost:
-      itemCosts:
-      - itemId:
-          value: 
-        quantity: 0
+      itemCosts: []
       currencyCosts:
-      - currencyId: 0
-        amount: 0
-  - rank: 5
-    requiredDuplicateCount: 1
-    cost:
-      itemCosts:
-      - itemId:
-          value: 
-        quantity: 0
-      currencyCosts:
-      - currencyId: 0
-        amount: 0
+      - currencyId: 1
+        amount: 400

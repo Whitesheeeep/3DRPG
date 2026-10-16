@@ -42,6 +42,8 @@ namespace WS_Modules.AudioSystem
         private readonly Stack<AudioSource> availableSources = new();
 
         private AudioSource _bgmAudioSource;
+        private float bgmFadeInDuration;
+        private float bgmFadeElapsedSeconds;
         private bool _isLoop;
         private bool _isPause;
         private uint nextGeneration;
@@ -68,7 +70,7 @@ namespace WS_Modules.AudioSystem
             _effectMixerGroup = effectMixerGroup;
             _cts = new CancellationTokenSource();
 
-            // BGM 只使用 Mixer 分类音量；AudioSource.volume 留给本次播放的默认倍率 1。
+            // Mixer 保存玩家分类音量，AudioSource.volume 仅承担本次播放的淡入倍率。
             GameObject bgmGo = new("BGM_Source");
             bgmGo.transform.SetParent(root, false);
             _bgmAudioSource = bgmGo.AddComponent<AudioSource>();
@@ -128,11 +130,12 @@ namespace WS_Modules.AudioSystem
         }
 
         /// <summary>
-        /// 每帧回收已经自然播放结束的直接 AudioClip Voice。
+        /// 每帧推进 BGM 淡入并回收自然结束的直接 AudioClip Voice；音频暂停时两者均暂停。
         /// </summary>
         public void Tick()
         {
             if (_isPause) return;
+            UpdateBgmFade(Time.unscaledDeltaTime);
             for (int index = activeVoices.Count - 1; index >= 0; index--)
             {
                 AudioSource source = activeVoices[index].Source;
@@ -184,20 +187,52 @@ namespace WS_Modules.AudioSystem
         #region BGM 操作
 
         /// <summary>
-        /// 播放 BGM；分类音量由 AudioManager 写入 Mixer，单次音量保持为 1。
+        /// 立即播放 BGM；保留原接口行为，分类音量由 AudioManager 写入 Mixer。
         /// </summary>
         /// <param name="clip">背景音乐素材。</param>
         /// <param name="loop">是否循环播放。</param>
         public void PlayBGM(AudioClip clip, bool loop)
         {
+            PlayBGM(clip, loop, 0f);
+        }
+
+        /// <summary>播放 BGM 并以独立音源倍率线性淡入，替换播放时重置旧淡入。</summary>
+        /// <param name="clip">背景音乐素材。</param>
+        /// <param name="loop">是否循环播放。</param>
+        /// <param name="fadeInDuration">非负有限淡入秒数，0 为立即播放。</param>
+        /// <exception cref="ArgumentOutOfRangeException">淡入时间不是非负有限值。</exception>
+        public void PlayBGM(AudioClip clip, bool loop, float fadeInDuration)
+        {
+            if (float.IsNaN(fadeInDuration) || float.IsInfinity(fadeInDuration) || fadeInDuration < 0f)
+                throw new ArgumentOutOfRangeException(nameof(fadeInDuration), "[AudioModule] BGM 淡入时间必须是非负有限值。");
             if (_bgmAudioSource == null) return;
+            bgmFadeInDuration = fadeInDuration;
+            bgmFadeElapsedSeconds = 0f;
             IsLoop = loop;
             _bgmAudioSource.clip = clip;
-            _bgmAudioSource.volume = 1f;
+            // 必须先设置初始倍率再 Play，避免第一帧以全音量输出。
+            _bgmAudioSource.volume = fadeInDuration > 0f ? 0f : 1f;
             _bgmAudioSource.outputAudioMixerGroup = _bgmMixerGroup;
             _bgmAudioSource.loop = _isLoop;
             _bgmAudioSource.Play();
             if (_isPause) _bgmAudioSource.Pause();
+            WSLog.Log($"[AudioModule] 播放 BGM，clip={clip?.name}，fadeIn={fadeInDuration:0.###}，loop={loop}。");
+        }
+
+        /// <summary>按未缩放时间推进单次淡入；调用方在显式音频暂停时不调用此方法。</summary>
+        /// <param name="deltaTime">本帧未缩放秒数。</param>
+        private void UpdateBgmFade(float deltaTime)
+        {
+            if (bgmFadeInDuration <= 0f || _bgmAudioSource == null)
+                return;
+
+            bgmFadeElapsedSeconds += deltaTime;
+            _bgmAudioSource.volume = Mathf.Clamp01(bgmFadeElapsedSeconds / bgmFadeInDuration);
+            if (bgmFadeElapsedSeconds < bgmFadeInDuration)
+                return;
+
+            bgmFadeInDuration = 0f;
+            WSLog.Log($"[AudioModule] BGM 淡入完成，clip={_bgmAudioSource.clip?.name}。");
         }
 
         /// <summary>
@@ -205,9 +240,12 @@ namespace WS_Modules.AudioSystem
         /// </summary>
         public void StopBGM()
         {
+            bgmFadeInDuration = 0f;
+            bgmFadeElapsedSeconds = 0f;
             if (_bgmAudioSource == null) return;
             _bgmAudioSource.Stop();
             _bgmAudioSource.clip = null;
+            _bgmAudioSource.volume = 1f;
         }
 
         /// <summary>

@@ -21,9 +21,9 @@ MonoBehaviour:
   rarity: 2
   sortPriority: 200
   iconAddress: ItemIcons_Food
-  iconSpriteName: UI_ItemIcon_100428
+  iconSpriteName: UI_ItemIcon_108090
   worldPrefabAddress: 
-  editorPreviewIcon: {fileID: 21300000, guid: 0cfcd5a9e9ae68f4aa086c6225a67383, type: 3}
+  editorPreviewIcon: {fileID: 21300000, guid: 30c7cff94794c3840af810c80a5afb41, type: 3}
   maxQuantity: 9999
   useEffects:
   - {fileID: 11400000, guid: f037fbb04f0578d49a629a2b91a67021, type: 2}

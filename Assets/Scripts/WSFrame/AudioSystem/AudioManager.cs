@@ -294,8 +294,21 @@ namespace WS_Modules.AudioSystem
         /// <param name="loop">是否循环。</param>
         public void PlayBGM(AudioClip clip, float volume = 1f, bool loop = true)
         {
+            PlayBGM(clip, volume, loop, 0f);
+        }
+
+        /// <summary>播放 BGM 并淡入；单次淡入倍率独立于玩家的 Mixer 分类音量。</summary>
+        /// <param name="clip">背景音乐素材。</param>
+        /// <param name="volume">非负时更新分类音量，负值保留玩家设置。</param>
+        /// <param name="loop">是否循环。</param>
+        /// <param name="fadeInDuration">淡入秒数，0 表示立即播放。</param>
+        /// <exception cref="ArgumentOutOfRangeException">淡入时间不是非负有限值。</exception>
+        public void PlayBGM(AudioClip clip, float volume, bool loop, float fadeInDuration)
+        {
+            if (float.IsNaN(fadeInDuration) || float.IsInfinity(fadeInDuration) || fadeInDuration < 0f)
+                throw new ArgumentOutOfRangeException(nameof(fadeInDuration), "[AudioManager] BGM 淡入时间必须是非负有限值。");
             if (volume >= 0f) BGVolume = volume;
-            audioModule.PlayBGM(clip, loop);
+            audioModule.PlayBGM(clip, loop, fadeInDuration);
         }
 
         /// <summary>

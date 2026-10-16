@@ -23,6 +23,9 @@ namespace RPG.ItemSystem.Editor
         private readonly VisualElement growthProfileContent;
         private readonly PropertyField levelEffectsField;
         private readonly PropertyField refinementEffectsField;
+        private readonly PropertyField ascensionStagesField;
+        private readonly PropertyField refinementStagesField;
+        private readonly PropertyField levelOverridesField;
         private readonly string levelEffectsHeader;
         private readonly string refinementEffectsHeader;
         private readonly HashSet<ListView> expandedEffectListViewSet = new();
@@ -81,6 +84,9 @@ namespace RPG.ItemSystem.Editor
             growthProfileContent = Require<VisualElement>("GrowthProfileContent");
             levelEffectsField = Require<PropertyField>("LevelEffectsField");
             refinementEffectsField = Require<PropertyField>("RefinementEffectsField");
+            ascensionStagesField = Require<PropertyField>("AscensionStagesField");
+            refinementStagesField = Require<PropertyField>("RefinementStagesField");
+            levelOverridesField = Require<PropertyField>("LevelOverridesField");
             levelEffectsHeader = levelEffectsField.label;
             refinementEffectsHeader = refinementEffectsField.label;
             ascensionStageTitle = Require<Label>("AscensionStageTitle");
@@ -205,6 +211,12 @@ namespace RPG.ItemSystem.Editor
                     refinementEffectsField,
                     refinementEffectsHeader,
                     expandedEffectListViewSet);
+                ItemConfigEditorPresentation.ConfigureNativeCollectionHeader(
+                    ascensionStagesField, ascensionStagesField.label, expandedEffectListViewSet);
+                ItemConfigEditorPresentation.ConfigureNativeCollectionHeader(
+                    refinementStagesField, refinementStagesField.label, expandedEffectListViewSet);
+                ItemConfigEditorPresentation.ConfigureNativeCollectionHeader(
+                    levelOverridesField, levelOverridesField.label, expandedEffectListViewSet);
                 // 动态字段标签只更新当前已生成节点，数组元素标题与空状态保留 Unity 默认值。
                 VisibleSerializedFieldLabelLocalizer.Apply(pageRoot);
             });

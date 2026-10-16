@@ -28,7 +28,97 @@ MonoBehaviour:
   maxAscensionRank: 6
   maxRefinementRank: 5
   growthProfile: {fileID: 11400000, guid: 0a1b689515e33eb4d8fdffe1f37bed3c, type: 2}
-  levelEffects: []
-  refinementEffects: []
-  ascensionStages: []
-  refinementStages: []
+  levelEffects:
+  - {fileID: 11400000, guid: e3e7b6691b7b6ec42973ee3b2fe6530c, type: 2}
+  refinementEffects:
+  - {fileID: 11400000, guid: 2d868042d8cf3ef4e9ea08b3c5b61671, type: 2}
+  ascensionStages:
+  - requiredLevel: 20
+    maxLevelAfter: 40
+    cost:
+      itemCosts:
+      - itemId:
+          value: material_0017
+        quantity: 1
+      currencyCosts:
+      - currencyId: 1
+        amount: 100
+  - requiredLevel: 40
+    maxLevelAfter: 50
+    cost:
+      itemCosts:
+      - itemId:
+          value: material_0017
+        quantity: 2
+      currencyCosts:
+      - currencyId: 1
+        amount: 200
+  - requiredLevel: 50
+    maxLevelAfter: 60
+    cost:
+      itemCosts:
+      - itemId:
+          value: material_0018
+        quantity: 1
+      currencyCosts:
+      - currencyId: 1
+        amount: 300
+  - requiredLevel: 60
+    maxLevelAfter: 70
+    cost:
+      itemCosts:
+      - itemId:
+          value: material_0018
+        quantity: 2
+      currencyCosts:
+      - currencyId: 1
+        amount: 400
+  - requiredLevel: 70
+    maxLevelAfter: 80
+    cost:
+      itemCosts:
+      - itemId:
+          value: material_0019
+        quantity: 1
+      currencyCosts:
+      - currencyId: 1
+        amount: 500
+  - requiredLevel: 80
+    maxLevelAfter: 90
+    cost:
+      itemCosts:
+      - itemId:
+          value: material_0019
+        quantity: 2
+      currencyCosts:
+      - currencyId: 1
+        amount: 600
+  refinementStages:
+  - rank: 2
+    requiredDuplicateCount: 1
+    cost:
+      itemCosts: []
+      currencyCosts:
+      - currencyId: 1
+        amount: 100
+  - rank: 3
+    requiredDuplicateCount: 1
+    cost:
+      itemCosts: []
+      currencyCosts:
+      - currencyId: 1
+        amount: 200
+  - rank: 4
+    requiredDuplicateCount: 1
+    cost:
+      itemCosts: []
+      currencyCosts:
+      - currencyId: 1
+        amount: 300
+  - rank: 5
+    requiredDuplicateCount: 1
+    cost:
+      itemCosts: []
+      currencyCosts:
+      - currencyId: 1
+        amount: 400

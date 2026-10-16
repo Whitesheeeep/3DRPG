@@ -210,6 +210,15 @@
     max-width: 100%;
 }
 
+/* 嵌套序列化列表仍保留原生数量框，限制其宽度，避免覆盖折叠箭头和标题。 */
+.item-editor-details .item-editor-property-field .unity-list-view__size-field {
+    width: 50px;
+    min-width: 50px;
+    max-width: 50px;
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
 .item-editor-section-title {
     margin-top: 12px;
     margin-bottom: 4px;

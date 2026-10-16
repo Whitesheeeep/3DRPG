@@ -42,7 +42,7 @@ MonoBehaviour:
   dialogueName: 
   text: "\u6211\u662F\u73A9\u5BB6"
   animationClip: {fileID: 7400000, guid: a493989422253ab4e91b3c2997622ac7, type: 2}
-  voiceClip: {fileID: 8300000, guid: dfeaf9743d41cc3438117d38b90c0372, type: 3}
+  voiceClip: {fileID: 8300000, guid: aded8780929c51b4981d9fceb7c0ed86, type: 3}
   animationFadeDuration: 1
   nextNode: {fileID: 5565974568186260539}
   choices: []
