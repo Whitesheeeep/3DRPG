@@ -105,7 +105,7 @@ MonoBehaviour:
   m_Name: Choice 004
   m_EditorClassIdentifier: 
   nodeId: 6db2cc6e-db00-4b8b-bc04-6572c1c42dce
-  editorPosition: {x: -275.89185, y: 175.68793}
+  editorPosition: {x: -275.89178, y: 175.68793}
   nodeName: Choice 004
   text: "\u6D4B\u8BD5\u6761\u4EF6\uFF08\u97001000\u6469\u62C9\uFF09"
   conditions:
@@ -205,7 +205,7 @@ MonoBehaviour:
   m_Name: Choice 003
   m_EditorClassIdentifier: 
   nodeId: 7fed2602-6345-49b4-82b3-430fa000cf24
-  editorPosition: {x: -276.31784, y: -21.678024}
+  editorPosition: {x: -276.31796, y: -21.67808}
   nodeName: Choice 003
   text: "\u56DE\u7B54"
   conditions: []

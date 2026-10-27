@@ -82,4 +82,4 @@ MonoBehaviour:
         releaseVfxScale: 1
     - rid: 1466742237868326912
       type: {class: ChargeHoldGameplayAbilityTaskConfig, ns: WS_Modules.GAS.GameplayAbilitySystem, asm: Assembly-CSharp}
-      data: {}
+      data: 

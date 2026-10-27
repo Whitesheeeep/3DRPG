@@ -12,7 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ea401299909b4bb199d79ae4b9da5407, type: 3}
   m_Name: GE_ChargedDashDamage
   m_EditorClassIdentifier: 
-  description: "蓄力冲刺命中伤害；攻击力、GA 等级倍率、蓄力倍率、暴击和防御均由 Execution 结算。"
+  description: "\u84C4\u529B\u51B2\u523A\u547D\u4E2D\u4F24\u5BB3\uFF1B\u653B\u51FB\u529B\u3001GA
+    \u7B49\u7EA7\u500D\u7387\u3001\u84C4\u529B\u500D\u7387\u3001\u66B4\u51FB\u548C\u9632\u5FA1\u5747\u7531
+    Execution \u7ED3\u7B97\u3002"
   durationType: 0
   duration: 0
   period: 0
@@ -46,4 +48,5 @@ MonoBehaviour:
     RefIds:
     - rid: 731600000000000002
       type: {class: ChargedDamageGameplayEffectExecution, ns: WS_Modules.GAS.GameplayEffect, asm: Assembly-CSharp}
-      data: 
+      data:
+        enableCalculationDebug: 1

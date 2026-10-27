@@ -117,7 +117,7 @@ namespace RPG.Character
             UnityEngine.Debug.Log($"[CharacterRuntimeAttributeBinding] 完成角色 Resource 初始化，character={instance.CharacterId}, resourceCount={values.Count}。");
         }
 
-        /// <summary>响应角色等级变化，保留容量型资源百分比并更新 ASC BaseValue。</summary>
+        /// <summary>升级仅提交成长 Stat，忽略成长表中的 Resource 默认值，再按现有规则同步资源百分比。</summary>
         private void SynchronizeLevel()
         {
             var previousResourceValuesByAttributeIdMap = new Dictionary<int, float>();
@@ -131,10 +131,20 @@ namespace RPG.Character
             }
 
             IReadOnlyList<GameplayAttributeValue> baseValues = progressionResolver.ResolveBaseValues(instance.Config, instance.Level);
+            var statBaseValues = new List<GameplayAttributeValue>(baseValues.Count);
+            // Resource 当前值属于角色运行时状态，不能先写入成长默认值再恢复，否则中途归零会触发死亡。
+            for (int index = 0; index < baseValues.Count; index++)
+            {
+                GameplayAttributeValue value = baseValues[index];
+                if (!abilitySystemComponent.Attributes.TryGetDefinition(value.Attribute, out GameplayAttributeDefinition definition))
+                    throw new InvalidOperationException($"角色 {instance.CharacterId} 的成长 Attribute 在 ASC 中不存在：{value.Attribute}。");
+                if (definition.Type == GameplayAttributeType.Stat)
+                    statBaseValues.Add(value);
+            }
             suppressResourceCapture = true;
             try
             {
-                if (!abilitySystemComponent.TryApplyBaseValues(baseValues))
+                if (!abilitySystemComponent.TryApplyBaseValues(statBaseValues))
                     throw new InvalidOperationException($"角色 {instance.CharacterId} 的等级 BaseValue 无法同步到 ASC。");
 
                 // 计算每个资源的新值，保留容量型资源的百分比。
@@ -165,7 +175,7 @@ namespace RPG.Character
                 suppressResourceCapture = false;
             }
             CaptureResourceValues();
-            UnityEngine.Debug.Log($"[CharacterRuntimeAttributeBinding] 已按等级刷新角色 ASC，character={instance.CharacterId}, level={instance.Level}。");
+            UnityEngine.Debug.Log($"[CharacterRuntimeAttributeBinding] 已按等级刷新角色 ASC，character={instance.CharacterId}, level={instance.Level}, statCount={statBaseValues.Count}, ignoredResourceCount={baseValues.Count - statBaseValues.Count}。");
         }
 
         #endregion

@@ -16,7 +16,36 @@ MonoBehaviour:
   muted: 0
   displayName: "\u52A8\u4F5C\u9636\u6BB5\u8F68\u9053"
   editorLocked: 0
-  clips: []
+  clips:
+  - id: 963d396dfded4d6aa069d65642711e18
+    startFrame: 0
+    durationFrames: 3
+    phase: 1
+    isCancelable: 0
+    runtimeTags: []
+    blockAbilityTags: []
+  - id: 93a27d5a7e3f475997cae3a63b3f41d9
+    startFrame: 3
+    durationFrames: 41
+    phase: 2
+    isCancelable: 0
+    runtimeTags: []
+    blockAbilityTags:
+    - id: 126
+  - id: db7afc8f2b874dc28e2483c3d8b6ddf2
+    startFrame: 44
+    durationFrames: 10
+    phase: 3
+    isCancelable: 1
+    runtimeTags: []
+    blockAbilityTags: []
+  - id: 1a1b63e34dab4f24920de90070abe803
+    startFrame: 54
+    durationFrames: 13
+    phase: 3
+    isCancelable: 1
+    runtimeTags: []
+    blockAbilityTags: []
 --- !u!114 &-4506896046114417993
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -55,6 +84,73 @@ MonoBehaviour:
     sourceStartFrame: 0
     playbackSpeed: 1
     fadeDuration: 0.1
+--- !u!114 &-3703499578753292095
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 166f8d5d2c664f2799bda1e1c4d8a430, type: 3}
+  m_Name: "\u7279\u6548\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: c4607760954e41fc8d51265ada18c877
+  muted: 0
+  displayName: "\u7279\u6548\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: c11dbf85c89e483098f2d478ef5333b5
+    prefab: {fileID: 7296899671359703948, guid: 1860d62fa9cf0d34ba7b6b1ef61f0df8, type: 3}
+    markerKey: {fileID: 0}
+    startFrame: 9
+    durationFrames: 7
+    localPosition: {x: 0, y: 1.46, z: 0}
+    localEulerAngles: {x: 0, y: 275.615, z: 0}
+    localScale: {x: 1, y: 1, z: 1}
+    playbackSpeed: 1
+    followMode: 0
+    stopMode: 0
+  - id: 4b090e96734a4e35b05c195a927b42e4
+    prefab: {fileID: 7296899671359703948, guid: 1860d62fa9cf0d34ba7b6b1ef61f0df8, type: 3}
+    markerKey: {fileID: 0}
+    startFrame: 23
+    durationFrames: 23
+    localPosition: {x: 0, y: 1.46, z: 0}
+    localEulerAngles: {x: 0, y: 351.53613, z: 0}
+    localScale: {x: 1, y: 1, z: 1}
+    playbackSpeed: 0.78
+    followMode: 0
+    stopMode: 1
+--- !u!114 &-2761532093391487122
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 166f8d5d2c664f2799bda1e1c4d8a430, type: 3}
+  m_Name: "\u7279\u6548\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 5961ced18c8c4191a45800be8a74a0ad
+  muted: 0
+  displayName: "\u7279\u6548\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: 599226ed5c2f4db4bfb0471d0ba01f30
+    prefab: {fileID: 7296899671359703948, guid: 1860d62fa9cf0d34ba7b6b1ef61f0df8, type: 3}
+    markerKey: {fileID: 0}
+    startFrame: 16
+    durationFrames: 7
+    localPosition: {x: 0, y: 1.46, z: 0}
+    localEulerAngles: {x: 355.6802, y: 315.9002, z: 176.3469}
+    localScale: {x: 1.0000002, y: 1.0000002, z: 1}
+    playbackSpeed: 1
+    followMode: 0
+    stopMode: 0
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -74,8 +170,11 @@ MonoBehaviour:
   tracks:
   - {fileID: -7076994715096338090}
   - {fileID: -4506896046114417993}
-  - {fileID: 3401498810415579659}
---- !u!114 &3401498810415579659
+  - {fileID: 6670001082622174891}
+  - {fileID: 3548714947553904928}
+  - {fileID: -3703499578753292095}
+  - {fileID: -2761532093391487122}
+--- !u!114 &3548714947553904928
 MonoBehaviour:
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
@@ -84,41 +183,64 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 30d5d03f169278740a3e4112ca04b14e, type: 3}
-  m_Name: "\u6295\u5C04\u7269\u8F68\u9053"
+  m_Script: {fileID: 11500000, guid: 977a117e6397476dafe68fee63f8f607, type: 3}
+  m_Name: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
   m_EditorClassIdentifier: 
-  id: 5b004d9489794dfa8d8a00bfd9b59f09
+  id: ddbad036220542369739c825a6c1b038
   muted: 0
-  displayName: "\u6295\u5C04\u7269\u8F68\u9053"
+  displayName: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
   editorLocked: 0
   clips:
-  - id: ba372f500aa145108257267950c5c391
+  - id: 8fd0ad7690ca441a8236f7225c3162f1
     startFrame: 11
-    spawnConfig:
-      addressableKey: 
-      fallbackPrefab: {fileID: 0}
-      markerKey: {fileID: 0}
-      localPosition: {x: 0, y: 0, z: 0}
-      localEulerAngles: {x: 0, y: 0, z: 0}
-      spreadAngle: 0
-      projectileCount: 1
-      speed: 10
-      lifetime: 3
-      targetLayerMask:
-        serializedVersion: 2
-        m_Bits: 4294967295
-  - id: 6db82291241341198d02ac8e18e10e23
-    startFrame: 20
-    spawnConfig:
-      addressableKey: 
-      fallbackPrefab: {fileID: 0}
-      markerKey: {fileID: 0}
-      localPosition: {x: 0, y: 0, z: 0}
-      localEulerAngles: {x: 0, y: 0, z: 0}
-      spreadAngle: 0
-      projectileCount: 1
-      speed: 10
-      lifetime: 3
-      targetLayerMask:
-        serializedVersion: 2
-        m_Bits: 4294967295
+    durationFrames: 29
+    sampleIntervalFrames: 1
+    detectionId: 0
+    markerKey: {fileID: 0}
+    followMode: 0
+    cueTags: []
+    detectionData:
+      rid: 1466742284284067849
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742284284067849
+      type: {class: SphereAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        localPosition: {x: 0, y: 0.77759045, z: 2.145656}
+        localEulerAngles: {x: 0, y: 0, z: 0}
+        radius: 1.8912152
+--- !u!114 &6670001082622174891
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 977a117e6397476dafe68fee63f8f607, type: 3}
+  m_Name: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  m_EditorClassIdentifier: 
+  id: 6e9b3e6c1e6246cbae56b60f20295aaa
+  muted: 0
+  displayName: "\u653B\u51FB\u68C0\u6D4B\u8F68\u9053"
+  editorLocked: 0
+  clips:
+  - id: 276aab8e07b84bbfa61443655e91456b
+    startFrame: 11
+    durationFrames: 29
+    sampleIntervalFrames: 1
+    detectionId: 0
+    markerKey: {fileID: 0}
+    followMode: 0
+    cueTags: []
+    detectionData:
+      rid: 1466742284284067842
+  references:
+    version: 2
+    RefIds:
+    - rid: 1466742284284067842
+      type: {class: WeaponTraceAttackDetectionData, ns: RPG.SkillSystem, asm: Assembly-CSharp}
+      data:
+        samplePointCount: 4

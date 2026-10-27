@@ -126,6 +126,8 @@ MonoBehaviour:
       ability: {fileID: 11400000, guid: 0f3e634a85694f8c9584c77992040203, type: 2}
     - inputType: 15
       ability: {fileID: 11400000, guid: 8dd9cbf03c2d4dcf8b0b9276fb7fc9b1, type: 2}
+    - inputType: 4
+      ability: {fileID: 11400000, guid: 612b50af3da645b40a4990042f35ffc2, type: 2}
     hitReactionBindings:
     - effectTag:
         id: 217
