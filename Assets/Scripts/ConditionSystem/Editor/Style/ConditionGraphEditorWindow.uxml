@@ -1,0 +1,32 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <Style src="project://database/Assets/Scripts/ConditionSystem/Editor/Style/ConditionGraphEditor.uss" />
+    <ui:VisualElement class="condition-editor">
+        <ui:VisualElement class="condition-toolbar">
+            <ui:VisualElement class="condition-brand">
+                <ui:Label text="条件配置" class="condition-title" />
+                <ui:Label text="CONDITION GRAPH" class="condition-subtitle" />
+            </ui:VisualElement>
+            <uie:ObjectField name="AssetField" label="条件 SO" class="condition-asset-field" />
+            <ui:Button name="NewButton" text="新建" />
+            <ui:Button name="SaveButton" text="保存" class="condition-primary-button" />
+            <ui:Button name="ValidateButton" text="校验" />
+        </ui:VisualElement>
+        <WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView fixed-pane-index="1" fixed-pane-initial-dimension="340" orientation="Horizontal" class="condition-main">
+            <ui:VisualElement class="condition-canvas">
+                <ui:VisualElement class="condition-canvas-header">
+                    <ui:Label text="条件关系" class="condition-heading" />
+                    <ui:Label text="右键创建 · 父 → 子 · 列表顺序决定求值" class="condition-hint" />
+                </ui:VisualElement>
+                <ui:VisualElement name="GraphContainer" class="condition-graph-container" />
+                <ui:Label text="AND 全部满足    OR 任意满足    NOT 取反    CONDITION 具体条件" class="condition-legend" />
+            </ui:VisualElement>
+            <ui:VisualElement class="condition-side">
+                <ui:Label text="节点参数 / 子条件顺序" class="condition-heading" />
+                <ui:ScrollView name="Details" class="condition-details" />
+                <ui:Label text="结构校验（点击问题定位节点）" class="condition-heading" />
+                <ui:ScrollView name="Issues" class="condition-issues" />
+            </ui:VisualElement>
+        </WS_Modules.UIToolkitExtensions.Editor.CustomTwoPanelSplitView>
+        <ui:Label name="Status" text="未打开条件图" class="condition-status" />
+    </ui:VisualElement>
+</ui:UXML>

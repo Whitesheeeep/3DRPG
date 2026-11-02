@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Speech 003
   m_EditorClassIdentifier: 
   nodeId: e7d8a0e9-5fcb-4f42-99cf-21239b3cbcc7
-  editorPosition: {x: -12.000123, y: 175.47765}
+  editorPosition: {x: -12.000001, y: -78.122345}
   nodeName: Speech 003
   speaker: {fileID: 11400000, guid: 4663cf08600c8fb4682d10fa508a0b57, type: 2}
   dialogueName: 
@@ -36,7 +36,7 @@ MonoBehaviour:
   m_Name: Speech 002
   m_EditorClassIdentifier: 
   nodeId: f9f218d4-f1c4-42ca-9c74-13c25f13f677
-  editorPosition: {x: -12.226208, y: -21.029408}
+  editorPosition: {x: -12.226086, y: -274.6294}
   nodeName: Speech 002
   speaker: {fileID: 11400000, guid: 032bd966221ad854ab394fca1df0980c, type: 2}
   dialogueName: 
@@ -83,7 +83,7 @@ MonoBehaviour:
   m_Name: Choice 001
   m_EditorClassIdentifier: 
   nodeId: 4bd13c38-0c0c-46fe-8a13-1ec46209860d
-  editorPosition: {x: -275.99985, y: -388.8}
+  editorPosition: {x: -276.79965, y: -642.3999}
   nodeName: Choice 001
   text: "\u4E0D\u544A\u8BC9\u4F60\uFF08\u5FAA\u73AF\u7ED3\u679C\uFF09"
   conditions: []
@@ -105,7 +105,7 @@ MonoBehaviour:
   m_Name: Choice 004
   m_EditorClassIdentifier: 
   nodeId: 6db2cc6e-db00-4b8b-bc04-6572c1c42dce
-  editorPosition: {x: -275.89178, y: 175.68793}
+  editorPosition: {x: -275.89166, y: -77.91206}
   nodeName: Choice 004
   text: "\u6D4B\u8BD5\u6761\u4EF6\uFF08\u97001000\u6469\u62C9\uFF09"
   conditions:
@@ -132,7 +132,7 @@ MonoBehaviour:
   m_Name: Speech 001
   m_EditorClassIdentifier: 
   nodeId: 91106945-8dd0-4b2f-882a-4984c0397530
-  editorPosition: {x: -732.3346, y: -233.53607}
+  editorPosition: {x: -732.3345, y: -487.13605}
   nodeName: Speech 001
   speaker: {fileID: 11400000, guid: 4663cf08600c8fb4682d10fa508a0b57, type: 2}
   dialogueName: "\u65AF\u5361\u54C8"
@@ -159,7 +159,7 @@ MonoBehaviour:
   m_Name: Choice 002
   m_EditorClassIdentifier: 
   nodeId: 002cde49-3efd-4cc3-99bb-9f9e90f30c26
-  editorPosition: {x: -275.97427, y: -197.14194}
+  editorPosition: {x: -275.97415, y: -450.74194}
   nodeName: Choice 002
   text: "\u6C89\u9ED8\uFF08\u7ED3\u675F\uFF09"
   conditions:
@@ -191,7 +191,7 @@ MonoBehaviour:
   m_Name: EndNode
   m_EditorClassIdentifier: 
   nodeId: 271f9d15-e6e2-4e78-83c8-6e79143ee1dd
-  editorPosition: {x: 277.6921, y: -201.109}
+  editorPosition: {x: 277.69223, y: -454.70898}
 --- !u!114 &8275623721283719587
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -205,7 +205,7 @@ MonoBehaviour:
   m_Name: Choice 003
   m_EditorClassIdentifier: 
   nodeId: 7fed2602-6345-49b4-82b3-430fa000cf24
-  editorPosition: {x: -276.31796, y: -21.67808}
+  editorPosition: {x: -276.31784, y: -275.27808}
   nodeName: Choice 003
   text: "\u56DE\u7B54"
   conditions: []
@@ -227,5 +227,5 @@ MonoBehaviour:
   m_Name: EntryNode
   m_EditorClassIdentifier: 
   nodeId: c19ed02c-b981-422a-bbfd-9501b5b9eccd
-  editorPosition: {x: -964, y: -200.79997}
+  editorPosition: {x: -1048.7999, y: -487.19995}
   firstSpeechNode: {fileID: 3705990609346577972}

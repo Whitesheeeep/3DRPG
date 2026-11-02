@@ -1,0 +1,43 @@
+.condition-editor { flex-grow: 1; background-color: rgb(31, 32, 34); color: rgb(218, 218, 215); }
+.condition-toolbar { flex-direction: row; align-items: center; padding: 10px 12px; background-color: rgb(39, 40, 42); border-bottom-width: 1px; border-bottom-color: rgb(65, 66, 68); }
+.condition-brand { min-width: 160px; margin-right: 16px; }
+.condition-title { font-size: 16px; -unity-font-style: bold; color: rgb(237, 236, 232); }
+.condition-subtitle { font-size: 9px; color: rgb(153, 151, 145); margin-top: 3px; }
+.condition-editor Button { background-color: rgb(54, 55, 57); color: rgb(222, 220, 215); border-color: rgb(78, 79, 81); border-width: 1px; border-radius: 4px; padding: 5px 11px; margin-left: 4px; }
+.condition-editor Button:hover { background-color: rgb(67, 68, 70); border-color: rgb(128, 126, 119); }
+.condition-editor Button:disabled { color: rgb(116, 116, 115); background-color: rgb(44, 45, 47); }
+.condition-editor .condition-primary-button { background-color: rgb(200, 196, 185); border-color: rgb(210, 205, 194); color: rgb(35, 36, 37); }
+.condition-editor .condition-primary-button:hover { background-color: rgb(220, 215, 204); }
+.condition-heading { -unity-font-style: bold; font-size: 12px; padding: 10px 10px 8px 10px; color: rgb(198, 197, 192); white-space: normal; }
+/* ObjectField 默认禁止收缩；使用剩余宽度布局，避免输入框把工具栏按钮挤出窗口。 */
+.condition-toolbar #AssetField { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; margin-right: 12px; }
+.condition-toolbar #AssetField > .unity-base-field__label { width: 56px; min-width: 56px; flex-shrink: 0; }
+.condition-toolbar #AssetField > .unity-base-field__input { flex-grow: 1; flex-shrink: 1; min-width: 0; }
+.condition-toolbar > Button { flex-shrink: 0; }
+.condition-main { flex-grow: 1; }
+.condition-canvas { flex-grow: 1; min-width: 400px; background-color: rgb(28, 29, 31); }
+.condition-canvas-header { flex-direction: row; justify-content: space-between; align-items: center; border-bottom-width: 1px; border-bottom-color: rgb(53, 54, 56); }
+.condition-hint { color: rgb(142, 141, 136); font-size: 10px; margin-right: 12px; }
+.condition-graph-container { flex-grow: 1; }
+.condition-graph-view { flex-grow: 1; background-color: rgb(28, 29, 31); }
+.condition-graph-view GridBackground { --grid-background-color: rgb(28, 29, 31); --line-color: rgba(160, 158, 151, 0.07); --thick-line-color: rgba(174, 171, 163, 0.13); --spacing: 24; }
+.condition-legend { padding: 7px 10px; color: rgb(142, 140, 134); font-size: 10px; background-color: rgb(34, 35, 37); }
+.condition-side { min-width: 280px; background-color: rgb(37, 38, 40); border-left-width: 1px; border-left-color: rgb(64, 65, 67); }
+.condition-details { flex-grow: 1; flex-basis: 55%; padding: 8px; margin: 0 8px 8px 8px; background-color: rgb(44, 45, 47); border-radius: 5px; }
+.condition-issues { flex-grow: 1; flex-basis: 35%; padding: 6px; margin: 0 8px 8px 8px; background-color: rgb(34, 35, 37); border-radius: 5px; }
+.condition-status { padding: 8px 12px; font-size: 10px; color: rgb(153, 151, 145); white-space: normal; background-color: rgb(34, 35, 37); border-top-width: 1px; border-top-color: rgb(60, 61, 63); }
+.condition-child-row { flex-direction: row; align-items: center; margin-top: 5px; }
+.condition-editor .condition-child-row Button { padding: 3px 7px; }
+.condition-child-name { flex-grow: 1; overflow: hidden; }
+.condition-editor .condition-node #node-border.ws-graph-node__main { background-color: rgb(43, 44, 46); border-color: rgb(81, 81, 79); border-width: 1px; border-radius: 7px; }
+.condition-editor .condition-node #title.ws-graph-node__title { padding: 7px 5px; background-color: rgb(62, 62, 64); }
+.condition-editor .condition-node.condition-node--and #title.ws-graph-node__title { background-color: rgb(54, 75, 62); }
+.condition-editor .condition-node.condition-node--or #title.ws-graph-node__title { background-color: rgb(85, 74, 53); }
+.condition-editor .condition-node.condition-node--not #title.ws-graph-node__title { background-color: rgb(77, 59, 72); }
+.condition-editor .condition-node.condition-node--leaf #title.ws-graph-node__title { background-color: rgb(63, 64, 66); }
+.condition-node .ws-graph-node__content { min-width: 220px; max-width: 320px; padding: 10px; }
+.condition-node .condition-node-kind { font-size: 9px; color: rgb(162, 160, 151); margin-bottom: 8px; }
+.condition-node .condition-expression { white-space: normal; color: rgb(217, 215, 207); font-size: 12px; margin-bottom: 8px; }
+.condition-editor .condition-node.condition-node--root #node-border.ws-graph-node__main { border-left-color: rgb(160, 174, 145); border-left-width: 3px; }
+.condition-editor .condition-node.ws-graph-node--selected #node-border.ws-graph-node__main { border-color: rgb(205, 199, 180); }
+.condition-editor .condition-node #selection-border { border-color: rgb(205, 199, 180); }

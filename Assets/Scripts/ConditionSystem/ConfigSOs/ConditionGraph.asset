@@ -1,0 +1,168 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-2070891003936089384
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 37dfd70d553edca448eecbd52cc96c6a, type: 3}
+  m_Name: And Condition Node
+  m_EditorClassIdentifier: 
+  nodeId: 108fba27f5ab4796970dba35851de855
+  editorPosition: {x: -50.399998, y: 67.999916}
+  owner: {fileID: 11400000}
+  children:
+  - {fileID: 6887287772464123232}
+  - {fileID: -1640143351612143597}
+  - {fileID: 4972034664282730527}
+--- !u!114 &-1640143351612143597
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1705b566110fefb459ee87cc3d24654d, type: 3}
+  m_Name: Not Condition Node
+  m_EditorClassIdentifier: 
+  nodeId: d86e352157bc48428ed3f8a2e070bb6f
+  editorPosition: {x: 344.20078, y: 68.799965}
+  owner: {fileID: 11400000}
+  children:
+  - {fileID: 7392609832198159558}
+  failureMessage: "\u5F53\u524D\u6761\u4EF6\u4E0D\u5141\u8BB8\u6EE1\u8DB3"
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ed0543e4281dba5428963ceed4e73522, type: 3}
+  m_Name: ConditionGraph
+  m_EditorClassIdentifier: 
+  root: {fileID: -2070891003936089384}
+  nodes:
+  - {fileID: -2070891003936089384}
+  - {fileID: 4972034664282730527}
+  - {fileID: -1640143351612143597}
+  - {fileID: 6887287772464123232}
+  - {fileID: 8004150237769208854}
+  - {fileID: 4021597967926369065}
+  - {fileID: 7392609832198159558}
+  - {fileID: 5676248325125481604}
+--- !u!114 &4021597967926369065
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da8b1a785c73a0c45a109d89143829f8, type: 3}
+  m_Name: Constant Condition Node
+  m_EditorClassIdentifier: 
+  nodeId: 04ca5372aac54864ad71ab0c5c446637
+  editorPosition: {x: 655.2, y: -48.167072}
+  owner: {fileID: 11400000}
+  children: []
+  value: 0
+  failureMessage: "\u6761\u4EF6\u672A\u6EE1\u8DB3"
+--- !u!114 &4972034664282730527
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01bbd78076ba02542a4a6523845ca338, type: 3}
+  m_Name: Or Condition Node
+  m_EditorClassIdentifier: 
+  nodeId: 80a2ebaf769a417eab77fc3bcac58b06
+  editorPosition: {x: 344, y: 255.99994}
+  owner: {fileID: 11400000}
+  children:
+  - {fileID: 5676248325125481604}
+--- !u!114 &5676248325125481604
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da8b1a785c73a0c45a109d89143829f8, type: 3}
+  m_Name: Constant Condition Node
+  m_EditorClassIdentifier: 
+  nodeId: adc1b1441e104d3f8a92d0a7c7b42826
+  editorPosition: {x: 655.2, y: 275.19998}
+  owner: {fileID: 11400000}
+  children: []
+  value: 1
+  failureMessage: "\u6761\u4EF6\u672A\u6EE1\u8DB3"
+--- !u!114 &6887287772464123232
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 37dfd70d553edca448eecbd52cc96c6a, type: 3}
+  m_Name: And Condition Node
+  m_EditorClassIdentifier: 
+  nodeId: 43ff1b16b80e4323afec09c43c0eb418
+  editorPosition: {x: 344, y: -121.59999}
+  owner: {fileID: 11400000}
+  children:
+  - {fileID: 8004150237769208854}
+  - {fileID: 4021597967926369065}
+--- !u!114 &7392609832198159558
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da8b1a785c73a0c45a109d89143829f8, type: 3}
+  m_Name: Constant Condition Node
+  m_EditorClassIdentifier: 
+  nodeId: 62f3d7b619af42c1904143e14ac5e1f4
+  editorPosition: {x: 655.1999, y: 109.59998}
+  owner: {fileID: 11400000}
+  children: []
+  value: 1
+  failureMessage: "\u6761\u4EF6\u672A\u6EE1\u8DB3"
+--- !u!114 &8004150237769208854
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da8b1a785c73a0c45a109d89143829f8, type: 3}
+  m_Name: Constant Condition Node
+  m_EditorClassIdentifier: 
+  nodeId: 74646c1d2ac04e85953e308eb6262410
+  editorPosition: {x: 655.2, y: -219.36707}
+  owner: {fileID: 11400000}
+  children: []
+  value: 1
+  failureMessage: "\u6761\u4EF6\u672A\u6EE1\u8DB3"
